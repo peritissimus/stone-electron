@@ -1,0 +1,103 @@
+/* Global Styles for Stone */
+
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Root CSS Variables */
+:root {
+  --border: 214 57% 91%;
+  --input: 214 57% 91%;
+  --ring: 217 32% 17%;
+  --background: 0 0% 100%;
+  --foreground: 217 32% 17%;
+  --primary: 217 32% 17%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 214 84% 56%;
+  --secondary-foreground: 210 40% 98%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+  --muted: 214 16% 74%;
+  --muted-foreground: 217 32% 45%;
+  --accent: 214 84% 56%;
+  --accent-foreground: 210 40% 98%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 217 32% 17%;
+  --card: 0 0% 100%;
+  --card-foreground: 217 32% 17%;
+
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 212 35% 92%;
+    --background: 222 84% 5%;
+    --foreground: 213 31% 91%;
+    --primary: 212 35% 92%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 212 35% 92%;
+    --destructive: 0 62% 56%;
+    --destructive-foreground: 210 40% 98%;
+    --muted: 217 32% 35%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 32% 17%;
+    --accent-foreground: 212 35% 92%;
+    --popover: 222 84% 5%;
+    --popover-foreground: 213 31% 91%;
+    --card: 222 84% 5%;
+    --card-foreground: 213 31% 91%;
+  }
+}
+
+/* Base Styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: 'Fira Code', 'Courier New', monospace;
+}
+
+/* Remove default focus outline, we'll use Tailwind's */
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

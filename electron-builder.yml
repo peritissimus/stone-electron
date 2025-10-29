@@ -1,0 +1,47 @@
+appId: com.stone.app
+productName: Stone
+directories:
+  buildResources: assets
+  output: dist/build
+files:
+  - dist/**/*
+  - node_modules/**/*
+  - package.json
+  - src/main/**/*
+asarUnpack:
+  - node_modules/better-sqlite3/**/*
+  - node_modules/vectra/**/*
+
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-categories.productivity
+  identity: null
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target:
+    - nsis
+    - portable
+  certificateFile: null
+  certificatePassword: null
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+
+appImage:
+  artifactName: Stone-${version}.${ext}
+
+deb:
+  artifactName: Stone-${version}.${ext}
