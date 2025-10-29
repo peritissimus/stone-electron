@@ -6,6 +6,7 @@ import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { isDev } from './utils/environment'
 import { getDatabaseManager } from './database'
+import { registerAllIpcHandlers } from './ipc'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -51,6 +52,11 @@ app.on('ready', async () => {
     const dbManager = getDatabaseManager()
     await dbManager.initialize()
     console.log('✓ Database initialized')
+
+    // Register IPC handlers
+    console.log('🔄 Registering IPC handlers...')
+    registerAllIpcHandlers()
+    console.log('✓ IPC handlers registered')
 
     // Create window
     await createWindow()
