@@ -1,5 +1,4 @@
 import type { Config } from 'tailwindcss'
-import defaultTheme from 'tailwindcss/defaultTheme'
 
 const config: Config = {
   darkMode: ['class'],
@@ -10,19 +9,23 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'SF Pro Display',
+          'SF Pro Text',
+          'Helvetica Neue',
+          'Arial',
+          'sans-serif',
+        ],
       },
       colors: {
-        gray: {
-          750: '#2d3748',
-          850: '#1e2533',
-          950: '#0f1419',
-        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
+        sidebar: 'hsl(var(--sidebar))',
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
@@ -56,6 +59,16 @@ const config: Config = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      boxShadow: {
+        'sm': '0 1px 2px rgba(0, 0, 0, 0.05)',
+        DEFAULT: '0 2px 8px rgba(0, 0, 0, 0.1)',
+        'md': '0 4px 12px rgba(0, 0, 0, 0.1)',
+        'lg': '0 8px 24px rgba(0, 0, 0, 0.15)',
+        'xl': '0 16px 48px rgba(0, 0, 0, 0.2)',
+      },
+      spacing: {
+        'titlebar': '52px',
       },
     },
   },

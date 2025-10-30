@@ -12,6 +12,7 @@ import { registerSearchHandlers } from './handlers/searchHandlers'
 import { registerAttachmentHandlers } from './handlers/attachmentHandlers'
 import { registerDatabaseHandlers } from './handlers/databaseHandlers'
 import { registerSettingsHandlers } from './handlers/settingsHandlers'
+import { logger } from '../utils/logger'
 
 /**
  * Register all IPC handlers
@@ -31,5 +32,5 @@ export function registerAllIpcHandlers(): void {
   registerDatabaseHandlers()
   registerSettingsHandlers()
 
-  console.log('[IPC] All handlers registered successfully')
+  logger.info('[IPC] All handlers registered successfully')
 }

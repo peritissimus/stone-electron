@@ -4,75 +4,78 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Root CSS Variables - Dark Mode Optimized */
+/* Root CSS Variables - macOS Inspired Light Theme */
 :root {
-  --border: 214 57% 91%;
-  --input: 214 57% 91%;
-  --ring: 217 32% 17%;
-  --background: 0 0% 100%;
-  --foreground: 217 32% 17%;
-  --primary: 217 32% 17%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 214 84% 56%;
-  --secondary-foreground: 210 40% 98%;
+  --border: 0 0% 85%;
+  --input: 0 0% 92%;
+  --ring: 211 100% 50%;
+  --background: 0 0% 96.5%;
+  --foreground: 0 0% 15%;
+  --sidebar: 0 0% 90%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 15%;
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
-  --muted: 214 16% 74%;
-  --muted-foreground: 217 32% 45%;
-  --accent: 214 84% 56%;
-  --accent-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 45%;
+  --accent: 211 100% 96%;
+  --accent-foreground: 211 100% 50%;
   --popover: 0 0% 100%;
-  --popover-foreground: 217 32% 17%;
+  --popover-foreground: 0 0% 15%;
   --card: 0 0% 100%;
-  --card-foreground: 217 32% 17%;
+  --card-foreground: 0 0% 15%;
 
-  --radius: 0.5rem;
+  --radius: 10px;
 }
 
-/* Dark Mode Colors - Consistent Palette */
+/* Dark Mode Colors - macOS Inspired Dark Theme */
 .dark {
-  --border: 217 19% 20%;
-  --input: 217 19% 20%;
-  --ring: 217 92% 76%;
-  --background: 222 47% 11%;
-  --foreground: 213 31% 91%;
-  --primary: 217 92% 76%;
-  --primary-foreground: 222 47% 11%;
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 40% 98%;
-  --destructive: 0 63% 51%;
-  --destructive-foreground: 210 40% 98%;
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 217 19% 27%;
-  --accent-foreground: 210 40% 98%;
-  --popover: 222 47% 11%;
-  --popover-foreground: 213 31% 91%;
-  --card: 222 47% 11%;
-  --card-foreground: 213 31% 91%;
+  --border: 0 0% 20%;
+  --input: 0 0% 20%;
+  --ring: 211 100% 60%;
+  --background: 0 0% 12%;
+  --foreground: 0 0% 90%;
+  --sidebar: 0 0% 16%;
+  --primary: 211 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 18%;
+  --secondary-foreground: 0 0% 90%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 0 0% 18%;
+  --muted-foreground: 0 0% 60%;
+  --accent: 211 100% 20%;
+  --accent-foreground: 211 100% 60%;
+  --popover: 0 0% 14%;
+  --popover-foreground: 0 0% 90%;
+  --card: 0 0% 14%;
+  --card-foreground: 0 0% 90%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --border: 217 19% 20%;
-    --input: 217 19% 20%;
-    --ring: 217 92% 76%;
-    --background: 222 47% 11%;
-    --foreground: 213 31% 91%;
-    --primary: 217 92% 76%;
-    --primary-foreground: 222 47% 11%;
-    --secondary: 217 19% 27%;
-    --secondary-foreground: 210 40% 98%;
-    --destructive: 0 63% 51%;
-    --destructive-foreground: 210 40% 98%;
-    --muted: 217 19% 27%;
-    --muted-foreground: 215 20% 65%;
-    --accent: 217 19% 27%;
-    --accent-foreground: 210 40% 98%;
-    --popover: 222 47% 11%;
-    --popover-foreground: 213 31% 91%;
-    --card: 222 47% 11%;
-    --card-foreground: 213 31% 91%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 211 100% 60%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 90%;
+    --sidebar: 0 0% 16%;
+    --primary: 211 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 90%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 211 100% 20%;
+    --accent-foreground: 211 100% 60%;
+    --popover: 0 0% 14%;
+    --popover-foreground: 0 0% 90%;
+    --card: 0 0% 14%;
+    --card-foreground: 0 0% 90%;
   }
 }
 
@@ -92,16 +95,17 @@ html.dark {
 
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
-    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', 'Arial', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .dark body {
-  background-color: hsl(222, 47%, 11%);
-  color: hsl(213, 31%, 91%);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 code {
@@ -116,10 +120,10 @@ textarea:focus {
   outline: none;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - macOS inspired */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
@@ -127,12 +131,26 @@ textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted);
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+  background: rgba(0, 0, 0, 0.3);
+  background-clip: padding-box;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+  background-clip: padding-box;
 }
 
 /* TipTap Editor Styles */

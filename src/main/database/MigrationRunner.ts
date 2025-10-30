@@ -3,9 +3,9 @@
  */
 
 import Database from 'better-sqlite3'
-import path from 'path'
-import fs from 'fs'
-import crypto from 'crypto'
+import path from 'node:path'
+import fs from 'node:fs'
+import crypto from 'node:crypto'
 
 export interface Migration {
   version: number

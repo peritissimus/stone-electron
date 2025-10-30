@@ -7,6 +7,7 @@ import path from 'path'
 import { isDev } from './utils/environment'
 import { getDatabaseManager } from './database'
 import { registerAllIpcHandlers } from './ipc'
+import { logger } from './utils/logger'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -20,11 +21,15 @@ async function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, '../preload.js'),
+      preload: path.join(__dirname, '../preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    backgroundColor: '#ffffff',
+    vibrancy: 'sidebar',
+    visualEffectState: 'active',
+    trafficLightPosition: { x: 16, y: 16 },
   })
 
   // Load the app
@@ -48,21 +53,21 @@ async function createWindow() {
 app.on('ready', async () => {
   try {
     // Initialize database
-    console.log('🔄 Initializing database...')
+    logger.info('🔄 Initializing database...')
     const dbManager = getDatabaseManager()
     await dbManager.initialize()
-    console.log('✓ Database initialized')
+    logger.info('✓ Database initialized')
 
     // Register IPC handlers
-    console.log('🔄 Registering IPC handlers...')
+    logger.info('🔄 Registering IPC handlers...')
     registerAllIpcHandlers()
-    console.log('✓ IPC handlers registered')
+    logger.info('✓ IPC handlers registered')
 
     // Create window
     await createWindow()
-    console.log('✓ Application window created')
+    logger.info('✓ Application window created')
   } catch (error) {
-    console.error('Failed to start application:', error)
+    logger.error('Failed to start application:', error)
     app.quit()
   }
 })
@@ -91,5 +96,5 @@ app.on('activate', async () => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error)
+  logger.error('Uncaught Exception:', error)
 })

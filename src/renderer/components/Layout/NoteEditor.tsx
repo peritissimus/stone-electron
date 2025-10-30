@@ -83,67 +83,67 @@ export function NoteEditor() {
 
   if (!activeNote) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="text-center text-gray-500 dark:text-gray-400">
-          <p className="text-lg mb-2">No note selected</p>
-          <p className="text-sm">Select a note from the list or create a new one</p>
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="text-center text-muted-foreground">
+          <p className="text-base mb-2">No note selected</p>
+          <p className="text-xs">Select a note from the list or create a new one</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-gray-950">
+    <div className="flex-1 flex flex-col bg-background">
       {/* Editor Header */}
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-4">
+      <div className="px-4 pt-titlebar pb-3 border-b border-border flex items-center gap-4">
         <input
           type="text"
           value={title}
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="Untitled"
-          className="flex-1 text-2xl font-bold bg-transparent border-none outline-none text-gray-900 dark:text-gray-100"
+          className="flex-1 text-xl font-bold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
         />
 
         {/* Note Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => toggleFavorite(activeNote.id)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               activeNote.is_favorite
-                ? 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
-                : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'text-yellow-500 bg-yellow-500/10'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Favorite"
           >
-            <Star size={20} fill={activeNote.is_favorite ? 'currentColor' : 'none'} />
+            <Star size={16} fill={activeNote.is_favorite ? 'currentColor' : 'none'} />
           </button>
           <button
             onClick={() => togglePin(activeNote.id)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               activeNote.is_pinned
-                ? 'text-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'text-primary bg-primary/10'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Pin"
           >
-            <Pin size={20} />
+            <Pin size={16} />
           </button>
           <button
             onClick={() => toggleArchive(activeNote.id)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-1.5 rounded-lg transition-colors ${
               activeNote.is_archived
-                ? 'text-orange-500 bg-orange-50 dark:bg-orange-900/20'
-                : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'text-orange-500 bg-orange-500/10'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Archive"
           >
-            <Archive size={20} />
+            <Archive size={16} />
           </button>
           <button
-            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             title="More Options"
           >
-            <MoreVertical size={20} />
+            <MoreVertical size={16} />
           </button>
         </div>
       </div>

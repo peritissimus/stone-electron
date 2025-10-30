@@ -2,10 +2,12 @@
  * Environment Utilities for Main Process
  */
 
-import electronIsDev from 'electron-is-dev'
+import { app } from 'electron'
 
-export const isDev = electronIsDev
-export const isProd = !electronIsDev
+// Check if running in development mode
+// app.isPackaged is false in development and true in production
+export const isDev = !app.isPackaged
+export const isProd = app.isPackaged
 
 export function getEnv(key: string, defaultValue?: string): string | undefined {
   return process.env[key] ?? defaultValue

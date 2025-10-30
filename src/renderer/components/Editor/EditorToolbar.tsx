@@ -34,21 +34,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
   if (!editor) return null
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-2 flex items-center gap-1 flex-wrap">
+    <div className="border-b border-border bg-card px-2 py-1.5 flex items-center gap-0.5 flex-wrap">
       {/* History */}
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         title="Undo"
       >
-        <Undo size={18} />
+        <Undo size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         title="Redo"
       >
-        <Redo size={18} />
+        <Redo size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -59,35 +59,35 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('bold')}
         title="Bold"
       >
-        <Bold size={18} />
+        <Bold size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive('italic')}
         title="Italic"
       >
-        <Italic size={18} />
+        <Italic size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleStrike().run()}
         active={editor.isActive('strike')}
         title="Strikethrough"
       >
-        <Strikethrough size={18} />
+        <Strikethrough size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCode().run()}
         active={editor.isActive('code')}
         title="Inline Code"
       >
-        <Code size={18} />
+        <Code size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHighlight().run()}
         active={editor.isActive('highlight')}
         title="Highlight"
       >
-        <Highlighter size={18} />
+        <Highlighter size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -98,21 +98,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('heading', { level: 1 })}
         title="Heading 1"
       >
-        <Heading1 size={18} />
+        <Heading1 size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={editor.isActive('heading', { level: 2 })}
         title="Heading 2"
       >
-        <Heading2 size={18} />
+        <Heading2 size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         active={editor.isActive('heading', { level: 3 })}
         title="Heading 3"
       >
-        <Heading3 size={18} />
+        <Heading3 size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -123,21 +123,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('bulletList')}
         title="Bullet List"
       >
-        <List size={18} />
+        <List size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive('orderedList')}
         title="Numbered List"
       >
-        <ListOrdered size={18} />
+        <ListOrdered size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleTaskList().run()}
         active={editor.isActive('taskList')}
         title="Task List"
       >
-        <CheckSquare size={18} />
+        <CheckSquare size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -148,20 +148,20 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('blockquote')}
         title="Blockquote"
       >
-        <Quote size={18} />
+        <Quote size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         active={editor.isActive('codeBlock')}
         title="Code Block"
       >
-        <Code2 size={18} />
+        <Code2 size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
         title="Horizontal Rule"
       >
-        <Minus size={18} />
+        <Minus size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -177,7 +177,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('link')}
         title="Insert Link"
       >
-        <Link size={18} />
+        <Link size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => {
@@ -188,7 +188,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         }}
         title="Insert Image"
       >
-        <Image size={18} />
+        <Image size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() =>
@@ -196,7 +196,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         }
         title="Insert Table"
       >
-        <Table size={18} />
+        <Table size={16} />
       </ToolbarButton>
     </div>
   )
@@ -216,11 +216,11 @@ function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarBu
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`p-2 rounded transition-colors ${
+      className={`p-1.5 rounded transition-colors ${
         active
-          ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+          ? 'bg-accent text-accent-foreground'
+          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+      } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
     >
       {children}
     </button>
@@ -228,5 +228,5 @@ function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarBu
 }
 
 function Divider() {
-  return <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
+  return <div className="w-px h-5 bg-border mx-1" />
 }
