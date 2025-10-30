@@ -26,6 +26,7 @@ export default defineConfig({
         'vectra',
         'electron-store',
         'electron-log',
+        'nanoid',
         'path',
         'fs',
         'crypto',

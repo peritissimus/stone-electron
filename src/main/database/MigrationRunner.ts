@@ -6,6 +6,7 @@ import Database from 'better-sqlite3'
 import path from 'node:path'
 import fs from 'node:fs'
 import crypto from 'node:crypto'
+import { app } from 'electron'
 
 export interface Migration {
   version: number
@@ -22,7 +23,16 @@ export class MigrationRunner {
 
   constructor(db: Database.Database, dataPath: string) {
     this.db = db
-    this.migrationsDir = path.join(dataPath, '..', '..', 'migrations')
+
+    // In development, use project root; in production, use app resources
+    if (app.isPackaged) {
+      // Production: migrations are in resources
+      this.migrationsDir = path.join(process.resourcesPath, 'migrations')
+    } else {
+      // Development: migrations are in project root
+      this.migrationsDir = path.join(app.getAppPath(), 'migrations')
+    }
+
     this.ensureMigrationsTable()
   }
 
@@ -109,15 +119,9 @@ export class MigrationRunner {
 
       // Begin transaction
       const transaction = this.db.transaction(() => {
-        // Split and execute SQL statements
-        const statements = sql
-          .split(';')
-          .map((s) => s.trim())
-          .filter((s) => s && !s.startsWith('--'))
-
-        for (const statement of statements) {
-          this.db.exec(statement)
-        }
+        // Execute the entire SQL file at once
+        // SQLite can handle multiple statements and triggers properly this way
+        this.db.exec(sql)
 
         // Record migration
         this.db.prepare(

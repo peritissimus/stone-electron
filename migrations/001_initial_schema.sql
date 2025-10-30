@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS notes (
   is_favorite INTEGER DEFAULT 0,
   is_pinned INTEGER DEFAULT 0,
   is_archived INTEGER DEFAULT 0,
+  is_deleted INTEGER DEFAULT 0,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   FOREIGN KEY (notebook_id) REFERENCES notebooks(id) ON DELETE SET NULL
@@ -36,6 +37,7 @@ CREATE INDEX IF NOT EXISTS idx_notes_notebook_id ON notes(notebook_id);
 CREATE INDEX IF NOT EXISTS idx_notes_favorite ON notes(is_favorite);
 CREATE INDEX IF NOT EXISTS idx_notes_pinned ON notes(is_pinned);
 CREATE INDEX IF NOT EXISTS idx_notes_archived ON notes(is_archived);
+CREATE INDEX IF NOT EXISTS idx_notes_deleted ON notes(is_deleted);
 CREATE INDEX IF NOT EXISTS idx_notes_updated_at ON notes(updated_at);
 CREATE INDEX IF NOT EXISTS idx_notes_created_at ON notes(created_at);
 

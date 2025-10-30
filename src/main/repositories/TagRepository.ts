@@ -48,11 +48,12 @@ export class TagRepository extends BaseRepository<Tag> {
    * Add a tag to a note
    */
   addToNote(noteId: string, tagId: string): void {
+    const now = Math.floor(Date.now() / 1000)
     const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO note_tags (note_id, tag_id)
-      VALUES (?, ?)
+      INSERT OR IGNORE INTO note_tags (note_id, tag_id, created_at)
+      VALUES (?, ?, ?)
     `)
-    stmt.run(noteId, tagId)
+    stmt.run(noteId, tagId, now)
   }
 
   /**
@@ -71,14 +72,16 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   setTagsForNote(noteId: string, tagIds: string[]): void {
     this.transaction(() => {
+      const now = Math.floor(Date.now() / 1000)
+
       // Remove all existing tags
       this.db.prepare('DELETE FROM note_tags WHERE note_id = ?').run(noteId)
 
       // Add new tags
       if (tagIds.length > 0) {
-        const stmt = this.db.prepare('INSERT INTO note_tags (note_id, tag_id) VALUES (?, ?)')
+        const stmt = this.db.prepare('INSERT INTO note_tags (note_id, tag_id, created_at) VALUES (?, ?, ?)')
         for (const tagId of tagIds) {
-          stmt.run(noteId, tagId)
+          stmt.run(noteId, tagId, now)
         }
       }
     })
@@ -172,6 +175,8 @@ export class TagRepository extends BaseRepository<Tag> {
     }
 
     this.transaction(() => {
+      const now = Math.floor(Date.now() / 1000)
+
       // Get all notes associated with source tag
       const sourceNotes = this.db
         .prepare('SELECT note_id FROM note_tags WHERE tag_id = ?')
@@ -179,12 +184,12 @@ export class TagRepository extends BaseRepository<Tag> {
 
       // Add target tag to all those notes (ignore duplicates)
       const insertStmt = this.db.prepare(`
-        INSERT OR IGNORE INTO note_tags (note_id, tag_id)
-        VALUES (?, ?)
+        INSERT OR IGNORE INTO note_tags (note_id, tag_id, created_at)
+        VALUES (?, ?, ?)
       `)
 
       for (const { note_id } of sourceNotes) {
-        insertStmt.run(note_id, targetTagId)
+        insertStmt.run(note_id, targetTagId, now)
       }
 
       // Delete the source tag
