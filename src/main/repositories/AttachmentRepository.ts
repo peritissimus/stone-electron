@@ -17,7 +17,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
    */
   getAttachmentsForNote(noteId: string): Attachment[] {
     return this.findAll({
-      where: { note_id: noteId },
+      where: { noteId: noteId },
       sort: { field: 'created_at', order: 'DESC' },
     })
   }
@@ -27,7 +27,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
    */
   getByFilename(noteId: string, filename: string): Attachment | null {
     return this.findOne({
-      note_id: noteId,
+      noteId: noteId,
       filename,
     })
   }
@@ -39,7 +39,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
     const stmt = this.db.prepare(`
       SELECT SUM(size) as total_size
       FROM attachments
-      WHERE note_id = ?
+      WHERE noteId = ?
     `)
     const result = stmt.get(noteId) as { total_size: number | null }
     return result.total_size || 0
@@ -58,7 +58,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
    * Delete all attachments for a note
    */
   deleteForNote(noteId: string): number {
-    const stmt = this.db.prepare('DELETE FROM attachments WHERE note_id = ?')
+    const stmt = this.db.prepare('DELETE FROM attachments WHERE noteId = ?')
     const result = stmt.run(noteId)
     return result.changes || 0
   }
@@ -167,7 +167,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
   getOrphaned(): Attachment[] {
     const stmt = this.db.prepare(`
       SELECT a.* FROM attachments a
-      LEFT JOIN notes n ON a.note_id = n.id
+      LEFT JOIN notes n ON a.noteId = n.id
       WHERE n.id IS NULL
       ORDER BY a.created_at DESC
     `)
@@ -180,7 +180,7 @@ export class AttachmentRepository extends BaseRepository<Attachment> {
   deleteOrphaned(): number {
     const stmt = this.db.prepare(`
       DELETE FROM attachments
-      WHERE note_id NOT IN (SELECT id FROM notes)
+      WHERE noteId NOT IN (SELECT id FROM notes)
     `)
     const result = stmt.run()
     return result.changes || 0

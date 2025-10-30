@@ -12,11 +12,11 @@ export function useNoteAPI() {
 
   const loadNotes = useCallback(
     async (filters?: {
-      notebook_id?: string
-      tag_ids?: string[]
-      is_favorite?: boolean
-      is_pinned?: boolean
-      is_archived?: boolean
+      notebookId?: string
+      tagIds?: string[]
+      isFavorite?: boolean
+      isPinned?: boolean
+      isArchived?: boolean
     }) => {
       setLoading(true)
       setError(null)
@@ -37,7 +37,7 @@ export function useNoteAPI() {
   )
 
   const createNote = useCallback(
-    async (data: { title: string; content: string; notebook_id?: string }) => {
+    async (data: { title: string; content: string; notebookId?: string }) => {
       setLoading(true)
       setError(null)
       try {
@@ -60,7 +60,7 @@ export function useNoteAPI() {
   )
 
   const updateNoteContent = useCallback(
-    async (id: string, data: { title?: string; content?: string; notebook_id?: string }) => {
+    async (id: string, data: { title?: string; content?: string; notebookId?: string }) => {
       setError(null)
       try {
         const response = await window.electron.invoke(NOTE_CHANNELS.UPDATE, { id, ...data })
@@ -161,7 +161,7 @@ export function useNoteAPI() {
 
   const getVersions = useCallback(async (noteId: string) => {
     try {
-      const response = await window.electron.invoke(NOTE_CHANNELS.GET_VERSIONS, { note_id: noteId })
+      const response = await window.electron.invoke(NOTE_CHANNELS.GET_VERSIONS, { noteId: noteId })
       if (response.success) {
         return response.data.versions
       }
@@ -177,7 +177,7 @@ export function useNoteAPI() {
       setError(null)
       try {
         const response = await window.electron.invoke(NOTE_CHANNELS.RESTORE_VERSION, {
-          note_id: noteId,
+          noteId: noteId,
           version_id: versionId,
         })
         if (response.success) {
@@ -197,7 +197,7 @@ export function useNoteAPI() {
 
   const getBacklinks = useCallback(async (noteId: string) => {
     try {
-      const response = await window.electron.invoke(NOTE_CHANNELS.GET_BACKLINKS, { note_id: noteId })
+      const response = await window.electron.invoke(NOTE_CHANNELS.GET_BACKLINKS, { noteId: noteId })
       if (response.success) {
         return response.data.backlinks
       }

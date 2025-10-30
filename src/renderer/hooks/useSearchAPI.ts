@@ -29,7 +29,7 @@ export function useSearchAPI() {
   const fullTextSearch = useCallback(
     async (
       query: string,
-      filters?: { notebook_id?: string; tag_ids?: string[]; limit?: number }
+      filters?: { notebookId?: string; tagIds?: string[]; limit?: number }
     ): Promise<SearchResults | null> => {
       setLoading(true)
       setError(null)
@@ -57,7 +57,7 @@ export function useSearchAPI() {
   const semanticSearch = useCallback(
     async (
       query: string,
-      filters?: { notebook_id?: string; threshold?: number; limit?: number }
+      filters?: { notebookId?: string; threshold?: number; limit?: number }
     ): Promise<SearchResults | null> => {
       setLoading(true)
       setError(null)
@@ -86,8 +86,8 @@ export function useSearchAPI() {
     async (
       query: string,
       filters?: {
-        notebook_id?: string
-        tag_ids?: string[]
+        notebookId?: string
+        tagIds?: string[]
         weights?: { fts: number; semantic: number }
         limit?: number
       }
@@ -121,7 +121,7 @@ export function useSearchAPI() {
       setError(null)
       try {
         const response = await window.electron.invoke(SEARCH_CHANNELS.BY_TAG, {
-          tag_ids: tagIds,
+          tagIds: tagIds,
           match_all: matchAll,
         })
         if (response.success) {

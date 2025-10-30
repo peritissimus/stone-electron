@@ -1,18 +1,27 @@
 # Stone - Development Guide for Claude
 
-## Package Manager
+## Node.js Version
 
-This project uses **pnpm** (not npm or yarn).
+This project requires **Node.js 20.16.0**. Use the included `.nvmrc` file:
+
+```bash
+nvm use          # Switch to correct Node.js version
+nvm install      # Install if not available
+```
+
+All environments (development, testing, building) use the same Node.js version for consistency.
 
 ## Essential Commands
 
 ### Running the App
+
 ```bash
 pnpm dev:electron          # Run in development mode
 pnpm start                 # Run production build
 ```
 
 ### Building
+
 ```bash
 pnpm build                 # Build all (main, preload, renderer)
 pnpm build:main            # Build main process
@@ -21,12 +30,28 @@ pnpm build:renderer        # Build renderer (UI)
 ```
 
 ### Dependencies
+
 ```bash
 pnpm install               # Install all dependencies
-pnpm postinstall           # Manually rebuild native modules
 ```
 
+### Native Modules (better-sqlite3)
+
+better-sqlite3 needs to be compiled for the specific Node.js version:
+
+```bash
+pnpm rebuild:electron      # Rebuild for Electron (app development)
+pnpm rebuild:node          # Rebuild for Node.js (tests)
+```
+
+**When to rebuild:**
+
+- After Node.js/Electron updates
+- When switching between app development and testing
+- If you get "NODE_MODULE_VERSION" errors
+
 ### shadcn/ui Components
+
 ```bash
 pnpm dlx shadcn@latest add button
 pnpm dlx shadcn@latest add dialog select tabs input
@@ -62,7 +87,7 @@ stone/
 ## Tech Stack
 
 - **Framework**: Electron + React + TypeScript
-- **UI**: 
+- **UI**:
   - shadcn/ui (Radix UI primitives)
   - Tailwind CSS (macOS-inspired design)
   - Lucide icons
@@ -85,13 +110,16 @@ TypeScript and Vite are configured with these aliases:
 ## Design System
 
 The app follows macOS design guidelines with:
+
 - **Font**: SF Pro Display/Text (system fonts)
 - **Colors**: Neutral grays with blue accent (#007AFF)
 - **Border radius**: 10px (macOS-style)
 - **Font size**: 13px base (macOS standard)
 
 ### CSS Variables
+
 Available in both light and dark mode:
+
 - `--background`, `--foreground`
 - `--sidebar` (for sidebar background)
 - `--primary`, `--primary-foreground`
@@ -116,6 +144,7 @@ This runs automatically via the `postinstall` script.
 - **Format**: SQLite with FTS5 for full-text search
 
 ### Tables
+
 - `notebooks` - Hierarchical notebook organization
 - `notes` - Main notes with title, content, flags
 - `tags` - Tags for categorization
@@ -135,6 +164,7 @@ This runs automatically via the `postinstall` script.
 ## Troubleshooting
 
 ### better-sqlite3 errors
+
 ```bash
 rm -rf node_modules
 pnpm install
@@ -142,9 +172,11 @@ pnpm electron-rebuild -f -w better-sqlite3
 ```
 
 ### Database issues
+
 Delete and recreate: `rm ~/Library/Application\ Support/Stone/stone-data/notes.db`
 
 ### Build issues
+
 ```bash
 pnpm build:main
 pnpm build:preload

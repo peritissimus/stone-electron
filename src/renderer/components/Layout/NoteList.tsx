@@ -2,88 +2,126 @@
  * Note List Component - Display list of notes
  */
 
-import React from 'react'
-import { useNoteStore } from '../../stores/noteStore'
-import { useUIStore } from '../../stores/uiStore'
+import React, { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { useNoteStore } from '@renderer/stores/noteStore'
+import { useUIStore } from '@renderer/stores/uiStore'
+import { useNotebookStore } from '@renderer/stores/notebookStore'
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI'
+import { logger } from '@renderer/utils/logger'
 import {
   Star,
   Pin,
   Archive,
-  MoreVertical,
   List,
   Grid3x3,
   LayoutGrid,
   ArrowUpDown,
+  Plus,
 } from 'lucide-react'
 
 export function NoteList() {
   const { notes, activeNoteId, setActiveNote } = useNoteStore()
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } = useUIStore()
+  const { activeNotebookId } = useNotebookStore()
+  const { createNote } = useNoteAPI()
+  const [isCreating, setIsCreating] = useState(false)
 
-  const filteredNotes = showArchived ? notes : notes.filter((n) => !n.is_archived)
+  const filteredNotes = showArchived ? notes : notes.filter((n) => !n.isArchived)
 
   const sortedNotes = [...filteredNotes].sort((a, b) => {
     let comparison = 0
 
     switch (sortBy) {
       case 'updated':
-        comparison = b.updated_at - a.updated_at
+        comparison = b.updatedAt - a.updatedAt
         break
       case 'created':
-        comparison = b.created_at - a.created_at
+        comparison = b.createdAt - a.createdAt
         break
       case 'title':
         comparison = a.title.localeCompare(b.title)
         break
       case 'favorite':
-        comparison = Number(b.is_favorite) - Number(a.is_favorite)
+        comparison = Number(b.isFavorite) - Number(a.isFavorite)
         break
     }
 
     return sortOrder === 'asc' ? -comparison : comparison
   })
 
+  const handleCreateNote = async () => {
+    if (isCreating) return
+
+    setIsCreating(true)
+    try {
+      const note = await createNote({
+        title: '',
+        content: '',
+        notebookId: activeNotebookId || undefined,
+      })
+
+      if (note) {
+        setActiveNote(note.id)
+      }
+    } catch (error) {
+      logger.error('Failed to create note:', error)
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full bg-secondary">
       {/* Header */}
       <div className="px-4 pt-titlebar pb-3 border-b border-border bg-card">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 gap-2">
           <h2 className="text-base font-semibold text-foreground">Notes</h2>
-          <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded ${
-                viewMode === 'list'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              title="List view"
+              onClick={handleCreateNote}
+              disabled={isCreating}
+              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              title="Create a new note"
             >
-              <List size={14} />
+              <Plus size={14} />
+              {isCreating ? 'Creating...' : 'New Note'}
             </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded ${
-                viewMode === 'grid'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              title="Grid view"
-            >
-              <Grid3x3 size={14} />
-            </button>
-            <button
-              onClick={() => setViewMode('card')}
-              className={`p-1.5 rounded ${
-                viewMode === 'card'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-              title="Card view"
-            >
-              <LayoutGrid size={14} />
-            </button>
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded ${
+                  viewMode === 'list'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="List view"
+              >
+                <List size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded ${
+                  viewMode === 'grid'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Grid view"
+              >
+                <Grid3x3 size={14} />
+              </button>
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-1.5 rounded ${
+                  viewMode === 'card'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Card view"
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -116,8 +154,16 @@ export function NoteList() {
       {/* Note List */}
       <div className="flex-1 overflow-y-auto bg-card">
         {sortedNotes.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-xs">
-            No notes found
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs">
+            <span>No notes found</span>
+            <button
+              onClick={handleCreateNote}
+              disabled={isCreating}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={14} />
+              {isCreating ? 'Creating...' : 'Create your first note'}
+            </button>
           </div>
         ) : (
           <div className={viewMode === 'list' ? 'divide-y divide-border' : 'p-2 grid grid-cols-2 gap-2'}>
@@ -146,7 +192,7 @@ interface NoteItemProps {
 
 function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
   const preview = note.content.replace(/[#*`>\-\[\]]/g, '').substring(0, 100)
-  const timeAgo = formatDistanceToNow(new Date(note.updated_at * 1000), { addSuffix: true })
+  const timeAgo = formatDistanceToNow(new Date(note.updatedAt * 1000), { addSuffix: true })
 
   if (viewMode === 'list') {
     return (
@@ -161,9 +207,9 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
         <div className="flex items-start justify-between gap-2 mb-1">
           <h3 className="font-medium text-foreground text-sm line-clamp-1">{note.title || 'Untitled'}</h3>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {note.is_pinned && <Pin size={12} className="text-primary" />}
-            {note.is_favorite && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
-            {note.is_archived && <Archive size={12} className="text-muted-foreground" />}
+            {note.isPinned && <Pin size={12} className="text-primary" />}
+            {note.isFavorite && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
+            {note.isArchived && <Archive size={12} className="text-muted-foreground" />}
           </div>
         </div>
         <p className="text-xs text-muted-foreground line-clamp-2 mb-1">{preview}</p>
@@ -184,8 +230,8 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h3 className="font-medium text-foreground text-xs line-clamp-2">{note.title || 'Untitled'}</h3>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {note.is_pinned && <Pin size={10} className="text-primary" />}
-          {note.is_favorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
+          {note.isPinned && <Pin size={10} className="text-primary" />}
+          {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
         </div>
       </div>
       <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">{preview}</p>

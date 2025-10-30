@@ -19,10 +19,10 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
     const versionNumber = this.getNextVersionNumber(noteId)
 
     return this.create({
-      note_id: noteId,
+      noteId: noteId,
       title,
       content,
-      version_number: versionNumber,
+      versionNumber: versionNumber,
     } as Partial<NoteVersion>)
   }
 
@@ -31,9 +31,9 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
    */
   private getNextVersionNumber(noteId: string): number {
     const stmt = this.db.prepare(`
-      SELECT MAX(version_number) as max_version
+      SELECT MAX(versionNumber) as max_version
       FROM note_versions
-      WHERE note_id = ?
+      WHERE noteId = ?
     `)
     const result = stmt.get(noteId) as { max_version: number | null }
     return (result.max_version || 0) + 1
@@ -45,8 +45,8 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
   getVersionsForNote(noteId: string, limit?: number, offset?: number): NoteVersion[] {
     const stmt = this.db.prepare(`
       SELECT * FROM note_versions
-      WHERE note_id = ?
-      ORDER BY version_number DESC
+      WHERE noteId = ?
+      ORDER BY versionNumber DESC
       ${limit ? `LIMIT ${limit}` : ''}
       ${offset ? `OFFSET ${offset}` : ''}
     `)
@@ -59,7 +59,7 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
   getVersion(noteId: string, versionNumber: number): NoteVersion | null {
     const stmt = this.db.prepare(`
       SELECT * FROM note_versions
-      WHERE note_id = ? AND version_number = ?
+      WHERE noteId = ? AND versionNumber = ?
     `)
     const result = stmt.get(noteId, versionNumber) as NoteVersion | undefined
     return result || null
@@ -71,8 +71,8 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
   getLatestVersion(noteId: string): NoteVersion | null {
     const stmt = this.db.prepare(`
       SELECT * FROM note_versions
-      WHERE note_id = ?
-      ORDER BY version_number DESC
+      WHERE noteId = ?
+      ORDER BY versionNumber DESC
       LIMIT 1
     `)
     const result = stmt.get(noteId) as NoteVersion | undefined
@@ -85,7 +85,7 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
   countVersionsForNote(noteId: string): number {
     const stmt = this.db.prepare(`
       SELECT COUNT(*) as count FROM note_versions
-      WHERE note_id = ?
+      WHERE noteId = ?
     `)
     const result = stmt.get(noteId) as { count: number }
     return result.count
@@ -97,9 +97,9 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
   pruneOldVersions(noteId: string, keepCount: number = 10): number {
     const stmt = this.db.prepare(`
       DELETE FROM note_versions
-      WHERE note_id = ?
-      AND version_number < (
-        SELECT MAX(version_number) - ? FROM note_versions WHERE note_id = ?
+      WHERE noteId = ?
+      AND versionNumber < (
+        SELECT MAX(versionNumber) - ? FROM note_versions WHERE noteId = ?
       )
     `)
     const result = stmt.run(noteId, keepCount, noteId)
@@ -110,7 +110,7 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
    * Delete all versions for a note
    */
   deleteVersionsForNote(noteId: string): number {
-    const stmt = this.db.prepare('DELETE FROM note_versions WHERE note_id = ?')
+    const stmt = this.db.prepare('DELETE FROM note_versions WHERE noteId = ?')
     const result = stmt.run(noteId)
     return result.changes || 0
   }
@@ -119,23 +119,23 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
    * Get version history summary
    */
   getVersionSummary(noteId: string): Array<{
-    version_number: number
+    versionNumber: number
     title: string
     created_at: number
     content_length: number
   }> {
     const stmt = this.db.prepare(`
       SELECT
-        version_number,
+        versionNumber,
         title,
         created_at,
         LENGTH(content) as content_length
       FROM note_versions
-      WHERE note_id = ?
-      ORDER BY version_number DESC
+      WHERE noteId = ?
+      ORDER BY versionNumber DESC
     `)
     return stmt.all(noteId) as Array<{
-      version_number: number
+      versionNumber: number
       title: string
       created_at: number
       content_length: number
@@ -169,7 +169,7 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
     const stmt = this.db.prepare(`
       SELECT SUM(LENGTH(content)) as total_size
       FROM note_versions
-      WHERE note_id = ?
+      WHERE noteId = ?
     `)
     const result = stmt.get(noteId) as { total_size: number | null }
     return result.total_size || 0
@@ -179,18 +179,18 @@ export class VersionRepository extends BaseRepository<NoteVersion> {
    * Get notes with most versions
    */
   getNotesWithMostVersions(limit: number = 10): Array<{
-    note_id: string
+    noteId: string
     version_count: number
   }> {
     const stmt = this.db.prepare(`
-      SELECT note_id, COUNT(*) as version_count
+      SELECT noteId, COUNT(*) as version_count
       FROM note_versions
-      GROUP BY note_id
+      GROUP BY noteId
       ORDER BY version_count DESC
       LIMIT ?
     `)
     return stmt.all(limit) as Array<{
-      note_id: string
+      noteId: string
       version_count: number
     }>
   }

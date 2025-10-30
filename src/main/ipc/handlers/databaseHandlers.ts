@@ -144,7 +144,7 @@ export function registerDatabaseHandlers() {
     createHandler(
       async (
         event,
-        request: { format: 'markdown' | 'json' | 'html'; notebook_id?: string; include_attachments?: boolean; output_path?: string }
+        request: { format: 'markdown' | 'json' | 'html'; notebookId?: string; include_attachments?: boolean; output_path?: string }
       ) => {
         // TODO: Implement export functionality
         return {
@@ -163,7 +163,7 @@ export function registerDatabaseHandlers() {
     createHandler(
       async (
         event,
-        request: { format: 'markdown' | 'json' | 'evernote'; input_path: string; target_notebook_id?: string; merge?: boolean }
+        request: { format: 'markdown' | 'json' | 'evernote'; input_path: string; target_notebookId?: string; merge?: boolean }
       ) => {
         // TODO: Implement import functionality
         return {

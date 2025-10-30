@@ -19,22 +19,22 @@ export function registerSearchHandlers() {
     createHandler(
       async (
         event,
-        request: { query: string; notebook_id?: string; tag_ids?: string[]; limit?: number; offset?: number }
+        request: { query: string; notebookId?: string; tagIds?: string[]; limit?: number; offset?: number }
       ) => {
         const startTime = Date.now()
 
         let results = repos.note.searchFullText(request.query, request.limit || 50)
 
         // Filter by notebook if specified
-        if (request.notebook_id) {
-          results = results.filter((note) => note.notebook_id === request.notebook_id)
+        if (request.notebookId) {
+          results = results.filter((note) => note.notebookId === request.notebookId)
         }
 
         // Filter by tags if specified
-        if (request.tag_ids && request.tag_ids.length > 0) {
+        if (request.tagIds && request.tagIds.length > 0) {
           results = results.filter((note) => {
             const noteTags = repos.tag.getTagsForNote(note.id)
-            return request.tag_ids!.some((tagId) => noteTags.some((t) => t.id === tagId))
+            return request.tagIds!.some((tagId) => noteTags.some((t) => t.id === tagId))
           })
         }
 
@@ -60,7 +60,7 @@ export function registerSearchHandlers() {
     createHandler(
       async (
         event,
-        request: { query: string; threshold?: number; limit?: number; notebook_id?: string }
+        request: { query: string; threshold?: number; limit?: number; notebookId?: string }
       ) => {
         // TODO: Implement vector search with Vectra
         // For now, fallback to full-text search
@@ -71,7 +71,7 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            content_preview: note.content.substring(0, 200),
+            contentPreview: note.content.substring(0, 200),
             similarity: 0.8, // Placeholder similarity score
           })),
           total: results.length,
@@ -91,8 +91,8 @@ export function registerSearchHandlers() {
           query: string
           weights?: { fts: number; semantic: number }
           limit?: number
-          notebook_id?: string
-          tag_ids?: string[]
+          notebookId?: string
+          tagIds?: string[]
         }
       ) => {
         const startTime = Date.now()
@@ -105,7 +105,7 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            content_preview: note.content.substring(0, 200),
+            contentPreview: note.content.substring(0, 200),
             score: 1.0,
             search_type: 'fts' as const,
           })),
@@ -120,16 +120,16 @@ export function registerSearchHandlers() {
   ipcMain.handle(
     SEARCH_CHANNELS.BY_TAG,
     createHandler(
-      async (event, request: { tag_ids: string[]; match_all?: boolean; limit?: number; offset?: number }) => {
+      async (event, request: { tagIds: string[]; match_all?: boolean; limit?: number; offset?: number }) => {
         let notes
 
         if (request.match_all) {
           // AND logic - notes must have all tags
-          notes = repos.note.findByTags(request.tag_ids)
+          notes = repos.note.findByTags(request.tagIds)
         } else {
           // OR logic - notes with any of the tags
           const noteSet = new Set<string>()
-          for (const tagId of request.tag_ids) {
+          for (const tagId of request.tagIds) {
             const tagNotes = repos.note.findByTag(tagId)
             tagNotes.forEach((note) => noteSet.add(note.id))
           }

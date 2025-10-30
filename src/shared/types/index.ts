@@ -13,24 +13,24 @@ export interface Note {
   id: UUID
   title: string
   content: string
-  notebook_id: UUID | null
-  is_favorite: number
-  is_pinned: number
-  is_archived: number
-  is_deleted: number
-  deleted_at: UnixTimestamp | null
-  created_at: UnixTimestamp
-  updated_at: UnixTimestamp
+  notebookId: UUID | null
+  isFavorite: number
+  isPinned: number
+  isArchived: number
+  isDeleted: number
+  deletedAt: UnixTimestamp | null
+  createdAt: UnixTimestamp
+  updatedAt: UnixTimestamp
   [key: string]: unknown
 }
 
 export interface NoteVersion {
   id: UUID
-  note_id: UUID
+  noteId: UUID
   title: string
   content: string
-  version_number: number
-  created_at: UnixTimestamp
+  versionNumber: number
+  createdAt: UnixTimestamp
   [key: string]: unknown
 }
 
@@ -40,10 +40,10 @@ export interface Notebook {
   name: string
   icon: string
   color: string
-  parent_id: UUID | null
+  parentId: UUID | null
   position: number
-  created_at: UnixTimestamp
-  updated_at: UnixTimestamp
+  createdAt: UnixTimestamp
+  updatedAt: UnixTimestamp
   [key: string]: unknown
 }
 
@@ -52,46 +52,46 @@ export interface Tag {
   id: UUID
   name: string
   color: string
-  created_at: UnixTimestamp
+  createdAt: UnixTimestamp
   [key: string]: unknown
 }
 
 export interface NoteTag {
-  note_id: UUID
-  tag_id: UUID
+  noteId: UUID
+  tagId: UUID
 }
 
 // Attachment Types
 export interface Attachment {
   id: UUID
-  note_id: UUID
+  noteId: UUID
   filename: string
   filepath: string
   mimetype: string
   size: number
-  created_at: UnixTimestamp
+  createdAt: UnixTimestamp
   [key: string]: unknown
 }
 
 // Link Types
 export interface NoteLink {
-  source_note_id: UUID
-  target_note_id: UUID
-  created_at: UnixTimestamp
+  source_noteId: UUID
+  target_noteId: UUID
+  createdAt: UnixTimestamp
 }
 
 // Settings
 export interface Settings {
   key: string
   value: string
-  updated_at: UnixTimestamp
+  updatedAt: UnixTimestamp
 }
 
 // Migration Types
 export interface Migration {
   version: number
   name: string
-  applied_at: UnixTimestamp
+  appliedAt: UnixTimestamp
   checksum: string
 }
 
@@ -111,9 +111,9 @@ export interface SearchResult {
   id: UUID
   title: string
   content: string
-  notebook_id: UUID | null
+  notebookId: UUID | null
   relevance: number
-  created_at: UnixTimestamp
+  createdAt: UnixTimestamp
 }
 
 export interface VectorSearchResult extends SearchResult {
@@ -124,27 +124,27 @@ export interface VectorSearchResult extends SearchResult {
 export interface BackupMetadata {
   version: string
   timestamp: UnixTimestamp
-  database_version: number
-  note_count: number
-  database_size: number
-  vector_size: number
-  attachment_size: number
+  databaseVersion: number
+  noteCount: number
+  databaseSize: number
+  vectorSize: number
+  attachmentSize: number
   checksum: string
 }
 
 // Database Status
 export interface DatabaseStatus {
   version: number
-  is_migrating: boolean
-  note_count: number
-  notebook_count: number
-  tag_count: number
-  attachment_count: number
-  database_size: number
-  vector_size: number
-  last_backup?: UnixTimestamp
-  last_defrag?: UnixTimestamp
-  integrity_ok: boolean
+  isMigrating: boolean
+  noteCount: number
+  notebookCount: number
+  tagCount: number
+  attachmentCount: number
+  databaseSize: number
+  vectorSize: number
+  lastBackup?: UnixTimestamp
+  lastDefrag?: UnixTimestamp
+  integrityOk: boolean
   error?: string
 }
 

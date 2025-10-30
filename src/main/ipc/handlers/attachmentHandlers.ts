@@ -19,8 +19,8 @@ export function registerAttachmentHandlers() {
   // attachments:add
   ipcMain.handle(
     ATTACHMENT_CHANNELS.ADD,
-    createHandler(async (event, request: { note_id: string; file_path: string; filename?: string }) => {
-      const note = repos.note.findById(request.note_id)
+    createHandler(async (event, request: { noteId: string; file_path: string; filename?: string }) => {
+      const note = repos.note.findById(request.noteId)
       if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found')
       }
@@ -51,7 +51,7 @@ export function registerAttachmentHandlers() {
 
       // Create attachment directory if it doesn't exist
       const dbManager = getDatabaseManager()
-      const attachmentsDir = path.join(dbManager.getDataPath(), 'attachments', request.note_id)
+      const attachmentsDir = path.join(dbManager.getDataPath(), 'attachments', request.noteId)
       if (!fs.existsSync(attachmentsDir)) {
         fs.mkdirSync(attachmentsDir, { recursive: true })
       }
@@ -61,9 +61,9 @@ export function registerAttachmentHandlers() {
       fs.copyFileSync(request.file_path, destPath)
 
       // Create attachment record
-      const relativePath = path.join('attachments', request.note_id, filename)
+      const relativePath = path.join('attachments', request.noteId, filename)
       const attachment = repos.attachment.create({
-        note_id: request.note_id,
+        noteId: request.noteId,
         filename,
         filepath: relativePath,
         mimetype,
@@ -82,7 +82,7 @@ export function registerAttachmentHandlers() {
   // attachments:delete
   ipcMain.handle(
     ATTACHMENT_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string; note_id: string }) => {
+    createHandler(async (event, request: { id: string; noteId: string }) => {
       const attachment = repos.attachment.findById(request.id)
       if (!attachment) {
         throw new IpcError('NOT_FOUND', 'Attachment not found')
@@ -110,8 +110,8 @@ export function registerAttachmentHandlers() {
   // attachments:getAll
   ipcMain.handle(
     ATTACHMENT_CHANNELS.GET_ALL,
-    createHandler(async (event, request: { note_id: string }) => {
-      const attachments = repos.attachment.getAttachmentsForNote(request.note_id)
+    createHandler(async (event, request: { noteId: string }) => {
+      const attachments = repos.attachment.getAttachmentsForNote(request.noteId)
       return { attachments }
     })
   )

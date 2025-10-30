@@ -30,7 +30,7 @@ export function Sidebar() {
   const handleNewNotebook = async (name: string) => {
     setIsCreating(true)
     try {
-      const response = await window.api.invoke<{ success: boolean; data?: { id: string; name: string; icon: string; color: string; note_count: number }; error?: { code: string; message: string; details?: unknown } }>('notebooks:create', {
+      const response = await window.electron.invoke<{ success: boolean; data?: { id: string; name: string; icon: string; color: string; note_count: number }; error?: { code: string; message: string; details?: unknown } }>('notebooks:create', {
         name,
       })
 
@@ -57,7 +57,7 @@ export function Sidebar() {
   const handleNewTag = async (name: string) => {
     setIsCreating(true)
     try {
-      const response = await window.api.invoke<{ success: boolean; data: { id: string; name: string } }>('tags:create', {
+      const response = await window.electron.invoke<{ success: boolean; data: { id: string; name: string } }>('tags:create', {
         name,
       })
 

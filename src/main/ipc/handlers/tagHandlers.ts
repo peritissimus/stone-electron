@@ -81,22 +81,22 @@ export function registerTagHandlers() {
   // tags:addToNote
   ipcMain.handle(
     TAG_CHANNELS.ADD_TO_NOTE,
-    createHandler(async (event, request: { note_id: string; tag_ids: string[] }) => {
-      const note = repos.note.findById(request.note_id)
+    createHandler(async (event, request: { noteId: string; tagIds: string[] }) => {
+      const note = repos.note.findById(request.noteId)
       if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found')
       }
 
       // Add each tag
-      for (const tagId of request.tag_ids) {
-        repos.tag.addToNote(request.note_id, tagId)
+      for (const tagId of request.tagIds) {
+        repos.tag.addToNote(request.noteId, tagId)
       }
 
-      const tags = repos.tag.getTagsForNote(request.note_id)
+      const tags = repos.tag.getTagsForNote(request.noteId)
 
       return {
         success: true,
-        note_id: request.note_id,
+        noteId: request.noteId,
         tags,
       }
     })
@@ -105,12 +105,12 @@ export function registerTagHandlers() {
   // tags:removeFromNote
   ipcMain.handle(
     TAG_CHANNELS.REMOVE_FROM_NOTE,
-    createHandler(async (event, request: { note_id: string; tag_id: string }) => {
-      repos.tag.removeFromNote(request.note_id, request.tag_id)
+    createHandler(async (event, request: { noteId: string; tagId: string }) => {
+      repos.tag.removeFromNote(request.noteId, request.tagId)
 
       return {
         success: true,
-        note_id: request.note_id,
+        noteId: request.noteId,
       }
     })
   )

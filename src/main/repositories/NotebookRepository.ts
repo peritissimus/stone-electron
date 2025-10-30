@@ -22,7 +22,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
    */
   getRoots(): Notebook[] {
     return this.findAll({
-      where: { parent_id: null },
+      where: { parentId: null },
       sort: { field: 'position', order: 'ASC' },
     })
   }
@@ -32,7 +32,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
    */
   getChildren(parentId: string): Notebook[] {
     return this.findAll({
-      where: { parent_id: parentId },
+      where: { parentId: parentId },
       sort: { field: 'position', order: 'ASC' },
     })
   }
@@ -66,7 +66,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
     if (!includeSubNotebooks) {
       const stmt = this.db.prepare(`
         SELECT COUNT(*) as count FROM notes
-        WHERE notebook_id = ? AND is_deleted = 0
+        WHERE notebookId = ? AND is_deleted = 0
       `)
       const result = stmt.get(notebookId) as { count: number }
       return result.count
@@ -79,7 +79,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
     const placeholders = notebookIds.map(() => '?').join(',')
     const stmt = this.db.prepare(`
       SELECT COUNT(*) as count FROM notes
-      WHERE notebook_id IN (${placeholders}) AND is_deleted = 0
+      WHERE notebookId IN (${placeholders}) AND is_deleted = 0
     `)
 
     const result = stmt.get(...notebookIds) as { count: number }
@@ -114,7 +114,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
     }
 
     const updateData: Partial<Notebook> = {
-      parent_id: newParentId,
+      parentId: newParentId,
     } as Partial<Notebook>
 
     if (newPosition !== undefined) {
@@ -136,7 +136,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
       if (!notebook) break
 
       path.unshift(notebook)
-      currentId = notebook.parent_id
+      currentId = notebook.parentId
     }
 
     return path
@@ -159,7 +159,7 @@ export class NotebookRepository extends BaseRepository<Notebook> {
       notebookIds.forEach((id, index) => {
         this.update(id, {
           position: index,
-          parent_id: parentId,
+          parentId: parentId,
         } as Partial<Notebook>)
       })
     })
@@ -182,21 +182,21 @@ export class NotebookRepository extends BaseRepository<Notebook> {
         this.db.prepare(`
           UPDATE notes
           SET is_deleted = 1, deleted_at = strftime('%s', 'now')
-          WHERE notebook_id IN (${placeholders})
+          WHERE notebookId IN (${placeholders})
         `).run(...allIds)
       } else if (action === 'orphan') {
-        // Set notes' notebook_id to NULL
+        // Set notes' notebookId to NULL
         this.db.prepare(`
           UPDATE notes
-          SET notebook_id = NULL
-          WHERE notebook_id = ?
+          SET notebookId = NULL
+          WHERE notebookId = ?
         `).run(notebookId)
       } else if (action === 'move' && targetNotebookId) {
         // Move notes to target notebook
         this.db.prepare(`
           UPDATE notes
-          SET notebook_id = ?
-          WHERE notebook_id = ?
+          SET notebookId = ?
+          WHERE notebookId = ?
         `).run(targetNotebookId, notebookId)
       }
 

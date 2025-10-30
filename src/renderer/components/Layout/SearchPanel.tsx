@@ -90,7 +90,7 @@ export function SearchPanel() {
                     {result.content_highlight || result.content?.substring(0, 150)}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                    {formatDistanceToNow(new Date(result.updated_at * 1000), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(result.updatedAt * 1000), { addSuffix: true })}
                   </p>
                 </div>
               </div>

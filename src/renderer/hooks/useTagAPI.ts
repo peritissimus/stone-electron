@@ -77,8 +77,8 @@ export function useTagAPI() {
       setError(null)
       try {
         const response = await window.electron.invoke(TAG_CHANNELS.ADD_TO_NOTE, {
-          note_id: noteId,
-          tag_ids: tagIds,
+          noteId: noteId,
+          tagIds: tagIds,
         })
         if (response.success) {
           return response.data.tags
@@ -99,8 +99,8 @@ export function useTagAPI() {
       setError(null)
       try {
         const response = await window.electron.invoke(TAG_CHANNELS.REMOVE_FROM_NOTE, {
-          note_id: noteId,
-          tag_id: tagId,
+          noteId: noteId,
+          tagId: tagId,
         })
         if (response.success) {
           return true

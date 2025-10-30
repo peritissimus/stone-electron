@@ -2,6 +2,7 @@
  * Stone - Main Process Entry Point
  */
 
+import 'dotenv/config'
 import { app, BrowserWindow } from 'electron'
 import path from 'path'
 import { isDev } from './utils/environment'

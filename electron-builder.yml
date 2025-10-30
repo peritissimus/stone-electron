@@ -1,5 +1,7 @@
 appId: com.stone.app
 productName: Stone
+nodeGypRebuild: false
+npmRebuild: false
 directories:
   buildResources: assets
   output: dist/build
@@ -11,6 +13,8 @@ files:
 asarUnpack:
   - node_modules/better-sqlite3/**/*
   - node_modules/vectra/**/*
+electronVersion: 32.2.7
+nodeVersion: 20.16.0
 
 mac:
   target:

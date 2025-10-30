@@ -49,13 +49,13 @@ const api = {
 /**
  * Expose API to window object
  */
-contextBridge.exposeInMainWorld('api', api)
+contextBridge.exposeInMainWorld('electron', api)
 
 /**
- * Type declaration for window.api
+ * Type declaration for window.electron
  */
 declare global {
   interface Window {
-    api: typeof api
+    electron: typeof api
   }
 }

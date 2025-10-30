@@ -64,18 +64,18 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   },
 
   getNotesByNotebook: (notebookId) => {
-    return get().notes.filter((n) => n.notebook_id === notebookId)
+    return get().notes.filter((n) => n.notebookId === notebookId)
   },
 
   getFavoriteNotes: () => {
-    return get().notes.filter((n) => n.is_favorite)
+    return get().notes.filter((n) => n.isFavorite)
   },
 
   getPinnedNotes: () => {
-    return get().notes.filter((n) => n.is_pinned)
+    return get().notes.filter((n) => n.isPinned)
   },
 
   getArchivedNotes: () => {
-    return get().notes.filter((n) => n.is_archived)
+    return get().notes.filter((n) => n.isArchived)
   },
 }))

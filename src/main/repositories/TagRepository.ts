@@ -2,33 +2,41 @@
  * TagRepository - Handles tag operations and note-tag associations
  */
 
-import Database from 'better-sqlite3'
-import { BaseRepository } from './BaseRepository'
-import type { Tag } from '@shared/types'
+import { eq, sql, desc, asc } from 'drizzle-orm';
+import { getDatabaseManager } from '../database/DatabaseManager';
+import { tags, notes, noteTags } from '../database/schema';
+import type { Tag } from '@shared/types';
 
 interface TagWithCount extends Tag {
-  note_count: number
+  note_count: number;
 }
 
 /**
  * Tag Repository
  */
-export class TagRepository extends BaseRepository<Tag> {
-  protected tableName = 'tags'
+export class TagRepository {
+  private db = getDatabaseManager().getDrizzle();
 
   /**
    * Get all tags with note counts
    */
-  getAllWithCounts(): TagWithCount[] {
-    const stmt = this.db.prepare(`
-      SELECT t.*, COUNT(nt.note_id) as note_count
-      FROM tags t
-      LEFT JOIN note_tags nt ON t.id = nt.tag_id
-      LEFT JOIN notes n ON nt.note_id = n.id AND n.is_deleted = 0
-      GROUP BY t.id
-      ORDER BY t.name ASC
-    `)
-    return stmt.all() as TagWithCount[]
+  async getAllWithCounts(): Promise<TagWithCount[]> {
+    const result = await this.db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        color: tags.color,
+        created_at: tags.created_at,
+        updated_at: tags.updated_at,
+        note_count: sql<number>`COUNT(${noteTags.noteId})`,
+      })
+      .from(tags)
+      .leftJoin(noteTags, eq(tags.id, noteTags.tagId))
+      .leftJoin(notes, sql`${noteTags.noteId} = ${notes.id} AND ${notes.is_deleted} = 0`)
+      .groupBy(tags.id)
+      .orderBy(asc(tags.name));
+
+    return result as TagWithCount[];
   }
 
   /**
@@ -37,23 +45,23 @@ export class TagRepository extends BaseRepository<Tag> {
   getTagsForNote(noteId: string): Tag[] {
     const stmt = this.db.prepare(`
       SELECT t.* FROM tags t
-      JOIN note_tags nt ON t.id = nt.tag_id
-      WHERE nt.note_id = ?
+      JOIN note_tags nt ON t.id = nt.tagId
+      WHERE nt.noteId = ?
       ORDER BY t.name ASC
-    `)
-    return stmt.all(noteId) as Tag[]
+    `);
+    return stmt.all(noteId) as Tag[];
   }
 
   /**
    * Add a tag to a note
    */
   addToNote(noteId: string, tagId: string): void {
-    const now = Math.floor(Date.now() / 1000)
+    const now = Math.floor(Date.now() / 1000);
     const stmt = this.db.prepare(`
-      INSERT OR IGNORE INTO note_tags (note_id, tag_id, created_at)
+      INSERT OR IGNORE INTO note_tags (noteId, tagId, created_at)
       VALUES (?, ?, ?)
-    `)
-    stmt.run(noteId, tagId, now)
+    `);
+    stmt.run(noteId, tagId, now);
   }
 
   /**
@@ -62,9 +70,9 @@ export class TagRepository extends BaseRepository<Tag> {
   removeFromNote(noteId: string, tagId: string): void {
     const stmt = this.db.prepare(`
       DELETE FROM note_tags
-      WHERE note_id = ? AND tag_id = ?
-    `)
-    stmt.run(noteId, tagId)
+      WHERE noteId = ? AND tagId = ?
+    `);
+    stmt.run(noteId, tagId);
   }
 
   /**
@@ -72,19 +80,21 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   setTagsForNote(noteId: string, tagIds: string[]): void {
     this.transaction(() => {
-      const now = Math.floor(Date.now() / 1000)
+      const now = Math.floor(Date.now() / 1000);
 
       // Remove all existing tags
-      this.db.prepare('DELETE FROM note_tags WHERE note_id = ?').run(noteId)
+      this.db.prepare('DELETE FROM note_tags WHERE noteId = ?').run(noteId);
 
       // Add new tags
       if (tagIds.length > 0) {
-        const stmt = this.db.prepare('INSERT INTO note_tags (note_id, tag_id, created_at) VALUES (?, ?, ?)')
+        const stmt = this.db.prepare(
+          'INSERT INTO note_tags (noteId, tagId, created_at) VALUES (?, ?, ?)',
+        );
         for (const tagId of tagIds) {
-          stmt.run(noteId, tagId, now)
+          stmt.run(noteId, tagId, now);
         }
       }
-    })
+    });
   }
 
   /**
@@ -92,11 +102,11 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   findOrCreate(name: string, color?: string): Tag {
     // Try to find existing tag
-    const existing = this.findOne({ name })
-    if (existing) return existing
+    const existing = this.findOne({ name });
+    if (existing) return existing;
 
     // Create new tag
-    return this.create({ name, color } as Partial<Tag>)
+    return this.create({ name, color } as Partial<Tag>);
   }
 
   /**
@@ -104,15 +114,15 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   getMostUsed(limit: number = 10): TagWithCount[] {
     const stmt = this.db.prepare(`
-      SELECT t.*, COUNT(nt.note_id) as note_count
+      SELECT t.*, COUNT(nt.noteId) as note_count
       FROM tags t
-      JOIN note_tags nt ON t.id = nt.tag_id
-      JOIN notes n ON nt.note_id = n.id AND n.is_deleted = 0
+      JOIN note_tags nt ON t.id = nt.tagId
+      JOIN notes n ON nt.noteId = n.id AND n.is_deleted = 0
       GROUP BY t.id
       ORDER BY note_count DESC, t.name ASC
       LIMIT ?
-    `)
-    return stmt.all(limit) as TagWithCount[]
+    `);
+    return stmt.all(limit) as TagWithCount[];
   }
 
   /**
@@ -121,11 +131,11 @@ export class TagRepository extends BaseRepository<Tag> {
   getUnused(): Tag[] {
     const stmt = this.db.prepare(`
       SELECT t.* FROM tags t
-      LEFT JOIN note_tags nt ON t.id = nt.tag_id
-      WHERE nt.tag_id IS NULL
+      LEFT JOIN note_tags nt ON t.id = nt.tagId
+      WHERE nt.tagId IS NULL
       ORDER BY t.name ASC
-    `)
-    return stmt.all() as Tag[]
+    `);
+    return stmt.all() as Tag[];
   }
 
   /**
@@ -134,11 +144,11 @@ export class TagRepository extends BaseRepository<Tag> {
   deleteWithAssociations(tagId: string): boolean {
     return this.transaction(() => {
       // Remove all note-tag associations
-      this.db.prepare('DELETE FROM note_tags WHERE tag_id = ?').run(tagId)
+      this.db.prepare('DELETE FROM note_tags WHERE tagId = ?').run(tagId);
 
       // Delete the tag
-      return this.delete(tagId)
-    })
+      return this.delete(tagId);
+    });
   }
 
   /**
@@ -149,8 +159,8 @@ export class TagRepository extends BaseRepository<Tag> {
       SELECT * FROM tags
       WHERE name LIKE ?
       ORDER BY name ASC
-    `)
-    return stmt.all(`%${query}%`) as Tag[]
+    `);
+    return stmt.all(`%${query}%`) as Tag[];
   }
 
   /**
@@ -158,12 +168,12 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   rename(tagId: string, newName: string): Tag {
     // Check if new name already exists
-    const existing = this.findOne({ name: newName })
+    const existing = this.findOne({ name: newName });
     if (existing && existing.id !== tagId) {
-      throw new Error('Tag with this name already exists')
+      throw new Error('Tag with this name already exists');
     }
 
-    return this.update(tagId, { name: newName } as Partial<Tag>)
+    return this.update(tagId, { name: newName } as Partial<Tag>);
   }
 
   /**
@@ -171,30 +181,30 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   merge(sourceTagId: string, targetTagId: string): void {
     if (sourceTagId === targetTagId) {
-      throw new Error('Cannot merge a tag with itself')
+      throw new Error('Cannot merge a tag with itself');
     }
 
     this.transaction(() => {
-      const now = Math.floor(Date.now() / 1000)
+      const now = Math.floor(Date.now() / 1000);
 
       // Get all notes associated with source tag
       const sourceNotes = this.db
-        .prepare('SELECT note_id FROM note_tags WHERE tag_id = ?')
-        .all(sourceTagId) as Array<{ note_id: string }>
+        .prepare('SELECT noteId FROM note_tags WHERE tagId = ?')
+        .all(sourceTagId) as Array<{ noteId: string }>;
 
       // Add target tag to all those notes (ignore duplicates)
       const insertStmt = this.db.prepare(`
-        INSERT OR IGNORE INTO note_tags (note_id, tag_id, created_at)
+        INSERT OR IGNORE INTO note_tags (noteId, tagId, created_at)
         VALUES (?, ?, ?)
-      `)
+      `);
 
-      for (const { note_id } of sourceNotes) {
-        insertStmt.run(note_id, targetTagId, now)
+      for (const { noteId } of sourceNotes) {
+        insertStmt.run(noteId, targetTagId, now);
       }
 
       // Delete the source tag
-      this.deleteWithAssociations(sourceTagId)
-    })
+      this.deleteWithAssociations(sourceTagId);
+    });
   }
 
   /**
@@ -202,16 +212,16 @@ export class TagRepository extends BaseRepository<Tag> {
    */
   getRelatedTags(tagId: string, limit: number = 10): TagWithCount[] {
     const stmt = this.db.prepare(`
-      SELECT t.*, COUNT(DISTINCT nt2.note_id) as note_count
+      SELECT t.*, COUNT(DISTINCT nt2.noteId) as note_count
       FROM tags t
-      JOIN note_tags nt ON t.id = nt.tag_id
-      JOIN note_tags nt2 ON nt.note_id = nt2.note_id
-      JOIN notes n ON nt.note_id = n.id AND n.is_deleted = 0
-      WHERE nt2.tag_id = ? AND t.id != ?
+      JOIN note_tags nt ON t.id = nt.tagId
+      JOIN note_tags nt2 ON nt.noteId = nt2.noteId
+      JOIN notes n ON nt.noteId = n.id AND n.is_deleted = 0
+      WHERE nt2.tagId = ? AND t.id != ?
       GROUP BY t.id
       ORDER BY note_count DESC, t.name ASC
       LIMIT ?
-    `)
-    return stmt.all(tagId, tagId, limit) as TagWithCount[]
+    `);
+    return stmt.all(tagId, tagId, limit) as TagWithCount[];
   }
 }

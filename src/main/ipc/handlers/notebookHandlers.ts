@@ -19,11 +19,11 @@ export function registerNotebookHandlers() {
     createHandler(
       async (
         event,
-        request: { name: string; parent_id?: string; icon?: string; color?: string; position?: number }
+        request: { name: string; parentId?: string; icon?: string; color?: string; position?: number }
       ) => {
         const notebook = repos.notebook.create({
           name: request.name,
-          parent_id: request.parent_id || null,
+          parentId: request.parentId || null,
           icon: request.icon || '📁',
           color: request.color || '#3b82f6',
           position: request.position || 0,
@@ -101,9 +101,9 @@ export function registerNotebookHandlers() {
   // notebooks:move
   ipcMain.handle(
     NOTEBOOK_CHANNELS.MOVE,
-    createHandler(async (event, request: { id: string; parent_id?: string; position?: number }) => {
+    createHandler(async (event, request: { id: string; parentId?: string; position?: number }) => {
       try {
-        const notebook = repos.notebook.move(request.id, request.parent_id || null, request.position)
+        const notebook = repos.notebook.move(request.id, request.parentId || null, request.position)
 
         // Broadcast event
         BrowserWindow.getAllWindows().forEach((win) => {
@@ -112,7 +112,7 @@ export function registerNotebookHandlers() {
 
         return {
           id: notebook.id,
-          parent_id: notebook.parent_id,
+          parentId: notebook.parentId,
           position: notebook.position,
         }
       } catch (error) {

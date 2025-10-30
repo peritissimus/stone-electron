@@ -109,18 +109,18 @@ export function NoteEditor() {
           <button
             onClick={() => toggleFavorite(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.is_favorite
+              activeNote.isFavorite
                 ? 'text-yellow-500 bg-yellow-500/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Favorite"
           >
-            <Star size={16} fill={activeNote.is_favorite ? 'currentColor' : 'none'} />
+            <Star size={16} fill={activeNote.isFavorite ? 'currentColor' : 'none'} />
           </button>
           <button
             onClick={() => togglePin(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.is_pinned
+              activeNote.isPinned
                 ? 'text-primary bg-primary/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
@@ -131,7 +131,7 @@ export function NoteEditor() {
           <button
             onClick={() => toggleArchive(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.is_archived
+              activeNote.isArchived
                 ? 'text-orange-500 bg-orange-500/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
