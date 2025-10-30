@@ -1,10 +1,30 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stone - Note Taking App</title>
+    <script>
+      // Apply dark mode immediately to prevent flash
+      (function() {
+        const stored = localStorage.getItem('stone-ui-preferences');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            const theme = parsed.state?.theme || 'dark';
+            if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+              document.documentElement.classList.add('dark');
+            }
+          } catch (e) {
+            document.documentElement.classList.add('dark');
+          }
+        } else {
+          // Default to dark mode
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

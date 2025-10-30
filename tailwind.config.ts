@@ -13,6 +13,11 @@ const config: Config = {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
       },
       colors: {
+        gray: {
+          750: '#2d3748',
+          850: '#1e2533',
+          950: '#0f1419',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

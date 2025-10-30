@@ -4,7 +4,7 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Root CSS Variables */
+/* Root CSS Variables - Dark Mode Optimized */
 :root {
   --border: 214 57% 91%;
   --input: 214 57% 91%;
@@ -29,26 +29,49 @@
   --radius: 0.5rem;
 }
 
+/* Dark Mode Colors - Consistent Palette */
+.dark {
+  --border: 217 19% 20%;
+  --input: 217 19% 20%;
+  --ring: 217 92% 76%;
+  --background: 222 47% 11%;
+  --foreground: 213 31% 91%;
+  --primary: 217 92% 76%;
+  --primary-foreground: 222 47% 11%;
+  --secondary: 217 19% 27%;
+  --secondary-foreground: 210 40% 98%;
+  --destructive: 0 63% 51%;
+  --destructive-foreground: 210 40% 98%;
+  --muted: 217 19% 27%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 217 19% 27%;
+  --accent-foreground: 210 40% 98%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 213 31% 91%;
+  --card: 222 47% 11%;
+  --card-foreground: 213 31% 91%;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --border: 217 33% 17%;
-    --input: 217 33% 17%;
-    --ring: 212 35% 92%;
-    --background: 222 84% 5%;
+  :root:not(.light) {
+    --border: 217 19% 20%;
+    --input: 217 19% 20%;
+    --ring: 217 92% 76%;
+    --background: 222 47% 11%;
     --foreground: 213 31% 91%;
-    --primary: 212 35% 92%;
+    --primary: 217 92% 76%;
     --primary-foreground: 222 47% 11%;
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 212 35% 92%;
-    --destructive: 0 62% 56%;
+    --secondary: 217 19% 27%;
+    --secondary-foreground: 210 40% 98%;
+    --destructive: 0 63% 51%;
     --destructive-foreground: 210 40% 98%;
-    --muted: 217 32% 35%;
+    --muted: 217 19% 27%;
     --muted-foreground: 215 20% 65%;
-    --accent: 217 32% 17%;
-    --accent-foreground: 212 35% 92%;
-    --popover: 222 84% 5%;
+    --accent: 217 19% 27%;
+    --accent-foreground: 210 40% 98%;
+    --popover: 222 47% 11%;
     --popover-foreground: 213 31% 91%;
-    --card: 222 84% 5%;
+    --card: 222 47% 11%;
     --card-foreground: 213 31% 91%;
   }
 }
@@ -62,6 +85,11 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Force dark mode by default */
+html.dark {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
@@ -69,6 +97,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  background-color: hsl(222, 47%, 11%);
+  color: hsl(213, 31%, 91%);
 }
 
 code {
@@ -100,4 +133,124 @@ textarea:focus {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
+}
+
+/* TipTap Editor Styles */
+.tiptap-editor {
+  @apply text-gray-900 dark:text-gray-100;
+}
+
+.ProseMirror {
+  @apply focus:outline-none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  @apply text-gray-400 dark:text-gray-500;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Prose Styling for Editor Content */
+.prose {
+  @apply max-w-none;
+}
+
+.prose h1 {
+  @apply text-3xl font-bold mb-4 mt-6;
+}
+
+.prose h2 {
+  @apply text-2xl font-bold mb-3 mt-5;
+}
+
+.prose h3 {
+  @apply text-xl font-bold mb-2 mt-4;
+}
+
+.prose h4,
+.prose h5,
+.prose h6 {
+  @apply text-lg font-bold mb-2 mt-3;
+}
+
+.prose p {
+  @apply mb-4;
+}
+
+.prose ul,
+.prose ol {
+  @apply mb-4 pl-6;
+}
+
+.prose ul {
+  @apply list-disc;
+}
+
+.prose ol {
+  @apply list-decimal;
+}
+
+.prose li {
+  @apply mb-1;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-4;
+}
+
+.prose code {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
+}
+
+.prose pre {
+  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0;
+}
+
+.prose a {
+  @apply text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300;
+}
+
+.prose img {
+  @apply rounded-lg my-4;
+}
+
+.prose hr {
+  @apply border-gray-300 dark:border-gray-600 my-6;
+}
+
+/* Task List Styles */
+.prose ul[data-type='taskList'] {
+  @apply list-none pl-0;
+}
+
+.prose ul[data-type='taskList'] li {
+  @apply flex items-start gap-2;
+}
+
+.prose ul[data-type='taskList'] li > label {
+  @apply flex-shrink-0 mt-1;
+}
+
+.prose ul[data-type='taskList'] li > div {
+  @apply flex-1;
+}
+
+/* Table Styles */
+.prose table {
+  @apply w-full border-collapse my-4;
+}
+
+.prose table td,
+.prose table th {
+  @apply border border-gray-300 dark:border-gray-600 px-3 py-2;
+}
+
+.prose table th {
+  @apply bg-gray-100 dark:bg-gray-800 font-bold;
 }

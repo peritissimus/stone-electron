@@ -2,8 +2,10 @@
  * Environment Utilities for Main Process
  */
 
-export const isDev = process.env.NODE_ENV === 'development'
-export const isProd = process.env.NODE_ENV === 'production'
+import electronIsDev from 'electron-is-dev'
+
+export const isDev = electronIsDev
+export const isProd = !electronIsDev
 
 export function getEnv(key: string, defaultValue?: string): string | undefined {
   return process.env[key] ?? defaultValue
