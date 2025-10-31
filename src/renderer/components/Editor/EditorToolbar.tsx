@@ -23,6 +23,7 @@ import {
   TextItalic,
   TextStrikethrough,
 } from 'phosphor-react';
+import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 
 export interface EditorToolbarProps {
   editor: Editor | null;
@@ -38,125 +39,125 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
-        title="Undo"
+        tooltip="Undo"
       >
         <ArrowCounterClockwise size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
-        title="Redo"
+        tooltip="Redo"
       >
         <ArrowClockwise size={16} />
       </ToolbarButton>
 
-      <Divider />
+      <ToolbarDivider />
 
       {/* Text Formatting */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         active={editor.isActive('bold')}
-        title="Bold"
+        tooltip="Bold"
       >
         <TextBolder size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive('italic')}
-        title="Italic"
+        tooltip="Italic"
       >
         <TextItalic size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleStrike().run()}
         active={editor.isActive('strike')}
-        title="Strikethrough"
+        tooltip="Strikethrough"
       >
         <TextStrikethrough size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCode().run()}
         active={editor.isActive('code')}
-        title="Inline Code"
+        tooltip="Inline Code"
       >
         <Code size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHighlight().run()}
         active={editor.isActive('highlight')}
-        title="Highlight"
+        tooltip="Highlight"
       >
         <HighlighterCircle size={16} />
       </ToolbarButton>
 
-      <Divider />
+      <ToolbarDivider />
 
       {/* Headings */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         active={editor.isActive('heading', { level: 1 })}
-        title="Heading 1"
+        tooltip="Heading 1"
       >
         <TextHOne size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={editor.isActive('heading', { level: 2 })}
-        title="Heading 2"
+        tooltip="Heading 2"
       >
         <TextHTwo size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         active={editor.isActive('heading', { level: 3 })}
-        title="Heading 3"
+        tooltip="Heading 3"
       >
         <TextHThree size={16} />
       </ToolbarButton>
 
-      <Divider />
+      <ToolbarDivider />
 
       {/* Lists */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBulletList().run()}
         active={editor.isActive('bulletList')}
-        title="Bullet List"
+        tooltip="Bullet List"
       >
         <List size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
         active={editor.isActive('orderedList')}
-        title="Numbered List"
+        tooltip="Numbered List"
       >
         <ListNumbers size={16} />
       </ToolbarButton>
 
-      <Divider />
+      <ToolbarDivider />
 
       {/* Blocks */}
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBlockquote().run()}
         active={editor.isActive('blockquote')}
-        title="Blockquote"
+        tooltip="Blockquote"
       >
         <Quotes size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         active={editor.isActive('codeBlock')}
-        title="Code Block"
+        tooltip="Code Block"
       >
         <Code size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        title="Horizontal Rule"
+        tooltip="Horizontal Rule"
       >
         <Minus size={16} />
       </ToolbarButton>
 
-      <Divider />
+      <ToolbarDivider />
 
       {/* Insert */}
       <ToolbarButton
@@ -167,7 +168,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
           }
         }}
         active={editor.isActive('link')}
-        title="Insert Link"
+        tooltip="Insert Link"
       >
         <Link size={16} />
       </ToolbarButton>
@@ -178,39 +179,10 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             editor.chain().focus().setImage({ src: url }).run();
           }
         }}
-        title="Insert Image"
+        tooltip="Insert Image"
       >
         <Image size={16} />
       </ToolbarButton>
     </div>
   );
-}
-
-interface ToolbarButtonProps {
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  title?: string;
-  children: React.ReactNode;
-}
-
-function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarButtonProps) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={`p-1.5 rounded transition-colors ${
-        active
-          ? 'bg-accent text-accent-foreground'
-          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Divider() {
-  return <div className="w-px h-5 bg-border mx-1" />;
 }

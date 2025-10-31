@@ -6,8 +6,10 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import { app } from 'electron';
+import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { nanoid } from 'nanoid';
 import * as schema from './schema';
 import { logger } from '../utils/logger';
 
@@ -59,11 +61,128 @@ export class DatabaseManager {
       // Run migrations
       await migrate(this.db, { migrationsFolder: path.join(process.cwd(), 'migrations') });
 
+      await this.seedDatabase();
+
       logger.info('Database initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize database:', error);
       throw error;
     }
+  }
+
+  private async seedDatabase(): Promise<void> {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+
+    const notebookCountResult = await this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(schema.notebooks);
+
+    const notebookCount = notebookCountResult[0]?.count ?? 0;
+
+    if (notebookCount > 0) {
+      logger.info('Database already contains data, skipping seed process');
+      return;
+    }
+
+    const personalNotebookId = nanoid();
+    const workNotebookId = nanoid();
+    const welcomeNoteId = nanoid();
+    const roadmapNoteId = nanoid();
+    const ideasTagId = nanoid();
+    const planningTagId = nanoid();
+
+    const now = () => new Date();
+
+    const notebooksData = [
+      {
+        id: personalNotebookId,
+        name: 'Personal',
+        parentId: null,
+        icon: '📝',
+        color: '#ec4899',
+        position: 0,
+        createdAt: now(),
+        updatedAt: now(),
+      },
+      {
+        id: workNotebookId,
+        name: 'Work',
+        parentId: null,
+        icon: '💼',
+        color: '#3b82f6',
+        position: 1,
+        createdAt: now(),
+        updatedAt: now(),
+      },
+    ];
+
+    const notesData = [
+      {
+        id: welcomeNoteId,
+        title: 'Welcome to Stone',
+        content:
+          '<h1>Welcome to Stone</h1><p>This sample note shows how rich text content is stored.</p><ul><li>Create notebooks to organize topics.</li><li>Add tags to group related ideas.</li><li>Use the TipTap editor to capture your thoughts.</li></ul>',
+        notebookId: personalNotebookId,
+        isFavorite: true,
+        isPinned: true,
+        isArchived: false,
+        isDeleted: false,
+        createdAt: now(),
+        updatedAt: now(),
+      },
+      {
+        id: roadmapNoteId,
+        title: 'Product Roadmap',
+        content:
+          '<h1>Quarterly Roadmap</h1><p>Track the high-level initiatives planned for this quarter.</p><ol><li>Ship the new editor experience.</li><li>Improve sync reliability.</li><li>Publish public beta announcement.</li></ol>',
+        notebookId: workNotebookId,
+        isFavorite: false,
+        isPinned: false,
+        isArchived: false,
+        isDeleted: false,
+        createdAt: now(),
+        updatedAt: now(),
+      },
+    ];
+
+    const tagsData = [
+      {
+        id: ideasTagId,
+        name: 'ideas',
+        color: '#22c55e',
+        createdAt: now(),
+        updatedAt: now(),
+      },
+      {
+        id: planningTagId,
+        name: 'planning',
+        color: '#f97316',
+        createdAt: now(),
+        updatedAt: now(),
+      },
+    ];
+
+    const noteTagsData = [
+      {
+        noteId: welcomeNoteId,
+        tagId: ideasTagId,
+        createdAt: now(),
+      },
+      {
+        noteId: roadmapNoteId,
+        tagId: planningTagId,
+        createdAt: now(),
+      },
+    ];
+
+    await this.db.insert(schema.notebooks).values(notebooksData);
+    await this.db.insert(schema.notes).values(notesData);
+    await this.db.insert(schema.tags).values(tagsData);
+    await this.db.insert(schema.noteTags).values(noteTagsData);
+
+    logger.info('Database seed data inserted successfully');
   }
 
   /**

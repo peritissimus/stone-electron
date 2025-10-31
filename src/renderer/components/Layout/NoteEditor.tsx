@@ -17,6 +17,7 @@ import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import { Text, Body } from '@renderer/components/ui/text';
 import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
+import { Header, IconButton } from '@renderer/components/composites';
 
 export function NoteEditor() {
   const { getActiveNote } = useNoteStore();
@@ -103,49 +104,47 @@ export function NoteEditor() {
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Editor Header */}
-      <div className="px-4 pt-titlebar pb-3 border-b border-border">
-        <ContainerFlex align="center" gap="lg">
+      <Header
+        divided
+        left={
           <Input
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
             className="flex-1 text-xl font-semibold bg-transparent border-none focus-visible:ring-0 px-0 py-0 h-auto placeholder:text-muted-foreground"
           />
-
+        }
+        right={
           <ContainerFlex align="center" gap="xs">
-            <Button
+            <IconButton
+              size="normal"
+              icon={<Star size={16} />}
+              tooltip="Toggle Favorite"
               onClick={() => toggleFavorite(activeNote.id)}
-              variant={activeNote.isFavorite ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Favorite"
-            >
-              <Star size={16} />
-            </Button>
-            <Button
+              className={activeNote.isFavorite ? 'bg-secondary' : ''}
+            />
+            <IconButton
+              size="normal"
+              icon={<PushPin size={16} />}
+              tooltip="Toggle Pin"
               onClick={() => togglePin(activeNote.id)}
-              variant={activeNote.isPinned ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Pin"
-            >
-              <PushPin size={16} />
-            </Button>
-            <Button
+              className={activeNote.isPinned ? 'bg-secondary' : ''}
+            />
+            <IconButton
+              size="normal"
+              icon={<Archive size={16} />}
+              tooltip="Toggle Archive"
               onClick={() => toggleArchive(activeNote.id)}
-              variant={activeNote.isArchived ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Archive"
-            >
-              <Archive size={16} />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="More Options">
-              <DotsThreeVertical size={16} />
-            </Button>
+              className={activeNote.isArchived ? 'bg-secondary' : ''}
+            />
+            <IconButton
+              size="normal"
+              icon={<DotsThreeVertical size={16} />}
+              tooltip="More Options"
+            />
           </ContainerFlex>
-        </ContainerFlex>
-      </div>
+        }
+      />
 
       {/* Toolbar */}
       <EditorToolbar editor={editor} />
