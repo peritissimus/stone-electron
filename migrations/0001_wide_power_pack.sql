@@ -27,7 +27,7 @@ CREATE TABLE `__new_notes` (
 	FOREIGN KEY (`workspace_id`) REFERENCES `workspaces`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-INSERT INTO `__new_notes`("id", "title", "content", "file_path", "notebook_id", "workspace_id", "is_favorite", "is_pinned", "is_archived", "is_deleted", "deleted_at", "created_at", "updated_at") SELECT "id", "title", "content", "file_path", "notebook_id", "workspace_id", "is_favorite", "is_pinned", "is_archived", "is_deleted", "deleted_at", "created_at", "updated_at" FROM `notes`;--> statement-breakpoint
+INSERT INTO `__new_notes`("id", "title", "content", "file_path", "notebook_id", "workspace_id", "is_favorite", "is_pinned", "is_archived", "is_deleted", "deleted_at", "created_at", "updated_at") SELECT "id", "title", "content", NULL, "notebook_id", NULL, "is_favorite", "is_pinned", "is_archived", "is_deleted", "deleted_at", "created_at", "updated_at" FROM `notes`;--> statement-breakpoint
 DROP TABLE `notes`;--> statement-breakpoint
 ALTER TABLE `__new_notes` RENAME TO `notes`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;--> statement-breakpoint
