@@ -23,39 +23,150 @@ export class NoteRepository {
     limit?: number;
     offset?: number;
   }): Promise<Note[]> {
+    // For complex queries, use simpler approach to avoid Drizzle type issues
+    if (options?.where || options?.sort) {
+      // Use a more targeted approach for filtered queries
+      return this.findAllFiltered(options);
+    }
+
+    // Simple case - just get all notes with default sorting
+    let query = this.db.select().from(notes).orderBy(desc(notes.updatedAt));
+
+    if (options?.limit) {
+      query = (query as any).limit(options.limit);
+    }
+    if (options?.offset) {
+      query = (query as any).offset(options.offset);
+    }
+
+    const result = await query;
+    return result as Note[];
+  }
+
+  /**
+   * Find all notes with filtering - separate method to avoid complex types
+   */
+  private async findAllFiltered(options?: {
+    where?: Partial<Note>;
+    sort?: { field: keyof Note; order: 'ASC' | 'DESC' };
+    limit?: number;
+    offset?: number;
+  }): Promise<Note[]> {
     let query = this.db.select().from(notes);
 
-    // Add WHERE clause
+    // Add WHERE clause - handle each field explicitly
     if (options?.where) {
-      const conditions = Object.entries(options.where)
-        .filter(([_, value]) => value !== undefined)
-        .map(([key, value]) => {
-          const column = notes[key as keyof typeof notes];
-          return eq(column, value);
-        });
+      const conditions = [];
+
+      if (options.where.id !== undefined) {
+        conditions.push(eq(notes.id, options.where.id));
+      }
+      if (options.where.title !== undefined && options.where.title !== null) {
+        conditions.push(eq(notes.title, options.where.title));
+      }
+      if (options.where.content !== undefined && options.where.content !== null) {
+        conditions.push(eq(notes.content, options.where.content));
+      }
+      if (options.where.notebookId !== undefined) {
+        if (options.where.notebookId === null) {
+          conditions.push(isNull(notes.notebookId));
+        } else {
+          conditions.push(eq(notes.notebookId, options.where.notebookId));
+        }
+      }
+      if (options.where.isFavorite !== undefined && options.where.isFavorite !== null) {
+        conditions.push(eq(notes.isFavorite, options.where.isFavorite));
+      }
+      if (options.where.isPinned !== undefined && options.where.isPinned !== null) {
+        conditions.push(eq(notes.isPinned, options.where.isPinned));
+      }
+      if (options.where.isArchived !== undefined && options.where.isArchived !== null) {
+        conditions.push(eq(notes.isArchived, options.where.isArchived));
+      }
+      if (options.where.isDeleted !== undefined && options.where.isDeleted !== null) {
+        conditions.push(eq(notes.isDeleted, options.where.isDeleted));
+      }
+      if (options.where.deletedAt !== undefined) {
+        if (options.where.deletedAt === null) {
+          conditions.push(isNull(notes.deletedAt));
+        } else {
+          conditions.push(eq(notes.deletedAt, options.where.deletedAt));
+        }
+      }
+      if (options.where.createdAt !== undefined) {
+        conditions.push(eq(notes.createdAt, options.where.createdAt));
+      }
+      if (options.where.updatedAt !== undefined) {
+        conditions.push(eq(notes.updatedAt, options.where.updatedAt));
+      }
 
       if (conditions.length > 0) {
-        query = query.where(and(...conditions));
+        query = (query as any).where(and(...conditions));
       }
     }
 
-    // Add ORDER BY
+    // Add ORDER BY - handle each field explicitly
     if (options?.sort) {
-      const column = notes[options.sort.field as keyof typeof notes];
-      query = query.orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
+      let orderByColumn;
+      switch (options.sort.field) {
+        case 'id':
+          orderByColumn = options.sort.order === 'DESC' ? desc(notes.id) : asc(notes.id);
+          break;
+        case 'title':
+          orderByColumn = options.sort.order === 'DESC' ? desc(notes.title) : asc(notes.title);
+          break;
+        case 'content':
+          orderByColumn = options.sort.order === 'DESC' ? desc(notes.content) : asc(notes.content);
+          break;
+        case 'notebookId':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.notebookId) : asc(notes.notebookId);
+          break;
+        case 'isFavorite':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.isFavorite) : asc(notes.isFavorite);
+          break;
+        case 'isPinned':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.isPinned) : asc(notes.isPinned);
+          break;
+        case 'isArchived':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.isArchived) : asc(notes.isArchived);
+          break;
+        case 'isDeleted':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.isDeleted) : asc(notes.isDeleted);
+          break;
+        case 'deletedAt':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.deletedAt) : asc(notes.deletedAt);
+          break;
+        case 'createdAt':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.createdAt) : asc(notes.createdAt);
+          break;
+        case 'updatedAt':
+          orderByColumn =
+            options.sort.order === 'DESC' ? desc(notes.updatedAt) : asc(notes.updatedAt);
+          break;
+        default:
+          orderByColumn = desc(notes.updatedAt);
+      }
+      query = (query as any).orderBy(orderByColumn);
     } else {
-      query = query.orderBy(desc(notes.updatedAt));
+      query = (query as any).orderBy(desc(notes.updatedAt));
     }
 
     // Add LIMIT and OFFSET
     if (options?.limit) {
-      query = query.limit(options.limit);
+      query = (query as any).limit(options.limit);
     }
     if (options?.offset) {
-      query = query.offset(options.offset);
+      query = (query as any).offset(options.offset);
     }
 
-    const result = await query;
+    const result = await (query as any);
     return result as Note[];
   }
 

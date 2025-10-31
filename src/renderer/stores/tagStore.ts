@@ -2,34 +2,30 @@
  * Tag Store - Zustand state management for tags
  */
 
-import { create } from 'zustand'
-import { Tag } from '@shared/types'
-
-interface TagWithCount extends Tag {
-  note_count: number
-}
+import { create } from 'zustand';
+import { Tag, TagWithCount } from '@shared/types';
 
 interface TagState {
-  tags: TagWithCount[]
-  selectedTagIds: string[]
-  loading: boolean
-  error: string | null
+  tags: TagWithCount[];
+  selectedTagIds: string[];
+  loading: boolean;
+  error: string | null;
 
   // Actions
-  setTags: (tags: TagWithCount[]) => void
-  addTag: (tag: TagWithCount) => void
-  updateTag: (tag: Tag) => void
-  deleteTag: (id: string) => void
-  selectTag: (id: string) => void
-  deselectTag: (id: string) => void
-  toggleTag: (id: string) => void
-  clearSelection: () => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
+  setTags: (tags: TagWithCount[]) => void;
+  addTag: (tag: TagWithCount) => void;
+  updateTag: (tag: Tag) => void;
+  deleteTag: (id: string) => void;
+  selectTag: (id: string) => void;
+  deselectTag: (id: string) => void;
+  toggleTag: (id: string) => void;
+  clearSelection: () => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
 
   // Computed
-  getSelectedTags: () => TagWithCount[]
-  getTagById: (id: string) => TagWithCount | null
+  getSelectedTags: () => TagWithCount[];
+  getTagById: (id: string) => TagWithCount | null;
 }
 
 export const useTagStore = create<TagState>((set, get) => ({
@@ -58,7 +54,9 @@ export const useTagStore = create<TagState>((set, get) => ({
 
   selectTag: (id) =>
     set((state) => ({
-      selectedTagIds: state.selectedTagIds.includes(id) ? state.selectedTagIds : [...state.selectedTagIds, id],
+      selectedTagIds: state.selectedTagIds.includes(id)
+        ? state.selectedTagIds
+        : [...state.selectedTagIds, id],
     })),
 
   deselectTag: (id) =>
@@ -80,11 +78,11 @@ export const useTagStore = create<TagState>((set, get) => ({
   setError: (error) => set({ error }),
 
   getSelectedTags: () => {
-    const state = get()
-    return state.tags.filter((t) => state.selectedTagIds.includes(t.id))
+    const state = get();
+    return state.tags.filter((t) => state.selectedTagIds.includes(t.id));
   },
 
   getTagById: (id) => {
-    return get().tags.find((t) => t.id === id) || null
+    return get().tags.find((t) => t.id === id) || null;
   },
-}))
+}));

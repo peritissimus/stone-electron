@@ -2,119 +2,126 @@
  * Tag API Hook - React hooks for tag operations
  */
 
-import { useCallback } from 'react'
-import { useTagStore } from '../stores/tagStore'
-import { TAG_CHANNELS } from '@shared/constants/ipcChannels'
+import { useCallback } from 'react';
+import { useTagStore } from '../stores/tagStore';
+import { TagWithCount } from '@shared/types';
+import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
 
 export function useTagAPI() {
-  const { setTags, addTag, updateTag, deleteTag, setLoading, setError } = useTagStore()
+  const { setTags, addTag, updateTag, deleteTag, setLoading, setError } = useTagStore();
 
   const loadTags = useCallback(
     async (sort: 'name' | 'count' | 'recent' = 'name') => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await window.electron.invoke(TAG_CHANNELS.GET_ALL, { sort })
-        if (response.success) {
-          setTags(response.data.tags)
+        const response = await window.electron.invoke<{ tags: TagWithCount[] }>(
+          TAG_CHANNELS.GET_ALL,
+          { sort },
+        );
+        if (response.success && response.data) {
+          setTags(response.data.tags);
         } else {
-          setError(response.error?.message || 'Failed to load tags')
+          setError(response.error?.message || 'Failed to load tags');
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to load tags')
+        setError(error instanceof Error ? error.message : 'Failed to load tags');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     },
-    [setTags, setLoading, setError]
-  )
+    [setTags, setLoading, setError],
+  );
 
   const createTag = useCallback(
     async (data: { name: string; color?: string }) => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       try {
-        const response = await window.electron.invoke(TAG_CHANNELS.CREATE, data)
-        if (response.success) {
-          addTag(response.data)
-          return response.data
+        const response = await window.electron.invoke<TagWithCount>(TAG_CHANNELS.CREATE, data);
+        if (response.success && response.data) {
+          addTag(response.data);
+          return response.data;
         } else {
-          setError(response.error?.message || 'Failed to create tag')
-          return null
+          setError(response.error?.message || 'Failed to create tag');
+          return null;
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to create tag')
-        return null
+        setError(error instanceof Error ? error.message : 'Failed to create tag');
+        return null;
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     },
-    [addTag, setLoading, setError]
-  )
+    [addTag, setLoading, setError],
+  );
 
   const deleteTagById = useCallback(
     async (id: string) => {
-      setError(null)
+      setError(null);
       try {
-        const response = await window.electron.invoke(TAG_CHANNELS.DELETE, { id })
+        const response = await window.electron.invoke(TAG_CHANNELS.DELETE, { id });
         if (response.success) {
-          deleteTag(id)
-          return true
+          deleteTag(id);
+          return true;
         } else {
-          setError(response.error?.message || 'Failed to delete tag')
-          return false
+          setError(response.error?.message || 'Failed to delete tag');
+          return false;
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to delete tag')
-        return false
+        setError(error instanceof Error ? error.message : 'Failed to delete tag');
+        return false;
       }
     },
-    [deleteTag, setError]
-  )
+    [deleteTag, setError],
+  );
 
   const addTagToNote = useCallback(
     async (noteId: string, tagIds: string[]) => {
-      setError(null)
+      setError(null);
       try {
-        const response = await window.electron.invoke(TAG_CHANNELS.ADD_TO_NOTE, {
-          noteId: noteId,
-          tagIds: tagIds,
-        })
-        if (response.success) {
-          return response.data.tags
+        const response = await window.electron.invoke<{ tags: TagWithCount[] }>(
+          TAG_CHANNELS.ADD_TO_NOTE,
+          {
+            noteId: noteId,
+            tagIds: tagIds,
+          },
+        );
+        if (response.success && response.data) {
+          return response.data.tags;
         } else {
-          setError(response.error?.message || 'Failed to add tag to note')
-          return null
+          setError(response.error?.message || 'Failed to add tag to note');
+          return null;
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to add tag to note')
-        return null
+        setError(error instanceof Error ? error.message : 'Failed to add tag to note');
+        return null;
       }
     },
-    [setError]
-  )
+    [setError],
+  );
 
   const removeTagFromNote = useCallback(
     async (noteId: string, tagId: string) => {
-      setError(null)
+      setError(null);
       try {
         const response = await window.electron.invoke(TAG_CHANNELS.REMOVE_FROM_NOTE, {
           noteId: noteId,
           tagId: tagId,
-        })
+        });
         if (response.success) {
-          return true
+          return true;
         } else {
-          setError(response.error?.message || 'Failed to remove tag from note')
-          return false
+          setError(response.error?.message || 'Failed to remove tag from note');
+          return false;
         }
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to remove tag from note')
-        return false
+        setError(error instanceof Error ? error.message : 'Failed to remove tag from note');
+        return false;
       }
     },
-    [setError]
-  )
+    [setError],
+  );
 
   return {
     loadTags,
@@ -122,5 +129,5 @@ export function useTagAPI() {
     deleteTag: deleteTagById,
     addTagToNote,
     removeTagFromNote,
-  }
+  };
 }

@@ -5,12 +5,8 @@
 import { eq, sql, desc, asc, and } from 'drizzle-orm';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import { tags, notes, noteTags } from '../database/schema';
-import type { Tag, InsertTag } from '@shared/types';
+import type { Tag, TagWithCount, InsertTag } from '@shared/types';
 import { nanoid } from 'nanoid';
-
-interface TagWithCount extends Tag {
-  noteCount: number;
-}
 
 /**
  * Tag Repository - Using Drizzle ORM
@@ -115,7 +111,7 @@ export class TagRepository {
         color: tags.color,
         createdAt: tags.createdAt,
         updatedAt: tags.updatedAt,
-        noteCount: sql<number>`COUNT(${noteTags.noteId})`,
+        note_count: sql<number>`COUNT(${noteTags.noteId})`,
       })
       .from(tags)
       .leftJoin(noteTags, eq(tags.id, noteTags.tagId))
@@ -171,9 +167,7 @@ export class TagRepository {
   async removeFromNote(noteId: string, tagId: string): Promise<void> {
     const db = getDatabaseManager().getDrizzle();
 
-    await db
-      .delete(noteTags)
-      .where(and(eq(noteTags.noteId, noteId), eq(noteTags.tagId, tagId)));
+    await db.delete(noteTags).where(and(eq(noteTags.noteId, noteId), eq(noteTags.tagId, tagId)));
   }
 
   /**
@@ -189,7 +183,7 @@ export class TagRepository {
 
       // Add new tags
       if (tagIds.length > 0) {
-        const values = tagIds.map(tagId => ({
+        const values = tagIds.map((tagId) => ({
           noteId,
           tagId,
           createdAt: now,

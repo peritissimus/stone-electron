@@ -74,27 +74,38 @@ export class NotebookRepository {
       if (options.where.name !== undefined) conditions.push(eq(notebooks.name, options.where.name));
 
       if (conditions.length > 0) {
-        query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions));
+        query = (query as any).where(conditions.length === 1 ? conditions[0] : and(...conditions));
       }
     }
 
     // Add ORDER BY
     if (options?.sort) {
-      const column = notebooks[options.sort.field as keyof typeof notebooks];
+      const columnMap = {
+        id: notebooks.id,
+        name: notebooks.name,
+        parentId: notebooks.parentId,
+        icon: notebooks.icon,
+        color: notebooks.color,
+        position: notebooks.position,
+        createdAt: notebooks.createdAt,
+        updatedAt: notebooks.updatedAt,
+      };
+
+      const column = columnMap[options.sort.field as keyof typeof columnMap];
       if (column) {
-        query = query.orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
+        query = (query as any).orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
       }
     }
 
     // Add LIMIT and OFFSET
     if (options?.limit) {
-      query = query.limit(options.limit);
+      query = (query as any).limit(options.limit);
     }
     if (options?.offset) {
-      query = query.offset(options.offset);
+      query = (query as any).offset(options.offset);
     }
 
-    const result = await query;
+    const result = await (query as any);
     return result as Notebook[];
   }
 
