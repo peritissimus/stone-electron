@@ -2,6 +2,19 @@
  * IPC Channel Constants for Stone Application
  */
 
+// Workspace Operations
+export const WORKSPACE_CHANNELS = {
+  CREATE: 'workspaces:create',
+  UPDATE: 'workspaces:update',
+  DELETE: 'workspaces:delete',
+  GET_ALL: 'workspaces:getAll',
+  GET_ACTIVE: 'workspaces:getActive',
+  SET_ACTIVE: 'workspaces:setActive',
+  SCAN: 'workspaces:scan',
+  VALIDATE_PATH: 'workspaces:validatePath',
+  SELECT_FOLDER: 'workspaces:selectFolder',
+} as const
+
 // Note Operations
 export const NOTE_CHANNELS = {
   CREATE: 'notes:create',
@@ -73,6 +86,16 @@ export const SETTINGS_CHANNELS = {
 
 // Events
 export const EVENTS = {
+  // Workspace events
+  WORKSPACE_CREATED: 'workspaces:created',
+  WORKSPACE_UPDATED: 'workspaces:updated',
+  WORKSPACE_DELETED: 'workspaces:deleted',
+  WORKSPACE_SWITCHED: 'workspaces:switched',
+  WORKSPACE_SCANNED: 'workspaces:scanned',
+  FILE_CHANGED: 'files:changed',
+  FILE_CREATED: 'files:created',
+  FILE_DELETED: 'files:deleted',
+
   // Note events
   NOTE_CREATED: 'notes:created',
   NOTE_UPDATED: 'notes:updated',
@@ -109,6 +132,7 @@ export const EVENTS = {
 
 // Get all channels as a flat object for validation
 export const ALL_CHANNELS = {
+  ...WORKSPACE_CHANNELS,
   ...NOTE_CHANNELS,
   ...NOTEBOOK_CHANNELS,
   ...TAG_CHANNELS,

@@ -1,0 +1,169 @@
+/**
+ * Workspace IPC Handlers
+ */
+
+import { ipcMain, BrowserWindow, dialog } from 'electron';
+import path from 'path';
+import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
+import { getRepositories } from '../../repositories';
+import { getFileSystemService } from '../../services/FileSystemService';
+import { createHandler, IpcError } from '../utils';
+
+/**
+ * Register all workspace handlers
+ */
+export function registerWorkspaceHandlers() {
+  const repos = getRepositories();
+  const fsService = getFileSystemService();
+
+  // workspaces:selectFolder
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.SELECT_FOLDER,
+    createHandler(async (event) => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+        title: 'Select Workspace Folder',
+        buttonLabel: 'Select Folder',
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { canceled: true };
+      }
+
+      return {
+        canceled: false,
+        folderPath: result.filePaths[0],
+      };
+    }),
+  );
+
+  // workspaces:validatePath
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.VALIDATE_PATH,
+    createHandler(async (event, request: { folderPath: string }) => {
+      return await fsService.validateFolderPath(request.folderPath);
+    }),
+  );
+
+  // workspaces:create
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.CREATE,
+    createHandler(async (event, request: { name: string; folderPath: string }) => {
+      // Validate folder path
+      const validation = await fsService.validateFolderPath(request.folderPath);
+      if (!validation.valid) {
+        throw new IpcError('INVALID_PATH', validation.error || 'Invalid folder path');
+      }
+
+      // Create workspace
+      const workspace = await repos.workspace.create({
+        name: request.name,
+        folderPath: request.folderPath,
+      });
+
+      // Broadcast event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_CREATED, { workspace });
+      });
+
+      return workspace;
+    }),
+  );
+
+  // workspaces:getAll
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.GET_ALL,
+    createHandler(async (event) => {
+      const workspaces = await repos.workspace.findAll();
+      return { workspaces };
+    }),
+  );
+
+  // workspaces:getActive
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.GET_ACTIVE,
+    createHandler(async (event) => {
+      const workspace = await repos.workspace.getActive();
+      return { workspace };
+    }),
+  );
+
+  // workspaces:setActive
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.SET_ACTIVE,
+    createHandler(async (event, request: { id: string }) => {
+      const workspace = await repos.workspace.setActive(request.id);
+
+      // Broadcast event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_SWITCHED, { workspace });
+      });
+
+      return workspace;
+    }),
+  );
+
+  // workspaces:update
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.UPDATE,
+    createHandler(async (event, request: { id: string; name?: string }) => {
+      const workspace = await repos.workspace.update(request.id, {
+        name: request.name,
+      });
+
+      // Broadcast event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+      });
+
+      return workspace;
+    }),
+  );
+
+  // workspaces:delete
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.DELETE,
+    createHandler(async (event, request: { id: string }) => {
+      await repos.workspace.delete(request.id);
+
+      // Broadcast event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_DELETED, { id: request.id });
+      });
+
+      return { success: true, id: request.id };
+    }),
+  );
+
+  // workspaces:scan
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.SCAN,
+    createHandler(async (event, request: { workspaceId: string }) => {
+      const workspace = await repos.workspace.findById(request.workspaceId);
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Workspace not found');
+      }
+
+      // Scan folder for markdown files
+      const files = await fsService.scanFolder(workspace.folderPath, true);
+
+      // Get folder structure
+      const structure = await fsService.getFolderStructure(workspace.folderPath);
+
+      // Broadcast event
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_SCANNED, {
+          workspace,
+          files,
+          structure,
+        });
+      });
+
+      return {
+        files,
+        structure,
+        total: files.length,
+      };
+    }),
+  );
+}

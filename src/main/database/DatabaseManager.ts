@@ -5,6 +5,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { app } from 'electron';
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -12,6 +13,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { nanoid } from 'nanoid';
 import * as schema from './schema';
 import { logger } from '../utils/logger';
+import { getFileSystemService } from '../services/FileSystemService';
+import { getMarkdownService } from '../services/MarkdownService';
 
 /**
  * Database Manager - Handles initialization, migrations, and lifecycle
@@ -86,6 +89,7 @@ export class DatabaseManager {
       return;
     }
 
+    const workspaceId = nanoid();
     const personalNotebookId = nanoid();
     const workNotebookId = nanoid();
     const welcomeNoteId = nanoid();
@@ -95,11 +99,47 @@ export class DatabaseManager {
 
     const now = () => new Date();
 
+    // Setup workspace folder path
+    const workspaceFolderPath = path.join(os.homedir(), 'NoteBook');
+
+    // Create workspace directory structure
+    try {
+      if (!fs.existsSync(workspaceFolderPath)) {
+        fs.mkdirSync(workspaceFolderPath, { recursive: true });
+        logger.info(`Created workspace directory: ${workspaceFolderPath}`);
+      }
+
+      // Create subdirectories for notebooks
+      const personalPath = path.join(workspaceFolderPath, 'Personal');
+      const workPath = path.join(workspaceFolderPath, 'Work');
+
+      if (!fs.existsSync(personalPath)) {
+        fs.mkdirSync(personalPath, { recursive: true });
+      }
+      if (!fs.existsSync(workPath)) {
+        fs.mkdirSync(workPath, { recursive: true });
+      }
+    } catch (error) {
+      logger.warn('Could not create workspace directories:', error);
+    }
+
+    // Workspace data
+    const workspaceData = {
+      id: workspaceId,
+      name: 'My Notes',
+      folderPath: workspaceFolderPath,
+      isActive: true,
+      createdAt: now(),
+      lastAccessedAt: now(),
+    };
+
     const notebooksData = [
       {
         id: personalNotebookId,
         name: 'Personal',
         parentId: null,
+        workspaceId: workspaceId,
+        folderPath: 'Personal',
         icon: '📝',
         color: '#ec4899',
         position: 0,
@@ -110,6 +150,8 @@ export class DatabaseManager {
         id: workNotebookId,
         name: 'Work',
         parentId: null,
+        workspaceId: workspaceId,
+        folderPath: 'Work',
         icon: '💼',
         color: '#3b82f6',
         position: 1,
@@ -122,9 +164,10 @@ export class DatabaseManager {
       {
         id: welcomeNoteId,
         title: 'Welcome to Stone',
-        content:
-          '<h1>Welcome to Stone</h1><p>This sample note shows how rich text content is stored.</p><ul><li>Create notebooks to organize topics.</li><li>Add tags to group related ideas.</li><li>Use the TipTap editor to capture your thoughts.</li></ul>',
+        content: null, // Content will be stored in markdown file
         notebookId: personalNotebookId,
+        workspaceId: workspaceId,
+        filePath: 'Personal/Welcome to Stone.md',
         isFavorite: true,
         isPinned: true,
         isArchived: false,
@@ -135,9 +178,10 @@ export class DatabaseManager {
       {
         id: roadmapNoteId,
         title: 'Product Roadmap',
-        content:
-          '<h1>Quarterly Roadmap</h1><p>Track the high-level initiatives planned for this quarter.</p><ol><li>Ship the new editor experience.</li><li>Improve sync reliability.</li><li>Publish public beta announcement.</li></ol>',
+        content: null, // Content will be stored in markdown file
         notebookId: workNotebookId,
+        workspaceId: workspaceId,
+        filePath: 'Work/Product Roadmap.md',
         isFavorite: false,
         isPinned: false,
         isArchived: false,
@@ -177,10 +221,73 @@ export class DatabaseManager {
       },
     ];
 
+    // Insert workspace first
+    await this.db.insert(schema.workspaces).values(workspaceData);
+
     await this.db.insert(schema.notebooks).values(notebooksData);
     await this.db.insert(schema.notes).values(notesData);
     await this.db.insert(schema.tags).values(tagsData);
     await this.db.insert(schema.noteTags).values(noteTagsData);
+
+    // Create markdown files for seed notes (only if they don't exist)
+    try {
+      const fileSystemService = getFileSystemService();
+
+      const welcomeFilePath = path.join(workspaceFolderPath, 'Personal', 'Welcome to Stone.md');
+      const roadmapFilePath = path.join(workspaceFolderPath, 'Work', 'Product Roadmap.md');
+
+      // Only create Welcome note if it doesn't exist
+      if (!fs.existsSync(welcomeFilePath)) {
+        const welcomeMarkdown = `# Welcome to Stone
+
+This sample note shows how rich text content is stored.
+
+- Create notebooks to organize topics.
+- Add tags to group related ideas.
+- Use the TipTap editor to capture your thoughts.`;
+
+        await fileSystemService.writeMarkdownFile(
+          welcomeFilePath,
+          welcomeMarkdown,
+          {
+            tags: ['ideas'],
+            favorite: true,
+            pinned: true,
+          }
+        );
+        logger.info('Created Welcome to Stone.md');
+      } else {
+        logger.info('Welcome to Stone.md already exists, skipping');
+      }
+
+      // Only create Product Roadmap if it doesn't exist
+      if (!fs.existsSync(roadmapFilePath)) {
+        const roadmapMarkdown = `# Quarterly Roadmap
+
+Track the high-level initiatives planned for this quarter.
+
+1. Ship the new editor experience.
+2. Improve sync reliability.
+3. Publish public beta announcement.`;
+
+        await fileSystemService.writeMarkdownFile(
+          roadmapFilePath,
+          roadmapMarkdown,
+          {
+            tags: ['planning'],
+            favorite: false,
+            pinned: false,
+          }
+        );
+        logger.info('Created Product Roadmap.md');
+      } else {
+        logger.info('Product Roadmap.md already exists, skipping');
+      }
+
+      logger.info('Seed markdown files processed successfully');
+    } catch (error) {
+      logger.warn('Could not create seed markdown files:', error);
+    }
 
     logger.info('Database seed data inserted successfully');
   }

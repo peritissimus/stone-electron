@@ -3,6 +3,7 @@
  */
 
 import {
+  workspaces,
   notes,
   notebooks,
   tags,
@@ -19,6 +20,9 @@ export type UUID = string & { readonly __brand: 'UUID' };
 export type UnixTimestamp = number;
 
 // Infer types from Drizzle schema
+export type Workspace = typeof workspaces.$inferSelect;
+export type InsertWorkspace = typeof workspaces.$inferInsert;
+
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = typeof notes.$inferInsert;
 
