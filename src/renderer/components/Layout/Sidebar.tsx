@@ -8,9 +8,11 @@ import { useNotebookStore } from '../../stores/notebookStore';
 import { NotebookTree } from '../Notebook/NotebookTree';
 import { TagList } from '../Tag/TagList';
 import { InputModal } from '../Common/InputModal';
+import { Button } from '@renderer/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
 import { logger } from '../../utils/logger';
-import { NotebookWithCount, TagWithCount, IpcResponse } from '@shared/types';
-import { BookOpen, Tag, Search, Settings, Star, Archive, Clock, Plus } from 'lucide-react';
+import { NotebookWithCount, TagWithCount } from '@shared/types';
+import { BookOpen, Tag, Gear, Star, Archive, Clock, Plus } from 'phosphor-react';
 
 export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
@@ -91,64 +93,56 @@ export function Sidebar() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-titlebar pb-3 border-b border-border">
         <h1 className="text-lg font-semibold text-foreground">Stone</h1>
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={openSettings}
-          className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="h-8 w-8 p-0"
           title="Settings"
         >
-          <Settings size={16} />
-        </button>
+          <Gear size={16} />
+        </Button>
       </div>
 
       {/* Panel Tabs */}
-      <div className="flex border-b border-border bg-sidebar/50">
-        <button
-          onClick={() => setSidebarPanel('notebooks')}
-          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium transition-all ${
-            sidebarPanel === 'notebooks'
-              ? 'text-primary bg-accent'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
-        >
-          <BookOpen size={14} />
-          Notebooks
-        </button>
-        <button
-          onClick={() => setSidebarPanel('tags')}
-          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium transition-all ${
-            sidebarPanel === 'tags'
-              ? 'text-primary bg-accent'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-          }`}
-        >
-          <Tag size={14} />
-          Tags
-        </button>
-      </div>
+      <Tabs
+        value={sidebarPanel}
+        onValueChange={(value) => setSidebarPanel(value as 'notebooks' | 'tags' | 'search')}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="notebooks" className="flex items-center gap-2 text-xs">
+            <BookOpen size={14} />
+            Notebooks
+          </TabsTrigger>
+          <TabsTrigger value="tags" className="flex items-center gap-2 text-xs">
+            <Tag size={14} />
+            Tags
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Quick Links */}
-      <div className="p-2 border-b border-border">
-        <QuickLink icon={<Star size={14} />} label="Favorites" />
-        <QuickLink icon={<Clock size={14} />} label="Recent" />
-        <QuickLink icon={<Archive size={14} />} label="Archive" />
-      </div>
+        {/* Quick Links */}
+        <div className="p-2 border-b border-border">
+          <QuickLink icon={<Star size={14} />} label="Favorites" />
+          <QuickLink icon={<Clock size={14} />} label="Recent" />
+          <QuickLink icon={<Archive size={14} />} label="Archive" />
+        </div>
 
-      {/* Panel Content */}
-      <div className="flex-1 overflow-y-auto">
-        {sidebarPanel === 'notebooks' && <NotebookTree />}
-        {sidebarPanel === 'tags' && <TagList />}
-      </div>
+        {/* Panel Content */}
+        <TabsContent value="notebooks" className="flex-1 overflow-y-auto mt-0">
+          <NotebookTree />
+        </TabsContent>
+        <TabsContent value="tags" className="flex-1 overflow-y-auto mt-0">
+          <TagList />
+        </TabsContent>
+      </Tabs>
 
       {/* New Button */}
       <div className="p-3 border-t border-border">
-        <button
-          onClick={handleNewClick}
-          disabled={isCreating}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-xs font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-        >
+        <Button onClick={handleNewClick} disabled={isCreating} className="w-full" size="sm">
           <Plus size={16} />
           {isCreating ? 'Creating...' : sidebarPanel === 'notebooks' ? 'New Notebook' : 'New Tag'}
-        </button>
+        </Button>
       </div>
 
       {/* Input Modal */}
@@ -171,9 +165,9 @@ interface QuickLinkProps {
 
 function QuickLink({ icon, label }: QuickLinkProps) {
   return (
-    <button className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors">
+    <Button variant="ghost" size="sm" className="w-full justify-start h-8 px-2">
       {icon}
       <span>{label}</span>
-    </button>
+    </Button>
   );
 }

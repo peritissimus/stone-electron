@@ -1,17 +1,21 @@
 /**
- * Main Layout Component
+ * Main Layout Component - Clean composition using layout components
  */
 
-import React, { useEffect } from 'react'
-import { Sidebar } from './Sidebar'
-import { NoteList } from './NoteList'
-import { NoteEditor } from './NoteEditor'
-import { SearchPanel } from './SearchPanel'
-import { SettingsModal } from '../Settings/SettingsModal'
-import { useUIStore } from '../../stores/uiStore'
-import { useNotebookAPI } from '../../hooks/useNotebookAPI'
-import { useTagAPI } from '../../hooks/useTagAPI'
-import { useNoteAPI } from '../../hooks/useNoteAPI'
+import { useEffect } from 'react';
+import { Sidebar } from './Sidebar';
+import { NoteList } from './NoteList';
+import { NoteEditor } from './NoteEditor';
+import { SearchPanel } from './SearchPanel';
+import { SettingsModal } from '../Settings/SettingsModal';
+import { LayoutContainer } from './LayoutContainer';
+import { SidebarPanel } from './SidebarPanel';
+import { NoteListPanel } from './NoteListPanel';
+import { MainContentArea } from './MainContentArea';
+import { useUIStore } from '../../stores/uiStore';
+import { useNotebookAPI } from '../../hooks/useNotebookAPI';
+import { useTagAPI } from '../../hooks/useTagAPI';
+import { useNoteAPI } from '../../hooks/useNoteAPI';
 
 export function MainLayout() {
   const {
@@ -22,99 +26,44 @@ export function MainLayout() {
     searchOpen,
     setSidebarWidth,
     setNoteListWidth,
-  } = useUIStore()
+  } = useUIStore();
 
-  const { loadNotebooks } = useNotebookAPI()
-  const { loadTags } = useTagAPI()
-  const { loadNotes } = useNoteAPI()
+  const { loadNotebooks } = useNotebookAPI();
+  const { loadTags } = useTagAPI();
+  const { loadNotes } = useNoteAPI();
 
   // Load initial data
   useEffect(() => {
-    loadNotebooks()
-    loadTags()
-    loadNotes()
-  }, [loadNotebooks, loadTags, loadNotes])
+    loadNotebooks();
+    loadTags();
+    loadNotes();
+  }, [loadNotebooks, loadTags, loadNotes]);
 
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-950 overflow-hidden">
-      {/* Sidebar */}
-      {sidebarOpen && !editorFullscreen && (
-        <>
-          <div
-            className="flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700"
-            style={{ width: `${sidebarWidth}px` }}
-          >
-            <Sidebar />
-          </div>
-
-          {/* Sidebar Resizer */}
-          <div
-            className="w-1 cursor-col-resize bg-gray-200 dark:bg-gray-800 hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              const startX = e.clientX
-              const startWidth = sidebarWidth
-
-              const handleMouseMove = (e: MouseEvent) => {
-                const delta = e.clientX - startX
-                setSidebarWidth(startWidth + delta)
-              }
-
-              const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove)
-                document.removeEventListener('mouseup', handleMouseUp)
-              }
-
-              document.addEventListener('mousemove', handleMouseMove)
-              document.addEventListener('mouseup', handleMouseUp)
-            }}
-          />
-        </>
-      )}
-
-      {/* Note List */}
-      {!editorFullscreen && (
-        <>
-          <div
-            className="flex-shrink-0 bg-gray-50 dark:bg-gray-850 border-r border-gray-200 dark:border-gray-700"
-            style={{ width: `${noteListWidth}px` }}
-          >
-            <NoteList />
-          </div>
-
-          {/* Note List Resizer */}
-          <div
-            className="w-1 cursor-col-resize bg-gray-200 dark:bg-gray-800 hover:bg-blue-500 dark:hover:bg-blue-600 transition-colors"
-            onMouseDown={(e) => {
-              e.preventDefault()
-              const startX = e.clientX
-              const startWidth = noteListWidth
-
-              const handleMouseMove = (e: MouseEvent) => {
-                const delta = e.clientX - startX
-                setNoteListWidth(startWidth + delta)
-              }
-
-              const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove)
-                document.removeEventListener('mouseup', handleMouseUp)
-              }
-
-              document.addEventListener('mousemove', handleMouseMove)
-              document.addEventListener('mouseup', handleMouseUp)
-            }}
-          />
-        </>
-      )}
-
-      {/* Main Editor Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {searchOpen && <SearchPanel />}
-        <NoteEditor />
-      </div>
-
-      {/* Settings Modal */}
-      <SettingsModal />
-    </div>
-  )
+    <LayoutContainer
+      sidebar={
+        <SidebarPanel>
+          <Sidebar />
+        </SidebarPanel>
+      }
+      sidebarWidth={sidebarWidth}
+      onSidebarWidthChange={setSidebarWidth}
+      showSidebar={sidebarOpen && !editorFullscreen}
+      noteList={
+        <NoteListPanel>
+          <NoteList />
+        </NoteListPanel>
+      }
+      noteListWidth={noteListWidth}
+      onNoteListWidthChange={setNoteListWidth}
+      showNoteList={!editorFullscreen}
+      mainContent={
+        <MainContentArea>
+          {searchOpen && <SearchPanel />}
+          <NoteEditor />
+        </MainContentArea>
+      }
+      overlayContent={<SettingsModal />}
+    />
+  );
 }

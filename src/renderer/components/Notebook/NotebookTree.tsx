@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { useNotebookStore } from '../../stores/notebookStore';
-import { ChevronRight, ChevronDown, FolderOpen, Folder } from 'lucide-react';
+import { CaretRight, CaretDown, FolderOpen, Folder } from 'phosphor-react';
 import { Notebook } from '@shared/types';
 
 export function NotebookTree() {
@@ -84,7 +84,7 @@ function NotebookTreeItem({
             }}
             className="flex-shrink-0"
           >
-            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
           </button>
         )}
         {!hasChildren && <div className="w-3" />}

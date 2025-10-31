@@ -12,7 +12,7 @@ import { useNoteStore } from '../../stores/noteStore';
 import { useNoteAPI } from '../../hooks/useNoteAPI';
 import { EditorToolbar } from '../Editor/EditorToolbar';
 import { EditorContent } from '@tiptap/react';
-import { Star, Pin, Archive, MoreVertical } from 'lucide-react';
+import { Star, PushPin, Archive, DotsThreeVertical } from 'phosphor-react';
 
 export function NoteEditor() {
   const { getActiveNote } = useNoteStore();
@@ -126,7 +126,7 @@ export function NoteEditor() {
             }`}
             title="Toggle Pin"
           >
-            <Pin size={16} />
+            <PushPin size={16} />
           </button>
           <button
             onClick={() => toggleArchive(activeNote.id)}
@@ -143,7 +143,7 @@ export function NoteEditor() {
             className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             title="More Options"
           >
-            <MoreVertical size={16} />
+            <DotsThreeVertical size={16} />
           </button>
         </div>
       </div>

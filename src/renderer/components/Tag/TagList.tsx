@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { useTagStore } from '../../stores/tagStore';
-import { Tag } from 'lucide-react';
+import { Tag } from 'phosphor-react';
 
 export function TagList() {
   const { tags, selectedTagIds, toggleTag } = useTagStore();

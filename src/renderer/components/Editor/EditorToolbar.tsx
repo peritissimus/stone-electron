@@ -5,24 +5,22 @@
 import React from 'react';
 import { Editor } from '@tiptap/react';
 import {
-  Bold,
-  Italic,
-  Strikethrough,
+  TextB,
+  TextItalic,
+  TextStrikethrough,
   Code,
-  Heading1,
-  Heading2,
-  Heading3,
+  Hash,
   List,
-  ListOrdered,
-  Quote,
+  ListNumbers,
+  Quotes,
   Minus,
-  Undo,
-  Redo,
+  ArrowCounterClockwise,
+  ArrowClockwise,
   Link,
   Image,
-  Highlighter,
-  Code2,
-} from 'lucide-react';
+  Circle,
+  Terminal,
+} from 'phosphor-react';
 
 interface EditorToolbarProps {
   editor: Editor | null;

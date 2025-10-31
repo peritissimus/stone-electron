@@ -2,15 +2,34 @@
  * Note List Component - Display list of notes
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { Button } from '@renderer/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select';
+import { Toggle } from '@renderer/components/ui/toggle';
 import { logger } from '@renderer/utils/logger';
 import { Note } from '@shared/types';
-import { Star, Pin, Archive, List, Grid3x3, LayoutGrid, ArrowUpDown, Plus } from 'lucide-react';
+import {
+  Star,
+  PushPin,
+  Archive,
+  List,
+  GridFour,
+  Article,
+  CaretUp,
+  CaretDown,
+  Plus,
+} from 'phosphor-react';
 
 export function NoteList() {
   const { notes, activeNoteId, setActiveNote } = useNoteStore();
@@ -71,72 +90,69 @@ export function NoteList() {
         <div className="flex items-center justify-between mb-3 gap-2">
           <h2 className="text-base font-semibold text-foreground">Notes</h2>
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={handleCreateNote}
               disabled={isCreating}
-              className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              size="sm"
               title="Create a new note"
             >
               <Plus size={14} />
               {isCreating ? 'Creating...' : 'New Note'}
-            </button>
+            </Button>
             <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-1.5 rounded ${
-                  viewMode === 'list'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+              <Toggle
+                pressed={viewMode === 'list'}
+                onPressedChange={() => setViewMode('list')}
+                size="sm"
                 title="List view"
               >
                 <List size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded ${
-                  viewMode === 'grid'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+              </Toggle>
+              <Toggle
+                pressed={viewMode === 'grid'}
+                onPressedChange={() => setViewMode('grid')}
+                size="sm"
                 title="Grid view"
               >
-                <Grid3x3 size={14} />
-              </button>
-              <button
-                onClick={() => setViewMode('card')}
-                className={`p-1.5 rounded ${
-                  viewMode === 'card'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                <GridFour size={14} />
+              </Toggle>
+              <Toggle
+                pressed={viewMode === 'card'}
+                onPressedChange={() => setViewMode('card')}
+                size="sm"
                 title="Card view"
               >
-                <LayoutGrid size={14} />
-              </button>
+                <Article size={14} />
+              </Toggle>
             </div>
           </div>
         </div>
 
         {/* Sort Controls */}
         <div className="flex items-center gap-2">
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="flex-1 px-2.5 py-1.5 text-xs border border-input rounded-lg bg-background text-foreground focus:ring-2 focus:ring-ring focus:outline-none"
-          >
-            <option value="updated">Last Updated</option>
-            <option value="created">Created Date</option>
-            <option value="title">Title</option>
-            <option value="favorite">Favorites</option>
-          </select>
-          <button
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+            <SelectTrigger className="flex-1 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated">Last Updated</SelectItem>
+              <SelectItem value="created">Created Date</SelectItem>
+              <SelectItem value="title">Title</SelectItem>
+              <SelectItem value="favorite">Favorites</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={toggleSortOrder}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="h-8 w-8 p-0"
             title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
           >
-            <ArrowUpDown size={14} />
-          </button>
+            <div className="flex flex-col">
+              <CaretUp size={8} />
+              <CaretDown size={8} />
+            </div>
+          </Button>
         </div>
 
         <div className="mt-2 text-xs text-muted-foreground">
@@ -149,14 +165,10 @@ export function NoteList() {
         {sortedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs">
             <span>No notes found</span>
-            <button
-              onClick={handleCreateNote}
-              disabled={isCreating}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <Button onClick={handleCreateNote} disabled={isCreating} variant="outline" size="sm">
               <Plus size={14} />
               {isCreating ? 'Creating...' : 'Create your first note'}
-            </button>
+            </Button>
           </div>
         ) : (
           <div
@@ -204,7 +216,7 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
             {note.title || 'Untitled'}
           </h3>
           <div className="flex items-center gap-1 flex-shrink-0">
-            {note.isPinned && <Pin size={12} className="text-primary" />}
+            {note.isPinned && <PushPin size={12} className="text-primary" />}
             {note.isFavorite && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
             {note.isArchived && <Archive size={12} className="text-muted-foreground" />}
           </div>
@@ -229,7 +241,7 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
           {note.title || 'Untitled'}
         </h3>
         <div className="flex items-center gap-1 flex-shrink-0">
-          {note.isPinned && <Pin size={10} className="text-primary" />}
+          {note.isPinned && <PushPin size={10} className="text-primary" />}
           {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
         </div>
       </div>

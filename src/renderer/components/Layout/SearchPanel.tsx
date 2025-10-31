@@ -2,52 +2,52 @@
  * Search Panel Component
  */
 
-import React, { useState, useEffect } from 'react'
-import { useUIStore } from '../../stores/uiStore'
-import { useNoteStore } from '../../stores/noteStore'
-import { useSearchAPI } from '../../hooks/useSearchAPI'
-import { Search, X, Loader, FileText } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import React, { useState, useEffect } from 'react';
+import { useUIStore } from '../../stores/uiStore';
+import { useNoteStore } from '../../stores/noteStore';
+import { useSearchAPI } from '../../hooks/useSearchAPI';
+import { MagnifyingGlass, X, Spinner, FileText } from 'phosphor-react';
+import { formatDistanceToNow } from 'date-fns';
 
 export function SearchPanel() {
-  const { searchQuery, setSearchQuery, toggleSearch } = useUIStore()
-  const { setActiveNote } = useNoteStore()
-  const { fullTextSearch, loading } = useSearchAPI()
+  const { searchQuery, setSearchQuery, toggleSearch } = useUIStore();
+  const { setActiveNote } = useNoteStore();
+  const { fullTextSearch, loading } = useSearchAPI();
 
-  const [results, setResults] = useState<any[]>([])
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [results, setResults] = useState<any[]>([]);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (searchQuery.length < 2) {
-      setResults([])
-      return
+      setResults([]);
+      return;
     }
 
     // Debounce search
-    if (searchTimeout) clearTimeout(searchTimeout)
+    if (searchTimeout) clearTimeout(searchTimeout);
     const timeout = setTimeout(async () => {
-      const searchResults = await fullTextSearch(searchQuery, { limit: 20 })
+      const searchResults = await fullTextSearch(searchQuery, { limit: 20 });
       if (searchResults) {
-        setResults(searchResults.results)
+        setResults(searchResults.results);
       }
-    }, 300)
-    setSearchTimeout(timeout)
+    }, 300);
+    setSearchTimeout(timeout);
 
     return () => {
-      if (searchTimeout) clearTimeout(searchTimeout)
-    }
-  }, [searchQuery])
+      if (searchTimeout) clearTimeout(searchTimeout);
+    };
+  }, [searchQuery]);
 
   const handleSelectNote = (noteId: string) => {
-    setActiveNote(noteId)
-    toggleSearch()
-  }
+    setActiveNote(noteId);
+    toggleSearch();
+  };
 
   return (
     <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       {/* Search Input */}
       <div className="p-4 flex items-center gap-3">
-        <Search size={18} className="text-gray-400" />
+        <MagnifyingGlass size={18} className="text-gray-400" />
         <input
           type="text"
           value={searchQuery}
@@ -56,7 +56,7 @@ export function SearchPanel() {
           className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-gray-100"
           autoFocus
         />
-        {loading && <Loader size={18} className="text-gray-400 animate-spin" />}
+        {loading && <Spinner size={18} className="text-gray-400 animate-spin" />}
         <button
           onClick={toggleSearch}
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
@@ -99,5 +99,5 @@ export function SearchPanel() {
         </div>
       )}
     </div>
-  )
+  );
 }
