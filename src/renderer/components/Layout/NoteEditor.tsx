@@ -12,7 +12,7 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { EditorToolbar } from '@renderer/components/Editor';
 import { EditorContent } from '@tiptap/react';
-import { Star, PushPin, Archive, DotsThreeVertical } from 'phosphor-react';
+import { Star, PushPin, Archive, DotsThreeVertical, Article, Plus } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import { Text, Body } from '@renderer/components/ui/text';
@@ -88,15 +88,35 @@ export function NoteEditor() {
 
   if (!activeNote) {
     return (
-      <div className="flex-1 bg-background">
-        <ContainerCenter>
-          <ContainerFlex direction="col" align="center" gap="xs">
-            <Body>No note selected</Body>
-            <Text size="xs" variant="muted">
-              Select a note from the list or create a new one
-            </Text>
-          </ContainerFlex>
-        </ContainerCenter>
+      <div className="flex-1 bg-background flex flex-col items-center justify-center px-8 py-12">
+        <div className="text-center max-w-sm">
+          {/* Icon Circle */}
+          <div className="mb-6 flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <Article size={32} className="text-muted-foreground" />
+            </div>
+          </div>
+
+          {/* Heading */}
+          <Body className="text-lg font-semibold mb-2">No note selected</Body>
+
+          {/* Description */}
+          <Text size="sm" variant="muted" className="mb-6 leading-relaxed">
+            Select a note from the list on the left to view and edit it, or create a new one to get started
+          </Text>
+
+          {/* CTA Button */}
+          <Button
+            onClick={() => {
+              const noteListButton = document.querySelector('[title="Create a new note"]') as HTMLButtonElement;
+              noteListButton?.click();
+            }}
+            className="h-8 px-4 text-sm"
+          >
+            <Plus size={14} />
+            Create your first note
+          </Button>
+        </div>
       </div>
     );
   }
