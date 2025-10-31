@@ -5,7 +5,7 @@
 import React from 'react';
 import { cn } from '@renderer/lib/utils';
 
-interface NoteListPanelProps {
+export interface NoteListPanelProps {
   children: React.ReactNode;
   className?: string;
 }

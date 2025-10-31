@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import { useTagStore } from '../stores/tagStore';
+import { useTagStore } from '@renderer/stores/tagStore';
 import { TagWithCount } from '@shared/types';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
 

@@ -14,21 +14,15 @@ export function Message({ type, text, className }: MessageProps) {
     <div
       className={cn(
         'p-4 rounded-lg',
-        type === 'success'
-          ? 'bg-green-50 dark:bg-green-900/20'
-          : 'bg-red-50 dark:bg-red-900/20',
+        type === 'success' ? 'bg-secondary' : 'bg-destructive/10',
         className,
       )}
     >
       <ContainerFlex gap="sm" align="start">
-        <div className={type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+        <div className={type === 'success' ? 'text-primary' : 'text-destructive'}>
           {type === 'success' ? <CheckCircle size={20} /> : <WarningCircle size={20} />}
         </div>
-        <Text
-          size="sm"
-          as="span"
-          className={type === 'success' ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}
-        >
+        <Text size="sm" as="span" className={type === 'success' ? 'text-foreground' : 'text-destructive'}>
           {text}
         </Text>
       </ContainerFlex>

@@ -3,9 +3,9 @@
  */
 
 import React from 'react';
-import { ResizablePanel } from './ResizablePanel';
+import { ResizablePanel } from '@renderer/components/Layout/ResizablePanel';
 
-interface LayoutContainerProps {
+export interface LayoutContainerProps {
   sidebar?: React.ReactNode;
   sidebarWidth: number;
   onSidebarWidthChange: (width: number) => void;
