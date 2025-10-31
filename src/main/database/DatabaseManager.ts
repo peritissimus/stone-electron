@@ -66,10 +66,63 @@ export class DatabaseManager {
 
       await this.seedDatabase();
 
+      // Always sync with file system on startup
+      await this.syncWorkspaceFiles();
+
       logger.info('Database initialized successfully');
     } catch (error) {
       logger.error('Failed to initialize database:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Sync all workspaces with their file systems
+   */
+  private async syncWorkspaceFiles(): Promise<void> {
+    try {
+      if (!this.db) {
+        throw new Error('Database not initialized');
+      }
+
+      logger.info('🔄 Syncing workspaces with file system...');
+
+      // Get all active workspaces
+      const workspaces = await this.db.select().from(schema.workspaces);
+
+      if (workspaces.length === 0) {
+        logger.info('No workspaces found, skipping sync');
+        return;
+      }
+
+      for (const workspace of workspaces) {
+        logger.info(`Syncing workspace: ${workspace.name} (${workspace.folderPath})`);
+
+        try {
+          const { NoteRepository } = await import('../repositories/NoteRepository');
+          const noteRepository = new NoteRepository();
+
+          const syncResults = await noteRepository.syncWithFileSystem(workspace.id);
+
+          logger.info(`Workspace "${workspace.name}" sync completed:`, {
+            created: syncResults.created,
+            updated: syncResults.updated,
+            deleted: syncResults.deleted,
+            errors: syncResults.errors.length,
+          });
+
+          if (syncResults.errors.length > 0) {
+            logger.warn(`Sync errors for workspace "${workspace.name}":`, syncResults.errors);
+          }
+        } catch (error) {
+          logger.error(`Failed to sync workspace "${workspace.name}":`, error);
+        }
+      }
+
+      logger.info('✅ All workspaces synced');
+    } catch (error) {
+      logger.error('Failed to sync workspaces:', error);
+      // Don't throw - allow app to continue even if sync fails
     }
   }
 
@@ -290,28 +343,7 @@ Track the high-level initiatives planned for this quarter.
     }
 
     logger.info('Database seed data inserted successfully');
-
-    // Scan workspace folder and import existing markdown files
-    try {
-      const { NoteRepository } = await import('../repositories/NoteRepository');
-      const noteRepository = new NoteRepository();
-
-      logger.info(`Scanning workspace folder for existing markdown files: ${workspaceFolderPath}`);
-      const syncResults = await noteRepository.syncWithFileSystem(workspaceId);
-
-      logger.info('Workspace sync completed:', {
-        created: syncResults.created,
-        updated: syncResults.updated,
-        deleted: syncResults.deleted,
-        errors: syncResults.errors.length,
-      });
-
-      if (syncResults.errors.length > 0) {
-        logger.warn('Sync errors:', syncResults.errors);
-      }
-    } catch (error) {
-      logger.warn('Could not sync existing files from workspace:', error);
-    }
+    // Note: Workspace sync will be performed by syncWorkspaceFiles() after seed
   }
 
   /**
