@@ -1,5 +1,6 @@
 import React from 'react';
 import { Heading3 } from '@renderer/components/ui/text';
+import { ContainerStack } from '@renderer/components/ui';
 import { cn } from '@renderer/lib/utils';
 
 export interface SettingsSectionProps {
@@ -10,9 +11,9 @@ export interface SettingsSectionProps {
 
 export function SettingsSection({ title, children, className }: SettingsSectionProps) {
   return (
-    <div className={cn('', className)}>
-      <Heading3 className="mb-4">{title}</Heading3>
+    <ContainerStack gap="md" className={className}>
+      <Heading3>{title}</Heading3>
       {children}
-    </div>
+    </ContainerStack>
   );
 }

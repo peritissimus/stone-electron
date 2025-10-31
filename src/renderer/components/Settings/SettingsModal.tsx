@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@renderer/components/ui/select';
 import { Label, Body, Heading4 } from '@renderer/components/ui/text';
+import { ContainerStack, ContainerCenter, Separator } from '@renderer/components/ui';
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
@@ -160,43 +161,45 @@ function DatabaseSettings() {
 
   return (
     <SettingsSection title="Database Management">
-      {/* Status */}
-      {status && <StatusCard items={statusItems} className="mb-6" />}
+      <ContainerStack gap="lg">
+        {/* Status */}
+        {status && <StatusCard items={statusItems} />}
 
-      {/* Message */}
-      {message && <Message type={message.type} text={message.text} className="mb-6" />}
+        {/* Message */}
+        {message && <Message type={message.type} text={message.text} />}
 
-      {/* Actions */}
-      <div className="space-y-4">
-        <ActionCard
-          title="Create Backup"
-          description="Create a backup of your database"
-          buttonText="Backup"
-          buttonIcon={<Download size={16} />}
-          onClick={handleBackup}
-          loading={loading}
-        />
+        {/* Actions */}
+        <ContainerStack gap="md">
+          <ActionCard
+            title="Create Backup"
+            description="Create a backup of your database"
+            buttonText="Backup"
+            buttonIcon={<Download size={16} />}
+            onClick={handleBackup}
+            loading={loading}
+          />
 
-        <ActionCard
-          title="Optimize Database"
-          description="Reclaim space and improve performance"
-          buttonText="Optimize"
-          buttonIcon={<HardDrive size={16} />}
-          onClick={handleVacuum}
-          loading={loading}
-          variant="secondary"
-        />
+          <ActionCard
+            title="Optimize Database"
+            description="Reclaim space and improve performance"
+            buttonText="Optimize"
+            buttonIcon={<HardDrive size={16} />}
+            onClick={handleVacuum}
+            loading={loading}
+            variant="secondary"
+          />
 
-        <ActionCard
-          title="Check Integrity"
-          description="Verify database integrity"
-          buttonText="Check"
-          buttonIcon={<CheckCircle size={16} />}
-          onClick={handleCheckIntegrity}
-          loading={loading}
-          variant="secondary"
-        />
-      </div>
+          <ActionCard
+            title="Check Integrity"
+            description="Verify database integrity"
+            buttonText="Check"
+            buttonIcon={<CheckCircle size={16} />}
+            onClick={handleCheckIntegrity}
+            loading={loading}
+            variant="secondary"
+          />
+        </ContainerStack>
+      </ContainerStack>
     </SettingsSection>
   );
 }
@@ -206,21 +209,19 @@ function AppearanceSettings() {
 
   return (
     <SettingsSection title="Appearance">
-      <div className="space-y-4">
-        <div>
-          <Label className="mb-2">Theme</Label>
-          <Select value={theme} onValueChange={setTheme}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select theme" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="light">Light</SelectItem>
-              <SelectItem value="dark">Dark</SelectItem>
-              <SelectItem value="system">System</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <ContainerStack gap="sm">
+        <Label>Theme</Label>
+        <Select value={theme} onValueChange={setTheme}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select theme" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="light">Light</SelectItem>
+            <SelectItem value="dark">Dark</SelectItem>
+            <SelectItem value="system">System</SelectItem>
+          </SelectContent>
+        </Select>
+      </ContainerStack>
     </SettingsSection>
   );
 }
@@ -228,62 +229,48 @@ function AppearanceSettings() {
 function AboutSettings() {
   return (
     <SettingsSection title="About Stone">
-      <div className="space-y-4">
-        <div className="text-center py-8">
-          <div className="text-6xl mb-4">🪨</div>
-          <Heading4 className="mb-2">Stone</Heading4>
-          <Body variant="muted" className="mb-4">
-            Version 0.1.0
-          </Body>
-          <Body variant="muted" size="sm" className="max-w-md mx-auto">
-            A production-ready note-taking application built with Electron, React, and TypeScript.
-            Features comprehensive database management, full-text search, and rich text editing.
-          </Body>
-        </div>
+      <ContainerStack gap="lg">
+        <ContainerCenter maxWidth="md">
+          <ContainerStack gap="md" align="center">
+            <div className="text-6xl">🪨</div>
+            <Heading4>Stone</Heading4>
+            <Body variant="muted">Version 0.1.0</Body>
+            <Body variant="muted" size="sm" className="text-center">
+              A production-ready note-taking application built with Electron, React, and TypeScript.
+              Features comprehensive database management, full-text search, and rich text editing.
+            </Body>
+          </ContainerStack>
+        </ContainerCenter>
 
-        <div className="border-t border-border pt-4">
-          <Body weight="medium" className="mb-2">
-            Technology Stack
-          </Body>
-          <ul className="space-y-1">
-            <li>
-              <Body size="sm" variant="muted">
-                • Electron 27 - Desktop application framework
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • React 18 - UI library
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • TypeScript - Type-safe development
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • Better-SQLite3 - Database engine
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • TipTap - Rich text editor
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • Tailwind CSS - Styling framework
-              </Body>
-            </li>
-            <li>
-              <Body size="sm" variant="muted">
-                • Zustand - State management
-              </Body>
-            </li>
-          </ul>
-        </div>
-      </div>
+        <Separator />
+
+        <ContainerStack gap="sm">
+          <Body weight="medium">Technology Stack</Body>
+          <ContainerStack gap="xs" as="ul">
+            <Body size="sm" variant="muted" as="li">
+              • Electron 27 - Desktop application framework
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • React 18 - UI library
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • TypeScript - Type-safe development
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • Better-SQLite3 - Database engine
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • TipTap - Rich text editor
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • Tailwind CSS - Styling framework
+            </Body>
+            <Body size="sm" variant="muted" as="li">
+              • Zustand - State management
+            </Body>
+          </ContainerStack>
+        </ContainerStack>
+      </ContainerStack>
     </SettingsSection>
   );
 }
