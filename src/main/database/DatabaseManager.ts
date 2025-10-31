@@ -290,6 +290,28 @@ Track the high-level initiatives planned for this quarter.
     }
 
     logger.info('Database seed data inserted successfully');
+
+    // Scan workspace folder and import existing markdown files
+    try {
+      const { NoteRepository } = await import('../repositories/NoteRepository');
+      const noteRepository = new NoteRepository();
+
+      logger.info(`Scanning workspace folder for existing markdown files: ${workspaceFolderPath}`);
+      const syncResults = await noteRepository.syncWithFileSystem(workspaceId);
+
+      logger.info('Workspace sync completed:', {
+        created: syncResults.created,
+        updated: syncResults.updated,
+        deleted: syncResults.deleted,
+        errors: syncResults.errors.length,
+      });
+
+      if (syncResults.errors.length > 0) {
+        logger.warn('Sync errors:', syncResults.errors);
+      }
+    } catch (error) {
+      logger.warn('Could not sync existing files from workspace:', error);
+    }
   }
 
   /**

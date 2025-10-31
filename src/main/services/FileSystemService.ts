@@ -6,6 +6,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
 import { getMarkdownService } from './MarkdownService';
+import { logger } from '../utils/logger';
 
 export interface MarkdownFile {
   path: string;
@@ -48,7 +49,7 @@ export class FileSystemService {
         metadata: parsed.data as MarkdownFile['metadata'],
       };
     } catch (error) {
-      console.error(`Error reading markdown file ${filePath}:`, error);
+      logger.error(`Error reading markdown file ${filePath}:`, error);
       throw error;
     }
   }
@@ -71,7 +72,7 @@ export class FileSystemService {
 
       await fs.writeFile(filePath, fileContent, 'utf-8');
     } catch (error) {
-      console.error(`Error writing markdown file ${filePath}:`, error);
+      logger.error(`Error writing markdown file ${filePath}:`, error);
       throw error;
     }
   }
@@ -83,7 +84,7 @@ export class FileSystemService {
     try {
       await fs.unlink(filePath);
     } catch (error) {
-      console.error(`Error deleting markdown file ${filePath}:`, error);
+      logger.error(`Error deleting markdown file ${filePath}:`, error);
       throw error;
     }
   }
@@ -99,7 +100,7 @@ export class FileSystemService {
 
       await fs.rename(oldPath, newPath);
     } catch (error) {
-      console.error(`Error renaming markdown file ${oldPath} to ${newPath}:`, error);
+      logger.error(`Error renaming markdown file ${oldPath} to ${newPath}:`, error);
       throw error;
     }
   }
@@ -123,7 +124,7 @@ export class FileSystemService {
     try {
       return await fs.stat(filePath);
     } catch (error) {
-      console.error(`Error getting file stats ${filePath}:`, error);
+      logger.error(`Error getting file stats ${filePath}:`, error);
       throw error;
     }
   }
@@ -134,8 +135,15 @@ export class FileSystemService {
   async scanFolder(folderPath: string, recursive: boolean = true): Promise<MarkdownFile[]> {
     const files: MarkdownFile[] = [];
 
+    logger.info(`[FileSystem] 📂 Scanning folder: ${folderPath} (recursive: ${recursive})`);
+
     try {
       const entries = await fs.readdir(folderPath, { withFileTypes: true });
+      logger.info(`[FileSystem] 📋 Found ${entries.length} entries in ${folderPath}`);
+
+      let folderCount = 0;
+      let markdownCount = 0;
+      let skippedCount = 0;
 
       for (const entry of entries) {
         const fullPath = path.join(folderPath, entry.name);
@@ -143,26 +151,38 @@ export class FileSystemService {
 
         // Skip hidden files and folders
         if (entry.name.startsWith('.')) {
+          skippedCount++;
           continue;
         }
 
         if (entry.isDirectory()) {
+          folderCount++;
+          logger.info(`[FileSystem] 📁 Found subfolder: ${entry.name}`);
           if (recursive) {
             const subFiles = await this.scanFolder(fullPath, recursive);
             files.push(...subFiles);
           }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          markdownCount++;
+          logger.info(`[FileSystem] 📝 Found markdown file: ${entry.name}`);
           try {
             const file = await this.readMarkdownFile(fullPath);
             file.relativePath = relativePath;
             files.push(file);
+            logger.info(`[FileSystem] ✅ Successfully read: ${entry.name} (title: "${file.title}")`);
           } catch (error) {
-            console.warn(`Skipping unreadable file ${fullPath}:`, error);
+            logger.warn(`[FileSystem] ⚠️  Skipping unreadable file ${fullPath}:`, error);
           }
         }
       }
+
+      logger.info(`[FileSystem] 📊 Scan summary for ${folderPath}:`);
+      logger.info(`[FileSystem]    - Folders: ${folderCount}`);
+      logger.info(`[FileSystem]    - Markdown files: ${markdownCount}`);
+      logger.info(`[FileSystem]    - Skipped (hidden): ${skippedCount}`);
+      logger.info(`[FileSystem]    - Total markdown files collected: ${files.length}`);
     } catch (error) {
-      console.error(`Error scanning folder ${folderPath}:`, error);
+      logger.error(`[FileSystem] ❌ Error scanning folder ${folderPath}:`, error);
       throw error;
     }
 
@@ -209,7 +229,7 @@ export class FileSystemService {
         }
       }
     } catch (error) {
-      console.error(`Error getting folder structure ${folderPath}:`, error);
+      logger.error(`Error getting folder structure ${folderPath}:`, error);
       throw error;
     }
 
@@ -223,7 +243,7 @@ export class FileSystemService {
     try {
       await fs.mkdir(folderPath, { recursive: true });
     } catch (error) {
-      console.error(`Error creating folder ${folderPath}:`, error);
+      logger.error(`Error creating folder ${folderPath}:`, error);
       throw error;
     }
   }
@@ -235,7 +255,7 @@ export class FileSystemService {
     try {
       await fs.rm(folderPath, { recursive, force: true });
     } catch (error) {
-      console.error(`Error deleting folder ${folderPath}:`, error);
+      logger.error(`Error deleting folder ${folderPath}:`, error);
       throw error;
     }
   }
@@ -260,23 +280,30 @@ export class FileSystemService {
    * Validate folder path
    */
   async validateFolderPath(folderPath: string): Promise<{ valid: boolean; error?: string }> {
+    logger.info(`[FileSystem] 🔍 Validating folder path: ${folderPath}`);
+
     try {
       const stats = await fs.stat(folderPath);
 
       if (!stats.isDirectory()) {
+        logger.warn(`[FileSystem] ❌ Path is not a directory: ${folderPath}`);
         return { valid: false, error: 'Path is not a directory' };
       }
 
       // Try to read the directory to check permissions
       await fs.readdir(folderPath);
 
+      logger.info(`[FileSystem] ✅ Folder path is valid: ${folderPath}`);
       return { valid: true };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
+        logger.warn(`[FileSystem] ❌ Folder does not exist: ${folderPath}`);
         return { valid: false, error: 'Folder does not exist' };
       } else if (error.code === 'EACCES') {
+        logger.warn(`[FileSystem] ❌ Permission denied: ${folderPath}`);
         return { valid: false, error: 'Permission denied' };
       } else {
+        logger.error(`[FileSystem] ❌ Validation error for ${folderPath}:`, error.message);
         return { valid: false, error: error.message || 'Unknown error' };
       }
     }

@@ -10,6 +10,7 @@ import { generateId } from '@shared/utils/id';
 import { getFileSystemService } from '../services/FileSystemService';
 import { getMarkdownService } from '../services/MarkdownService';
 import { WorkspaceRepository } from './WorkspaceRepository';
+import { logger } from '../utils/logger';
 import path from 'path';
 
 /**
@@ -768,26 +769,37 @@ export class NoteRepository {
     };
 
     try {
+      logger.info(`[NoteRepository] 🔄 Starting file system sync for workspace: ${workspaceId}`);
+
       const workspace = await this.workspaceRepository.findById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
 
+      logger.info(`[NoteRepository] 📁 Workspace folder: ${workspace.folderPath}`);
+
       // Scan workspace folder for all markdown files
+      logger.info(`[NoteRepository] 🔍 Scanning workspace folder for markdown files...`);
       const filesOnDisk = await this.fileSystemService.scanFolder(workspace.folderPath, true);
+      logger.info(`[NoteRepository] ✅ Found ${filesOnDisk.length} markdown files on disk`);
 
       // Get all notes in this workspace from database
+      logger.info(`[NoteRepository] 🔍 Querying database for existing notes...`);
       const notesInDb = await this.findAll({
         where: { workspaceId, isDeleted: false },
       });
+      logger.info(`[NoteRepository] ✅ Found ${notesInDb.length} notes in database`);
 
       // Create maps for efficient lookup
       const filesMap = new Map(filesOnDisk.map(f => [f.relativePath, f]));
       const notesMap = new Map(notesInDb.map(n => [n.filePath || '', n]));
 
+      logger.info(`[NoteRepository] 📊 Comparing files and notes...`);
+
       // Find files that exist on disk but not in database (CREATE)
       for (const file of filesOnDisk) {
         if (!notesMap.has(file.relativePath)) {
+          logger.info(`[NoteRepository] ➕ Creating note from file: ${file.relativePath}`);
           try {
             // Create new note from file
             await this.create({
@@ -799,7 +811,9 @@ export class NoteRepository {
               isPinned: file.metadata?.pinned || false,
             });
             results.created++;
+            logger.info(`[NoteRepository] ✅ Created note: ${file.title}`);
           } catch (error) {
+            logger.error(`[NoteRepository] ❌ Failed to create note from ${file.relativePath}:`, error);
             results.errors.push(`Failed to create note from ${file.relativePath}: ${error}`);
           }
         }
@@ -808,11 +822,13 @@ export class NoteRepository {
       // Find notes in database whose files no longer exist (DELETE)
       for (const note of notesInDb) {
         if (note.filePath && !filesMap.has(note.filePath)) {
+          logger.info(`[NoteRepository] 🗑️  Deleting note (file no longer exists): ${note.filePath}`);
           try {
             // Soft delete the note
             await this.softDelete(note.id);
             results.deleted++;
           } catch (error) {
+            logger.error(`[NoteRepository] ❌ Failed to delete note ${note.id}:`, error);
             results.errors.push(`Failed to delete note ${note.id}: ${error}`);
           }
         }
@@ -822,10 +838,10 @@ export class NoteRepository {
       // This is more complex and may require content comparison or user input
       // For now, we'll just detect and report them as errors
 
-      console.log('File system sync completed:', results);
+      logger.info(`[NoteRepository] ✅ File system sync completed:`, results);
       return results;
     } catch (error) {
-      console.error('Error syncing with file system:', error);
+      logger.error(`[NoteRepository] ❌ Error syncing with file system:`, error);
       results.errors.push(`Sync failed: ${error}`);
       return results;
     }
