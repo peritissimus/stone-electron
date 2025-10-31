@@ -13,7 +13,7 @@ import {
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 
-interface InputModalProps {
+export interface InputModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (value: string) => void;

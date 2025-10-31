@@ -1,7 +1,9 @@
 import React from 'react';
 import { X } from 'phosphor-react';
+import { Button } from '@renderer/components/ui/button';
+import { Heading3 } from '@renderer/components/ui/text';
 
-interface ModalLayoutProps {
+export interface ModalLayoutProps {
   title: string;
   onClose: () => void;
   children: React.ReactNode;
@@ -25,13 +27,10 @@ export function ModalLayout({
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
-          <h2 className="text-2xl font-bold text-foreground">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
-          >
-            <X size={20} />
-          </button>
+          <Heading3>{title}</Heading3>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close settings">
+            <X size={18} />
+          </Button>
         </div>
 
         <div className="flex h-[600px]">

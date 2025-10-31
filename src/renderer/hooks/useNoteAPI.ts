@@ -3,10 +3,10 @@
  */
 
 import { useCallback } from 'react';
-import { useNoteStore } from '../stores/noteStore';
+import { useNoteStore } from '@renderer/stores/noteStore';
 import { Note, NoteVersion } from '@shared/types';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
-import { logger } from '../utils/logger';
+import { logger } from '@renderer/utils/logger';
 
 export function useNoteAPI() {
   const { setNotes, addNote, updateNote, deleteNote, setLoading, setError } = useNoteStore();

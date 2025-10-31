@@ -4,47 +4,50 @@
 
 import React from 'react';
 import { Editor } from '@tiptap/react';
+import { cn } from '@renderer/lib/utils';
 import {
-  TextB,
-  TextItalic,
-  TextStrikethrough,
-  Code,
-  Hash,
-  List,
-  ListNumbers,
-  Quotes,
-  Minus,
   ArrowCounterClockwise,
   ArrowClockwise,
-  Link,
+  Code,
+  HighlighterCircle,
   Image,
-  Circle,
-  Terminal,
+  Link,
+  List,
+  ListNumbers,
+  Minus,
+  Quotes,
+  TextBolder,
+  TextHOne,
+  TextHThree,
+  TextHTwo,
+  TextItalic,
+  TextStrikethrough,
 } from 'phosphor-react';
 
-interface EditorToolbarProps {
+export interface EditorToolbarProps {
   editor: Editor | null;
+  className?: string;
 }
 
-export function EditorToolbar({ editor }: EditorToolbarProps) {
+export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   if (!editor) return null;
 
   return (
-    <div className="border-b border-border bg-card px-2 py-1.5 flex items-center gap-0.5 flex-wrap">
+    <div className={cn('border-b border-border bg-card px-2 py-1.5 flex items-center gap-0.5 flex-wrap', className)}>
       {/* History */}
       <ToolbarButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
         title="Undo"
       >
-        <Undo size={16} />
+        <ArrowCounterClockwise size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().redo().run()}
         disabled={!editor.can().redo()}
         title="Redo"
       >
-        <Redo size={16} />
+        <ArrowClockwise size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -55,21 +58,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('bold')}
         title="Bold"
       >
-        <Bold size={16} />
+        <TextBolder size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleItalic().run()}
         active={editor.isActive('italic')}
         title="Italic"
       >
-        <Italic size={16} />
+        <TextItalic size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleStrike().run()}
         active={editor.isActive('strike')}
         title="Strikethrough"
       >
-        <Strikethrough size={16} />
+        <TextStrikethrough size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCode().run()}
@@ -83,7 +86,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('highlight')}
         title="Highlight"
       >
-        <Highlighter size={16} />
+        <HighlighterCircle size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -94,21 +97,21 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('heading', { level: 1 })}
         title="Heading 1"
       >
-        <Heading1 size={16} />
+        <TextHOne size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         active={editor.isActive('heading', { level: 2 })}
         title="Heading 2"
       >
-        <Heading2 size={16} />
+        <TextHTwo size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         active={editor.isActive('heading', { level: 3 })}
         title="Heading 3"
       >
-        <Heading3 size={16} />
+        <TextHThree size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -126,7 +129,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('orderedList')}
         title="Numbered List"
       >
-        <ListOrdered size={16} />
+        <ListNumbers size={16} />
       </ToolbarButton>
 
       <Divider />
@@ -137,14 +140,14 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         active={editor.isActive('blockquote')}
         title="Blockquote"
       >
-        <Quote size={16} />
+        <Quotes size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         active={editor.isActive('codeBlock')}
         title="Code Block"
       >
-        <Code2 size={16} />
+        <Code size={16} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() => editor.chain().focus().setHorizontalRule().run()}

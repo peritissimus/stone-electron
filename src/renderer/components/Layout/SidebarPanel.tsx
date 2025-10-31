@@ -5,7 +5,7 @@
 import React from 'react';
 import { cn } from '@renderer/lib/utils';
 
-interface SidebarPanelProps {
+export interface SidebarPanelProps {
   children: React.ReactNode;
   className?: string;
 }

@@ -3,9 +3,12 @@
  */
 
 import React from 'react';
-import { useNotebookStore } from '../../stores/notebookStore';
+import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { CaretRight, CaretDown, FolderOpen, Folder } from 'phosphor-react';
 import { Notebook } from '@shared/types';
+import { Button } from '@renderer/components/ui/button';
+import { Text } from '@renderer/components/ui/text';
+import { ContainerFlex } from '@renderer/components/ui';
 
 export function NotebookTree() {
   const { notebooks, activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } =
@@ -69,31 +72,43 @@ function NotebookTreeItem({
 
   return (
     <div>
-      <button
-        onClick={onSelect}
-        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
-          isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'
-        }`}
-        style={{ paddingLeft: `${level * 12 + 8}px` }}
-      >
-        {hasChildren && (
-          <button
+      <ContainerFlex align="center" gap="xs" className="px-2" style={{ paddingLeft: `${level * 12 + 8}px` }}>
+        {hasChildren ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-5 w-5 p-0 flex-shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               onToggleExpand();
             }}
-            className="flex-shrink-0"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
             {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-          </button>
+          </Button>
+        ) : (
+          <div className="w-5" />
         )}
-        {!hasChildren && <div className="w-3" />}
-        <span className="text-sm">{notebook.icon || '📁'}</span>
-        <span className="flex-1 truncate">{notebook.name}</span>
-        {notebook.note_count !== undefined && (
-          <span className="text-xs text-muted-foreground">{notebook.note_count}</span>
-        )}
-      </button>
+        <Button
+          onClick={onSelect}
+          variant="ghost"
+          className={`flex-1 justify-start gap-2 px-2 py-1.5 h-auto rounded-md text-xs transition-colors ${
+            isActive ? 'bg-accent text-accent-foreground hover:bg-accent/90' : ''
+          }`}
+        >
+          <Text size="sm" as="span">
+            {notebook.icon || '📁'}
+          </Text>
+          <Text as="span" size="xs" className="flex-1 truncate">
+            {notebook.name}
+          </Text>
+          {notebook.note_count !== undefined && (
+            <Text as="span" size="xs" variant="muted">
+              {notebook.note_count}
+            </Text>
+          )}
+        </Button>
+      </ContainerFlex>
 
       {hasChildren && isExpanded && (
         <div>

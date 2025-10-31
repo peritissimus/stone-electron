@@ -1,13 +1,14 @@
 import React from 'react';
-import { ModalLayout } from './ModalLayout';
+import { ModalLayout } from '@renderer/components/Layout/ModalLayout';
+import { Button } from '@renderer/components/ui/button';
 
-interface TabItem {
+export interface TabItem {
   id: string;
   label: string;
   icon?: React.ReactNode;
 }
 
-interface TabbedModalProps {
+export interface TabbedModalProps {
   title: string;
   onClose: () => void;
   tabs: TabItem[];
@@ -31,18 +32,17 @@ export function TabbedModal({
   const sidebar = (
     <div className="space-y-1">
       {tabs.map((tab) => (
-        <button
+        <Button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2 ${
-            activeTab === tab.id
-              ? 'bg-accent text-accent-foreground'
-              : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-          }`}
+          variant={activeTab === tab.id ? 'secondary' : 'ghost'}
+          className="w-full justify-start px-3 py-2 h-auto"
         >
           {tab.icon}
-          {tab.label}
-        </button>
+          <Text as="span" size="sm" className="ml-2">
+            {tab.label}
+          </Text>
+        </Button>
       ))}
     </div>
   );
