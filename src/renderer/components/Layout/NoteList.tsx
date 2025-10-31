@@ -32,6 +32,7 @@ import {
   CaretDown,
   Plus,
 } from 'phosphor-react';
+import { Header, ControlGroup, ListItem, ListContainer, CompactCard } from '@renderer/components/composites';
 
 export function NoteList() {
   const { notes, activeNoteId, setActiveNote } = useNoteStore();
@@ -87,53 +88,61 @@ export function NoteList() {
 
   return (
     <div className="flex flex-col h-full bg-secondary">
-      {/* Header */}
-      <div className="px-4 pt-titlebar pb-3 border-b border-border bg-card">
-        <ContainerFlex justify="between" align="center" className="mb-3 gap-2">
-          <Heading3>Notes</Heading3>
-          <ContainerFlex gap="sm" align="center">
-            <Button
-              onClick={handleCreateNote}
-              disabled={isCreating}
+      {/* Top Header - Title and View Controls */}
+      <Header
+        left={<Heading3 className="text-sm">Notes</Heading3>}
+        right={
+          <ControlGroup gap="xs" background="bg-muted">
+            <Toggle
+              pressed={viewMode === 'list'}
+              onPressedChange={() => setViewMode('list')}
               size="sm"
-              title="Create a new note"
+              className="h-6 w-6 p-0"
+              title="List view"
             >
-              <Plus size={14} />
-              {isCreating ? 'Creating...' : 'New Note'}
-            </Button>
-            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-              <Toggle
-                pressed={viewMode === 'list'}
-                onPressedChange={() => setViewMode('list')}
-                size="sm"
-                title="List view"
-              >
-                <List size={14} />
-              </Toggle>
-              <Toggle
-                pressed={viewMode === 'grid'}
-                onPressedChange={() => setViewMode('grid')}
-                size="sm"
-                title="Grid view"
-              >
-                <GridFour size={14} />
-              </Toggle>
-              <Toggle
-                pressed={viewMode === 'card'}
-                onPressedChange={() => setViewMode('card')}
-                size="sm"
-                title="Card view"
-              >
-                <Article size={14} />
-              </Toggle>
-            </div>
-          </ContainerFlex>
-        </ContainerFlex>
+              <List size={12} />
+            </Toggle>
+            <Toggle
+              pressed={viewMode === 'grid'}
+              onPressedChange={() => setViewMode('grid')}
+              size="sm"
+              className="h-6 w-6 p-0"
+              title="Grid view"
+            >
+              <GridFour size={12} />
+            </Toggle>
+            <Toggle
+              pressed={viewMode === 'card'}
+              onPressedChange={() => setViewMode('card')}
+              size="sm"
+              className="h-6 w-6 p-0"
+              title="Card view"
+            >
+              <Article size={12} />
+            </Toggle>
+          </ControlGroup>
+        }
+      />
 
-        {/* Sort Controls */}
-        <div className="flex items-center gap-2">
+      {/* Action Row - New Note Button */}
+      <div className="px-3 py-2 border-b border-border flex-shrink-0 bg-card">
+        <Button
+          onClick={handleCreateNote}
+          disabled={isCreating}
+          size="sm"
+          className="w-full h-7 text-xs"
+          title="Create a new note"
+        >
+          <Plus size={12} />
+          {isCreating ? 'Creating...' : 'New Note'}
+        </Button>
+      </div>
+
+      {/* Sort and Filter Row */}
+      <div className="px-3 py-2.5 border-b border-border flex-shrink-0 bg-card">
+        <ContainerFlex gap="xs" align="center" className="mb-2">
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
-            <SelectTrigger className="flex-1 h-8 text-xs">
+            <SelectTrigger className="flex-1 h-7 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -147,17 +156,17 @@ export function NoteList() {
             variant="outline"
             size="sm"
             onClick={toggleSortOrder}
-            className="h-8 w-8 p-0"
+            className="h-7 w-7 p-0 flex-shrink-0"
             title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
           >
             <div className="flex flex-col">
-              <CaretUp size={8} />
-              <CaretDown size={8} />
+              <CaretUp size={7} />
+              <CaretDown size={7} />
             </div>
           </Button>
-        </div>
+        </ContainerFlex>
 
-        <Text size="xs" variant="muted" as="div" className="mt-2">
+        <Text size="xs" variant="muted" as="div">
           {sortedNotes.length} {sortedNotes.length === 1 ? 'note' : 'notes'}
         </Text>
       </div>
@@ -173,11 +182,7 @@ export function NoteList() {
             </Button>
           </div>
         ) : (
-          <div
-            className={
-              viewMode === 'list' ? 'divide-y divide-border' : 'p-2 grid grid-cols-2 gap-2'
-            }
-          >
+          <ListContainer viewMode={viewMode}>
             {sortedNotes.map((note) => (
               <NoteItem
                 key={note.id}
@@ -187,7 +192,7 @@ export function NoteList() {
                 viewMode={viewMode}
               />
             ))}
-          </div>
+          </ListContainer>
         )}
       </div>
     </div>
@@ -205,50 +210,38 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
   const preview = (note.content || '').replace(/[#*`>\-\[\]]/g, '').substring(0, 100);
   const timeAgo = formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true });
 
+  const rightContent = (
+    <div className="flex items-center gap-0.5">
+      {note.isPinned && <PushPin size={10} className="text-primary" />}
+      {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
+      {viewMode === 'list' && note.isArchived && <Archive size={10} className="text-muted-foreground" />}
+    </div>
+  );
+
   if (viewMode === 'list') {
     return (
-      <button
+      <ListItem
+        isActive={isActive}
         onClick={onClick}
-        className={`w-full text-left px-3 py-2 transition-colors ${
-          isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
-        }`}
+        title={note.title || 'Untitled'}
+        right={rightContent}
       >
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <Text weight="medium" size="sm" as="div" className="line-clamp-1">
-            {note.title || 'Untitled'}
-          </Text>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {note.isPinned && <PushPin size={12} className="text-primary" />}
-            {note.isFavorite && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
-            {note.isArchived && <Archive size={12} className="text-muted-foreground" />}
-          </div>
-        </div>
-        <Text size="xs" variant="muted" as="div" className="line-clamp-2 mb-1">{preview}</Text>
-        <Text size="xs" variant="muted" as="div" className="opacity-70">{timeAgo}</Text>
-      </button>
+        <Text size="xs" variant="muted" as="div" className="line-clamp-1 text-[10px]">{preview}</Text>
+        <Text size="xs" variant="muted" as="div" className="opacity-70 text-[10px]">{timeAgo}</Text>
+      </ListItem>
     );
   }
 
   return (
-    <button
+    <CompactCard
+      isActive={isActive}
       onClick={onClick}
-      className={`text-left p-2.5 rounded-lg transition-all ${
-        isActive
-          ? 'bg-accent ring-1 ring-primary shadow-sm'
-          : 'bg-background hover:bg-muted/50 border border-border'
-      }`}
+      title={note.title || 'Untitled'}
     >
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <Text weight="medium" size="xs" as="div" className="line-clamp-2">
-          {note.title || 'Untitled'}
-        </Text>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {note.isPinned && <PushPin size={10} className="text-primary" />}
-          {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-        </div>
+      <div className="text-[10px]">
+        <div className="line-clamp-2 mb-1">{preview}</div>
+        <div className="opacity-70">{timeAgo}</div>
       </div>
-      <Text size="xs" variant="muted" as="div" className="line-clamp-2 mb-1.5">{preview}</Text>
-      <Text size="xs" variant="muted" as="div" className="opacity-70">{timeAgo}</Text>
-    </button>
+    </CompactCard>
   );
 }

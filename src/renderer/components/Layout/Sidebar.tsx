@@ -11,10 +11,11 @@ import { InputModal } from '@renderer/components/Common';
 import { Button } from '@renderer/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
 import { Heading3, Text } from '@renderer/components/ui/text';
-import { ContainerFlex } from '@renderer/components/ui';
+import { ContainerFlex, ContainerStack } from '@renderer/components/ui';
 import { logger } from '@renderer/utils/logger';
 import { NotebookWithCount, TagWithCount } from '@shared/types';
 import { BookOpen, Tag, Gear, Star, Archive, Clock, Plus } from 'phosphor-react';
+import { Header, IconButton, QuickLink, PanelFooter, SectionHeader } from '@renderer/components/composites';
 
 export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
@@ -92,62 +93,63 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      {/* Header */}
-      <div className="px-4 pt-titlebar pb-3 border-b border-border">
-        <ContainerFlex justify="between" align="center">
-          <Heading3>Stone</Heading3>
-          <Button
-          variant="ghost"
-          size="sm"
-          onClick={openSettings}
-          className="h-8 w-8 p-0"
-          title="Settings"
-          >
-            <Gear size={16} />
-          </Button>
-        </ContainerFlex>
-      </div>
+      <Header
+        left={<Heading3 className="text-sm">Stone</Heading3>}
+        right={
+          <IconButton
+            size="normal"
+            icon={<Gear size={13} />}
+            label="Settings"
+            onClick={openSettings}
+          />
+        }
+      />
 
-      {/* Panel Tabs */}
+      {/* Panel Tabs - Flex layout */}
       <Tabs
         value={sidebarPanel}
         onValueChange={(value) => setSidebarPanel(value as 'notebooks' | 'tags' | 'search')}
-        className="w-full"
+        className="flex flex-col flex-1 overflow-hidden"
       >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="notebooks" className="flex items-center gap-2 text-xs">
-            <BookOpen size={14} />
-            Notebooks
+        {/* Tab Triggers - Compact */}
+        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border flex-shrink-0">
+          <TabsTrigger value="notebooks" className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded">
+            <BookOpen size={12} />
+            <span className="hidden sm:inline">Notebooks</span>
           </TabsTrigger>
-          <TabsTrigger value="tags" className="flex items-center gap-2 text-xs">
-            <Tag size={14} />
-            Tags
+          <TabsTrigger value="tags" className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded">
+            <Tag size={12} />
+            <span className="hidden sm:inline">Tags</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Quick Links */}
-        <div className="p-2 border-b border-border">
-          <QuickLink icon={<Star size={14} />} label="Favorites" />
-          <QuickLink icon={<Clock size={14} />} label="Recent" />
-          <QuickLink icon={<Archive size={14} />} label="Archive" />
-        </div>
+        {/* Quick Links - Minimal */}
+        <SectionHeader divided>
+          <div className="space-y-0.5">
+            <QuickLink icon={<Star size={12} />} label="Favorites" size="compact" />
+            <QuickLink icon={<Clock size={12} />} label="Recent" size="compact" />
+            <QuickLink icon={<Archive size={12} />} label="Archive" size="compact" />
+          </div>
+        </SectionHeader>
 
-        {/* Panel Content */}
-        <TabsContent value="notebooks" className="flex-1 overflow-y-auto mt-0">
-          <NotebookTree />
-        </TabsContent>
-        <TabsContent value="tags" className="flex-1 overflow-y-auto mt-0">
-          <TagList />
-        </TabsContent>
+        {/* Panel Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <TabsContent value="notebooks" className="mt-0 px-1.5 py-1">
+            <NotebookTree />
+          </TabsContent>
+          <TabsContent value="tags" className="mt-0 px-1.5 py-1">
+            <TagList />
+          </TabsContent>
+        </div>
       </Tabs>
 
-      {/* New Button */}
-      <div className="p-3 border-t border-border">
-        <Button onClick={handleNewClick} disabled={isCreating} className="w-full" size="sm">
-          <Plus size={16} />
+      {/* New Button - Compact footer */}
+      <PanelFooter>
+        <Button onClick={handleNewClick} disabled={isCreating} className="w-full h-7 text-xs" size="sm">
+          <Plus size={12} />
           {isCreating ? 'Creating...' : sidebarPanel === 'notebooks' ? 'New Notebook' : 'New Tag'}
         </Button>
-      </div>
+      </PanelFooter>
 
       {/* Input Modal */}
       <InputModal
@@ -159,21 +161,5 @@ export function Sidebar() {
         submitLabel="Create"
       />
     </div>
-  );
-}
-
-interface QuickLinkProps {
-  icon: React.ReactNode;
-  label: string;
-}
-
-function QuickLink({ icon, label }: QuickLinkProps) {
-  return (
-    <Button variant="ghost" size="sm" className="w-full justify-start h-8 px-2">
-      {icon}
-      <Text as="span" size="xs">
-        {label}
-      </Text>
-    </Button>
   );
 }
