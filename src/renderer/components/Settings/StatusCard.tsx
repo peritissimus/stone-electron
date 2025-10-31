@@ -1,19 +1,20 @@
 import { Body, Text } from '@renderer/components/ui/text';
+import { cn } from '@renderer/lib/utils';
 
-interface StatusItem {
+export interface StatusItem {
   label: string;
   value: string | number;
 }
 
-interface StatusCardProps {
+export interface StatusCardProps {
   title?: string;
   items: StatusItem[];
   className?: string;
 }
 
-export function StatusCard({ title, items, className = '' }: StatusCardProps) {
+export function StatusCard({ title, items, className }: StatusCardProps) {
   return (
-    <div className={`bg-muted/50 rounded-lg p-4 ${className}`}>
+    <div className={cn('bg-muted/50 rounded-lg p-4', className)}>
       {title && (
         <Body weight="medium" className="mb-3">
           {title}

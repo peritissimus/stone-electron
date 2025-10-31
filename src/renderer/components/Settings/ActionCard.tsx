@@ -1,8 +1,9 @@
 import React from 'react';
 import { Button } from '@renderer/components/ui/button';
 import { Body } from '@renderer/components/ui/text';
+import { cn } from '@renderer/lib/utils';
 
-interface ActionCardProps {
+export interface ActionCardProps {
   title: string;
   description: string;
   buttonText: string;
@@ -21,10 +22,10 @@ export function ActionCard({
   onClick,
   loading = false,
   variant = 'default',
-  className = '',
+  className,
 }: ActionCardProps) {
   return (
-    <div className={`border border-border rounded-lg p-4 ${className}`}>
+    <div className={cn('border border-border rounded-lg p-4', className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <Body weight="medium" className="mb-1">

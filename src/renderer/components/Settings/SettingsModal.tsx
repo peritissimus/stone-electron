@@ -50,7 +50,7 @@ export function SettingsModal() {
 }
 
 function DatabaseSettings() {
-  const [status, setStatus] = useState<any>(null);
+  const [status, setStatus] = useState<DatabaseStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 

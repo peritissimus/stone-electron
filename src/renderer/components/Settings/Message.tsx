@@ -1,22 +1,34 @@
 import { CheckCircle, WarningCircle } from 'phosphor-react';
+import { Text } from '@renderer/components/ui/text';
+import { cn } from '@renderer/lib/utils';
 
-interface MessageProps {
+export interface MessageProps {
   type: 'success' | 'error';
   text: string;
   className?: string;
 }
 
-export function Message({ type, text, className = '' }: MessageProps) {
+export function Message({ type, text, className }: MessageProps) {
   return (
     <div
-      className={`p-4 rounded-lg flex items-start gap-3 ${
+      className={cn(
+        'p-4 rounded-lg flex items-start gap-3',
         type === 'success'
-          ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-400'
-          : 'bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-400'
-      } ${className}`}
+          ? 'bg-green-50 dark:bg-green-900/20'
+          : 'bg-red-50 dark:bg-red-900/20',
+        className,
+      )}
     >
-      {type === 'success' ? <CheckCircle size={20} /> : <WarningCircle size={20} />}
-      <span>{text}</span>
+      <div className={type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+        {type === 'success' ? <CheckCircle size={20} /> : <WarningCircle size={20} />}
+      </div>
+      <Text
+        size="sm"
+        as="span"
+        className={type === 'success' ? 'text-green-800 dark:text-green-400' : 'text-red-800 dark:text-red-400'}
+      >
+        {text}
+      </Text>
     </div>
   );
 }

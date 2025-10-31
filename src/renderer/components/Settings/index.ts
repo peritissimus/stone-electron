@@ -1,5 +1,5 @@
 export { SettingsModal } from './SettingsModal';
-export { SettingsSection } from './SettingsSection';
-export { ActionCard } from './ActionCard';
-export { StatusCard } from './StatusCard';
-export { Message } from './Message';
+export { SettingsSection, type SettingsSectionProps } from './SettingsSection';
+export { ActionCard, type ActionCardProps } from './ActionCard';
+export { StatusCard, type StatusCardProps, type StatusItem } from './StatusCard';
+export { Message, type MessageProps } from './Message';
