@@ -153,6 +153,16 @@ textarea:focus {
   background-clip: padding-box;
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* TipTap Editor Styles */
 .tiptap-editor {
   @apply text-gray-900 dark:text-gray-100;
