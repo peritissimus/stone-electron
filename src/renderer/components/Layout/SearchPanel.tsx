@@ -3,11 +3,15 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useUIStore } from '../../stores/uiStore';
-import { useNoteStore } from '../../stores/noteStore';
-import { useSearchAPI } from '../../hooks/useSearchAPI';
+import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteStore } from '@renderer/stores/noteStore';
+import { useSearchAPI } from '@renderer/hooks/useSearchAPI';
 import { MagnifyingGlass, X, Spinner, FileText } from 'phosphor-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Input } from '@renderer/components/ui/input';
+import { Button } from '@renderer/components/ui/button';
+import { Body, Text } from '@renderer/components/ui/text';
+import { ContainerFlex, ContainerStack } from '@renderer/components/ui';
 
 export function SearchPanel() {
   const { searchQuery, setSearchQuery, toggleSearch } = useUIStore();
@@ -44,57 +48,56 @@ export function SearchPanel() {
   };
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+    <div className="border-b border-border bg-card">
       {/* Search Input */}
-      <div className="p-4 flex items-center gap-3">
-        <MagnifyingGlass size={18} className="text-gray-400" />
-        <input
-          type="text"
+      <ContainerFlex align="center" gap="md" className="p-4">
+        <MagnifyingGlass size={18} className="text-muted-foreground" />
+        <Input
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search notes..."
-          className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-gray-100"
+          className="flex-1 h-8"
           autoFocus
         />
-        {loading && <Spinner size={18} className="text-gray-400 animate-spin" />}
-        <button
-          onClick={toggleSearch}
-          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
-        >
+        {loading && <Spinner size={18} className="text-muted-foreground animate-spin" />}
+        <Button variant="ghost" size="icon" onClick={toggleSearch} aria-label="Close search">
           <X size={18} />
-        </button>
-      </div>
+        </Button>
+      </ContainerFlex>
 
       {/* Search Results */}
       {searchQuery.length >= 2 && (
-        <div className="max-h-96 overflow-y-auto border-t border-gray-200 dark:border-gray-700">
+        <div className="max-h-96 overflow-y-auto border-t border-border">
           {results.length === 0 && !loading && (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              No results found for "{searchQuery}"
+            <div className="p-8 text-center">
+              <Body size="sm" variant="muted">
+                No results found for "{searchQuery}"
+              </Body>
             </div>
           )}
 
           {results.map((result) => (
-            <button
+            <Button
               key={result.id}
               onClick={() => handleSelectNote(result.id)}
-              className="w-full p-4 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 text-left transition-colors"
+              variant="ghost"
+              className="w-full justify-start p-4 rounded-none hover:bg-muted/50 border-b border-border h-auto"
             >
-              <div className="flex items-start gap-3">
-                <FileText size={16} className="text-gray-400 mt-1 flex-shrink-0" />
+              <ContainerFlex align="start" gap="md">
+                <FileText size={16} className="text-muted-foreground mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                  <Text weight="medium" as="div" className="mb-1 truncate">
                     {result.title || 'Untitled'}
-                  </h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                  </Text>
+                  <Text size="sm" variant="muted" as="div" className="line-clamp-2">
                     {result.content_highlight || result.content?.substring(0, 150)}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
+                  </Text>
+                  <Text size="xs" variant="muted" as="div" className="mt-2">
                     {formatDistanceToNow(new Date(result.updatedAt * 1000), { addSuffix: true })}
-                  </p>
+                  </Text>
                 </div>
-              </div>
-            </button>
+              </ContainerFlex>
+            </Button>
           ))}
         </div>
       )}

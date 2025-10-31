@@ -5,7 +5,7 @@
 import React from 'react';
 import { cn } from '@renderer/lib/utils';
 
-interface MainContentAreaProps {
+export interface MainContentAreaProps {
   children: React.ReactNode;
   className?: string;
 }

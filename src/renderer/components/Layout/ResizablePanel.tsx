@@ -5,7 +5,7 @@
 import React, { useRef, useCallback } from 'react';
 import { cn } from '@renderer/lib/utils';
 
-interface ResizablePanelProps {
+export interface ResizablePanelProps {
   children: React.ReactNode;
   width: number;
   minWidth?: number;

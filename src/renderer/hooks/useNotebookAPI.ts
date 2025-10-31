@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import { useNotebookStore } from '../stores/notebookStore';
+import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { Notebook } from '@shared/types';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
 

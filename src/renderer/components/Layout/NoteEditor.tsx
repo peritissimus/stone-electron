@@ -8,11 +8,15 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
-import { useNoteStore } from '../../stores/noteStore';
-import { useNoteAPI } from '../../hooks/useNoteAPI';
-import { EditorToolbar } from '../Editor/EditorToolbar';
+import { useNoteStore } from '@renderer/stores/noteStore';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { EditorToolbar } from '@renderer/components/Editor';
 import { EditorContent } from '@tiptap/react';
 import { Star, PushPin, Archive, DotsThreeVertical } from 'phosphor-react';
+import { Input } from '@renderer/components/ui/input';
+import { Button } from '@renderer/components/ui/button';
+import { Text, Body } from '@renderer/components/ui/text';
+import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
 
 export function NoteEditor() {
   const { getActiveNote } = useNoteStore();
@@ -83,11 +87,15 @@ export function NoteEditor() {
 
   if (!activeNote) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-        <div className="text-center text-muted-foreground">
-          <p className="text-base mb-2">No note selected</p>
-          <p className="text-xs">Select a note from the list or create a new one</p>
-        </div>
+      <div className="flex-1 bg-background">
+        <ContainerCenter>
+          <ContainerFlex direction="column" align="center" gap="xs">
+            <Body>No note selected</Body>
+            <Text size="xs" variant="muted">
+              Select a note from the list or create a new one
+            </Text>
+          </ContainerFlex>
+        </ContainerCenter>
       </div>
     );
   }
@@ -95,57 +103,48 @@ export function NoteEditor() {
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Editor Header */}
-      <div className="px-4 pt-titlebar pb-3 border-b border-border flex items-center gap-4">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => handleTitleChange(e.target.value)}
-          placeholder="Untitled"
-          className="flex-1 text-xl font-bold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
-        />
+      <div className="px-4 pt-titlebar pb-3 border-b border-border">
+        <ContainerFlex align="center" gap="lg">
+          <Input
+            value={title}
+            onChange={(e) => handleTitleChange(e.target.value)}
+            placeholder="Untitled"
+            className="flex-1 text-xl font-semibold bg-transparent border-none focus-visible:ring-0 px-0 py-0 h-auto placeholder:text-muted-foreground"
+          />
 
-        {/* Note Actions */}
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => toggleFavorite(activeNote.id)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.isFavorite
-                ? 'text-yellow-600 bg-yellow-600/10 dark:text-yellow-400 dark:bg-yellow-400/10'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-            title="Toggle Favorite"
-          >
-            <Star size={16} fill={activeNote.isFavorite ? 'currentColor' : 'none'} />
-          </button>
-          <button
-            onClick={() => togglePin(activeNote.id)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.isPinned
-                ? 'text-blue-600 bg-blue-600/10 dark:text-blue-400 dark:bg-blue-400/10'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-            title="Toggle Pin"
-          >
-            <PushPin size={16} />
-          </button>
-          <button
-            onClick={() => toggleArchive(activeNote.id)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              activeNote.isArchived
-                ? 'text-orange-600 bg-orange-600/10 dark:text-orange-400 dark:bg-orange-400/10'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-            title="Toggle Archive"
-          >
-            <Archive size={16} />
-          </button>
-          <button
-            className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title="More Options"
-          >
-            <DotsThreeVertical size={16} />
-          </button>
-        </div>
+          <ContainerFlex align="center" gap="xs">
+            <Button
+              onClick={() => toggleFavorite(activeNote.id)}
+              variant={activeNote.isFavorite ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              title="Toggle Favorite"
+            >
+              <Star size={16} />
+            </Button>
+            <Button
+              onClick={() => togglePin(activeNote.id)}
+              variant={activeNote.isPinned ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              title="Toggle Pin"
+            >
+              <PushPin size={16} />
+            </Button>
+            <Button
+              onClick={() => toggleArchive(activeNote.id)}
+              variant={activeNote.isArchived ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              title="Toggle Archive"
+            >
+              <Archive size={16} />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="More Options">
+              <DotsThreeVertical size={16} />
+            </Button>
+          </ContainerFlex>
+        </ContainerFlex>
       </div>
 
       {/* Toolbar */}
