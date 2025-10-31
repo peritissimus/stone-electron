@@ -9,6 +9,8 @@ import { useUIStore } from '@renderer/stores/uiStore';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Button } from '@renderer/components/ui/button';
+import { Heading3, Text } from '@renderer/components/ui/text';
+import { ContainerFlex } from '@renderer/components/ui';
 import {
   Select,
   SelectContent,
@@ -87,9 +89,9 @@ export function NoteList() {
     <div className="flex flex-col h-full bg-secondary">
       {/* Header */}
       <div className="px-4 pt-titlebar pb-3 border-b border-border bg-card">
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <h2 className="text-base font-semibold text-foreground">Notes</h2>
-          <div className="flex items-center gap-2">
+        <ContainerFlex justify="between" align="center" className="mb-3 gap-2">
+          <Heading3>Notes</Heading3>
+          <ContainerFlex gap="sm" align="center">
             <Button
               onClick={handleCreateNote}
               disabled={isCreating}
@@ -125,8 +127,8 @@ export function NoteList() {
                 <Article size={14} />
               </Toggle>
             </div>
-          </div>
-        </div>
+          </ContainerFlex>
+        </ContainerFlex>
 
         {/* Sort Controls */}
         <div className="flex items-center gap-2">
@@ -155,16 +157,16 @@ export function NoteList() {
           </Button>
         </div>
 
-        <div className="mt-2 text-xs text-muted-foreground">
+        <Text size="xs" variant="muted" as="div" className="mt-2">
           {sortedNotes.length} {sortedNotes.length === 1 ? 'note' : 'notes'}
-        </div>
+        </Text>
       </div>
 
       {/* Note List */}
       <div className="flex-1 overflow-y-auto bg-card">
         {sortedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs">
-            <span>No notes found</span>
+            <Text size="xs" variant="muted">No notes found</Text>
             <Button onClick={handleCreateNote} disabled={isCreating} variant="outline" size="sm">
               <Plus size={14} />
               {isCreating ? 'Creating...' : 'Create your first note'}
@@ -212,17 +214,17 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-medium text-foreground text-sm line-clamp-1">
+          <Text weight="medium" size="sm" as="div" className="line-clamp-1">
             {note.title || 'Untitled'}
-          </h3>
+          </Text>
           <div className="flex items-center gap-1 flex-shrink-0">
             {note.isPinned && <PushPin size={12} className="text-primary" />}
             {note.isFavorite && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
             {note.isArchived && <Archive size={12} className="text-muted-foreground" />}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 mb-1">{preview}</p>
-        <div className="text-xs text-muted-foreground/70">{timeAgo}</div>
+        <Text size="xs" variant="muted" as="div" className="line-clamp-2 mb-1">{preview}</Text>
+        <Text size="xs" variant="muted" as="div" className="opacity-70">{timeAgo}</Text>
       </button>
     );
   }
@@ -237,16 +239,16 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <h3 className="font-medium text-foreground text-xs line-clamp-2">
+        <Text weight="medium" size="xs" as="div" className="line-clamp-2">
           {note.title || 'Untitled'}
-        </h3>
+        </Text>
         <div className="flex items-center gap-1 flex-shrink-0">
           {note.isPinned && <PushPin size={10} className="text-primary" />}
           {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
         </div>
       </div>
-      <p className="text-xs text-muted-foreground line-clamp-2 mb-1.5">{preview}</p>
-      <div className="text-xs text-muted-foreground/70">{timeAgo}</div>
+      <Text size="xs" variant="muted" as="div" className="line-clamp-2 mb-1.5">{preview}</Text>
+      <Text size="xs" variant="muted" as="div" className="opacity-70">{timeAgo}</Text>
     </button>
   );
 }

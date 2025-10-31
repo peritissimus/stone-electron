@@ -3,19 +3,12 @@
  */
 
 import { useEffect } from 'react';
-import { Sidebar } from './Sidebar';
-import { NoteList } from './NoteList';
-import { NoteEditor } from './NoteEditor';
-import { SearchPanel } from './SearchPanel';
-import { SettingsModal } from '../Settings/SettingsModal';
-import { LayoutContainer } from './LayoutContainer';
-import { SidebarPanel } from './SidebarPanel';
-import { NoteListPanel } from './NoteListPanel';
-import { MainContentArea } from './MainContentArea';
-import { useUIStore } from '../../stores/uiStore';
-import { useNotebookAPI } from '../../hooks/useNotebookAPI';
-import { useTagAPI } from '../../hooks/useTagAPI';
-import { useNoteAPI } from '../../hooks/useNoteAPI';
+import { Sidebar, NoteList, NoteEditor, SearchPanel, LayoutContainer, SidebarPanel, NoteListPanel, MainContentArea } from '@renderer/components/Layout';
+import { SettingsModal } from '@renderer/components/Settings';
+import { useUIStore } from '@renderer/stores/uiStore';
+import { useNotebookAPI } from '@renderer/hooks/useNotebookAPI';
+import { useTagAPI } from '@renderer/hooks/useTagAPI';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 
 export function MainLayout() {
   const {

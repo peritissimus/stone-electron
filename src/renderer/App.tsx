@@ -3,8 +3,8 @@
  */
 
 import React, { useEffect } from 'react'
-import { MainLayout } from './components/Layout/MainLayout'
-import { useUIStore } from './stores/uiStore'
+import { MainLayout } from '@renderer/components/Layout'
+import { useUIStore } from '@renderer/stores/uiStore'
 
 export const App: React.FC = () => {
   const theme = useUIStore((state) => state.theme)

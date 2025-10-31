@@ -3,12 +3,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useUIStore } from '../../stores/uiStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { Database, HardDrive, Download, CheckCircle } from 'phosphor-react';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
 import { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
-import { logger } from '../../utils/logger';
-import { TabbedModal } from '../Layout/TabbedModal';
+import { logger } from '@renderer/utils/logger';
+import { TabbedModal } from '@renderer/components/Layout/TabbedModal';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';
@@ -65,8 +65,10 @@ function DatabaseSettings() {
         DATABASE_CHANNELS.GET_STATUS,
         {},
       );
-      if (response.success) {
+      if (response.success && response.data) {
         setStatus(response.data);
+      } else {
+        setStatus(null);
       }
     } catch (error) {
       logger.error('Failed to load database status:', error);
@@ -152,10 +154,10 @@ function DatabaseSettings() {
 
   const statusItems = status
     ? [
-        { label: 'Database Size', value: formatBytes(status.database_size) },
-        { label: 'Notes', value: status.note_count },
-        { label: 'Notebooks', value: status.notebook_count },
-        { label: 'Tags', value: status.tag_count },
+        { label: 'Database Size', value: formatBytes(status.databaseSize) },
+        { label: 'Notes', value: status.noteCount },
+        { label: 'Notebooks', value: status.notebookCount },
+        { label: 'Tags', value: status.tagCount },
       ]
     : [];
 
@@ -246,26 +248,26 @@ function AboutSettings() {
 
         <ContainerStack gap="sm">
           <Body weight="medium">Technology Stack</Body>
-          <ContainerStack gap="xs" as="ul">
-            <Body size="sm" variant="muted" as="li">
+          <ContainerStack gap="xs">
+            <Body size="sm" variant="muted">
               • Electron 27 - Desktop application framework
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • React 18 - UI library
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • TypeScript - Type-safe development
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • Better-SQLite3 - Database engine
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • TipTap - Rich text editor
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • Tailwind CSS - Styling framework
             </Body>
-            <Body size="sm" variant="muted" as="li">
+            <Body size="sm" variant="muted">
               • Zustand - State management
             </Body>
           </ContainerStack>

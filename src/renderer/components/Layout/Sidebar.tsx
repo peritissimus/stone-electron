@@ -3,14 +3,16 @@
  */
 
 import React, { useState } from 'react';
-import { useUIStore } from '../../stores/uiStore';
-import { useNotebookStore } from '../../stores/notebookStore';
-import { NotebookTree } from '../Notebook/NotebookTree';
-import { TagList } from '../Tag/TagList';
-import { InputModal } from '../Common/InputModal';
+import { useUIStore } from '@renderer/stores/uiStore';
+import { useNotebookStore } from '@renderer/stores/notebookStore';
+import { NotebookTree } from '@renderer/components/Notebook';
+import { TagList } from '@renderer/components/Tag';
+import { InputModal } from '@renderer/components/Common';
 import { Button } from '@renderer/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
-import { logger } from '../../utils/logger';
+import { Heading3, Text } from '@renderer/components/ui/text';
+import { ContainerFlex } from '@renderer/components/ui';
+import { logger } from '@renderer/utils/logger';
 import { NotebookWithCount, TagWithCount } from '@shared/types';
 import { BookOpen, Tag, Gear, Star, Archive, Clock, Plus } from 'phosphor-react';
 
@@ -91,17 +93,19 @@ export function Sidebar() {
   return (
     <div className="flex flex-col h-full bg-sidebar">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-titlebar pb-3 border-b border-border">
-        <h1 className="text-lg font-semibold text-foreground">Stone</h1>
-        <Button
+      <div className="px-4 pt-titlebar pb-3 border-b border-border">
+        <ContainerFlex justify="between" align="center">
+          <Heading3>Stone</Heading3>
+          <Button
           variant="ghost"
           size="sm"
           onClick={openSettings}
           className="h-8 w-8 p-0"
           title="Settings"
-        >
-          <Gear size={16} />
-        </Button>
+          >
+            <Gear size={16} />
+          </Button>
+        </ContainerFlex>
       </div>
 
       {/* Panel Tabs */}
@@ -167,7 +171,9 @@ function QuickLink({ icon, label }: QuickLinkProps) {
   return (
     <Button variant="ghost" size="sm" className="w-full justify-start h-8 px-2">
       {icon}
-      <span>{label}</span>
+      <Text as="span" size="xs">
+        {label}
+      </Text>
     </Button>
   );
 }

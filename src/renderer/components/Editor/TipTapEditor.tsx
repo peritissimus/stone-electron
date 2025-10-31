@@ -9,7 +9,7 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
 
-interface TipTapEditorProps {
+export interface TipTapEditorProps {
   content: string;
   onChange: (content: string) => void;
   editable?: boolean;
