@@ -12,15 +12,22 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { EditorToolbar } from '@renderer/components/Editor';
 import { EditorContent } from '@tiptap/react';
-import { Star, PushPin, Archive, DotsThreeVertical } from 'phosphor-react';
+import { Star, PushPin, Archive, DotsThreeVertical, Article, Plus, Trash } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import { Text, Body } from '@renderer/components/ui/text';
 import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
+import { Header, IconButton } from '@renderer/components/composites';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/components/ui/dropdown-menu';
 
 export function NoteEditor() {
-  const { getActiveNote } = useNoteStore();
-  const { updateNote, toggleFavorite, togglePin, toggleArchive } = useNoteAPI();
+  const { getActiveNote, setActiveNote } = useNoteStore();
+  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote } = useNoteAPI();
   const activeNote = getActiveNote();
 
   const [title, setTitle] = useState('');
@@ -87,15 +94,38 @@ export function NoteEditor() {
 
   if (!activeNote) {
     return (
-      <div className="flex-1 bg-background">
-        <ContainerCenter>
-          <ContainerFlex direction="column" align="center" gap="xs">
-            <Body>No note selected</Body>
-            <Text size="xs" variant="muted">
-              Select a note from the list or create a new one
-            </Text>
-          </ContainerFlex>
-        </ContainerCenter>
+      <div className="flex-1 bg-background flex flex-col items-center justify-center px-8 py-12">
+        <div className="text-center max-w-sm">
+          {/* Icon Circle */}
+          <div className="mb-6 flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <Article size={32} className="text-muted-foreground" />
+            </div>
+          </div>
+
+          {/* Heading */}
+          <Body className="text-lg font-semibold mb-2">No note selected</Body>
+
+          {/* Description */}
+          <Text size="sm" variant="muted" className="mb-6 leading-relaxed">
+            Select a note from the list on the left to view and edit it, or create a new one to get
+            started
+          </Text>
+
+          {/* CTA Button */}
+          <Button
+            onClick={() => {
+              const noteListButton = document.querySelector(
+                '[title="Create a new note"]',
+              ) as HTMLButtonElement;
+              noteListButton?.click();
+            }}
+            className="h-8 px-4 text-sm"
+          >
+            <Plus size={14} />
+            Create your first note
+          </Button>
+        </div>
       </div>
     );
   }
@@ -103,49 +133,67 @@ export function NoteEditor() {
   return (
     <div className="flex-1 flex flex-col bg-background">
       {/* Editor Header */}
-      <div className="px-4 pt-titlebar pb-3 border-b border-border">
-        <ContainerFlex align="center" gap="lg">
+      <Header
+        divided
+        left={
           <Input
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
             className="flex-1 text-xl font-semibold bg-transparent border-none focus-visible:ring-0 px-0 py-0 h-auto placeholder:text-muted-foreground"
           />
-
+        }
+        right={
           <ContainerFlex align="center" gap="xs">
-            <Button
+            <IconButton
+              size="normal"
+              icon={<Star size={16} />}
+              tooltip="Toggle Favorite"
               onClick={() => toggleFavorite(activeNote.id)}
-              variant={activeNote.isFavorite ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Favorite"
-            >
-              <Star size={16} />
-            </Button>
-            <Button
+              className={activeNote.isFavorite ? 'bg-secondary' : ''}
+            />
+            <IconButton
+              size="normal"
+              icon={<PushPin size={16} />}
+              tooltip="Toggle Pin"
               onClick={() => togglePin(activeNote.id)}
-              variant={activeNote.isPinned ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Pin"
-            >
-              <PushPin size={16} />
-            </Button>
-            <Button
-              onClick={() => toggleArchive(activeNote.id)}
-              variant={activeNote.isArchived ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              title="Toggle Archive"
-            >
-              <Archive size={16} />
-            </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="More Options">
-              <DotsThreeVertical size={16} />
-            </Button>
+              className={activeNote.isPinned ? 'bg-secondary' : ''}
+            />
+            <IconButton
+              size="normal"
+              icon={<Archive size={16} />}
+              tooltip="Archive Note"
+              onClick={() => {
+                toggleArchive(activeNote.id);
+                setActiveNote(null);
+              }}
+              className={activeNote.isArchived ? 'bg-secondary' : ''}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  size="normal"
+                  icon={<DotsThreeVertical size={16} />}
+                  tooltip="More Options"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this note?')) {
+                      deleteNote(activeNote.id, true);
+                    }
+                  }}
+                  className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                >
+                  <Trash size={14} className="mr-2" />
+                  Delete Note
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </ContainerFlex>
-        </ContainerFlex>
-      </div>
+        }
+      />
 
       {/* Toolbar */}
       <EditorToolbar editor={editor} />

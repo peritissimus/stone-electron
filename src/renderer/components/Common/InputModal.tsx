@@ -12,6 +12,7 @@ import {
 } from '@renderer/components/ui/dialog';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
+import { ContainerStack } from '@renderer/components/ui';
 
 export interface InputModalProps {
   isOpen: boolean;
@@ -69,7 +70,7 @@ export function InputModal({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <ContainerStack gap="md" className="py-4">
             <Input
               ref={inputRef}
               type="text"
@@ -79,7 +80,7 @@ export function InputModal({
               placeholder={placeholder}
               autoFocus
             />
-          </div>
+          </ContainerStack>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
               {cancelLabel}

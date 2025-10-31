@@ -1,6 +1,7 @@
 import React from 'react';
 import { ModalLayout } from '@renderer/components/Layout/ModalLayout';
 import { Button } from '@renderer/components/ui/button';
+import { Text } from '@renderer/components/ui/text';
 
 export interface TabItem {
   id: string;

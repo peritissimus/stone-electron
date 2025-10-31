@@ -64,6 +64,112 @@ This document provides guidelines for AI assistants (like Claude) working on the
 - **CSS classes**: Tailwind utilities (no custom CSS unless necessary)
 - **Migrations**: `001_description.sql` (numbered, snake_case)
 
+## Composite Components (IMPORTANT!)
+
+Stone uses a **token-based composite component system** to eliminate inline styling. **Always use composites instead of inline classes**.
+
+### The System
+
+Instead of writing inline classes:
+```tsx
+// ❌ AVOID - inline classes
+<div className="px-3 pt-titlebar pb-2.5 border-b border-border">
+  <button className="h-8 w-8 p-0">Icon</button>
+</div>
+```
+
+Use composites:
+```tsx
+// ✅ USE - composites
+import { Header, IconButton } from '@renderer/components/composites';
+<Header left={<Title />} right={<IconButton icon={<Icon />} />} />
+```
+
+### 13 Composite Components Available
+
+**Navigation & Headers:**
+- `<Header />` - Top navigation (replaces manual header divs)
+- `<IconButton />` - Icon buttons (replaces `className="h-8 w-8"`)
+- `<QuickLink />` - Sidebar links
+- `<SectionHeader />` - Section headers
+
+**Lists & Items:**
+- `<ListItem />` - List items (replaces custom button styling)
+- `<ListContainer />` - List wrapper (handles list/grid/card modes)
+- `<CompactCard />` - Grid/card items
+- `<TreeItem />` - Tree items (replaces `style={{ paddingLeft }}`)
+
+**Controls:**
+- `<ControlGroup />` - Button/toggle groups (replaces manual divs)
+- `<ToolbarButton />` - Toolbar buttons
+- `<ToolbarDivider />` - Toolbar dividers
+
+**Layout:**
+- `<Spacer />` - Spacing (replaces `<div className="h-4" />`)
+- `<PanelFooter />` - Footer sections (replaces manual footer styling)
+
+### Size Tokens
+
+All composites support size variants:
+```tsx
+size="compact"   // h-6 (24px), text-xs (12px) - tight spacing
+size="normal"    // h-8 (32px), text-sm (13px) - default
+size="spacious"  // h-10 (40px), text-base (14px) - relaxed spacing
+```
+
+### Common Usage
+
+**Header:**
+```tsx
+import { Header } from '@renderer/components/composites';
+<Header
+  left={<Title>Notes</Title>}
+  right={<IconButton icon={<Plus />} tooltip="New" />}
+/>
+```
+
+**List:**
+```tsx
+import { ListContainer, ListItem } from '@renderer/components/composites';
+<ListContainer viewMode="list">
+  {items.map(item => (
+    <ListItem title={item.name} isActive={item.id === active} />
+  ))}
+</ListContainer>
+```
+
+**Controls:**
+```tsx
+import { ControlGroup } from '@renderer/components/composites';
+<ControlGroup gap="sm" background="bg-muted">
+  <Toggle><ListIcon /></Toggle>
+  <Toggle><GridIcon /></Toggle>
+</ControlGroup>
+```
+
+### Critical Rules
+
+✅ **ALWAYS:**
+- Use composites from `@renderer/components/composites`
+- Use size tokens: `size="compact"`, `size="normal"`, `size="spacious"`
+- Use `left` and `right` props instead of wrapper divs
+- Import from the composites index, not individual files
+
+❌ **NEVER:**
+- Add inline classes like `className="px-3 py-2"` to composites
+- Use `style={{ paddingLeft }}` for indentation (use `<TreeItem level={} />`)
+- Create custom button styling (use `<IconButton />`)
+- Mix inline classes with composites on the same component
+- Use manual header divs (use `<Header />`)
+
+### Documentation
+
+For complete details:
+- See **COMPOSITES_QUICK_REF.md** for quick overview
+- See **COMPOSITES_GUIDE.md** for full API reference
+- See **REFACTORING_EXAMPLES.md** for before/after comparisons
+- See **COMPOSITES_CHECKLIST.md** for developer checklist
+
 ## Design System Rules
 
 ### Colors
@@ -86,11 +192,24 @@ Always use CSS variables, never hardcoded colors:
 
 ### Spacing
 
-Follow macOS-style compact spacing:
+Use composites for spacing instead of inline classes:
 
-- **Padding**: `p-2`, `p-3`, `p-4` (8px, 12px, 16px)
-- **Gap**: `gap-1`, `gap-2`, `gap-3` (4px, 8px, 12px)
-- **Text size**: `text-xs` (11px), `text-sm` (13px), `text-base` (14px)
+✅ **Good:**
+```tsx
+import { Header, Spacer } from '@renderer/components/composites';
+<Header left={<Title />} />
+<Spacer size="md" />
+```
+
+❌ **Bad:**
+```tsx
+<div className="px-3 py-2">Header</div>
+<div className="h-4" />
+```
+
+Follow macOS-style compact spacing:
+- **With composites**: size="compact", size="normal", size="spacious"
+- **In containers**: `gap-1`, `gap-2`, `gap-3` (4px, 8px, 12px)
 
 ### Border Radius
 
@@ -206,38 +325,61 @@ pnpm build
 
 ## Common Mistakes to Avoid
 
-### 1. Using npm instead of pnpm
+### 1. NOT using composites (CRITICAL!)
+❌ `<div className="px-3 pt-titlebar pb-2.5 border-b border-border">`
+✅ `<Header left={<Title />} />`
+
+❌ `<button className="h-8 w-8 p-0"><Icon /></button>`
+✅ `<IconButton size="normal" icon={<Icon />} />`
+
+❌ `<div style={{ paddingLeft: `${level * 10}px` }}>`
+✅ `<TreeItem level={level} />`
+
+See **COMPOSITES_QUICK_REF.md** for when to use which composite.
+
+### 2. Using npm instead of pnpm
 ❌ `npm install`
 ✅ `pnpm install`
 
-### 2. Hardcoding colors
+### 3. Hardcoding colors
 ❌ `className="bg-gray-800 text-white"`
 ✅ `className="bg-background text-foreground"`
 
-### 3. Wrong import paths
+### 4. Wrong import paths
 ❌ `import { cn } from "../../../lib/utils"`
 ✅ `import { cn } from "@renderer/lib/utils"`
 
-### 4. Skipping migration files
+❌ `import { Header } from './composites/Header'`
+✅ `import { Header } from '@renderer/components/composites'`
+
+### 5. Skipping migration files
 ❌ Modifying schema directly in code
 ✅ Create SQL migration in `migrations/`
 
-### 5. Large button/text sizes
+### 6. Large button/text sizes
 ❌ `className="text-base px-4 py-3"`
-✅ `className="text-xs px-3 py-2"`
+✅ `className="text-xs px-3 py-2"` or better: `<Header />`, `<IconButton />`
 
-### 6. Forgetting to rebuild native modules
+### 7. Forgetting to rebuild native modules
 After installing/updating better-sqlite3:
 ```bash
 pnpm electron-rebuild -f -w better-sqlite3
 ```
 
-### 7. Not using the logger
+### 8. Not using the logger
 ❌ `console.log('Something happened')`
 ✅ `logger.info('Something happened')`
 
-### 8. Creating files without reading
+### 9. Creating files without reading
 Always read a file first before attempting to edit/write it.
+
+### 10. Mixing inline classes with composites
+❌ `<Header className="px-3 py-2" />`
+✅ `<Header size="normal" />` (composites handle all styling)
+
+### 11. Creating wrapper divs instead of using left/right props
+❌ `<Header><div className="flex gap-2"><Button /><Button /></div></Header>`
+✅ `<Header right={<ControlGroup><Button /><Button /></ControlGroup>} />`
 
 ## Project-Specific Knowledge
 
@@ -316,6 +458,16 @@ migrations/                      # Database migrations
 // Utils
 import { cn } from "@renderer/lib/utils"
 
+// Composites (USE THESE!)
+import {
+  Header,
+  ListItem,
+  ListContainer,
+  IconButton,
+  ControlGroup,
+  TreeItem
+} from "@renderer/components/composites"
+
 // Stores
 import { useNoteStore } from "@renderer/stores/noteStore"
 import { useUIStore } from "@renderer/stores/uiStore"
@@ -326,7 +478,7 @@ import { logger } from "@renderer/utils/logger"
 // Icons
 import { Star, Pin, Archive } from "lucide-react"
 
-// shadcn
+// shadcn (only for specialized components)
 import { Button } from "@renderer/components/ui/button"
 import { Dialog } from "@renderer/components/ui/dialog"
 ```
