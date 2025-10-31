@@ -12,16 +12,22 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { EditorToolbar } from '@renderer/components/Editor';
 import { EditorContent } from '@tiptap/react';
-import { Star, PushPin, Archive, DotsThreeVertical, Article, Plus } from 'phosphor-react';
+import { Star, PushPin, Archive, DotsThreeVertical, Article, Plus, Trash } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import { Text, Body } from '@renderer/components/ui/text';
 import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
 import { Header, IconButton } from '@renderer/components/composites';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/components/ui/dropdown-menu';
 
 export function NoteEditor() {
-  const { getActiveNote } = useNoteStore();
-  const { updateNote, toggleFavorite, togglePin, toggleArchive } = useNoteAPI();
+  const { getActiveNote, setActiveNote } = useNoteStore();
+  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote } = useNoteAPI();
   const activeNote = getActiveNote();
 
   const [title, setTitle] = useState('');
@@ -102,13 +108,16 @@ export function NoteEditor() {
 
           {/* Description */}
           <Text size="sm" variant="muted" className="mb-6 leading-relaxed">
-            Select a note from the list on the left to view and edit it, or create a new one to get started
+            Select a note from the list on the left to view and edit it, or create a new one to get
+            started
           </Text>
 
           {/* CTA Button */}
           <Button
             onClick={() => {
-              const noteListButton = document.querySelector('[title="Create a new note"]') as HTMLButtonElement;
+              const noteListButton = document.querySelector(
+                '[title="Create a new note"]',
+              ) as HTMLButtonElement;
               noteListButton?.click();
             }}
             className="h-8 px-4 text-sm"
@@ -153,15 +162,35 @@ export function NoteEditor() {
             <IconButton
               size="normal"
               icon={<Archive size={16} />}
-              tooltip="Toggle Archive"
-              onClick={() => toggleArchive(activeNote.id)}
+              tooltip="Archive Note"
+              onClick={() => {
+                toggleArchive(activeNote.id);
+                setActiveNote(null);
+              }}
               className={activeNote.isArchived ? 'bg-secondary' : ''}
             />
-            <IconButton
-              size="normal"
-              icon={<DotsThreeVertical size={16} />}
-              tooltip="More Options"
-            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  size="normal"
+                  icon={<DotsThreeVertical size={16} />}
+                  tooltip="More Options"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this note?')) {
+                      deleteNote(activeNote.id, true);
+                    }
+                  }}
+                  className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                >
+                  <Trash size={14} className="mr-2" />
+                  Delete Note
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </ContainerFlex>
         }
       />
