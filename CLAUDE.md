@@ -173,33 +173,37 @@ Instead of writing inline classes, use composites:
 // ❌ Before (avoid)
 <div className="px-3 pt-titlebar pb-2.5 border-b border-border">
   <h3 className="text-sm">Title</h3>
-</div>
+</div>;
 
 // ✅ After (use composites)
 import { Header } from '@renderer/components/composites';
-<Header left={<h3>Title</h3>} />
+<Header left={<h3>Title</h3>} />;
 ```
 
 ### Quick Reference
 
 **Navigation & Headers:**
+
 - `<Header />` - Top navigation with left/right content
 - `<IconButton />` - Preset icon buttons
 - `<QuickLink />` - Sidebar navigation
 - `<SectionHeader />` - Section headers
 
 **Lists & Items:**
+
 - `<ListItem />` - List items with optional title/subtitle
 - `<ListContainer />` - Wrapper for list/grid/card views
 - `<CompactCard />` - Grid and card view items
 - `<TreeItem />` - Tree items with auto-indentation
 
 **Controls:**
+
 - `<ControlGroup />` - Related button/toggle groups
 - `<ToolbarButton />` - Toolbar buttons
 - `<ToolbarDivider />` - Toolbar dividers
 
 **Layout:**
+
 - `<Spacer />` - Layout spacing without divs
 - `<PanelFooter />` - Footer sections
 
@@ -216,21 +220,23 @@ All composites support three size variants:
 ### Common Usage Patterns
 
 **Header with Title and Action:**
+
 ```tsx
 import { Header, IconButton } from '@renderer/components/composites';
 
 <Header
   left={<Heading3>Notes</Heading3>}
   right={<IconButton icon={<Plus />} tooltip="New Note" />}
-/>
+/>;
 ```
 
 **List with Items:**
+
 ```tsx
 import { ListContainer, ListItem } from '@renderer/components/composites';
 
 <ListContainer viewMode="list">
-  {notes.map(note => (
+  {notes.map((note) => (
     <ListItem
       key={note.id}
       isActive={note.id === activeId}
@@ -239,20 +245,26 @@ import { ListContainer, ListItem } from '@renderer/components/composites';
       right={<Star />}
     />
   ))}
-</ListContainer>
+</ListContainer>;
 ```
 
 **Control Group:**
+
 ```tsx
 import { ControlGroup } from '@renderer/components/composites';
 
 <ControlGroup gap="sm" background="bg-muted">
-  <Toggle><ListIcon /></Toggle>
-  <Toggle><GridIcon /></Toggle>
-</ControlGroup>
+  <Toggle>
+    <ListIcon />
+  </Toggle>
+  <Toggle>
+    <GridIcon />
+  </Toggle>
+</ControlGroup>;
 ```
 
 **Toolbar:**
+
 ```tsx
 import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 
@@ -261,18 +273,20 @@ import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
     <Bold />
   </ToolbarButton>
   <ToolbarDivider />
-</div>
+</div>;
 ```
 
 ### Important Rules
 
 ✅ **DO:**
+
 - Use composites instead of inline classes
 - Use size tokens: `size="compact"`, `size="normal"`, `size="spacious"`
 - Use left/right props instead of wrapper divs
 - Import from `@renderer/components/composites`
 
 ❌ **DON'T:**
+
 - Add inline classes like `className="px-3 py-2"` to composites
 - Use `style={{ paddingLeft }}` for indentation (use `<TreeItem level={} />`)
 - Create custom button styles (use `<IconButton />`)
@@ -281,6 +295,7 @@ import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 ### Documentation
 
 For detailed information, see:
+
 - **COMPOSITES_QUICK_REF.md** - Quick overview
 - **COMPOSITES_GUIDE.md** - Complete reference with all props
 - **COMPOSITES_IMPORTS.md** - Import patterns
@@ -312,5 +327,5 @@ pnpm build:renderer
 ### Type checking
 
 ```bash
-pnpm tsc --noEmit          # Check for TypeScript errors
+pnpm  typecheck         # Check for TypeScript errors
 ```

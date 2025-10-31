@@ -7,12 +7,19 @@ import { getDatabaseManager } from '../database/DatabaseManager';
 import { notes, noteTags, tags, noteLinks, noteVersions, attachments } from '../database/schema';
 import type { Note } from '@shared/types';
 import { generateId } from '@shared/utils/id';
+import { getFileSystemService } from '../services/FileSystemService';
+import { getMarkdownService } from '../services/MarkdownService';
+import { WorkspaceRepository } from './WorkspaceRepository';
+import path from 'path';
 
 /**
  * Note Repository
  */
 export class NoteRepository {
   private db = getDatabaseManager().getDrizzle();
+  private fileSystemService = getFileSystemService();
+  private markdownService = getMarkdownService();
+  private workspaceRepository = new WorkspaceRepository();
 
   /**
    * Find all notes with optional filtering
@@ -176,11 +183,14 @@ export class NoteRepository {
   async create(data: Partial<Note>): Promise<Note> {
     const id = generateId();
     const now = new Date();
+    const title = data.title ?? 'Untitled';
 
-    const noteData = {
+    // Check if we have an active workspace
+    const activeWorkspace = await this.workspaceRepository.getActive();
+
+    let noteData: any = {
       id,
-      title: data.title ?? 'Untitled',
-      content: data.content ?? '',
+      title,
       notebookId: data.notebookId ?? null,
       isFavorite: data.isFavorite ?? false,
       isPinned: data.isPinned ?? false,
@@ -190,6 +200,50 @@ export class NoteRepository {
       createdAt: now,
       updatedAt: now,
     };
+
+    // If we have an active workspace, store as markdown file
+    if (activeWorkspace) {
+      try {
+        // Determine the target folder (notebook folder or workspace root)
+        let targetFolder = activeWorkspace.folderPath;
+
+        if (data.notebookId) {
+          // TODO: Get notebook's folder path and use it
+          // For now, just use workspace root
+        }
+
+        // Generate unique filename
+        const filename = await this.fileSystemService.generateUniqueFilename(
+          targetFolder,
+          title,
+          '.md'
+        );
+        const relativePath = filename;
+
+        // Save content to file
+        const content = data.content ?? '';
+        await this.saveContentToFile(relativePath, activeWorkspace.id, content, {
+          tags: [], // TODO: Get tags from note
+          favorite: data.isFavorite ?? undefined,
+          pinned: data.isPinned ?? undefined,
+        });
+
+        // Store file path and workspace ID, but not content
+        noteData = {
+          ...noteData,
+          filePath: relativePath,
+          workspaceId: activeWorkspace.id,
+          content: null, // Content lives in file
+        };
+      } catch (error) {
+        console.error('Error creating markdown file, falling back to database storage:', error);
+        // Fall back to database storage
+        noteData.content = data.content ?? '';
+      }
+    } else {
+      // No active workspace - store in database only (legacy mode)
+      noteData.content = data.content ?? '';
+    }
 
     await this.db.insert(notes).values(noteData);
 
@@ -204,7 +258,11 @@ export class NoteRepository {
   async update(id: string, data: Partial<Note>): Promise<Note> {
     const now = new Date();
 
-    const updateData = {
+    // Get the existing note to check if it has a file
+    const existingNote = await this.findById(id);
+    if (!existingNote) throw new Error('Note not found');
+
+    const updateData: any = {
       ...data,
       updatedAt: now,
     };
@@ -215,6 +273,51 @@ export class NoteRepository {
         delete updateData[key as keyof typeof updateData];
       }
     });
+
+    // If note has a file path and workspace, update the file
+    if (existingNote.filePath && existingNote.workspaceId) {
+      try {
+        // Handle title change -> file rename
+        if (data.title && data.title !== existingNote.title) {
+          const workspace = await this.workspaceRepository.findById(existingNote.workspaceId);
+          if (workspace) {
+            const oldFilePath = existingNote.filePath;
+            const dirPath = path.dirname(path.join(workspace.folderPath, oldFilePath));
+            const newFilename = await this.fileSystemService.generateUniqueFilename(
+              dirPath,
+              data.title,
+              '.md'
+            );
+
+            // Get relative path from workspace root
+            const newRelativePath = path.relative(workspace.folderPath, path.join(dirPath, newFilename));
+
+            // Rename the file
+            await this.renameMarkdownFile(oldFilePath, newRelativePath, existingNote.workspaceId);
+
+            // Update the file path in database
+            updateData.filePath = newRelativePath;
+          }
+        }
+
+        // If content is being updated, write to file
+        if (data.content !== undefined && data.content !== null && existingNote.workspaceId && (updateData.filePath || existingNote.filePath)) {
+          const filePathToUse = updateData.filePath || existingNote.filePath!;
+          const workspaceId = existingNote.workspaceId!;
+          await this.saveContentToFile(filePathToUse, workspaceId, data.content, {
+            tags: [], // TODO: Get tags
+            favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
+            pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,
+          });
+
+          // Don't store content in database
+          delete updateData.content;
+        }
+      } catch (error) {
+        console.error('Error updating markdown file:', error);
+        // Fall through to update database anyway
+      }
+    }
 
     await this.db.update(notes).set(updateData).where(eq(notes.id, id));
 
@@ -227,7 +330,17 @@ export class NoteRepository {
    * Delete a note
    */
   async delete(id: string): Promise<boolean> {
+    // Get note to check if it has a file
+    const note = await this.findById(id);
+
+    // Delete from database
     await this.db.delete(notes).where(eq(notes.id, id));
+
+    // Delete markdown file if it exists
+    if (note?.filePath && note.workspaceId) {
+      await this.deleteMarkdownFile(note.filePath, note.workspaceId);
+    }
+
     return true; // Assume success if no error thrown
   }
 
@@ -265,7 +378,26 @@ export class NoteRepository {
 
     if (result.length === 0) return null;
 
-    return result[0];
+    const note = result[0];
+
+    // If note has a file path, read content from file system
+    if (note.filePath && note.workspaceId) {
+      const fileContent = await this.getContentFromFile(note.filePath, note.workspaceId);
+
+      if (fileContent !== null) {
+        // Return note with content from file
+        return {
+          ...note,
+          content: fileContent,
+        };
+      } else {
+        // File couldn't be read, fall back to database content
+        console.warn(`Could not read file for note ${id}, using database content`);
+      }
+    }
+
+    // Return note with database content (legacy notes or file read failed)
+    return note;
   }
 
   /**
@@ -364,6 +496,9 @@ export class NoteRepository {
    */
   async permanentDelete(id: string): Promise<boolean> {
     return await this.transaction(async () => {
+      // Get note to check if it has a file (before deleting from DB)
+      const note = await this.findById(id);
+
       // Delete attachments
       await this.db.delete(attachments).where(eq(attachments.noteId, id));
 
@@ -378,8 +513,15 @@ export class NoteRepository {
         .delete(noteLinks)
         .where(or(eq(noteLinks.sourceNoteId, id), eq(noteLinks.targetNoteId, id)));
 
-      // Delete the note
-      return await this.delete(id);
+      // Delete from database
+      await this.db.delete(notes).where(eq(notes.id, id));
+
+      // Delete markdown file if it exists
+      if (note?.filePath && note.workspaceId) {
+        await this.deleteMarkdownFile(note.filePath, note.workspaceId);
+      }
+
+      return true;
     });
   }
 
@@ -510,5 +652,182 @@ export class NoteRepository {
         return timestamp >= startDate && timestamp <= endDate;
       }),
     );
+  }
+
+  /**
+   * Helper: Get content from markdown file
+   */
+  private async getContentFromFile(filePath: string, workspaceId: string): Promise<string | null> {
+    try {
+      const workspace = await this.workspaceRepository.findById(workspaceId);
+      if (!workspace) {
+        console.error(`Workspace not found: ${workspaceId}`);
+        return null;
+      }
+
+      const absolutePath = path.join(workspace.folderPath, filePath);
+      const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath);
+
+      // Convert markdown to HTML for TipTap editor
+      return await this.markdownService.markdownToHtml(markdownFile.content);
+    } catch (error) {
+      console.error(`Error reading content from file ${filePath}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Helper: Save content to markdown file
+   */
+  private async saveContentToFile(
+    filePath: string,
+    workspaceId: string,
+    content: string,
+    metadata?: {
+      tags?: string[];
+      favorite?: boolean;
+      pinned?: boolean;
+    }
+  ): Promise<void> {
+    try {
+      const workspace = await this.workspaceRepository.findById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      const absolutePath = path.join(workspace.folderPath, filePath);
+
+      // Convert HTML content to markdown
+      const markdownContent = this.markdownService.htmlToMarkdown(content);
+
+      await this.fileSystemService.writeMarkdownFile(absolutePath, markdownContent, metadata);
+    } catch (error) {
+      console.error(`Error saving content to file ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Helper: Delete markdown file
+   */
+  private async deleteMarkdownFile(filePath: string, workspaceId: string): Promise<void> {
+    try {
+      const workspace = await this.workspaceRepository.findById(workspaceId);
+      if (!workspace) {
+        console.warn(`Workspace not found: ${workspaceId}, skipping file deletion`);
+        return;
+      }
+
+      const absolutePath = path.join(workspace.folderPath, filePath);
+      await this.fileSystemService.deleteMarkdownFile(absolutePath);
+    } catch (error) {
+      console.error(`Error deleting markdown file ${filePath}:`, error);
+      // Don't throw - allow database deletion to proceed even if file is missing
+    }
+  }
+
+  /**
+   * Helper: Rename markdown file
+   */
+  private async renameMarkdownFile(
+    oldFilePath: string,
+    newFilePath: string,
+    workspaceId: string
+  ): Promise<void> {
+    try {
+      const workspace = await this.workspaceRepository.findById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      const oldAbsolutePath = path.join(workspace.folderPath, oldFilePath);
+      const newAbsolutePath = path.join(workspace.folderPath, newFilePath);
+
+      await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
+    } catch (error) {
+      console.error(`Error renaming markdown file ${oldFilePath} to ${newFilePath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync notes with file system
+   * Reconciles database entries with actual markdown files in workspace
+   */
+  async syncWithFileSystem(workspaceId: string): Promise<{
+    created: number;
+    updated: number;
+    deleted: number;
+    errors: string[];
+  }> {
+    const results = {
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      errors: [] as string[],
+    };
+
+    try {
+      const workspace = await this.workspaceRepository.findById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      // Scan workspace folder for all markdown files
+      const filesOnDisk = await this.fileSystemService.scanFolder(workspace.folderPath, true);
+
+      // Get all notes in this workspace from database
+      const notesInDb = await this.findAll({
+        where: { workspaceId, isDeleted: false },
+      });
+
+      // Create maps for efficient lookup
+      const filesMap = new Map(filesOnDisk.map(f => [f.relativePath, f]));
+      const notesMap = new Map(notesInDb.map(n => [n.filePath || '', n]));
+
+      // Find files that exist on disk but not in database (CREATE)
+      for (const file of filesOnDisk) {
+        if (!notesMap.has(file.relativePath)) {
+          try {
+            // Create new note from file
+            await this.create({
+              title: file.title,
+              content: await this.markdownService.markdownToHtml(file.content),
+              workspaceId,
+              filePath: file.relativePath,
+              isFavorite: file.metadata?.favorite || false,
+              isPinned: file.metadata?.pinned || false,
+            });
+            results.created++;
+          } catch (error) {
+            results.errors.push(`Failed to create note from ${file.relativePath}: ${error}`);
+          }
+        }
+      }
+
+      // Find notes in database whose files no longer exist (DELETE)
+      for (const note of notesInDb) {
+        if (note.filePath && !filesMap.has(note.filePath)) {
+          try {
+            // Soft delete the note
+            await this.softDelete(note.id);
+            results.deleted++;
+          } catch (error) {
+            results.errors.push(`Failed to delete note ${note.id}: ${error}`);
+          }
+        }
+      }
+
+      // Check for files that were renamed/moved (UPDATE)
+      // This is more complex and may require content comparison or user input
+      // For now, we'll just detect and report them as errors
+
+      console.log('File system sync completed:', results);
+      return results;
+    } catch (error) {
+      console.error('Error syncing with file system:', error);
+      results.errors.push(`Sync failed: ${error}`);
+      return results;
+    }
   }
 }

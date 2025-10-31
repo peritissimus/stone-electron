@@ -8,6 +8,13 @@
       "when": 1761871764920,
       "tag": "0000_dry_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1761939446623,
+      "tag": "0001_wide_power_pack",
+      "breakpoints": true
     }
   ]
 }
