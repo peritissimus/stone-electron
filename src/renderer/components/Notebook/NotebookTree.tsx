@@ -2,19 +2,17 @@
  * Notebook Tree Component - Placeholder
  */
 
-import React from 'react'
-import { useNotebookStore } from '../../stores/notebookStore'
-import { ChevronRight, ChevronDown, FolderOpen, Folder } from 'lucide-react'
+import React from 'react';
+import { useNotebookStore } from '../../stores/notebookStore';
+import { ChevronRight, ChevronDown, FolderOpen, Folder } from 'lucide-react';
+import { Notebook } from '@shared/types';
 
 export function NotebookTree() {
-  const { notebooks, activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } = useNotebookStore()
+  const { notebooks, activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } =
+    useNotebookStore();
 
   if (notebooks.length === 0) {
-    return (
-      <div className="p-3 text-xs text-muted-foreground text-center">
-        No notebooks yet
-      </div>
-    )
+    return <div className="p-3 text-xs text-muted-foreground text-center">No notebooks yet</div>;
   }
 
   return (
@@ -27,19 +25,32 @@ export function NotebookTree() {
           isExpanded={expandedIds.has(notebook.id)}
           onSelect={() => setActiveNotebook(notebook.id)}
           onToggleExpand={() => toggleExpanded(notebook.id)}
+          activeNotebookId={activeNotebookId}
+          expandedIds={expandedIds}
+          setActiveNotebook={setActiveNotebook}
+          toggleExpanded={toggleExpanded}
         />
       ))}
     </div>
-  )
+  );
+}
+
+interface NotebookWithChildren extends Notebook {
+  children?: NotebookWithChildren[];
+  note_count?: number;
 }
 
 interface NotebookTreeItemProps {
-  notebook: any
-  isActive: boolean
-  isExpanded: boolean
-  onSelect: () => void
-  onToggleExpand: () => void
-  level?: number
+  notebook: NotebookWithChildren;
+  isActive: boolean;
+  isExpanded: boolean;
+  onSelect: () => void;
+  onToggleExpand: () => void;
+  activeNotebookId: string | null;
+  expandedIds: Set<string>;
+  setActiveNotebook: (id: string | null) => void;
+  toggleExpanded: (id: string) => void;
+  level?: number;
 }
 
 function NotebookTreeItem({
@@ -48,26 +59,28 @@ function NotebookTreeItem({
   isExpanded,
   onSelect,
   onToggleExpand,
+  activeNotebookId,
+  expandedIds,
+  setActiveNotebook,
+  toggleExpanded,
   level = 0,
 }: NotebookTreeItemProps) {
-  const hasChildren = notebook.children && notebook.children.length > 0
+  const hasChildren = notebook.children && notebook.children.length > 0;
 
   return (
     <div>
       <button
         onClick={onSelect}
         className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${
-          isActive
-            ? 'bg-accent text-accent-foreground'
-            : 'hover:bg-muted text-foreground'
+          isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted text-foreground'
         }`}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
       >
         {hasChildren && (
           <button
             onClick={(e) => {
-              e.stopPropagation()
-              onToggleExpand()
+              e.stopPropagation();
+              onToggleExpand();
             }}
             className="flex-shrink-0"
           >
@@ -84,7 +97,7 @@ function NotebookTreeItem({
 
       {hasChildren && isExpanded && (
         <div>
-          {notebook.children.map((child: any) => (
+          {notebook.children?.map((child) => (
             <NotebookTreeItem
               key={child.id}
               notebook={child}
@@ -92,11 +105,15 @@ function NotebookTreeItem({
               isExpanded={expandedIds.has(child.id)}
               onSelect={() => setActiveNotebook(child.id)}
               onToggleExpand={() => toggleExpanded(child.id)}
+              activeNotebookId={activeNotebookId}
+              expandedIds={expandedIds}
+              setActiveNotebook={setActiveNotebook}
+              toggleExpanded={toggleExpanded}
               level={level + 1}
             />
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }

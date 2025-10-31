@@ -2,25 +2,25 @@
  * Note Editor Component - TipTap Rich Text Editor
  */
 
-import React, { useState, useEffect, useCallback } from 'react'
-import { useEditor } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
-import Image from '@tiptap/extension-image'
-import Highlight from '@tiptap/extension-highlight'
-import { useNoteStore } from '../../stores/noteStore'
-import { useNoteAPI } from '../../hooks/useNoteAPI'
-import { EditorToolbar } from '../Editor/EditorToolbar'
-import { EditorContent } from '@tiptap/react'
-import { Star, Pin, Archive, MoreVertical } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react';
+import { useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
+import Highlight from '@tiptap/extension-highlight';
+import { useNoteStore } from '../../stores/noteStore';
+import { useNoteAPI } from '../../hooks/useNoteAPI';
+import { EditorToolbar } from '../Editor/EditorToolbar';
+import { EditorContent } from '@tiptap/react';
+import { Star, Pin, Archive, MoreVertical } from 'lucide-react';
 
 export function NoteEditor() {
-  const { getActiveNote } = useNoteStore()
-  const { updateNote, toggleFavorite, togglePin, toggleArchive } = useNoteAPI()
-  const activeNote = getActiveNote()
+  const { getActiveNote } = useNoteStore();
+  const { updateNote, toggleFavorite, togglePin, toggleArchive } = useNoteAPI();
+  const activeNote = getActiveNote();
 
-  const [title, setTitle] = useState('')
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [title, setTitle] = useState('');
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -29,13 +29,13 @@ export function NoteEditor() {
       }),
       Link.configure({
         openOnClick: false,
-        HTMLAttributes: { class: 'text-blue-600 dark:text-blue-400 underline' },
+        HTMLAttributes: { class: 'text-primary underline' },
       }),
       Image.configure({
         HTMLAttributes: { class: 'max-w-full h-auto rounded-lg' },
       }),
       Highlight.configure({
-        HTMLAttributes: { class: 'bg-yellow-200 dark:bg-yellow-800' },
+        HTMLAttributes: { class: 'bg-accent' },
       }),
     ],
     content: activeNote?.content || '',
@@ -45,41 +45,41 @@ export function NoteEditor() {
       },
     },
     onUpdate: ({ editor }) => {
-      if (!activeNote) return
+      if (!activeNote) return;
 
       // Debounce save
-      if (saveTimeout) clearTimeout(saveTimeout)
+      if (saveTimeout) clearTimeout(saveTimeout);
       const timeout = setTimeout(() => {
-        updateNote(activeNote.id, { content: editor.getHTML() })
-      }, 1000)
-      setSaveTimeout(timeout)
+        updateNote(activeNote.id, { content: editor.getHTML() });
+      }, 1000);
+      setSaveTimeout(timeout);
     },
-  })
+  });
 
   // Update editor when active note changes
   useEffect(() => {
     if (activeNote && editor) {
-      setTitle(activeNote.title)
+      setTitle(activeNote.title || '');
       if (activeNote.content !== editor.getHTML()) {
-        editor.commands.setContent(activeNote.content)
+        editor.commands.setContent(activeNote.content);
       }
     }
-  }, [activeNote?.id, editor])
+  }, [activeNote?.id, editor]);
 
   // Handle title change
   const handleTitleChange = useCallback(
     (newTitle: string) => {
-      setTitle(newTitle)
-      if (!activeNote) return
+      setTitle(newTitle);
+      if (!activeNote) return;
 
-      if (saveTimeout) clearTimeout(saveTimeout)
+      if (saveTimeout) clearTimeout(saveTimeout);
       const timeout = setTimeout(() => {
-        updateNote(activeNote.id, { title: newTitle })
-      }, 500)
-      setSaveTimeout(timeout)
+        updateNote(activeNote.id, { title: newTitle });
+      }, 500);
+      setSaveTimeout(timeout);
     },
-    [activeNote, updateNote, saveTimeout]
-  )
+    [activeNote, updateNote, saveTimeout],
+  );
 
   if (!activeNote) {
     return (
@@ -89,7 +89,7 @@ export function NoteEditor() {
           <p className="text-xs">Select a note from the list or create a new one</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -110,7 +110,7 @@ export function NoteEditor() {
             onClick={() => toggleFavorite(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
               activeNote.isFavorite
-                ? 'text-yellow-500 bg-yellow-500/10'
+                ? 'text-yellow-600 bg-yellow-600/10 dark:text-yellow-400 dark:bg-yellow-400/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Favorite"
@@ -121,7 +121,7 @@ export function NoteEditor() {
             onClick={() => togglePin(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
               activeNote.isPinned
-                ? 'text-primary bg-primary/10'
+                ? 'text-blue-600 bg-blue-600/10 dark:text-blue-400 dark:bg-blue-400/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Pin"
@@ -132,7 +132,7 @@ export function NoteEditor() {
             onClick={() => toggleArchive(activeNote.id)}
             className={`p-1.5 rounded-lg transition-colors ${
               activeNote.isArchived
-                ? 'text-orange-500 bg-orange-500/10'
+                ? 'text-orange-600 bg-orange-600/10 dark:text-orange-400 dark:bg-orange-400/10'
                 : 'text-muted-foreground hover:bg-muted hover:text-foreground'
             }`}
             title="Toggle Archive"
@@ -158,5 +158,5 @@ export function NoteEditor() {
         </div>
       </div>
     </div>
-  )
+  );
 }

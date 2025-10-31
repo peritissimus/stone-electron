@@ -2,95 +2,89 @@
  * Sidebar Component - Navigation and organization
  */
 
-import React, { useState } from 'react'
-import { useUIStore } from '../../stores/uiStore'
-import { useNotebookStore } from '../../stores/notebookStore'
-import { NotebookTree } from '../Notebook/NotebookTree'
-import { TagList } from '../Tag/TagList'
-import { InputModal } from '../Common/InputModal'
-import { logger } from '../../utils/logger'
-import {
-  BookOpen,
-  Tag,
-  Search,
-  Settings,
-  Star,
-  Archive,
-  Clock,
-  Plus,
-} from 'lucide-react'
+import React, { useState } from 'react';
+import { useUIStore } from '../../stores/uiStore';
+import { useNotebookStore } from '../../stores/notebookStore';
+import { NotebookTree } from '../Notebook/NotebookTree';
+import { TagList } from '../Tag/TagList';
+import { InputModal } from '../Common/InputModal';
+import { logger } from '../../utils/logger';
+import { NotebookWithCount, TagWithCount, IpcResponse } from '@shared/types';
+import { BookOpen, Tag, Search, Settings, Star, Archive, Clock, Plus } from 'lucide-react';
 
 export function Sidebar() {
-  const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore()
-  const { addNotebook } = useNotebookStore()
-  const [isCreating, setIsCreating] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalType, setModalType] = useState<'notebook' | 'tag'>('notebook')
+  const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
+  const { addNotebook } = useNotebookStore();
+  const [isCreating, setIsCreating] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'notebook' | 'tag'>('notebook');
 
   const handleNewNotebook = async (name: string) => {
-    setIsCreating(true)
+    setIsCreating(true);
     try {
-      const response = await window.electron.invoke<{ success: boolean; data?: { id: string; name: string; icon: string; color: string; note_count: number }; error?: { code: string; message: string; details?: unknown } }>('notebooks:create', {
+      const response = await window.electron.invoke<NotebookWithCount>('notebooks:create', {
         name,
-      })
+      });
 
-      logger.info('Create notebook response:', response)
+      logger.info('Create notebook response:', response);
 
       if (response.success && response.data) {
         // Update local store
-        addNotebook(response.data)
-        logger.info('Notebook created:', response.data.name)
-        setModalOpen(false)
+        addNotebook(response.data);
+        logger.info('Notebook created:', response.data.name);
+        setModalOpen(false);
       } else {
-        const errorMsg = response.error?.message || 'Failed to create notebook'
-        logger.error('Backend error:', response.error)
-        throw new Error(errorMsg)
+        const errorMsg = response.error?.message || 'Failed to create notebook';
+        logger.error('Backend error:', response.error);
+        throw new Error(errorMsg);
       }
     } catch (error) {
-      logger.error('Failed to create notebook:', error)
-      alert(`Failed to create notebook: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      logger.error('Failed to create notebook:', error);
+      alert(
+        `Failed to create notebook: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const handleNewTag = async (name: string) => {
-    setIsCreating(true)
+    setIsCreating(true);
     try {
-      const response = await window.electron.invoke<{ success: boolean; data: { id: string; name: string } }>('tags:create', {
+      const response = await window.electron.invoke<TagWithCount>('tags:create', {
         name,
-      })
+      });
 
       if (response.success && response.data) {
-        logger.info('Tag created:', response.data.name)
-        setModalOpen(false)
+        logger.info('Tag created:', response.data.name);
+        setModalOpen(false);
       } else {
-        throw new Error('Failed to create tag')
+        throw new Error('Failed to create tag');
       }
     } catch (error) {
-      logger.error('Failed to create tag:', error)
-      alert('Failed to create tag. Please try again.')
+      logger.error('Failed to create tag:', error);
+      alert('Failed to create tag. Please try again.');
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const handleNewClick = () => {
     if (sidebarPanel === 'notebooks') {
-      setModalType('notebook')
+      setModalType('notebook');
     } else if (sidebarPanel === 'tags') {
-      setModalType('tag')
+      setModalType('tag');
     }
-    setModalOpen(true)
-  }
+    setModalOpen(true);
+  };
 
   const handleModalSubmit = (value: string) => {
     if (modalType === 'notebook') {
-      handleNewNotebook(value)
+      handleNewNotebook(value);
     } else {
-      handleNewTag(value)
+      handleNewTag(value);
     }
-  }
+  };
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
@@ -167,12 +161,12 @@ export function Sidebar() {
         submitLabel="Create"
       />
     </div>
-  )
+  );
 }
 
 interface QuickLinkProps {
-  icon: React.ReactNode
-  label: string
+  icon: React.ReactNode;
+  label: string;
 }
 
 function QuickLink({ icon, label }: QuickLinkProps) {
@@ -181,5 +175,5 @@ function QuickLink({ icon, label }: QuickLinkProps) {
       {icon}
       <span>{label}</span>
     </button>
-  )
+  );
 }

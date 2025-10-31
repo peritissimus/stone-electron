@@ -25,6 +25,10 @@ export type InsertNote = typeof notes.$inferInsert;
 export type Notebook = typeof notebooks.$inferSelect;
 export type InsertNotebook = typeof notebooks.$inferInsert;
 
+export interface NotebookWithCount extends Notebook {
+  note_count: number;
+}
+
 export type Tag = typeof tags.$inferSelect;
 export type InsertTag = typeof tags.$inferInsert;
 
@@ -121,6 +125,26 @@ export interface DatabaseStatus {
   lastDefrag?: UnixTimestamp;
   integrityOk: boolean;
   error?: string;
+}
+
+// Database Operation Responses
+export interface BackupResult {
+  size: number;
+  path: string;
+  timestamp: UnixTimestamp;
+}
+
+export interface VacuumResult {
+  size_before: number;
+  size_after: number;
+  freed_bytes: number;
+}
+
+export interface IntegrityResult {
+  ok: boolean;
+  foreign_keys_ok: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
 // Error Types

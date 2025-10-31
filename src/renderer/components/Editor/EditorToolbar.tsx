@@ -2,8 +2,8 @@
  * Editor Toolbar Component
  */
 
-import React from 'react'
-import { Editor } from '@tiptap/react'
+import React from 'react';
+import { Editor } from '@tiptap/react';
 import {
   Bold,
   Italic,
@@ -20,18 +20,16 @@ import {
   Redo,
   Link,
   Image,
-  Table,
-  CheckSquare,
   Highlighter,
   Code2,
-} from 'lucide-react'
+} from 'lucide-react';
 
 interface EditorToolbarProps {
-  editor: Editor | null
+  editor: Editor | null;
 }
 
 export function EditorToolbar({ editor }: EditorToolbarProps) {
-  if (!editor) return null
+  if (!editor) return null;
 
   return (
     <div className="border-b border-border bg-card px-2 py-1.5 flex items-center gap-0.5 flex-wrap">
@@ -132,13 +130,6 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       >
         <ListOrdered size={16} />
       </ToolbarButton>
-      <ToolbarButton
-        onClick={() => editor.chain().focus().toggleTaskList().run()}
-        active={editor.isActive('taskList')}
-        title="Task List"
-      >
-        <CheckSquare size={16} />
-      </ToolbarButton>
 
       <Divider />
 
@@ -169,9 +160,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       {/* Insert */}
       <ToolbarButton
         onClick={() => {
-          const url = window.prompt('Enter URL')
+          const url = window.prompt('Enter URL');
           if (url) {
-            editor.chain().focus().setLink({ href: url }).run()
+            editor.chain().focus().setLink({ href: url }).run();
           }
         }}
         active={editor.isActive('link')}
@@ -181,33 +172,25 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       </ToolbarButton>
       <ToolbarButton
         onClick={() => {
-          const url = window.prompt('Enter image URL')
+          const url = window.prompt('Enter image URL');
           if (url) {
-            editor.chain().focus().setImage({ src: url }).run()
+            editor.chain().focus().setImage({ src: url }).run();
           }
         }}
         title="Insert Image"
       >
         <Image size={16} />
       </ToolbarButton>
-      <ToolbarButton
-        onClick={() =>
-          editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-        }
-        title="Insert Table"
-      >
-        <Table size={16} />
-      </ToolbarButton>
     </div>
-  )
+  );
 }
 
 interface ToolbarButtonProps {
-  onClick: () => void
-  active?: boolean
-  disabled?: boolean
-  title?: string
-  children: React.ReactNode
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  title?: string;
+  children: React.ReactNode;
 }
 
 function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarButtonProps) {
@@ -224,9 +207,9 @@ function ToolbarButton({ onClick, active, disabled, title, children }: ToolbarBu
     >
       {children}
     </button>
-  )
+  );
 }
 
 function Divider() {
-  return <div className="w-px h-5 bg-border mx-1" />
+  return <div className="w-px h-5 bg-border mx-1" />;
 }

@@ -2,19 +2,15 @@
  * Tag List Component - Placeholder
  */
 
-import React from 'react'
-import { useTagStore } from '../../stores/tagStore'
-import { Tag } from 'lucide-react'
+import React from 'react';
+import { useTagStore } from '../../stores/tagStore';
+import { Tag } from 'lucide-react';
 
 export function TagList() {
-  const { tags, selectedTagIds, toggleTag } = useTagStore()
+  const { tags, selectedTagIds, toggleTag } = useTagStore();
 
   if (tags.length === 0) {
-    return (
-      <div className="p-3 text-xs text-muted-foreground text-center">
-        No tags yet
-      </div>
-    )
+    return <div className="p-3 text-xs text-muted-foreground text-center">No tags yet</div>;
   }
 
   return (
@@ -32,15 +28,13 @@ export function TagList() {
           <div className="flex items-center gap-2">
             <div
               className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: tag.color }}
+              style={{ backgroundColor: tag.color || '#6b7280' }}
             />
             <span>{tag.name}</span>
           </div>
-          <span className="text-xs text-muted-foreground">
-            {tag.note_count}
-          </span>
+          <span className="text-xs text-muted-foreground">{tag.note_count}</span>
         </button>
       ))}
     </div>
-  )
+  );
 }
