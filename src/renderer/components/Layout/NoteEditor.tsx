@@ -89,7 +89,7 @@ export function NoteEditor() {
     return (
       <div className="flex-1 bg-background">
         <ContainerCenter>
-          <ContainerFlex direction="column" align="center" gap="xs">
+          <ContainerFlex direction="col" align="center" gap="xs">
             <Body>No note selected</Body>
             <Text size="xs" variant="muted">
               Select a note from the list or create a new one
