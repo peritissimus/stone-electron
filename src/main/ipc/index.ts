@@ -11,7 +11,6 @@ import { registerTagHandlers } from './handlers/tagHandlers'
 import { registerSearchHandlers } from './handlers/searchHandlers'
 import { registerAttachmentHandlers } from './handlers/attachmentHandlers'
 import { registerDatabaseHandlers } from './handlers/databaseHandlers'
-import { registerSettingsHandlers } from './handlers/settingsHandlers'
 import { logger } from '../utils/logger'
 
 /**
@@ -30,7 +29,6 @@ export function registerAllIpcHandlers(): void {
   // Feature handlers
   registerSearchHandlers()
   registerDatabaseHandlers()
-  registerSettingsHandlers()
 
   logger.info('[IPC] All handlers registered successfully')
 }

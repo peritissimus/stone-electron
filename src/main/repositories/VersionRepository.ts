@@ -2,196 +2,89 @@
  * VersionRepository - Handles note version history
  */
 
-import Database from 'better-sqlite3'
-import { BaseRepository } from './BaseRepository'
-import type { NoteVersion } from '@shared/types'
+import { eq, sql, desc } from 'drizzle-orm';
+import { getDatabaseManager } from '../database/DatabaseManager';
+import { noteVersions } from '../database/schema';
+import type { NoteVersion, InsertNoteVersion } from '@shared/types';
+import { nanoid } from 'nanoid';
 
 /**
- * Version Repository
+ * Version Repository - Using Drizzle ORM
  */
-export class VersionRepository extends BaseRepository<NoteVersion> {
-  protected tableName = 'note_versions'
+export class VersionRepository {
+  /**
+   * Find version by ID
+   */
+  async findById(id: string): Promise<NoteVersion | undefined> {
+    const db = getDatabaseManager().getDrizzle();
+    const result = await db.select().from(noteVersions).where(eq(noteVersions.id, id)).limit(1);
+    return result[0];
+  }
 
   /**
    * Create a new version snapshot
    */
-  createVersion(noteId: string, title: string, content: string): NoteVersion {
-    const versionNumber = this.getNextVersionNumber(noteId)
+  async createVersion(noteId: string, title: string, content: string): Promise<NoteVersion> {
+    const db = getDatabaseManager().getDrizzle();
+    const versionNumber = await this.getNextVersionNumber(noteId);
+    const now = new Date();
 
-    return this.create({
-      noteId: noteId,
+    const newVersion: InsertNoteVersion = {
+      id: nanoid(),
+      noteId,
       title,
       content,
-      versionNumber: versionNumber,
-    } as Partial<NoteVersion>)
+      versionNumber,
+      createdAt: now,
+    };
+
+    await db.insert(noteVersions).values(newVersion);
+    return newVersion as NoteVersion;
   }
 
   /**
    * Get next version number for a note
    */
-  private getNextVersionNumber(noteId: string): number {
-    const stmt = this.db.prepare(`
-      SELECT MAX(versionNumber) as max_version
-      FROM note_versions
-      WHERE noteId = ?
-    `)
-    const result = stmt.get(noteId) as { max_version: number | null }
-    return (result.max_version || 0) + 1
-  }
+  private async getNextVersionNumber(noteId: string): Promise<number> {
+    const db = getDatabaseManager().getDrizzle();
 
-  /**
-   * Get all versions for a note
-   */
-  getVersionsForNote(noteId: string, limit?: number, offset?: number): NoteVersion[] {
-    const stmt = this.db.prepare(`
-      SELECT * FROM note_versions
-      WHERE noteId = ?
-      ORDER BY versionNumber DESC
-      ${limit ? `LIMIT ${limit}` : ''}
-      ${offset ? `OFFSET ${offset}` : ''}
-    `)
-    return stmt.all(noteId) as NoteVersion[]
-  }
+    const result = await db
+      .select({ maxVersion: sql<number>`MAX(${noteVersions.versionNumber})` })
+      .from(noteVersions)
+      .where(eq(noteVersions.noteId, noteId));
 
-  /**
-   * Get a specific version
-   */
-  getVersion(noteId: string, versionNumber: number): NoteVersion | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM note_versions
-      WHERE noteId = ? AND versionNumber = ?
-    `)
-    const result = stmt.get(noteId, versionNumber) as NoteVersion | undefined
-    return result || null
-  }
-
-  /**
-   * Get latest version for a note
-   */
-  getLatestVersion(noteId: string): NoteVersion | null {
-    const stmt = this.db.prepare(`
-      SELECT * FROM note_versions
-      WHERE noteId = ?
-      ORDER BY versionNumber DESC
-      LIMIT 1
-    `)
-    const result = stmt.get(noteId) as NoteVersion | undefined
-    return result || null
-  }
-
-  /**
-   * Count versions for a note
-   */
-  countVersionsForNote(noteId: string): number {
-    const stmt = this.db.prepare(`
-      SELECT COUNT(*) as count FROM note_versions
-      WHERE noteId = ?
-    `)
-    const result = stmt.get(noteId) as { count: number }
-    return result.count
-  }
-
-  /**
-   * Delete old versions (keep only the last N versions)
-   */
-  pruneOldVersions(noteId: string, keepCount: number = 10): number {
-    const stmt = this.db.prepare(`
-      DELETE FROM note_versions
-      WHERE noteId = ?
-      AND versionNumber < (
-        SELECT MAX(versionNumber) - ? FROM note_versions WHERE noteId = ?
-      )
-    `)
-    const result = stmt.run(noteId, keepCount, noteId)
-    return result.changes || 0
-  }
-
-  /**
-   * Delete all versions for a note
-   */
-  deleteVersionsForNote(noteId: string): number {
-    const stmt = this.db.prepare('DELETE FROM note_versions WHERE noteId = ?')
-    const result = stmt.run(noteId)
-    return result.changes || 0
+    return (result[0]?.maxVersion || 0) + 1;
   }
 
   /**
    * Get version history summary
    */
-  getVersionSummary(noteId: string): Array<{
-    versionNumber: number
-    title: string
-    created_at: number
-    content_length: number
-  }> {
-    const stmt = this.db.prepare(`
-      SELECT
-        versionNumber,
-        title,
-        created_at,
-        LENGTH(content) as content_length
-      FROM note_versions
-      WHERE noteId = ?
-      ORDER BY versionNumber DESC
-    `)
-    return stmt.all(noteId) as Array<{
-      versionNumber: number
-      title: string
-      created_at: number
-      content_length: number
+  async getVersionSummary(noteId: string): Promise<
+    Array<{
+      versionNumber: number;
+      title: string;
+      createdAt: Date;
+      contentLength: number;
     }>
-  }
+  > {
+    const db = getDatabaseManager().getDrizzle();
 
-  /**
-   * Compare two versions
-   */
-  compareVersions(
-    noteId: string,
-    version1: number,
-    version2: number
-  ): {
-    version1: NoteVersion | null
-    version2: NoteVersion | null
-  } {
-    const v1 = this.getVersion(noteId, version1)
-    const v2 = this.getVersion(noteId, version2)
+    const result = await db
+      .select({
+        versionNumber: noteVersions.versionNumber,
+        title: noteVersions.title,
+        createdAt: noteVersions.createdAt,
+        contentLength: sql<number>`LENGTH(${noteVersions.content})`,
+      })
+      .from(noteVersions)
+      .where(eq(noteVersions.noteId, noteId))
+      .orderBy(desc(noteVersions.versionNumber));
 
-    return {
-      version1: v1,
-      version2: v2,
-    }
-  }
-
-  /**
-   * Get total storage used by versions for a note
-   */
-  getStorageSize(noteId: string): number {
-    const stmt = this.db.prepare(`
-      SELECT SUM(LENGTH(content)) as total_size
-      FROM note_versions
-      WHERE noteId = ?
-    `)
-    const result = stmt.get(noteId) as { total_size: number | null }
-    return result.total_size || 0
-  }
-
-  /**
-   * Get notes with most versions
-   */
-  getNotesWithMostVersions(limit: number = 10): Array<{
-    noteId: string
-    version_count: number
-  }> {
-    const stmt = this.db.prepare(`
-      SELECT noteId, COUNT(*) as version_count
-      FROM note_versions
-      GROUP BY noteId
-      ORDER BY version_count DESC
-      LIMIT ?
-    `)
-    return stmt.all(limit) as Array<{
-      noteId: string
-      version_count: number
-    }>
+    return result as Array<{
+      versionNumber: number;
+      title: string;
+      createdAt: Date;
+      contentLength: number;
+    }>;
   }
 }

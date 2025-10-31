@@ -25,11 +25,11 @@ export function registerNoteHandlers() {
 
       // Add tags if provided
       if (request.tags && request.tags.length > 0) {
-        repos.tag.setTagsForNote(note.id, request.tags)
+        await repos.tag.setTagsForNote(note.id, request.tags)
       }
 
       // Get tags for response
-      const tags = repos.tag.getTagsForNote(note.id)
+      const tags = await repos.tag.getTagsForNote(note.id)
       const noteWithTags = { ...note, tags }
 
       // Broadcast event
@@ -56,7 +56,7 @@ export function registerNoteHandlers() {
 
         // Create version if content changed significantly
         if (request.content && request.content !== oldNote.content) {
-          repos.version.createVersion(oldNote.id, oldNote.title, oldNote.content)
+          await repos.version.createVersion(oldNote.id, oldNote.title, oldNote.content)
         }
 
         // Update note
@@ -69,10 +69,10 @@ export function registerNoteHandlers() {
 
         // Update tags if provided
         if (request.tags) {
-          repos.tag.setTagsForNote(note.id, request.tags)
+          await repos.tag.setTagsForNote(note.id, request.tags)
         }
 
-        const tags = repos.tag.getTagsForNote(note.id)
+        const tags = await repos.tag.getTagsForNote(note.id)
         const noteWithTags = { ...note, tags }
 
         // Broadcast event
@@ -117,8 +117,8 @@ export function registerNoteHandlers() {
           throw new IpcError('NOT_FOUND', 'Note not found')
         }
 
-        const tags = repos.tag.getTagsForNote(note.id)
-        const attachments = repos.attachment.getAttachmentsForNote(note.id)
+        const tags = await repos.tag.getTagsForNote(note.id)
+        const attachments = await repos.attachment.getAttachmentsForNote(note.id)
 
         const result: Record<string, unknown> = {
           ...note,
@@ -127,7 +127,7 @@ export function registerNoteHandlers() {
         }
 
         if (request.include_versions) {
-          result.versions = repos.version.getVersionSummary(note.id)
+          result.versions = await repos.version.getVersionSummary(note.id)
         }
 
         if (request.include_backlinks) {
@@ -189,8 +189,8 @@ export function registerNoteHandlers() {
 
         const enrichedNotes = await Promise.all(
           notes.map(async (note) => {
-            const noteTags = repos.tag.getTagsForNote(note.id)
-            const attachments = repos.attachment.getAttachmentsForNote(note.id)
+            const noteTags = await repos.tag.getTagsForNote(note.id)
+            const attachments = await repos.attachment.getAttachmentsForNote(note.id)
             return {
               ...note,
               tags: noteTags,
@@ -218,7 +218,7 @@ export function registerNoteHandlers() {
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.toggleFavorite(request.id)
 
-      const tags = repos.tag.getTagsForNote(note.id)
+      const tags = await repos.tag.getTagsForNote(note.id)
       const noteWithTags = { ...note, tags }
 
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -235,7 +235,7 @@ export function registerNoteHandlers() {
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.togglePin(request.id)
 
-      const tags = repos.tag.getTagsForNote(note.id)
+      const tags = await repos.tag.getTagsForNote(note.id)
       const noteWithTags = { ...note, tags }
 
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -252,7 +252,7 @@ export function registerNoteHandlers() {
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.toggleArchive(request.id)
 
-      const tags = repos.tag.getTagsForNote(note.id)
+      const tags = await repos.tag.getTagsForNote(note.id)
       const noteWithTags = { ...note, tags }
 
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -267,7 +267,7 @@ export function registerNoteHandlers() {
   ipcMain.handle(
     NOTE_CHANNELS.GET_VERSIONS,
     createHandler(async (event, request: { noteId: string; limit?: number; offset?: number }) => {
-      const versions = repos.version.getVersionSummary(request.noteId)
+      const versions = await repos.version.getVersionSummary(request.noteId)
       const total = versions.length
 
       return { versions, total }
@@ -278,7 +278,7 @@ export function registerNoteHandlers() {
   ipcMain.handle(
     NOTE_CHANNELS.RESTORE_VERSION,
     createHandler(async (event, request: { noteId: string; versionId: string }) => {
-      const version = repos.version.findById(request.versionId)
+      const version = await repos.version.findById(request.versionId)
       if (!version) {
         throw new IpcError('NOT_FOUND', 'Version not found')
       }
@@ -286,7 +286,7 @@ export function registerNoteHandlers() {
       // Create a new version from current state before restoring
       const currentNote = await repos.note.findById(request.noteId)
       if (currentNote) {
-        repos.version.createVersion(currentNote.id, currentNote.title, currentNote.content)
+        await repos.version.createVersion(currentNote.id, currentNote.title, currentNote.content)
       }
 
       // Restore the version

@@ -21,7 +21,7 @@ export function registerNotebookHandlers() {
         event,
         request: { name: string; parentId?: string; icon?: string; color?: string; position?: number }
       ) => {
-        const notebook = repos.notebook.create({
+        const notebook = await repos.notebook.create({
           name: request.name,
           parentId: request.parentId || null,
           icon: request.icon || '📁',
@@ -34,7 +34,7 @@ export function registerNotebookHandlers() {
           win.webContents.send(EVENTS.NOTEBOOK_CREATED, { notebook })
         })
 
-        const note_count = repos.notebook.getNoteCount(notebook.id)
+        const note_count = await repos.notebook.getNoteCount(notebook.id)
         return { ...notebook, note_count }
       }
     )
@@ -51,7 +51,7 @@ export function registerNotebookHandlers() {
         if (request.color !== undefined) updateData.color = request.color
         if (request.position !== undefined) updateData.position = request.position
 
-        const notebook = repos.notebook.update(request.id, updateData)
+        const notebook = await repos.notebook.update(request.id, updateData)
 
         // Broadcast event
         BrowserWindow.getAllWindows().forEach((win) => {
@@ -68,7 +68,7 @@ export function registerNotebookHandlers() {
     NOTEBOOK_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string; delete_notes?: boolean }) => {
       const action = request.delete_notes ? 'delete' : 'orphan'
-      repos.notebook.deleteWithNotes(request.id, action)
+      await repos.notebook.deleteWithNotes(request.id, action)
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -84,16 +84,18 @@ export function registerNotebookHandlers() {
     NOTEBOOK_CHANNELS.GET_ALL,
     createHandler(async (event, request: { include_counts?: boolean; flat?: boolean }) => {
       if (request.flat) {
-        const notebooks = repos.notebook.getFlatList()
+        const notebooks = await repos.notebook.getFlatList()
         return {
-          notebooks: notebooks.map((nb) => ({
-            ...nb,
-            note_count: request.include_counts ? repos.notebook.getNoteCount(nb.id) : 0,
-          })),
+          notebooks: await Promise.all(
+            notebooks.map(async (nb) => ({
+              ...nb,
+              note_count: request.include_counts ? await repos.notebook.getNoteCount(nb.id) : 0,
+            }))
+          ),
         }
       }
 
-      const tree = repos.notebook.getTree()
+      const tree = await repos.notebook.getTree()
       return { notebooks: tree }
     })
   )
@@ -103,7 +105,7 @@ export function registerNotebookHandlers() {
     NOTEBOOK_CHANNELS.MOVE,
     createHandler(async (event, request: { id: string; parentId?: string; position?: number }) => {
       try {
-        const notebook = repos.notebook.move(request.id, request.parentId || null, request.position)
+        const notebook = await repos.notebook.move(request.id, request.parentId || null, request.position)
 
         // Broadcast event
         BrowserWindow.getAllWindows().forEach((win) => {

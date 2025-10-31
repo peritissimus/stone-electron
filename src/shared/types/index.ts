@@ -2,83 +2,35 @@
  * Shared Types for Stone Application
  */
 
+import { notes, notebooks, tags, noteTags, noteLinks, attachments, noteVersions } from '@main/database/schema'
+
 // IDs
 export type UUID = string & { readonly __brand: 'UUID' }
 
 // Timestamps
 export type UnixTimestamp = number
 
-// Note Types
-export interface Note {
-  id: UUID
-  title: string
-  content: string
-  notebookId: UUID | null
-  isFavorite: number
-  isPinned: number
-  isArchived: number
-  isDeleted: number
-  deletedAt: UnixTimestamp | null
-  createdAt: UnixTimestamp
-  updatedAt: UnixTimestamp
-  [key: string]: unknown
-}
+// Infer types from Drizzle schema
+export type Note = typeof notes.$inferSelect
+export type InsertNote = typeof notes.$inferInsert
 
-export interface NoteVersion {
-  id: UUID
-  noteId: UUID
-  title: string
-  content: string
-  versionNumber: number
-  createdAt: UnixTimestamp
-  [key: string]: unknown
-}
+export type Notebook = typeof notebooks.$inferSelect
+export type InsertNotebook = typeof notebooks.$inferInsert
 
-// Notebook Types
-export interface Notebook {
-  id: UUID
-  name: string
-  icon: string
-  color: string
-  parentId: UUID | null
-  position: number
-  createdAt: UnixTimestamp
-  updatedAt: UnixTimestamp
-  [key: string]: unknown
-}
+export type Tag = typeof tags.$inferSelect
+export type InsertTag = typeof tags.$inferInsert
 
-// Tag Types
-export interface Tag {
-  id: UUID
-  name: string
-  color: string
-  createdAt: UnixTimestamp
-  [key: string]: unknown
-}
+export type NoteTag = typeof noteTags.$inferSelect
+export type InsertNoteTag = typeof noteTags.$inferInsert
 
-export interface NoteTag {
-  noteId: UUID
-  tagId: UUID
-}
+export type NoteLink = typeof noteLinks.$inferSelect
+export type InsertNoteLink = typeof noteLinks.$inferInsert
 
-// Attachment Types
-export interface Attachment {
-  id: UUID
-  noteId: UUID
-  filename: string
-  filepath: string
-  mimetype: string
-  size: number
-  createdAt: UnixTimestamp
-  [key: string]: unknown
-}
+export type Attachment = typeof attachments.$inferSelect
+export type InsertAttachment = typeof attachments.$inferInsert
 
-// Link Types
-export interface NoteLink {
-  source_noteId: UUID
-  target_noteId: UUID
-  createdAt: UnixTimestamp
-}
+export type NoteVersion = typeof noteVersions.$inferSelect
+export type InsertNoteVersion = typeof noteVersions.$inferInsert
 
 // Settings
 export interface Settings {

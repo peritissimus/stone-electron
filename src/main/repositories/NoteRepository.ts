@@ -2,7 +2,7 @@
  * NoteRepository - Handles all note-related database operations
  */
 
-import { eq, and, sql, desc, asc, or } from 'drizzle-orm';
+import { eq, and, sql, desc, asc, or, isNull } from 'drizzle-orm';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import { notes, noteTags, tags, noteLinks, noteVersions, attachments } from '../database/schema';
 import type { Note } from '@shared/types';
@@ -64,7 +64,7 @@ export class NoteRepository {
    */
   async create(data: Partial<Note>): Promise<Note> {
     const id = generateId();
-    const now = Math.floor(Date.now() / 1000);
+    const now = new Date();
 
     const noteData = {
       id,
@@ -75,7 +75,7 @@ export class NoteRepository {
       isPinned: data.isPinned ?? false,
       isArchived: data.isArchived ?? false,
       isDeleted: data.isDeleted ?? false,
-      deletedAt: data.deleted_at ?? null,
+      deletedAt: data.deletedAt ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -91,7 +91,7 @@ export class NoteRepository {
    * Update a note
    */
   async update(id: string, data: Partial<Note>): Promise<Note> {
-    const now = Math.floor(Date.now() / 1000);
+    const now = new Date();
 
     const updateData = {
       ...data,
@@ -116,32 +116,17 @@ export class NoteRepository {
    * Delete a note
    */
   async delete(id: string): Promise<boolean> {
-    const result = await this.db.delete(notes).where(eq(notes.id, id));
-
-    return result.rowCount > 0;
+    await this.db.delete(notes).where(eq(notes.id, id));
+    return true; // Assume success if no error thrown
   }
 
   /**
    * Count notes with optional filtering
    */
   async count(where?: Partial<Note>): Promise<number> {
-    let query = this.db.select({ count: sql<number>`COUNT(*)` }).from(notes);
-
-    if (where) {
-      const conditions = Object.entries(where)
-        .filter(([_, value]) => value !== undefined)
-        .map(([key, value]) => {
-          const column = notes[key as keyof typeof notes];
-          return eq(column, value);
-        });
-
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions));
-      }
-    }
-
-    const result = await query;
-    return result[0]?.count ?? 0;
+    // For now, use findAll and count the results
+    const results = await this.findAll({ where });
+    return results.length;
   }
 
   /**
@@ -169,27 +154,7 @@ export class NoteRepository {
 
     if (result.length === 0) return null;
 
-    const note = result[0];
-    return {
-      ...note,
-      id: note.id as any, // Cast UUID type
-      created_at:
-        note.created_at instanceof Date
-          ? Math.floor(note.created_at.getTime() / 1000)
-          : note.created_at,
-      updated_at:
-        note.updated_at instanceof Date
-          ? Math.floor(note.updated_at.getTime() / 1000)
-          : note.updated_at,
-      deleted_at:
-        note.deleted_at instanceof Date
-          ? Math.floor(note.deleted_at.getTime() / 1000)
-          : note.deleted_at,
-      isFavorite: note.isFavorite ? 1 : 0,
-      isPinned: note.isPinned ? 1 : 0,
-      isArchived: note.isArchived ? 1 : 0,
-      isDeleted: note.isDeleted ? 1 : 0,
-    } as Note;
+    return result[0];
   }
 
   /**
@@ -205,8 +170,8 @@ export class NoteRepository {
     }).then((notes) =>
       notes.filter(
         (note) =>
-          note.title.toLowerCase().includes(query.toLowerCase()) ||
-          note.content.toLowerCase().includes(query.toLowerCase()),
+          (note.title?.toLowerCase().includes(query.toLowerCase()) ?? false) ||
+          (note.content?.toLowerCase().includes(query.toLowerCase()) ?? false),
       ),
     );
   }
@@ -266,10 +231,10 @@ export class NoteRepository {
    * Soft delete a note
    */
   async softDelete(id: string): Promise<Note> {
-    const now = Math.floor(Date.now() / 1000);
+    const now = new Date();
     return await this.update(id, {
       isDeleted: true,
-      deleted_at: now,
+      deletedAt: now,
     } as Partial<Note>);
   }
 
@@ -279,7 +244,7 @@ export class NoteRepository {
   async restore(id: string): Promise<Note> {
     return await this.update(id, {
       isDeleted: false,
-      deleted_at: null,
+      deletedAt: null,
     } as Partial<Note>);
   }
 
@@ -375,7 +340,7 @@ export class NoteRepository {
    * Add a link between two notes
    */
   async addLink(sourceId: string, targetId: string): Promise<void> {
-    const now = Math.floor(Date.now() / 1000);
+    const now = new Date();
 
     await this.db
       .insert(noteLinks)
@@ -419,8 +384,8 @@ export class NoteRepository {
    * Get notes created within a date range
    */
   async findByDateRange(
-    startDate: number,
-    endDate: number,
+    startDate: Date,
+    endDate: Date,
     field: 'createdAt' | 'updatedAt' = 'createdAt',
   ): Promise<Note[]> {
     const column = field === 'createdAt' ? notes.createdAt : notes.updatedAt;

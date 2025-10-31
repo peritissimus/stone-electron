@@ -20,7 +20,7 @@ export function registerAttachmentHandlers() {
   ipcMain.handle(
     ATTACHMENT_CHANNELS.ADD,
     createHandler(async (event, request: { noteId: string; file_path: string; filename?: string }) => {
-      const note = repos.note.findById(request.noteId)
+      const note = await repos.note.findById(request.noteId)
       if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found')
       }
@@ -62,7 +62,7 @@ export function registerAttachmentHandlers() {
 
       // Create attachment record
       const relativePath = path.join('attachments', request.noteId, filename)
-      const attachment = repos.attachment.create({
+      const attachment = await repos.attachment.create({
         noteId: request.noteId,
         filename,
         filepath: relativePath,
@@ -83,7 +83,7 @@ export function registerAttachmentHandlers() {
   ipcMain.handle(
     ATTACHMENT_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string; noteId: string }) => {
-      const attachment = repos.attachment.findById(request.id)
+      const attachment = await repos.attachment.findById(request.id)
       if (!attachment) {
         throw new IpcError('NOT_FOUND', 'Attachment not found')
       }
@@ -96,7 +96,7 @@ export function registerAttachmentHandlers() {
       }
 
       // Delete attachment record
-      repos.attachment.delete(request.id)
+      await repos.attachment.delete(request.id)
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -111,7 +111,7 @@ export function registerAttachmentHandlers() {
   ipcMain.handle(
     ATTACHMENT_CHANNELS.GET_ALL,
     createHandler(async (event, request: { noteId: string }) => {
-      const attachments = repos.attachment.getAttachmentsForNote(request.noteId)
+      const attachments = await repos.attachment.getAttachmentsForNote(request.noteId)
       return { attachments }
     })
   )

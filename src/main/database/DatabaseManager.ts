@@ -87,6 +87,13 @@ export class DatabaseManager {
   }
 
   /**
+   * Get the raw SQLite database instance (alias for getDatabase)
+   */
+  getDb(): Database.Database {
+    return this.getDatabase();
+  }
+
+  /**
    * Execute a query
    */
   exec(sql: string): void {

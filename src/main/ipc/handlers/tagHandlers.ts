@@ -18,12 +18,12 @@ export function registerTagHandlers() {
     TAG_CHANNELS.CREATE,
     createHandler(async (event, request: { name: string; color?: string }) => {
       // Check if tag already exists
-      const existing = repos.tag.findOne({ name: request.name })
+      const existing = await repos.tag.findOne({ name: request.name })
       if (existing) {
         throw new IpcError('DUPLICATE', 'Tag with this name already exists')
       }
 
-      const tag = repos.tag.create({
+      const tag = await repos.tag.create({
         name: request.name,
         color: request.color || '#6b7280',
       })
@@ -33,7 +33,7 @@ export function registerTagHandlers() {
         win.webContents.send(EVENTS.TAG_CREATED, { tag })
       })
 
-      return { ...tag, note_count: 0 }
+      return { ...tag, noteCount: 0 }
     })
   )
 
@@ -41,14 +41,15 @@ export function registerTagHandlers() {
   ipcMain.handle(
     TAG_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string }) => {
-      const tag = repos.tag.findById(request.id)
+      const tag = await repos.tag.findById(request.id)
       if (!tag) {
         throw new IpcError('NOT_FOUND', 'Tag not found')
       }
 
-      const noteCount = repos.tag.getAllWithCounts().find((t) => t.id === request.id)?.note_count || 0
+      const allTags = await repos.tag.getAllWithCounts()
+      const noteCount = allTags.find((t) => t.id === request.id)?.noteCount || 0
 
-      repos.tag.deleteWithAssociations(request.id)
+      await repos.tag.deleteWithAssociations(request.id)
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -63,13 +64,17 @@ export function registerTagHandlers() {
   ipcMain.handle(
     TAG_CHANNELS.GET_ALL,
     createHandler(async (event, request: { sort?: 'name' | 'count' | 'recent' }) => {
-      const tags = repos.tag.getAllWithCounts()
+      const tags = await repos.tag.getAllWithCounts()
 
       // Sort based on request
       if (request.sort === 'count') {
-        tags.sort((a, b) => b.note_count - a.note_count || a.name.localeCompare(b.name))
+        tags.sort((a, b) => b.noteCount - a.noteCount || a.name.localeCompare(b.name))
       } else if (request.sort === 'recent') {
-        tags.sort((a, b) => b.created_at - a.created_at)
+        tags.sort((a, b) => {
+          const aTime = a.createdAt instanceof Date ? a.createdAt.getTime() : 0;
+          const bTime = b.createdAt instanceof Date ? b.createdAt.getTime() : 0;
+          return bTime - aTime;
+        })
       } else {
         tags.sort((a, b) => a.name.localeCompare(b.name))
       }
@@ -82,17 +87,17 @@ export function registerTagHandlers() {
   ipcMain.handle(
     TAG_CHANNELS.ADD_TO_NOTE,
     createHandler(async (event, request: { noteId: string; tagIds: string[] }) => {
-      const note = repos.note.findById(request.noteId)
+      const note = await repos.note.findById(request.noteId)
       if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found')
       }
 
       // Add each tag
       for (const tagId of request.tagIds) {
-        repos.tag.addToNote(request.noteId, tagId)
+        await repos.tag.addToNote(request.noteId, tagId)
       }
 
-      const tags = repos.tag.getTagsForNote(request.noteId)
+      const tags = await repos.tag.getTagsForNote(request.noteId)
 
       return {
         success: true,
@@ -106,7 +111,7 @@ export function registerTagHandlers() {
   ipcMain.handle(
     TAG_CHANNELS.REMOVE_FROM_NOTE,
     createHandler(async (event, request: { noteId: string; tagId: string }) => {
-      repos.tag.removeFromNote(request.noteId, request.tagId)
+      await repos.tag.removeFromNote(request.noteId, request.tagId)
 
       return {
         success: true,
