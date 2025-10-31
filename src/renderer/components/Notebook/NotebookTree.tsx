@@ -4,11 +4,11 @@
 
 import React from 'react';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
-import { CaretRight, CaretDown, FolderOpen, Folder } from 'phosphor-react';
+import { CaretRight, CaretDown } from 'phosphor-react';
 import { Notebook } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
 import { Text } from '@renderer/components/ui/text';
-import { ContainerFlex } from '@renderer/components/ui';
+import { TreeItem } from '@renderer/components/composites';
 
 export function NotebookTree() {
   const { notebooks, activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } =
@@ -19,7 +19,7 @@ export function NotebookTree() {
   }
 
   return (
-    <div className="px-2 py-1">
+    <div>
       {notebooks.map((notebook) => (
         <NotebookTreeItem
           key={notebook.id}
@@ -71,64 +71,57 @@ function NotebookTreeItem({
   const hasChildren = notebook.children && notebook.children.length > 0;
 
   return (
-    <div>
-      <ContainerFlex align="center" gap="xs" className="px-2" style={{ paddingLeft: `${level * 12 + 8}px` }}>
-        {hasChildren ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-5 w-5 p-0 flex-shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand();
-            }}
-            aria-label={isExpanded ? 'Collapse' : 'Expand'}
-          >
-            {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
-          </Button>
-        ) : (
-          <div className="w-5" />
-        )}
-        <Button
-          onClick={onSelect}
-          variant="ghost"
-          className={`flex-1 justify-start gap-2 px-2 py-1.5 h-auto rounded-md text-xs transition-colors ${
-            isActive ? 'bg-accent text-accent-foreground hover:bg-accent/90' : ''
-          }`}
-        >
-          <Text size="sm" as="span">
-            {notebook.icon || '📁'}
-          </Text>
-          <Text as="span" size="xs" className="flex-1 truncate">
-            {notebook.name}
-          </Text>
-          {notebook.note_count !== undefined && (
-            <Text as="span" size="xs" variant="muted">
+    <>
+      <TreeItem
+        level={level}
+        isActive={isActive}
+        onClick={onSelect}
+        icon={notebook.icon || '📁'}
+        label={notebook.name}
+        right={
+          notebook.note_count !== undefined && (
+            <Text as="span" size="xs" variant="muted" className="text-[10px]">
               {notebook.note_count}
             </Text>
-          )}
-        </Button>
-      </ContainerFlex>
-
-      {hasChildren && isExpanded && (
-        <div>
-          {notebook.children?.map((child) => (
-            <NotebookTreeItem
-              key={child.id}
-              notebook={child}
-              isActive={child.id === activeNotebookId}
-              isExpanded={expandedIds.has(child.id)}
-              onSelect={() => setActiveNotebook(child.id)}
-              onToggleExpand={() => toggleExpanded(child.id)}
-              activeNotebookId={activeNotebookId}
-              expandedIds={expandedIds}
-              setActiveNotebook={setActiveNotebook}
-              toggleExpanded={toggleExpanded}
-              level={level + 1}
-            />
-          ))}
-        </div>
-      )}
-    </div>
+          )
+        }
+        expander={
+          hasChildren ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleExpand();
+              }}
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
+            </Button>
+          ) : undefined
+        }
+      >
+        {hasChildren && isExpanded && (
+          <div>
+            {notebook.children?.map((child) => (
+              <NotebookTreeItem
+                key={child.id}
+                notebook={child}
+                isActive={child.id === activeNotebookId}
+                isExpanded={expandedIds.has(child.id)}
+                onSelect={() => setActiveNotebook(child.id)}
+                onToggleExpand={() => toggleExpanded(child.id)}
+                activeNotebookId={activeNotebookId}
+                expandedIds={expandedIds}
+                setActiveNotebook={setActiveNotebook}
+                toggleExpanded={toggleExpanded}
+                level={level + 1}
+              />
+            ))}
+          </div>
+        )}
+      </TreeItem>
+    </>
   );
 }
