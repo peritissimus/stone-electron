@@ -33,8 +33,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   error: null,
 
   setTree: (tree) => set({ tree }),
-
-  setActiveFolder: (path) => set({ activeFolder: path }),
+  setActiveFolder: (path) => set({ activeFolder: path, selectedFile: null }),
 
   setSelectedFile: (path) => set({ selectedFile: path }),
 
@@ -53,11 +52,10 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
     set((state) => {
       const collect = (nodes: FileTreeNode[], acc: Set<string>) => {
         nodes.forEach((node) => {
-          if (node.type === 'folder') {
-            acc.add(node.path);
-            if (node.children && node.children.length > 0) {
-              collect(node.children, acc);
-            }
+          if (node.type !== 'folder') return;
+          acc.add(node.path);
+          if (node.children && node.children.length > 0) {
+            collect(node.children, acc);
           }
         });
       };

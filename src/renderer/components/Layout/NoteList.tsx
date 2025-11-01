@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Button } from '@renderer/components/ui/button';
 import { Heading3, Text } from '@renderer/components/ui/text';
@@ -41,12 +42,19 @@ import {
 } from '@renderer/components/composites';
 
 export function NoteList() {
-  const { notes, activeNoteId, setActiveNote } = useNoteStore();
+  const { notes, activeNoteId, setActiveNote, getNoteByFilePath } = useNoteStore();
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
     useUIStore();
-  const { activeFolder } = useFileTreeStore();
+  const { activeFolder, selectedFile, setSelectedFile } = useFileTreeStore();
+  const { loadFileTree } = useFileTreeAPI();
   const { createNote, loadNotes, loadNoteById } = useNoteAPI();
   const [isCreating, setIsCreating] = useState(false);
+
+  const folderLabel = activeFolder
+    ? activeFolder.split('/').filter(Boolean).slice(-1)[0] || activeFolder
+    : 'All Notes';
+
+  const folderPath = activeFolder ? activeFolder : '';
 
   // Load notes for active folder (server-side), fallback to all
   useEffect(() => {
@@ -58,6 +66,17 @@ export function NoteList() {
       loadNotes();
     }
   }, [activeFolder, loadNotes]);
+
+  useEffect(() => {
+    if (!selectedFile) return;
+    const note = getNoteByFilePath(selectedFile);
+    if (note) {
+      setActiveNote(note.id);
+      if (!note.content) {
+        loadNoteById(note.id);
+      }
+    }
+  }, [selectedFile, notes, getNoteByFilePath, setActiveNote, loadNoteById]);
 
   const filteredNotes = showArchived ? notes : notes.filter((n) => !n.isArchived);
 
@@ -95,6 +114,10 @@ export function NoteList() {
 
       if (note) {
         setActiveNote(note.id);
+        if (note.filePath) {
+          setSelectedFile(note.filePath);
+        }
+        await loadFileTree();
       }
     } catch (error) {
       logger.error('Failed to create note:', error);
@@ -107,7 +130,16 @@ export function NoteList() {
     <div className="flex flex-col h-full bg-secondary">
       {/* Top Header - Title and View Controls */}
       <Header
-        left={<Heading3 className="text-sm">Notes</Heading3>}
+        left={
+          <div className="flex flex-col">
+            <Heading3 className="text-sm">{folderLabel}</Heading3>
+            {folderPath && (
+              <Text size="xs" variant="muted" className="text-[10px]">
+                {folderPath}
+              </Text>
+            )}
+          </div>
+        }
         right={
           <ControlGroup gap="xs" background="bg-muted">
             <Toggle

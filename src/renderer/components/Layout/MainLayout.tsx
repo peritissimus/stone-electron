@@ -9,6 +9,7 @@ import { useUIStore } from '@renderer/stores/uiStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 
 export function MainLayout() {
   const {
@@ -24,13 +25,19 @@ export function MainLayout() {
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
   const { loadNotes } = useNoteAPI();
+  const { loadWorkspaces } = useWorkspaceAPI();
 
   // Load initial data
   useEffect(() => {
-    loadFileTree();
-    loadTags();
-    loadNotes();
-  }, [loadFileTree, loadTags, loadNotes]);
+    const bootstrap = async () => {
+      await loadWorkspaces();
+      await loadFileTree();
+      loadTags();
+      loadNotes();
+    };
+
+    void bootstrap();
+  }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
   return (
     <LayoutContainer

@@ -26,6 +26,7 @@ interface NoteState {
   getFavoriteNotes: () => Note[]
   getPinnedNotes: () => Note[]
   getArchivedNotes: () => Note[]
+  getNoteByFilePath: (filePath: string) => Note | null
 }
 
 export const useNoteStore = create<NoteState>((set, get) => ({
@@ -77,5 +78,14 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   getArchivedNotes: () => {
     return get().notes.filter((n) => n.isArchived)
+  },
+
+  getNoteByFilePath: (filePath) => {
+    if (!filePath) return null
+    const normalized = filePath.replace(/\\/g, '/')
+    const state = get()
+    return (
+      state.notes.find((note) => (note.filePath || '').replace(/\\/g, '/') === normalized) || null
+    )
   },
 }))

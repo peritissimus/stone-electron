@@ -2,13 +2,19 @@
  * Sidebar Component - Navigation and organization
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { TagList } from '@renderer/components/Tag';
-import { InputModal } from '@renderer/components/Common';
 import { Button } from '@renderer/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select';
 import { Heading3 } from '@renderer/components/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { TagWithCount } from '@shared/types';
@@ -21,52 +27,30 @@ import {
   SectionHeader,
   ControlGroup,
 } from '@renderer/components/composites';
+import { InputModal } from '@renderer/components/Common';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/FileSystem/FileTree';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 
 export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
   const { loadFileTree } = useFileTreeAPI();
-  const { syncWorkspace } = useWorkspaceAPI();
+  const { syncWorkspace, loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
   const { loadNotes } = useNoteAPI();
   const { activeFolder } = useFileTreeStore();
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<'folder' | 'tag'>('folder');
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
 
-  const handleNewFolder = async (name: string) => {
-    setIsCreating(true);
-    try {
-      const response = await window.electron.invoke<{ folderPath: string }>(
-        WORKSPACE_CHANNELS.CREATE_FOLDER,
-        {
-          name,
-          parentPath: activeFolder || undefined,
-        },
-      );
+  useEffect(() => {
+    loadWorkspaces();
+  }, [loadWorkspaces]);
 
-      if (response.success && response.data) {
-        logger.info('Folder created:', response.data.folderPath);
-        await loadFileTree();
-        if (activeFolder) {
-          await loadNotes({ folderPath: activeFolder });
-        } else {
-          await loadNotes();
-        }
-        setModalOpen(false);
-      } else {
-        throw new Error(response.error?.message || 'Failed to create folder');
-      }
-    } catch (error) {
-      logger.error('Failed to create folder:', error);
-      alert(`Failed to create folder: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsCreating(false);
-    }
-  };
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
 
   const handleNewTag = async (name: string) => {
     setIsCreating(true);
@@ -77,7 +61,7 @@ export function Sidebar() {
 
       if (response.success && response.data) {
         logger.info('Tag created:', response.data.name);
-        setModalOpen(false);
+        setTagModalOpen(false);
       } else {
         throw new Error('Failed to create tag');
       }
@@ -89,20 +73,41 @@ export function Sidebar() {
     }
   };
 
-  const handleNewClick = () => {
-    if (sidebarPanel === 'folders') {
-      setModalType('folder');
-    } else if (sidebarPanel === 'tags') {
-      setModalType('tag');
-    }
-    setModalOpen(true);
-  };
+  const handleNewWorkspace = async (name: string) => {
+    setIsCreating(true);
+    try {
+      const folderResponse = await window.electron.invoke<{ canceled?: boolean; folderPath?: string }>(
+        WORKSPACE_CHANNELS.SELECT_FOLDER,
+        undefined,
+      );
 
-  const handleModalSubmit = (value: string) => {
-    if (modalType === 'folder') {
-      handleNewFolder(value);
-    } else {
-      handleNewTag(value);
+      if (!folderResponse.success || folderResponse.data?.canceled || !folderResponse.data?.folderPath) {
+        setIsCreating(false);
+        return;
+      }
+
+      const response = await window.electron.invoke(WORKSPACE_CHANNELS.CREATE, {
+        name,
+        folderPath: folderResponse.data.folderPath,
+      });
+
+      if (response.success) {
+        logger.info('Workspace created:', response.data?.name ?? name);
+        await loadWorkspaces();
+        await loadFileTree();
+        await loadNotes();
+        setWorkspaceModalOpen(false);
+      } else {
+        throw new Error(response.error?.message || 'Failed to create workspace');
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('cancel')) {
+        return;
+      }
+      logger.error('Failed to create workspace:', error);
+      alert(`Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -117,22 +122,23 @@ export function Sidebar() {
               icon={<ArrowsClockwise size={13} />}
               label="Sync"
               tooltip="Sync with file system"
-        onClick={async () => {
-          try {
-            const res = await syncWorkspace();
-            if (res.success) {
-              logger.info('Sync complete', res.data);
-              await loadFileTree();
-              if (activeFolder) {
-                await loadNotes({ folderPath: activeFolder });
-              } else {
-                await loadNotes();
-              }
-            } else {
-              logger.error('Sync failed', res.error);
-              alert(res.error?.message || 'Sync failed');
-            }
-          } catch (e) {
+              onClick={async () => {
+                try {
+                  const res = await syncWorkspace();
+                  if (res.success) {
+                    logger.info('Sync complete', res.data);
+                    await loadWorkspaces();
+                    await loadFileTree();
+                    if (activeFolder) {
+                      await loadNotes({ folderPath: activeFolder });
+                    } else {
+                      await loadNotes();
+                    }
+                  } else {
+                    logger.error('Sync failed', res.error);
+                    alert(res.error?.message || 'Sync failed');
+                  }
+                } catch (e) {
                   logger.error('Sync error', e);
                   alert('Sync failed');
                 }
@@ -147,6 +153,36 @@ export function Sidebar() {
           </ControlGroup>
         }
       />
+
+      <div className="px-3 py-2 border-b border-border">
+        <div className="flex flex-col gap-1">
+          <Heading3 className="text-sm">Workspace</Heading3>
+          <Select
+            value={activeWorkspaceId ?? ''}
+            onValueChange={async (value) => {
+              await setActiveWorkspace(value);
+              await loadFileTree();
+              await loadNotes();
+            }}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Select workspace" />
+            </SelectTrigger>
+            <SelectContent>
+              {workspaces.map((workspace) => (
+                <SelectItem key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {activeWorkspace?.folderPath && (
+            <p className="text-[10px] text-muted-foreground truncate">
+              {activeWorkspace.folderPath}
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Panel Tabs - Flex layout */}
       <Tabs
@@ -195,24 +231,41 @@ export function Sidebar() {
       {/* New Button - Compact footer */}
       <PanelFooter>
         <Button
-          onClick={handleNewClick}
+          onClick={() => {
+            if (sidebarPanel === 'folders') {
+              setWorkspaceModalOpen(true);
+            } else if (sidebarPanel === 'tags') {
+              setTagModalOpen(true);
+            }
+          }}
           disabled={isCreating}
           className="w-full h-7 text-xs"
           size="sm"
         >
           <Plus size={12} />
-          {isCreating ? 'Creating...' : sidebarPanel === 'folders' ? 'New Folder' : 'New Tag'}
+          {isCreating
+            ? 'Creating...'
+            : sidebarPanel === 'folders'
+              ? 'New Workspace'
+              : 'New Tag'}
         </Button>
       </PanelFooter>
 
-      {/* Input Modal */}
       <InputModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={handleModalSubmit}
-        title={modalType === 'folder' ? 'Create New Folder' : 'Create New Tag'}
-        placeholder={modalType === 'folder' ? 'Enter folder name' : 'Enter tag name'}
+        isOpen={tagModalOpen}
+        onClose={() => setTagModalOpen(false)}
+        onSubmit={handleNewTag}
+        title="Create New Tag"
+        placeholder="Enter tag name"
         submitLabel="Create"
+      />
+      <InputModal
+        isOpen={workspaceModalOpen}
+        onClose={() => setWorkspaceModalOpen(false)}
+        onSubmit={handleNewWorkspace}
+        title="Create New Workspace"
+        placeholder="Workspace name"
+        submitLabel="Continue"
       />
     </div>
   );

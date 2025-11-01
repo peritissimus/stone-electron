@@ -17,21 +17,47 @@ const normalizePath = (path: string) =>
     .replace(/^\/+/, '')
     .replace(/\/+$/, '');
 
-function toFileTree(nodes: FolderStructure[]): FileTreeNode[] {
-  return nodes
-    .filter((node) => node.type === 'folder')
-    .map((node) => ({
+function mapStructure(node: FolderStructure): FileTreeNode | null {
+  const normalizedPath = normalizePath(node.relativePath || node.path || node.name);
+
+  if (node.type === 'folder') {
+    const children =
+      node.children
+        ?.map((child) => mapStructure(child))
+        .filter((child): child is FileTreeNode => Boolean(child)) ?? [];
+
+    return {
       name: node.name,
-      path: normalizePath(node.relativePath),
-      type: 'folder' as const,
-      children: node.children ? toFileTree(node.children) : [],
-    }));
+      path: normalizedPath,
+      type: 'folder',
+      children,
+    };
+  }
+
+  if (node.type === 'file') {
+    return {
+      name: node.name,
+      path: normalizedPath,
+      type: 'file',
+    };
+  }
+
+  return null;
+}
+
+function toFileTree(nodes: FolderStructure[]): FileTreeNode[] {
+  return (
+    nodes
+      ?.map((node) => mapStructure(node))
+      .filter((node): node is FileTreeNode => Boolean(node)) ?? []
+  );
 }
 
 export function useFileTreeAPI() {
   const {
     setTree,
     setActiveFolder,
+    setSelectedFile,
     setLoading,
     setError,
     expandAll,
@@ -54,6 +80,8 @@ export function useFileTreeAPI() {
         return;
       }
 
+      const { activeFolder: prevActive, selectedFile: prevSelected } = useFileTreeStore.getState();
+
       const response = await window.electron.invoke<{
         structure: FolderStructure[];
       }>(WORKSPACE_CHANNELS.SCAN, { workspaceId });
@@ -61,8 +89,14 @@ export function useFileTreeAPI() {
       if (response.success && response.data) {
         const tree = toFileTree(response.data.structure || []);
         setTree(tree);
-        setActiveFolder(null);
-        collapseAll();
+        if (prevActive) {
+          setActiveFolder(prevActive);
+          if (prevSelected) {
+            setSelectedFile(prevSelected);
+          }
+        } else {
+          setActiveFolder(null);
+        }
       } else {
         setError(response.error?.message || 'Failed to load workspace structure');
       }

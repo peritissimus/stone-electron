@@ -495,7 +495,7 @@ export class NoteRepository {
 
     // If note has a file path, read content from file system
     if (note.filePath && note.workspaceId) {
-      const fileContent = await this.getContentFromFile(note.filePath, note.workspaceId);
+      const fileContent = await this.getContentFromFile(note.id, note.filePath, note.workspaceId);
 
       if (fileContent !== null) {
         // Return note with content from file
@@ -802,7 +802,11 @@ export class NoteRepository {
   /**
    * Helper: Get content from markdown file
    */
-  private async getContentFromFile(filePath: string, workspaceId: string): Promise<string | null> {
+  private async getContentFromFile(
+    noteId: string,
+    filePath: string,
+    workspaceId: string,
+  ): Promise<string | null> {
     try {
       const workspace = await this.workspaceRepository.findById(workspaceId);
       if (!workspace) {
@@ -810,7 +814,35 @@ export class NoteRepository {
         return null;
       }
 
-      const absolutePath = path.join(workspace.folderPath, filePath);
+      let relativePath = filePath.replace(/\\/g, '/');
+      let absolutePath = path.join(workspace.folderPath, relativePath);
+
+      const fileExists = await this.fileSystemService.fileExists(absolutePath);
+
+      if (!fileExists) {
+        const scannedFiles = await this.fileSystemService.scanFolder(workspace.folderPath, true);
+        const exactMatch = scannedFiles.find(
+          (file) => file.relativePath.replace(/\\/g, '/') === relativePath,
+        );
+
+        const basenameMatch = exactMatch
+          ? exactMatch
+          : scannedFiles.find(
+              (file) => path.basename(file.relativePath) === path.basename(relativePath),
+            );
+
+        if (basenameMatch) {
+          relativePath = basenameMatch.relativePath.replace(/\\/g, '/');
+          absolutePath = path.join(workspace.folderPath, relativePath);
+          await this.db
+            .update(notes)
+            .set({ filePath: relativePath, updatedAt: new Date() })
+            .where(eq(notes.id, noteId));
+        } else {
+          return null;
+        }
+      }
+
       const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath);
 
       // Convert markdown to HTML for TipTap editor
