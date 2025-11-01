@@ -34,20 +34,19 @@ export const Header = React.forwardRef<HTMLDivElement, HeaderProps>(
       <div
         ref={ref}
         className={cn(
-          'px-3 pt-titlebar',
+          'px-3 ',
           paddingY,
-          divided && 'border-b border-border',
           'flex-shrink-0 bg-card',
           'flex items-center justify-between',
-          className
+          className,
         )}
         {...props}
       >
-        {left && <div className="flex-1">{left}</div>}
+        {left && <div className="ml-[72px] flex-1">{left}</div>}
         {children && <div className="flex-1">{children}</div>}
         {right && <div className="flex items-center">{right}</div>}
       </div>
     );
-  }
+  },
 );
 Header.displayName = 'Header';

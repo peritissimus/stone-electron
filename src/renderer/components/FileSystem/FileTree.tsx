@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@renderer/components/ui/dropdown-menu';
 import { Button } from '@renderer/components/ui/button';
-import { TreeItem } from '@renderer/components/composites';
+import { IconButton, TreeItem } from '@renderer/components/composites';
 import { Text } from '@renderer/components/ui/text';
 import {
   useFileTreeStore,
@@ -87,9 +87,6 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onSelect={handleOpen}>
-                <Files size={14} className="mr-2" /> Open
-              </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!note}
                 onSelect={() => {
@@ -98,7 +95,8 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
                   }
                 }}
               >
-                <PencilSimple size={14} className="mr-2" /> Rename
+                <PencilSimple size={8} className="mr-2" />
+                <Text size="xs">Rename</Text>
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!note}
@@ -108,7 +106,8 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
                   }
                 }}
               >
-                <Trash size={14} className="mr-2" /> Delete
+                <Trash size={8} className="mr-2" />
+                <Text size="xs">Delete</Text>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -182,14 +181,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
             </Text>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 p-0"
-                  aria-label="Folder options"
-                >
-                  <DotsThreeVertical size={14} />
-                </Button>
+                <IconButton size="compact" icon={<DotsThreeVertical size={14} />} />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
@@ -235,7 +227,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
   const { notes, setActiveNote } = useNoteStore();
-  const { createNote, updateNoteContent, deleteNoteById } = useNoteAPI();
+  const { createNote, updateNote, deleteNote } = useNoteAPI();
   const { loadFileTree } = useFileTreeAPI();
   const allNotesCount = useMemo(() => notes.filter((n) => !n.isDeleted).length, [notes]);
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
@@ -264,7 +256,7 @@ export function FileTree() {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
     try {
-      await updateNoteContent(noteId, { title: trimmed });
+      await updateNote(noteId, { title: trimmed });
       await loadFileTree();
     } catch (error) {
       console.error('Failed to rename note', error);
@@ -275,7 +267,7 @@ export function FileTree() {
     const confirmed = window.confirm('Move this note to the trash?');
     if (!confirmed) return;
     try {
-      const success = await deleteNoteById(noteId, false);
+      const success = await deleteNote(noteId, false);
       if (success) {
         await loadFileTree();
       }
@@ -286,21 +278,6 @@ export function FileTree() {
 
   return (
     <div>
-      <TreeItem
-        level={0}
-        isActive={!activeFolder}
-        onClick={() => {
-          setActiveFolder(null);
-          setSelectedFile(null);
-        }}
-        icon={<Files size={14} className="text-muted-foreground" />}
-        label="All Notes"
-        right={
-          <Text size="xs" variant="muted" className="text-[10px]">
-            {allNotesCount}
-          </Text>
-        }
-      />
       {tree.map((node) =>
         node.type === 'folder' ? (
           <FolderChildren
