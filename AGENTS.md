@@ -292,10 +292,10 @@ ipcMain.handle(
     if (!request.param) {
       throw new IpcError('INVALID_INPUT', 'Param is required')
     }
-    
+
     // Operation
     const result = await doSomething(request.param)
-    
+
     // Return data (createHandler wraps in success response)
     return result
   })

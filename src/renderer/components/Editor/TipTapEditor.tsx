@@ -70,7 +70,7 @@ export function TipTapEditor({ content, onChange, editable = true }: TipTapEdito
   }, [editable, editor]);
 
   return (
-    <div className="tiptap-editor h-full overflow-y-auto">
+    <div className="tiptap-editor h-full min-h-0 overflow-y-auto">
       <EditorContent editor={editor} />
     </div>
   );

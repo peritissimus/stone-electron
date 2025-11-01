@@ -34,7 +34,7 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/FileSystem/FileTree';
-import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
+import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 
 export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
@@ -51,6 +51,30 @@ export function Sidebar() {
   useEffect(() => {
     loadWorkspaces();
   }, [loadWorkspaces]);
+
+  // Listen to workspace file changes and refresh tree/notes
+  useEffect(() => {
+    const refresh = async () => {
+      await loadFileTree();
+      if (activeFolder) {
+        await loadNotes({ folderPath: activeFolder });
+      } else {
+        await loadNotes();
+      }
+    };
+
+    const offCreated = window.electron.on(EVENTS.FILE_CREATED, refresh);
+    const offChanged = window.electron.on(EVENTS.FILE_CHANGED, refresh);
+    const offDeleted = window.electron.on(EVENTS.FILE_DELETED, refresh);
+    const offWorkspaceUpdated = window.electron.on(EVENTS.WORKSPACE_UPDATED, refresh);
+
+    return () => {
+      offCreated?.();
+      offChanged?.();
+      offDeleted?.();
+      offWorkspaceUpdated?.();
+    };
+  }, [activeFolder, loadFileTree, loadNotes]);
 
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
 

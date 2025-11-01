@@ -11,5 +11,9 @@ export interface MainContentAreaProps {
 }
 
 export function MainContentArea({ children, className }: MainContentAreaProps) {
-  return <div className={cn('flex-1 flex flex-col overflow-hidden', className)}>{children}</div>;
+  return (
+    <div className={cn('flex-1 flex flex-col overflow-hidden min-h-0', className)}>
+      {children}
+    </div>
+  );
 }

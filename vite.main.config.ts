@@ -38,6 +38,12 @@ export default defineConfig({
         'node:fs/promises',
         'node:crypto',
         'node:os',
+        // Watcher/libs
+        'chokidar',
+        'readdirp',
+        'events',
+        'node:events',
+        'node:stream',
       ],
     },
   },

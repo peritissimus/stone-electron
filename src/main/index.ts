@@ -9,6 +9,7 @@ import { isDev } from './utils/environment'
 import { getDatabaseManager } from './database'
 import { registerAllIpcHandlers } from './ipc'
 import { logger } from './utils/logger'
+import { getFileWatcherService } from './services/FileWatcherService'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -67,6 +68,13 @@ app.on('ready', async () => {
     // Create window
     await createWindow()
     logger.info('✓ Application window created')
+
+    // Start file watcher for all workspaces
+    try {
+      await getFileWatcherService().start()
+    } catch (e) {
+      logger.error('Failed to start file watcher:', e)
+    }
   } catch (error) {
     logger.error('Failed to start application:', error)
     app.quit()
@@ -80,6 +88,9 @@ app.on('window-all-closed', () => {
   // Close database before quitting
   const dbManager = getDatabaseManager()
   dbManager.close()
+
+  // Stop watchers
+  getFileWatcherService().stopAll().catch(() => {})
 
   if (process.platform !== 'darwin') {
     app.quit()
