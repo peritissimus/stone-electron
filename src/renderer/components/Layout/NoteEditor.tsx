@@ -142,7 +142,7 @@ export function NoteEditor() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background">
+    <div className="flex-1 flex flex-col bg-background min-h-0">
       {/* Editor Header */}
       <Header
         divided
@@ -210,7 +210,7 @@ export function NoteEditor() {
       <EditorToolbar editor={editor} />
 
       {/* Editor Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-8 py-6">
           <EditorContent editor={editor} />
         </div>

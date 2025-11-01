@@ -68,7 +68,7 @@ export function LayoutContainer({
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">{mainContent}</div>
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">{mainContent}</div>
 
       {/* Overlay Content (modals, etc.) */}
       {overlayContent}

@@ -7,6 +7,7 @@ import path from 'path';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { getFileSystemService } from '../../services/FileSystemService';
+import { getFileWatcherService } from '../../services/FileWatcherService';
 import { createHandler, IpcError } from '../utils';
 
 /**
@@ -60,6 +61,13 @@ export function registerWorkspaceHandlers() {
         name: request.name,
         folderPath: request.folderPath,
       });
+
+      // Start watching the new workspace
+      try {
+        await getFileWatcherService().watchWorkspace(workspace);
+      } catch (e) {
+        // Non-fatal: watcher failure should not block workspace creation
+      }
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
@@ -168,6 +176,11 @@ export function registerWorkspaceHandlers() {
     WORKSPACE_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string }) => {
       await repos.workspace.delete(request.id);
+
+      // Stop watching removed workspace
+      try {
+        await getFileWatcherService().unwatchWorkspace(request.id);
+      } catch (e) {}
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
