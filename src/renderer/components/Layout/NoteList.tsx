@@ -1,13 +1,12 @@
 /**
- * Note List Component - Display list of notes
+ * Note List Component - Filesystem-centric note explorer
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Button } from '@renderer/components/ui/button';
 import { Heading3, Text } from '@renderer/components/ui/text';
@@ -21,7 +20,6 @@ import {
 } from '@renderer/components/ui/select';
 import { Toggle } from '@renderer/components/ui/toggle';
 import { logger } from '@renderer/utils/logger';
-import { Note } from '@shared/types';
 import {
   Star,
   PushPin,
@@ -31,32 +29,39 @@ import {
   Article,
   CaretUp,
   CaretDown,
+  CaretRight,
   Plus,
 } from 'phosphor-react';
-import {
-  Header,
-  ControlGroup,
-  ListItem,
-  ListContainer,
-  CompactCard,
-} from '@renderer/components/composites';
+import { Header, ControlGroup, ListContainer, TreeItem } from '@renderer/components/composites';
+
+import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+
+const normalizePath = (path: string) => path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+const getParentPath = (path: string) => {
+  const normalized = normalizePath(path);
+  const idx = normalized.lastIndexOf('/');
+  if (idx === -1) return '';
+  return normalized.slice(0, idx);
+};
+const stripHtml = (html?: string | null) =>
+  html ? html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
 
 export function NoteList() {
-  const { notes, activeNoteId, setActiveNote, getNoteByFilePath } = useNoteStore();
+  const { notes, setActiveNote, getNoteByFilePath } = useNoteStore();
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
     useUIStore();
-  const { activeFolder, selectedFile, setSelectedFile } = useFileTreeStore();
-  const { loadFileTree } = useFileTreeAPI();
+  const {
+    tree,
+    activeFolder,
+    selectedFile,
+    expandedPaths,
+    setActiveFolder,
+    setSelectedFile,
+    toggleExpanded,
+  } = useFileTreeStore();
   const { createNote, loadNotes, loadNoteById } = useNoteAPI();
   const [isCreating, setIsCreating] = useState(false);
 
-  const folderLabel = activeFolder
-    ? activeFolder.split('/').filter(Boolean).slice(-1)[0] || activeFolder
-    : 'All Notes';
-
-  const folderPath = activeFolder ? activeFolder : '';
-
-  // Load notes for active folder (server-side), fallback to all
   useEffect(() => {
     if (activeFolder) {
       logger.info('[NoteList] loadNotes by folder', { folderPath: activeFolder });
@@ -78,28 +83,196 @@ export function NoteList() {
     }
   }, [selectedFile, notes, getNoteByFilePath, setActiveNote, loadNoteById]);
 
-  const filteredNotes = showArchived ? notes : notes.filter((n) => !n.isArchived);
+  const filteredNotes = useMemo(
+    () => (showArchived ? notes : notes.filter((note) => !note.isArchived)),
+    [notes, showArchived],
+  );
 
-  const sortedNotes = [...filteredNotes].sort((a, b) => {
-    let comparison = 0;
-
-    switch (sortBy) {
-      case 'updated':
-        comparison = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-        break;
-      case 'created':
-        comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        break;
-      case 'title':
-        comparison = (a.title || '').localeCompare(b.title || '');
-        break;
-      case 'favorite':
-        comparison = Number(b.isFavorite) - Number(a.isFavorite);
-        break;
+  const findFolderNode = (nodes: FileTreeNode[], path: string): FileTreeNode | null => {
+    const normalized = normalizePath(path);
+    for (const node of nodes) {
+      if (node.type !== 'folder') continue;
+      if (normalizePath(node.path) === normalized) return node;
+      if (node.children) {
+        const found = findFolderNode(node.children, path);
+        if (found) return found;
+      }
     }
+    return null;
+  };
 
-    return sortOrder === 'asc' ? -comparison : comparison;
-  });
+  const displayedNodes = useMemo(() => {
+    if (!activeFolder) return tree;
+    const folderNode = findFolderNode(tree, activeFolder);
+    if (folderNode?.children) {
+      return folderNode.children;
+    }
+    return [];
+  }, [tree, activeFolder]);
+
+  const noteCountForFolder = (folderPath: string) => {
+    const normalized = normalizePath(folderPath);
+    if (!normalized) {
+      return filteredNotes.filter((note) => {
+        const fp = note.filePath ? normalizePath(note.filePath) : '';
+        return !fp.includes('/');
+      }).length;
+    }
+    return filteredNotes.filter((note) => {
+      const fp = note.filePath ? normalizePath(note.filePath) : '';
+      return fp.startsWith(`${normalized}/`);
+    }).length;
+  };
+
+  const handleFolderClick = (path: string) => {
+    setActiveFolder(path);
+    setSelectedFile(null);
+  };
+
+  const handleFileClick = (path: string) => {
+    const normalized = normalizePath(path);
+    const parent = getParentPath(normalized);
+    if (parent) {
+      setActiveFolder(parent);
+    }
+    setSelectedFile(normalized);
+    const note = getNoteByFilePath(normalized);
+    if (note) {
+      setActiveNote(note.id);
+      if (!note.content) {
+        loadNoteById(note.id);
+      }
+    }
+  };
+
+  const sortNodesForView = (nodes: FileTreeNode[]): FileTreeNode[] => {
+    const copy = [...nodes];
+    const compareFiles = (a: FileTreeNode, b: FileTreeNode) => {
+      const noteA = getNoteByFilePath(normalizePath(a.path));
+      const noteB = getNoteByFilePath(normalizePath(b.path));
+
+      switch (sortBy) {
+        case 'updated': {
+          const timeA = noteA ? new Date(noteA.updatedAt).getTime() : 0;
+          const timeB = noteB ? new Date(noteB.updatedAt).getTime() : 0;
+          return timeA - timeB;
+        }
+        case 'created': {
+          const timeA = noteA ? new Date(noteA.createdAt).getTime() : 0;
+          const timeB = noteB ? new Date(noteB.createdAt).getTime() : 0;
+          return timeA - timeB;
+        }
+        case 'favorite': {
+          const favA = noteA?.isFavorite ? 1 : 0;
+          const favB = noteB?.isFavorite ? 1 : 0;
+          return favA - favB;
+        }
+        case 'title':
+        default: {
+          const titleA = (noteA?.title || a.name).toLowerCase();
+          const titleB = (noteB?.title || b.name).toLowerCase();
+          return titleA.localeCompare(titleB);
+        }
+      }
+    };
+
+    copy.sort((a, b) => {
+      if (a.type === 'folder' && b.type !== 'folder') return -1;
+      if (a.type !== 'folder' && b.type === 'folder') return 1;
+      if (a.type === 'folder' && b.type === 'folder') {
+        return a.name.localeCompare(b.name);
+      }
+      const comparison = compareFiles(a, b);
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return copy;
+  };
+
+  const renderNodes = (nodes: FileTreeNode[], level = 0): JSX.Element[] => {
+    if (!nodes || nodes.length === 0) return [];
+
+    return sortNodesForView(nodes).map((node) => {
+      if (node.type === 'folder') {
+        const normalizedPath = normalizePath(node.path);
+        const hasChildren = (node.children?.length ?? 0) > 0;
+        const isExpanded = expandedPaths.has(normalizedPath);
+        const isActive = normalizePath(activeFolder || '') === normalizedPath;
+        const count = noteCountForFolder(normalizedPath);
+
+        return (
+          <div key={`folder-${normalizedPath}`}>
+            <TreeItem
+              level={level}
+              isActive={isActive}
+              icon="📁"
+              label={node.name}
+              onClick={() => handleFolderClick(normalizedPath)}
+              right={
+                <Text size="xs" variant="muted" className="text-[10px]">
+                  {count}
+                </Text>
+              }
+              expander={
+                hasChildren ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleExpanded(normalizedPath);
+                    }}
+                    aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+                  >
+                    {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
+                  </Button>
+                ) : undefined
+              }
+            />
+            {isExpanded && node.children && node.children.length > 0 && (
+              <div>{renderNodes(node.children, level + 1)}</div>
+            )}
+          </div>
+        );
+      }
+
+      const normalizedPath = normalizePath(node.path);
+      const note = getNoteByFilePath(normalizedPath);
+      const isSelected = normalizePath(selectedFile || '') === normalizedPath;
+      const title = note?.title?.trim() ? note.title : node.name.replace(/\.md$/i, '');
+      const updatedAt = note
+        ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
+        : '';
+      const preview = note ? stripHtml(note.content)?.slice(0, 120) : '';
+      const isPinned = note?.isPinned;
+      const isFavorite = note?.isFavorite;
+
+      return (
+        <TreeItem
+          key={`file-${normalizedPath}`}
+          level={level}
+          isActive={isSelected}
+          icon="📄"
+          label={title || node.name}
+          onClick={() => handleFileClick(normalizedPath)}
+          right={
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              {isPinned && <PushPin size={10} className="text-primary" />}
+              {isFavorite && <Star size={10} className="text-yellow-500" />}
+              {updatedAt}
+            </div>
+          }
+        >
+          {preview && (
+            <Text size="xs" variant="muted" className="text-[10px] line-clamp-1">
+              {preview}
+            </Text>
+          )}
+        </TreeItem>
+      );
+    });
+  };
 
   const handleCreateNote = async () => {
     if (isCreating) return;
@@ -115,9 +288,9 @@ export function NoteList() {
       if (note) {
         setActiveNote(note.id);
         if (note.filePath) {
-          setSelectedFile(note.filePath);
+          setSelectedFile(normalizePath(note.filePath));
         }
-        await loadFileTree();
+        await loadNotes({ folderPath: activeFolder || undefined });
       }
     } catch (error) {
       logger.error('Failed to create note:', error);
@@ -126,16 +299,19 @@ export function NoteList() {
     }
   };
 
+  const folderLabel = activeFolder
+    ? activeFolder.split('/').filter(Boolean).slice(-1)[0] || activeFolder
+    : 'All Notes';
+
   return (
     <div className="flex flex-col h-full bg-secondary">
-      {/* Top Header - Title and View Controls */}
       <Header
         left={
           <div className="flex flex-col">
             <Heading3 className="text-sm">{folderLabel}</Heading3>
-            {folderPath && (
+            {activeFolder && (
               <Text size="xs" variant="muted" className="text-[10px]">
-                {folderPath}
+                {activeFolder}
               </Text>
             )}
           </div>
@@ -173,7 +349,6 @@ export function NoteList() {
         }
       />
 
-      {/* Action Row - New Note Button */}
       <div className="px-3 py-2 border-b border-border flex-shrink-0 bg-card">
         <Button
           onClick={handleCreateNote}
@@ -187,7 +362,6 @@ export function NoteList() {
         </Button>
       </div>
 
-      {/* Sort and Filter Row */}
       <div className="px-3 py-2.5 border-b border-border flex-shrink-0 bg-card">
         <ContainerFlex gap="xs" align="center" className="mb-2">
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
@@ -216,16 +390,15 @@ export function NoteList() {
         </ContainerFlex>
 
         <Text size="xs" variant="muted" as="div">
-          {sortedNotes.length} {sortedNotes.length === 1 ? 'note' : 'notes'}
+          {filteredNotes.length} {filteredNotes.length === 1 ? 'note' : 'notes'}
         </Text>
       </div>
 
-      {/* Note List */}
       <div className="flex-1 overflow-y-auto bg-card">
-        {sortedNotes.length === 0 ? (
+        {(!activeFolder && tree.length === 0) || (activeFolder && displayedNodes.length === 0) ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs">
             <Text size="xs" variant="muted">
-              No notes found
+              No files found
             </Text>
             <Button onClick={handleCreateNote} disabled={isCreating} variant="outline" size="sm">
               <Plus size={14} />
@@ -234,75 +407,10 @@ export function NoteList() {
           </div>
         ) : (
           <ListContainer viewMode={viewMode}>
-            {sortedNotes.map((note) => (
-              <NoteItem
-                key={note.id}
-                note={note}
-                isActive={note.id === activeNoteId}
-                onClick={async () => {
-                  setActiveNote(note.id);
-                  if (
-                    note.filePath &&
-                    (note.content === null || note.content === undefined)
-                  ) {
-                    await loadNoteById(note.id);
-                  }
-                }}
-                viewMode={viewMode}
-              />
-            ))}
+            {renderNodes(activeFolder ? displayedNodes : tree)}
           </ListContainer>
         )}
       </div>
     </div>
-  );
-}
-
-interface NoteItemProps {
-  note: Note;
-  isActive: boolean;
-  onClick: () => void;
-  viewMode: 'list' | 'grid' | 'card';
-}
-
-function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
-  const preview = (note.content || '').replace(/[#*`>\-\[\]]/g, '').substring(0, 100);
-  const timeAgo = formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true });
-
-  const rightContent = (
-    <div className="flex items-center gap-0.5">
-      {note.isPinned && <PushPin size={10} className="text-primary" />}
-      {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-      {viewMode === 'list' && note.isArchived && (
-        <Archive size={10} className="text-muted-foreground" />
-      )}
-    </div>
-  );
-
-  if (viewMode === 'list') {
-    return (
-      <ListItem
-        isActive={isActive}
-        onClick={onClick}
-        title={note.title || 'Untitled'}
-        right={rightContent}
-      >
-        <Text size="xs" variant="muted" as="div" className="line-clamp-1 text-[10px]">
-          {preview}
-        </Text>
-        <Text size="xs" variant="muted" as="div" className="opacity-70 text-[10px]">
-          {timeAgo}
-        </Text>
-      </ListItem>
-    );
-  }
-
-  return (
-    <CompactCard isActive={isActive} onClick={onClick} title={note.title || 'Untitled'}>
-      <div className="text-[10px]">
-        <div className="line-clamp-2 mb-1">{preview}</div>
-        <div className="opacity-70">{timeAgo}</div>
-      </div>
-    </CompactCard>
   );
 }

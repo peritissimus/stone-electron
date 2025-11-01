@@ -3,7 +3,7 @@
  */
 
 import { useEffect } from 'react';
-import { Sidebar, NoteList, NoteEditor, SearchPanel, LayoutContainer, SidebarPanel, NoteListPanel, MainContentArea } from '@renderer/components/Layout';
+import { Sidebar, NoteEditor, SearchPanel, LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/Layout';
 import { SettingsModal } from '@renderer/components/Settings';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -49,14 +49,10 @@ export function MainLayout() {
       sidebarWidth={sidebarWidth}
       onSidebarWidthChange={setSidebarWidth}
       showSidebar={sidebarOpen && !editorFullscreen}
-      noteList={
-        <NoteListPanel>
-          <NoteList />
-        </NoteListPanel>
-      }
+      noteList={null}
       noteListWidth={noteListWidth}
       onNoteListWidthChange={setNoteListWidth}
-      showNoteList={!editorFullscreen}
+      showNoteList={false}
       mainContent={
         <MainContentArea>
           {searchOpen && <SearchPanel />}
