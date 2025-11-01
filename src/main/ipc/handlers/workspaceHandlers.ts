@@ -195,11 +195,17 @@ export function registerWorkspaceHandlers() {
         const normalized = file.relativePath.replace(/\\/g, '/');
         const segments = normalized.split('/');
 
-        for (let i = 0; i < segments.length; i++) {
-          const segmentPath = segments.slice(0, i).join('/');
-          const key = segmentPath || '__root__';
-          counts[key] = (counts[key] || 0) + 1;
-        }
+        const folderSegments = segments.length > 1 ? segments.slice(0, -1) : [];
+        const prefixes: string[] = ['__root__'];
+        let current = '';
+        folderSegments.forEach((segment) => {
+          current = current ? `${current}/${segment}` : segment;
+          prefixes.push(current);
+        });
+
+        prefixes.forEach((prefix) => {
+          counts[prefix] = (counts[prefix] || 0) + 1;
+        });
       });
 
       // Get folder structure
