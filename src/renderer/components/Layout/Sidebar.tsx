@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useNoteStore } from '@renderer/stores/noteStore';
 import { TagList } from '@renderer/components/Tag';
 import { Button } from '@renderer/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/ui/tabs';
@@ -39,7 +40,8 @@ export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
   const { loadFileTree } = useFileTreeAPI();
   const { syncWorkspace, loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
-  const { loadNotes } = useNoteAPI();
+  const { loadNotes, createNote } = useNoteAPI();
+  const { setActiveNote } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
@@ -86,7 +88,7 @@ export function Sidebar() {
         return;
       }
 
-      const response = await window.electron.invoke(WORKSPACE_CHANNELS.CREATE, {
+      const response = await window.electron.invoke<{ name: string }>(WORKSPACE_CHANNELS.CREATE, {
         name,
         folderPath: folderResponse.data.folderPath,
       });
@@ -111,12 +113,44 @@ export function Sidebar() {
     }
   };
 
+  const handleCreateNote = async () => {
+    if (isCreating) return;
+
+    setIsCreating(true);
+    try {
+      const note = await createNote({
+        title: '',
+        content: '',
+        folderPath: activeFolder || undefined,
+      });
+
+      if (note) {
+        setActiveNote(note.id);
+        await loadFileTree();
+        await loadNotes({ folderPath: activeFolder || undefined });
+      }
+    } catch (error) {
+      logger.error('Failed to create note:', error);
+      alert('Failed to create note. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-sidebar">
       <Header
         left={<Heading3 className="text-sm">Stone</Heading3>}
         right={
           <ControlGroup gap="sm" background="bg-transparent">
+            <IconButton
+              size="normal"
+              icon={<Plus size={13} />}
+              label="New Note"
+              tooltip="Create new note"
+              onClick={handleCreateNote}
+              disabled={isCreating}
+            />
             <IconButton
               size="normal"
               icon={<ArrowsClockwise size={13} />}
@@ -269,4 +303,5 @@ export function Sidebar() {
       />
     </div>
   );
+
 }

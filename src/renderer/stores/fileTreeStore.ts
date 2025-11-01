@@ -33,7 +33,31 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   error: null,
 
   setTree: (tree) => set({ tree }),
-  setActiveFolder: (path) => set({ activeFolder: path, selectedFile: null }),
+  setActiveFolder: (path) =>
+    set((state) => {
+      if (!path) {
+        return { activeFolder: null, selectedFile: null };
+      }
+
+      const normalized = path
+        .replace(/\\/g, '/')
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '');
+
+      const nextExpanded = new Set(state.expandedPaths);
+      const segments = normalized.split('/');
+      let current = '';
+      segments.forEach((segment) => {
+        current = current ? `${current}/${segment}` : segment;
+        nextExpanded.add(current);
+      });
+
+      return {
+        activeFolder: normalized,
+        selectedFile: null,
+        expandedPaths: nextExpanded,
+      };
+    }),
 
   setSelectedFile: (path) => set({ selectedFile: path }),
 

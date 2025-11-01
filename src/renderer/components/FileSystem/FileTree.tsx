@@ -1,12 +1,16 @@
-import React from 'react';
-import { CaretDown, CaretRight } from 'phosphor-react';
+import React, { useMemo } from 'react';
+import { CaretDown, CaretRight, FileText, FolderSimple, Files } from 'phosphor-react';
 import { Button } from '@renderer/components/ui/button';
 import { TreeItem } from '@renderer/components/composites';
+import { Text } from '@renderer/components/ui/text';
 import { useFileTreeStore, FileTreeNode as StoreFileTreeNode } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 
+const normalizePath = (path: string) =>
+  path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+
 const getParentPath = (path: string) => {
-  const normalized = path.replace(/\\/g, '/');
+  const normalized = normalizePath(path);
   if (!normalized.includes('/')) return '';
   return normalized.slice(0, normalized.lastIndexOf('/'));
 };
@@ -24,8 +28,9 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level }) => {
   const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { setActiveNote, getNoteByFilePath } = useNoteStore();
 
-  const isActive = selectedFile === node.path;
-  const parentPath = getParentPath(node.path);
+  const normalizedPath = normalizePath(node.path);
+  const isActive = selectedFile === normalizedPath;
+  const parentPath = getParentPath(normalizedPath);
   const folderForSelection = parentPath || null;
 
   return (
@@ -34,13 +39,13 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level }) => {
       isActive={isActive}
       onClick={() => {
         setActiveFolder(folderForSelection);
-        setSelectedFile(node.path);
-        const note = getNoteByFilePath(node.path);
+        setSelectedFile(normalizedPath);
+        const note = getNoteByFilePath(normalizedPath);
         if (note) {
           setActiveNote(note.id);
         }
       }}
-      icon="📄"
+      icon={<FileText size={14} className="text-muted-foreground" />}
       label={getDisplayName(node.name)}
     />
   );
@@ -59,13 +64,25 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
     toggleExpanded,
     setSelectedFile,
   } = useFileTreeStore();
+  const { notes } = useNoteStore();
+  const activeNotes = useMemo(() => notes.filter((note) => !note.isArchived), [notes]);
 
-  const childFolders =
-    node.children?.filter((child) => child.type === 'folder') ?? [];
+  const normalizedPath = normalizePath(node.path);
+  const childFolders = node.children ?? [];
 
   const hasChildren = childFolders.length > 0;
-  const isExpanded = expandedPaths.has(node.path);
-  const isActive = activeFolder === node.path;
+  const isExpanded = expandedPaths.has(normalizedPath);
+  const isActive = normalizePath(activeFolder || '') === normalizedPath;
+
+  const noteCount = useMemo(() => {
+    return activeNotes.filter((note) => {
+      if (!note.filePath) return false;
+      const normalizedFilePath = normalizePath(note.filePath);
+      return normalizedPath
+        ? normalizedFilePath.startsWith(`${normalizedPath}/`)
+        : !normalizedFilePath.includes('/');
+    }).length;
+  }, [activeNotes, normalizedPath]);
 
   return (
     <>
@@ -73,11 +90,16 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
         level={level}
         isActive={isActive}
         onClick={() => {
-          setActiveFolder(node.path || null);
+          setActiveFolder(normalizedPath || null);
           setSelectedFile(null);
         }}
-        icon="📁"
+        icon={<FolderSimple size={14} className="text-muted-foreground" />}
         label={node.name}
+        right={
+          <Text size="xs" variant="muted" className="text-[10px]">
+            {noteCount}
+          </Text>
+        }
         expander={
           hasChildren ? (
             <Button
@@ -86,7 +108,7 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
               className="h-5 w-5 p-0"
               onClick={(event) => {
                 event.stopPropagation();
-                toggleExpanded(node.path);
+                toggleExpanded(normalizedPath);
               }}
               aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
             >
@@ -112,6 +134,8 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
 
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
+  const { notes } = useNoteStore();
+  const activeNotes = useMemo(() => notes.filter((note) => !note.isArchived), [notes]);
 
   return (
     <div>
@@ -122,8 +146,13 @@ export function FileTree() {
           setActiveFolder(null);
           setSelectedFile(null);
         }}
-        icon="🗂️"
+        icon={<Files size={14} className="text-muted-foreground" />}
         label="All Notes"
+        right={
+          <Text size="xs" variant="muted" className="text-[10px]">
+            {activeNotes.length}
+          </Text>
+        }
       />
       {tree.map((node) =>
         node.type === 'folder' ? (
