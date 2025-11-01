@@ -8,7 +8,7 @@
 :root {
   --border: 0 0% 85%;
   --input: 0 0% 92%;
-  --ring: 211 100% 50%;
+  --ring: 0 0% 85%;
   --background: 0 0% 96.5%;
   --foreground: 0 0% 15%;
   --sidebar: 0 0% 90%;
@@ -95,8 +95,9 @@ html.dark {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    'Helvetica Neue', 'Arial', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Arial',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 13px;

@@ -12,13 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/u
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/ui/select';
 import { Heading3 } from '@renderer/components/ui/text';
 import { logger } from '@renderer/utils/logger';
-import { TagWithCount } from '@shared/types';
+import { TagWithCount, type Workspace } from '@shared/types';
 import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise } from 'phosphor-react';
 import {
   Header,
@@ -34,6 +36,7 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/FileSystem/FileTree';
+import { CreateWorkspaceModal } from '@renderer/components/Workspace/CreateWorkspaceModal';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 
 export function Sidebar() {
@@ -47,6 +50,7 @@ export function Sidebar() {
   const [isCreating, setIsCreating] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
+  const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
 
   useEffect(() => {
     loadWorkspaces();
@@ -99,41 +103,33 @@ export function Sidebar() {
     }
   };
 
-  const handleNewWorkspace = async (name: string) => {
-    setIsCreating(true);
+  const handleCreateWorkspace = async ({ name, folderPath }: { name: string; folderPath: string }) => {
+    setIsWorkspaceModalProcessing(true);
     try {
-      const folderResponse = await window.electron.invoke<{ canceled?: boolean; folderPath?: string }>(
-        WORKSPACE_CHANNELS.SELECT_FOLDER,
-        undefined,
-      );
-
-      if (!folderResponse.success || folderResponse.data?.canceled || !folderResponse.data?.folderPath) {
-        setIsCreating(false);
-        return;
-      }
-
-      const response = await window.electron.invoke<{ name: string }>(WORKSPACE_CHANNELS.CREATE, {
+      const response = await window.electron.invoke<Workspace>(WORKSPACE_CHANNELS.CREATE, {
         name,
-        folderPath: folderResponse.data.folderPath,
+        folderPath,
       });
 
-      if (response.success) {
-        logger.info('Workspace created:', response.data?.name ?? name);
-        await loadWorkspaces();
-        await loadFileTree();
-        await loadNotes();
-        setWorkspaceModalOpen(false);
-      } else {
+      if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create workspace');
       }
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('cancel')) {
-        return;
+
+      const createdWorkspace = response.data;
+      logger.info('Workspace created:', createdWorkspace.name);
+
+      await loadWorkspaces();
+      if (createdWorkspace.id) {
+        await setActiveWorkspace(createdWorkspace.id);
       }
+      await loadFileTree();
+      await loadNotes();
+      setWorkspaceModalOpen(false);
+    } catch (error) {
       logger.error('Failed to create workspace:', error);
       alert(`Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsCreating(false);
+      setIsWorkspaceModalProcessing(false);
     }
   };
 
@@ -160,6 +156,8 @@ export function Sidebar() {
       setIsCreating(false);
     }
   };
+
+  const CREATE_WORKSPACE_OPTION = '__create__';
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
@@ -213,27 +211,55 @@ export function Sidebar() {
       />
 
       <div className="px-3 py-2 border-b border-border">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <Heading3 className="text-sm">Workspace</Heading3>
-          <Select
-            value={activeWorkspaceId ?? ''}
-            onValueChange={async (value) => {
-              await setActiveWorkspace(value);
-              await loadFileTree();
-              await loadNotes();
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces.map((workspace) => (
-                <SelectItem key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={activeWorkspaceId ?? ''}
+              onValueChange={async (value) => {
+                if (value === CREATE_WORKSPACE_OPTION) {
+                  setWorkspaceModalOpen(true);
+                  return;
+                }
+                if (!value) {
+                  return;
+                }
+                await setActiveWorkspace(value);
+                await loadFileTree();
+                await loadNotes();
+              }}
+            >
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <SelectValue placeholder="Select workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                {workspaces.length > 0 && (
+                  <>
+                    <SelectGroup>
+                      {workspaces.map((workspace) => (
+                        <SelectItem key={workspace.id} value={workspace.id}>
+                          {workspace.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                    <SelectSeparator />
+                  </>
+                )}
+                <SelectItem value={CREATE_WORKSPACE_OPTION}>+ Create workspace…</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 px-2 text-xs"
+              onClick={() => setWorkspaceModalOpen(true)}
+              disabled={isWorkspaceModalProcessing}
+            >
+              <Plus size={12} className="mr-1" />
+              <span className="hidden sm:inline">New</span>
+            </Button>
+          </div>
           {activeWorkspace?.folderPath && (
             <p className="text-[10px] text-muted-foreground truncate">
               {activeWorkspace.folderPath}
@@ -287,27 +313,19 @@ export function Sidebar() {
       </Tabs>
 
       {/* New Button - Compact footer */}
-      <PanelFooter>
-        <Button
-          onClick={() => {
-            if (sidebarPanel === 'folders') {
-              setWorkspaceModalOpen(true);
-            } else if (sidebarPanel === 'tags') {
-              setTagModalOpen(true);
-            }
-          }}
-          disabled={isCreating}
-          className="w-full h-7 text-xs"
-          size="sm"
-        >
-          <Plus size={12} />
-          {isCreating
-            ? 'Creating...'
-            : sidebarPanel === 'folders'
-              ? 'New Workspace'
-              : 'New Tag'}
-        </Button>
-      </PanelFooter>
+      {sidebarPanel === 'tags' && (
+        <PanelFooter>
+          <Button
+            onClick={() => setTagModalOpen(true)}
+            disabled={isCreating}
+            className="w-full h-7 text-xs"
+            size="sm"
+          >
+            <Plus size={12} />
+            {isCreating ? 'Creating...' : 'New Tag'}
+          </Button>
+        </PanelFooter>
+      )}
 
       <InputModal
         isOpen={tagModalOpen}
@@ -317,13 +335,14 @@ export function Sidebar() {
         placeholder="Enter tag name"
         submitLabel="Create"
       />
-      <InputModal
+      <CreateWorkspaceModal
         isOpen={workspaceModalOpen}
-        onClose={() => setWorkspaceModalOpen(false)}
-        onSubmit={handleNewWorkspace}
-        title="Create New Workspace"
-        placeholder="Workspace name"
-        submitLabel="Continue"
+        isSubmitting={isWorkspaceModalProcessing}
+        onClose={() => {
+          if (isWorkspaceModalProcessing) return;
+          setWorkspaceModalOpen(false);
+        }}
+        onSubmit={handleCreateWorkspace}
       />
     </div>
   );
