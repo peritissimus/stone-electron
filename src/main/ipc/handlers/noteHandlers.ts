@@ -6,6 +6,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { createHandler, IpcError } from '../utils';
+import { logger } from '../../utils/logger';
 
 /**
  * Register all note handlers
@@ -19,13 +20,19 @@ export function registerNoteHandlers() {
     createHandler(
       async (
         event,
-        request: { title?: string; content?: string; notebookId?: string; tags?: string[] },
+        request: {
+          title?: string;
+          content?: string;
+          folderPath?: string;
+          tags?: string[];
+        },
       ) => {
         const note = await repos.note.create({
           title: request.title || 'Untitled',
           content: request.content || '',
-          notebookId: request.notebookId || null,
-        });
+          notebookId: null,
+          folderPath: request.folderPath,
+        } as any);
 
         // Add tags if provided
         if (request.tags && request.tags.length > 0) {
@@ -57,6 +64,7 @@ export function registerNoteHandlers() {
           title?: string;
           content?: string;
           notebookId?: string;
+          folderPath?: string;
           tags?: string[];
         },
       ) => {
@@ -79,8 +87,9 @@ export function registerNoteHandlers() {
         if (request.title !== undefined) updateData.title = request.title;
         if (request.content !== undefined) updateData.content = request.content;
         if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
+        if (request.folderPath !== undefined) (updateData as any).folderPath = request.folderPath;
 
-        const note = await repos.note.update(request.id, updateData);
+        const note = await repos.note.update(request.id, updateData as any);
 
         // Update tags if provided
         if (request.tags) {
@@ -165,6 +174,7 @@ export function registerNoteHandlers() {
         event,
         request: {
           notebookId?: string;
+          folderPath?: string;
           tagId?: string;
           is_favorite?: boolean;
           is_pinned?: boolean;
@@ -177,6 +187,24 @@ export function registerNoteHandlers() {
         },
       ) => {
         let notes;
+        try {
+          const workspace = await repos.workspace.getActive();
+          if (workspace) {
+            await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+            await repos.note.syncWithFileSystem(workspace.id);
+          }
+        } catch (syncError) {
+          logger.warn('[IPC][notes:getAll] sync error', syncError);
+        }
+        // Log filters
+        console.info('[IPC][notes:getAll] request', {
+          notebookId: request.notebookId,
+          tagId: request.tagId,
+          is_favorite: request.is_favorite,
+          is_pinned: request.is_pinned,
+          is_archived: request.is_archived,
+          is_deleted: request.is_deleted,
+        });
 
         if (request.tagId) {
           notes = await repos.note.findByTags([request.tagId]);
@@ -188,11 +216,18 @@ export function registerNoteHandlers() {
           notes = await repos.note.getDeleted();
         } else if (request.is_archived === true) {
           notes = await repos.note.getArchived();
+        } else if (request.folderPath) {
+          notes = await repos.note.findByFolder(request.folderPath);
         } else if (request.notebookId) {
           notes = await repos.note.findByNotebook(request.notebookId);
         } else {
+          const workspace = await repos.workspace.getActive();
+          const baseWhere: Record<string, unknown> = {};
+          if (workspace) baseWhere.workspaceId = workspace.id;
+          baseWhere.isDeleted = request.is_deleted ?? false;
           const where: Record<string, unknown> = {};
-          if (request.is_deleted !== undefined) where.isDeleted = request.is_deleted ? 1 : 0;
+          Object.assign(where, baseWhere);
+          if (request.is_deleted !== undefined) where.isDeleted = request.is_deleted;
 
           const sortField =
             request.sort === 'updated'
@@ -226,6 +261,7 @@ export function registerNoteHandlers() {
         );
 
         const total = enrichedNotes.length;
+        console.info('[IPC][notes:getAll] returning count', total);
 
         return {
           notes: enrichedNotes,

@@ -16,19 +16,20 @@ export function useNotebookAPI() {
       setLoading(true);
       setError(null);
       try {
+        const params = { include_counts: true, flat } as any;
+        console.info('[useNotebookAPI.loadNotebooks] invoking', params);
         const response = await window.electron.invoke<{ notebooks: Notebook[] }>(
           NOTEBOOK_CHANNELS.GET_ALL,
-          {
-            include_counts: true,
-            flat,
-          },
+          params,
         );
+        console.info('[useNotebookAPI.loadNotebooks] response', response);
         if (response.success && response.data) {
           setNotebooks(response.data.notebooks);
         } else {
           setError(response.error?.message || 'Failed to load notebooks');
         }
       } catch (error) {
+        console.error('[useNotebookAPI.loadNotebooks] error', error);
         setError(error instanceof Error ? error.message : 'Failed to load notebooks');
       } finally {
         setLoading(false);

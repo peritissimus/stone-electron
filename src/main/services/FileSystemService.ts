@@ -132,7 +132,11 @@ export class FileSystemService {
   /**
    * Scan a folder for markdown files
    */
-  async scanFolder(folderPath: string, recursive: boolean = true): Promise<MarkdownFile[]> {
+  async scanFolder(
+    folderPath: string,
+    recursive: boolean = true,
+    basePath: string = folderPath,
+  ): Promise<MarkdownFile[]> {
     const files: MarkdownFile[] = [];
 
     logger.info(`[FileSystem] 📂 Scanning folder: ${folderPath} (recursive: ${recursive})`);
@@ -147,7 +151,11 @@ export class FileSystemService {
 
       for (const entry of entries) {
         const fullPath = path.join(folderPath, entry.name);
-        const relativePath = path.relative(folderPath, fullPath);
+        const relativePath = path
+          .relative(basePath, fullPath)
+          .split(path.sep)
+          .filter(Boolean)
+          .join('/');
 
         // Skip hidden files and folders
         if (entry.name.startsWith('.')) {
@@ -159,7 +167,7 @@ export class FileSystemService {
           folderCount++;
           logger.info(`[FileSystem] 📁 Found subfolder: ${entry.name}`);
           if (recursive) {
-            const subFiles = await this.scanFolder(fullPath, recursive);
+            const subFiles = await this.scanFolder(fullPath, recursive, basePath);
             files.push(...subFiles);
           }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
@@ -263,17 +271,70 @@ export class FileSystemService {
   /**
    * Generate a unique filename if file already exists
    */
-  async generateUniqueFilename(dirPath: string, baseName: string, extension: string = '.md'): Promise<string> {
-    const sanitized = this.markdownService.sanitizeFilename(baseName);
-    let filename = `${sanitized}${extension}`;
+  async generateUniqueFilename(
+    dirPath: string,
+    baseName: string,
+    extension: string = '.md',
+  ): Promise<string> {
+    const sanitizedBase = this.markdownService.sanitizeFilename(baseName || 'Untitled');
+    const base = sanitizedBase && sanitizedBase.trim().length > 0 ? sanitizedBase : 'Untitled';
+    let filename = `${base}${extension}`;
     let counter = 1;
 
     while (await this.fileExists(path.join(dirPath, filename))) {
-      filename = `${sanitized} ${counter}${extension}`;
+      filename = `${base} ${counter}${extension}`;
       counter++;
     }
 
     return filename;
+  }
+
+  /**
+   * Generate a unique folder name within a directory
+   */
+  async generateUniqueFolderName(
+    dirPath: string,
+    baseName: string,
+    excludePath?: string,
+  ): Promise<string> {
+    const sanitizedBase = this.markdownService.sanitizeFilename(baseName || 'Notebook');
+    const base =
+      sanitizedBase && sanitizedBase.trim().length > 0 ? sanitizedBase : 'Notebook';
+    let folderName = base;
+    let counter = 1;
+
+    const normalizedExclude = excludePath ? path.resolve(excludePath) : null;
+
+    // Loop until we find a folder name that doesn't exist (unless it's the excluded path)
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const candidatePath = path.join(dirPath, folderName);
+      const exists = await this.fileExists(candidatePath);
+
+      if (!exists) {
+        return folderName;
+      }
+
+      if (normalizedExclude && path.resolve(candidatePath) === normalizedExclude) {
+        return folderName;
+      }
+
+      folderName = `${base} ${counter}`;
+      counter++;
+    }
+  }
+
+  /**
+   * Rename a folder
+   */
+  async renameFolder(oldPath: string, newPath: string): Promise<void> {
+    try {
+      await fs.mkdir(path.dirname(newPath), { recursive: true });
+      await fs.rename(oldPath, newPath);
+    } catch (error) {
+      logger.error(`Error renaming folder ${oldPath} to ${newPath}:`, error);
+      throw error;
+    }
   }
 
   /**
