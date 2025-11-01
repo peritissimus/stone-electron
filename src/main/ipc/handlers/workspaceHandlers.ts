@@ -120,6 +120,49 @@ export function registerWorkspaceHandlers() {
     }),
   );
 
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.CREATE_FOLDER,
+    createHandler(async (event, request: { name: string; parentPath?: string }) => {
+      const workspace = await repos.workspace.getActive();
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Active workspace not found');
+      }
+
+      const parentRelativeRaw = request.parentPath || '';
+      const parentRelative = parentRelativeRaw
+        .replace(/\\/g, '/')
+        .replace(/^\.\//, '')
+        .replace(/^\/+/, '')
+        .replace(/\/+$/, '');
+
+      const targetBase =
+        parentRelative && parentRelative.length > 0
+          ? path.join(workspace.folderPath, parentRelative)
+          : workspace.folderPath;
+
+      const folderName = await fsService.generateUniqueFolderName(
+        targetBase,
+        request.name || 'New Folder',
+      );
+
+      const newRelative =
+        parentRelative && parentRelative.length > 0
+          ? path.posix.join(parentRelative, folderName)
+          : folderName;
+
+      await fsService.createFolder(path.join(workspace.folderPath, newRelative));
+
+      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+      await repos.note.syncWithFileSystem(workspace.id);
+
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+      });
+
+      return { folderPath: newRelative };
+    }),
+  );
+
   // workspaces:delete
   ipcMain.handle(
     WORKSPACE_CHANNELS.DELETE,
@@ -163,6 +206,45 @@ export function registerWorkspaceHandlers() {
         files,
         structure,
         total: files.length,
+      };
+    }),
+  );
+
+  // workspaces:sync - sync folders->notebooks and files->notes
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.SYNC,
+    createHandler(async (event, request: { workspaceId?: string }) => {
+      const active = request?.workspaceId
+        ? await repos.workspace.findById(request.workspaceId)
+        : await repos.workspace.getActive();
+      if (!active) throw new IpcError('NOT_FOUND', 'Active workspace not found');
+
+      const start = Date.now();
+      // Log start
+      console.info(
+        `[IPC][workspaces:sync] Start sync for workspace ${active.id} at ${active.folderPath}`,
+      );
+
+      // Sync notebooks from folders
+      const nbResult = await repos.notebook.syncWithWorkspaceFolders(active.id);
+      console.info(
+        `[IPC][workspaces:sync] Notebook sync: created=${nbResult.created}, updated=${nbResult.updated}, errors=${nbResult.errors.length}`,
+      );
+
+      // Sync notes from files
+      const noteResult = await repos.note.syncWithFileSystem(active.id);
+      console.info(
+        `[IPC][workspaces:sync] Note sync: created=${noteResult.created}, updated=${noteResult.updated}, deleted=${noteResult.deleted}, errors=${noteResult.errors.length}`,
+      );
+
+      const dur = Date.now() - start;
+      console.info(`[IPC][workspaces:sync] Done in ${dur}ms`);
+
+      return {
+        workspaceId: active.id,
+        notebooks: nbResult,
+        notes: noteResult,
+        durationMs: dur,
       };
     }),
   );

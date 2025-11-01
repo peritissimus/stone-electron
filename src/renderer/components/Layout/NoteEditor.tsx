@@ -27,7 +27,8 @@ import {
 
 export function NoteEditor() {
   const { getActiveNote, setActiveNote } = useNoteStore();
-  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote } = useNoteAPI();
+  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, loadNoteById } =
+    useNoteAPI();
   const activeNote = getActiveNote();
 
   const [title, setTitle] = useState('');
@@ -71,11 +72,21 @@ export function NoteEditor() {
   useEffect(() => {
     if (activeNote && editor) {
       setTitle(activeNote.title || '');
-      if (activeNote.content !== editor.getHTML()) {
+      if (activeNote.content !== undefined && activeNote.content !== editor.getHTML()) {
         editor.commands.setContent(activeNote.content);
       }
     }
-  }, [activeNote?.id, editor]);
+  }, [activeNote?.id, activeNote?.content, editor]);
+
+  useEffect(() => {
+    if (
+      activeNote &&
+      activeNote.filePath &&
+      (activeNote.content === null || activeNote.content === undefined)
+    ) {
+      loadNoteById(activeNote.id);
+    }
+  }, [activeNote?.id, activeNote?.content, activeNote?.filePath, loadNoteById]);
 
   // Handle title change
   const handleTitleChange = useCallback(

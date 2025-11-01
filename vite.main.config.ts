@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import path from 'path'
+import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
   resolve: {
@@ -22,7 +22,8 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'electron',
-        'better-sqlite3',
+        '@libsql/client',
+        '@libsql/client/sqlite3',
         'vectra',
         'electron-store',
         'electron-log',
@@ -40,4 +41,4 @@ export default defineConfig({
       ],
     },
   },
-})
+});

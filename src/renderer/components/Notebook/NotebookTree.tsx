@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { logger } from '@renderer/utils/logger';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { CaretRight, CaretDown } from 'phosphor-react';
 import { Notebook } from '@shared/types';
@@ -26,7 +27,10 @@ export function NotebookTree() {
           notebook={notebook}
           isActive={notebook.id === activeNotebookId}
           isExpanded={expandedIds.has(notebook.id)}
-          onSelect={() => setActiveNotebook(notebook.id)}
+          onSelect={() => {
+            logger.info('[NotebookTree] select', { id: notebook.id, name: notebook.name });
+            setActiveNotebook(notebook.id);
+          }}
           onToggleExpand={() => toggleExpanded(notebook.id)}
           activeNotebookId={activeNotebookId}
           expandedIds={expandedIds}

@@ -2,11 +2,11 @@
  * Note List Component - Display list of notes
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
-import { useNotebookStore } from '@renderer/stores/notebookStore';
+import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Button } from '@renderer/components/ui/button';
 import { Heading3, Text } from '@renderer/components/ui/text';
@@ -32,15 +32,32 @@ import {
   CaretDown,
   Plus,
 } from 'phosphor-react';
-import { Header, ControlGroup, ListItem, ListContainer, CompactCard } from '@renderer/components/composites';
+import {
+  Header,
+  ControlGroup,
+  ListItem,
+  ListContainer,
+  CompactCard,
+} from '@renderer/components/composites';
 
 export function NoteList() {
   const { notes, activeNoteId, setActiveNote } = useNoteStore();
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
     useUIStore();
-  const { activeNotebookId } = useNotebookStore();
-  const { createNote } = useNoteAPI();
+  const { activeFolder } = useFileTreeStore();
+  const { createNote, loadNotes, loadNoteById } = useNoteAPI();
   const [isCreating, setIsCreating] = useState(false);
+
+  // Load notes for active folder (server-side), fallback to all
+  useEffect(() => {
+    if (activeFolder) {
+      logger.info('[NoteList] loadNotes by folder', { folderPath: activeFolder });
+      loadNotes({ folderPath: activeFolder });
+    } else {
+      logger.info('[NoteList] loadNotes all');
+      loadNotes();
+    }
+  }, [activeFolder, loadNotes]);
 
   const filteredNotes = showArchived ? notes : notes.filter((n) => !n.isArchived);
 
@@ -73,7 +90,7 @@ export function NoteList() {
       const note = await createNote({
         title: '',
         content: '',
-        notebookId: activeNotebookId || undefined,
+        folderPath: activeFolder || undefined,
       });
 
       if (note) {
@@ -175,7 +192,9 @@ export function NoteList() {
       <div className="flex-1 overflow-y-auto bg-card">
         {sortedNotes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground text-xs">
-            <Text size="xs" variant="muted">No notes found</Text>
+            <Text size="xs" variant="muted">
+              No notes found
+            </Text>
             <Button onClick={handleCreateNote} disabled={isCreating} variant="outline" size="sm">
               <Plus size={14} />
               {isCreating ? 'Creating...' : 'Create your first note'}
@@ -188,7 +207,15 @@ export function NoteList() {
                 key={note.id}
                 note={note}
                 isActive={note.id === activeNoteId}
-                onClick={() => setActiveNote(note.id)}
+                onClick={async () => {
+                  setActiveNote(note.id);
+                  if (
+                    note.filePath &&
+                    (note.content === null || note.content === undefined)
+                  ) {
+                    await loadNoteById(note.id);
+                  }
+                }}
                 viewMode={viewMode}
               />
             ))}
@@ -214,7 +241,9 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
     <div className="flex items-center gap-0.5">
       {note.isPinned && <PushPin size={10} className="text-primary" />}
       {note.isFavorite && <Star size={10} className="text-yellow-500 fill-yellow-500" />}
-      {viewMode === 'list' && note.isArchived && <Archive size={10} className="text-muted-foreground" />}
+      {viewMode === 'list' && note.isArchived && (
+        <Archive size={10} className="text-muted-foreground" />
+      )}
     </div>
   );
 
@@ -226,18 +255,18 @@ function NoteItem({ note, isActive, onClick, viewMode }: NoteItemProps) {
         title={note.title || 'Untitled'}
         right={rightContent}
       >
-        <Text size="xs" variant="muted" as="div" className="line-clamp-1 text-[10px]">{preview}</Text>
-        <Text size="xs" variant="muted" as="div" className="opacity-70 text-[10px]">{timeAgo}</Text>
+        <Text size="xs" variant="muted" as="div" className="line-clamp-1 text-[10px]">
+          {preview}
+        </Text>
+        <Text size="xs" variant="muted" as="div" className="opacity-70 text-[10px]">
+          {timeAgo}
+        </Text>
       </ListItem>
     );
   }
 
   return (
-    <CompactCard
-      isActive={isActive}
-      onClick={onClick}
-      title={note.title || 'Untitled'}
-    >
+    <CompactCard isActive={isActive} onClick={onClick} title={note.title || 'Untitled'}>
       <div className="text-[10px]">
         <div className="line-clamp-2 mb-1">{preview}</div>
         <div className="opacity-70">{timeAgo}</div>

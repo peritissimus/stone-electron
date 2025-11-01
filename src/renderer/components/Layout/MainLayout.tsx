@@ -6,9 +6,9 @@ import { useEffect } from 'react';
 import { Sidebar, NoteList, NoteEditor, SearchPanel, LayoutContainer, SidebarPanel, NoteListPanel, MainContentArea } from '@renderer/components/Layout';
 import { SettingsModal } from '@renderer/components/Settings';
 import { useUIStore } from '@renderer/stores/uiStore';
-import { useNotebookAPI } from '@renderer/hooks/useNotebookAPI';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 
 export function MainLayout() {
   const {
@@ -21,16 +21,16 @@ export function MainLayout() {
     setNoteListWidth,
   } = useUIStore();
 
-  const { loadNotebooks } = useNotebookAPI();
+  const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
   const { loadNotes } = useNoteAPI();
 
   // Load initial data
   useEffect(() => {
-    loadNotebooks();
+    loadFileTree();
     loadTags();
     loadNotes();
-  }, [loadNotebooks, loadTags, loadNotes]);
+  }, [loadFileTree, loadTags, loadNotes]);
 
   return (
     <LayoutContainer
