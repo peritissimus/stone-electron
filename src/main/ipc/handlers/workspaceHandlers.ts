@@ -189,6 +189,18 @@ export function registerWorkspaceHandlers() {
 
       // Scan folder for markdown files
       const files = await fsService.scanFolder(workspace.folderPath, true);
+      const counts: Record<string, number> = {};
+
+      files.forEach((file) => {
+        const normalized = file.relativePath.replace(/\\/g, '/');
+        const segments = normalized.split('/');
+
+        for (let i = 0; i < segments.length; i++) {
+          const segmentPath = segments.slice(0, i).join('/');
+          const key = segmentPath || '__root__';
+          counts[key] = (counts[key] || 0) + 1;
+        }
+      });
 
       // Get folder structure
       const structure = await fsService.getFolderStructure(workspace.folderPath);
@@ -206,6 +218,7 @@ export function registerWorkspaceHandlers() {
         files,
         structure,
         total: files.length,
+        counts,
       };
     }),
   );
