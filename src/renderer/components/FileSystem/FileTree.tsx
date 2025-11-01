@@ -1,5 +1,21 @@
-import React, { useMemo } from 'react';
-import { FileText, FolderSimple, FolderOpen, Files } from 'phosphor-react';
+import React, { useMemo, useState } from 'react';
+import {
+  FileText,
+  FolderSimple,
+  FolderOpen,
+  Files,
+  DotsThreeVertical,
+  PencilSimple,
+  Trash,
+  Plus,
+} from 'phosphor-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/components/ui/dropdown-menu';
+import { Button } from '@renderer/components/ui/button';
 import { TreeItem } from '@renderer/components/composites';
 import { Text } from '@renderer/components/ui/text';
 import {
@@ -7,6 +23,9 @@ import {
   FileTreeNode as StoreFileTreeNode,
 } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { InputModal } from '@renderer/components/Common';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 
 const normalizePath = (path: string) =>
   path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
@@ -24,9 +43,11 @@ const getDisplayName = (name: string) => {
 interface FileTreeFileProps {
   node: StoreFileTreeNode;
   level: number;
+  onRename: (noteId: string, currentTitle: string) => void;
+  onDelete: (noteId: string) => Promise<void>;
 }
 
-const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level }) => {
+const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete }) => {
   const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { setActiveNote, getNoteByFilePath } = useNoteStore();
 
@@ -35,30 +56,83 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level }) => {
   const parentPath = getParentPath(normalizedPath);
   const folderForSelection = parentPath || null;
 
+  const handleOpen = () => {
+    setActiveFolder(folderForSelection);
+    setSelectedFile(normalizedPath);
+    const note = getNoteByFilePath(normalizedPath);
+    if (note) {
+      setActiveNote(note.id);
+    }
+  };
+
+  const note = getNoteByFilePath(normalizedPath);
+
   return (
     <TreeItem
       level={level}
       isActive={isActive}
-      onClick={() => {
-        setActiveFolder(folderForSelection);
-        setSelectedFile(normalizedPath);
-        const note = getNoteByFilePath(normalizedPath);
-        if (note) {
-          setActiveNote(note.id);
-        }
-      }}
+      onClick={handleOpen}
       icon={<FileText size={14} className="text-muted-foreground" />}
-      label={getDisplayName(node.name)}
+      label={note?.title?.trim() ? note.title : getDisplayName(node.name)}
+      right={
+        <div
+          className="flex items-center gap-1"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-6 w-6 p-0" aria-label="File options">
+                <DotsThreeVertical size={14} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onSelect={handleOpen}>
+                <Files size={14} className="mr-2" /> Open
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!note}
+                onSelect={() => {
+                  if (note) {
+                    onRename(note.id, note.title || getDisplayName(node.name));
+                  }
+                }}
+              >
+                <PencilSimple size={14} className="mr-2" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!note}
+                onSelect={async () => {
+                  if (note) {
+                    await onDelete(note.id);
+                  }
+                }}
+              >
+                <Trash size={14} className="mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      }
     />
   );
 };
 
-interface FileTreeNodeProps {
+interface FolderNodeProps {
   node: StoreFileTreeNode;
   level: number;
+  onCreateNote: (folderPath: string | null) => Promise<void>;
+  onRenameFile: (noteId: string, currentTitle: string) => void;
+  onDeleteFile: (noteId: string) => Promise<void>;
 }
 
-const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
+const FolderChildren: React.FC<FolderNodeProps> = ({
+  node,
+  level,
+  onCreateNote,
+  onRenameFile,
+  onDeleteFile,
+}) => {
   const { activeFolder, expandedPaths, setActiveFolder, toggleExpanded, setSelectedFile, counts } =
     useFileTreeStore();
 
@@ -98,18 +172,58 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
         }
         label={node.name}
         right={
-          <Text size="xs" variant="muted" className="text-[10px]">
-            {noteCount}
-          </Text>
+          <div
+            className="flex items-center gap-1"
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <Text size="xs" variant="muted" className="text-[10px]">
+              {noteCount}
+            </Text>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0"
+                  aria-label="Folder options"
+                >
+                  <DotsThreeVertical size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem
+                  onSelect={async () => {
+                    await onCreateNote(normalizedPath);
+                  }}
+                >
+                  <Plus size={14} className="mr-2" /> New Note
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
       />
       {hasChildren && isExpanded && (
         <div>
           {(node.children ?? []).map((child) =>
             child.type === 'folder' ? (
-              <FolderChildren key={`folder-${child.path}`} node={child} level={level + 1} />
+              <FolderChildren
+                key={`folder-${child.path}`}
+                node={child}
+                level={level + 1}
+                onCreateNote={onCreateNote}
+                onRenameFile={onRenameFile}
+                onDeleteFile={onDeleteFile}
+              />
             ) : (
-              <FileLeaf key={`file-${child.path}`} node={child} level={level + 1} />
+              <FileLeaf
+                key={`file-${child.path}`}
+                node={child}
+                level={level + 1}
+                onRename={onRenameFile}
+                onDelete={onDeleteFile}
+              />
             ),
           )}
         </div>
@@ -120,8 +234,55 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
 
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
-  const { notes } = useNoteStore();
+  const { notes, setActiveNote } = useNoteStore();
+  const { createNote, updateNoteContent, deleteNoteById } = useNoteAPI();
+  const { loadFileTree } = useFileTreeAPI();
   const allNotesCount = useMemo(() => notes.filter((n) => !n.isDeleted).length, [notes]);
+  const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
+
+  const handleCreateNoteInFolder = async (folderPath: string | null) => {
+    try {
+      const note = await createNote({
+        title: '',
+        content: '',
+        folderPath: folderPath || undefined,
+      });
+      if (note) {
+        setActiveFolder(folderPath || null);
+        if (note.filePath) {
+          setSelectedFile(note.filePath.replace(/\\/g, '/'));
+        }
+        setActiveNote(note.id);
+        await loadFileTree();
+      }
+    } catch (error) {
+      console.error('Failed to create note in folder', error);
+    }
+  };
+
+  const handleRenameNote = async (noteId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    try {
+      await updateNoteContent(noteId, { title: trimmed });
+      await loadFileTree();
+    } catch (error) {
+      console.error('Failed to rename note', error);
+    }
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    const confirmed = window.confirm('Move this note to the trash?');
+    if (!confirmed) return;
+    try {
+      const success = await deleteNoteById(noteId, false);
+      if (success) {
+        await loadFileTree();
+      }
+    } catch (error) {
+      console.error('Failed to delete note', error);
+    }
+  };
 
   return (
     <div>
@@ -142,11 +303,38 @@ export function FileTree() {
       />
       {tree.map((node) =>
         node.type === 'folder' ? (
-          <FolderChildren key={`folder-${node.path || node.name}`} node={node} level={0} />
+          <FolderChildren
+            key={`folder-${node.path || node.name}`}
+            node={node}
+            level={0}
+            onCreateNote={handleCreateNoteInFolder}
+            onRenameFile={(noteId, title) => setRenameTarget({ noteId, title })}
+            onDeleteFile={handleDeleteNote}
+          />
         ) : (
-          <FileLeaf key={`file-${node.path}`} node={node} level={0} />
+          <FileLeaf
+            key={`file-${node.path}`}
+            node={node}
+            level={0}
+            onRename={(noteId, title) => setRenameTarget({ noteId, title })}
+            onDelete={handleDeleteNote}
+          />
         ),
       )}
+      <InputModal
+        isOpen={!!renameTarget}
+        onClose={() => setRenameTarget(null)}
+        onSubmit={async (value) => {
+          if (renameTarget) {
+            await handleRenameNote(renameTarget.noteId, value);
+            setRenameTarget(null);
+          }
+        }}
+        title="Rename Note"
+        placeholder="Note title"
+        submitLabel="Rename"
+        defaultValue={renameTarget?.title ?? ''}
+      />
     </div>
   );
 }

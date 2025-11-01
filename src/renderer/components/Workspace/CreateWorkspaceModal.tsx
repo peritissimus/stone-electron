@@ -64,7 +64,14 @@ export function CreateWorkspaceModal({ isOpen, isSubmitting = false, onClose, on
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle>Create Workspace</DialogTitle>
@@ -123,4 +130,3 @@ export function CreateWorkspaceModal({ isOpen, isSubmitting = false, onClose, on
     </Dialog>
   );
 }
-
