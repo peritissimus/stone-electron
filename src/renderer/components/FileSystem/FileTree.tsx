@@ -3,6 +3,48 @@ import { CaretDown, CaretRight } from 'phosphor-react';
 import { Button } from '@renderer/components/ui/button';
 import { TreeItem } from '@renderer/components/composites';
 import { useFileTreeStore, FileTreeNode as StoreFileTreeNode } from '@renderer/stores/fileTreeStore';
+import { useNoteStore } from '@renderer/stores/noteStore';
+
+const getParentPath = (path: string) => {
+  const normalized = path.replace(/\\/g, '/');
+  if (!normalized.includes('/')) return '';
+  return normalized.slice(0, normalized.lastIndexOf('/'));
+};
+
+const getDisplayName = (name: string) => {
+  return name.endsWith('.md') ? name.replace(/\.md$/i, '') : name;
+};
+
+interface FileTreeFileProps {
+  node: StoreFileTreeNode;
+  level: number;
+}
+
+const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level }) => {
+  const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { setActiveNote, getNoteByFilePath } = useNoteStore();
+
+  const isActive = selectedFile === node.path;
+  const parentPath = getParentPath(node.path);
+  const folderForSelection = parentPath || null;
+
+  return (
+    <TreeItem
+      level={level}
+      isActive={isActive}
+      onClick={() => {
+        setActiveFolder(folderForSelection);
+        setSelectedFile(node.path);
+        const note = getNoteByFilePath(node.path);
+        if (note) {
+          setActiveNote(note.id);
+        }
+      }}
+      icon="📄"
+      label={getDisplayName(node.name)}
+    />
+  );
+};
 
 interface FileTreeNodeProps {
   node: StoreFileTreeNode;
@@ -10,7 +52,13 @@ interface FileTreeNodeProps {
 }
 
 const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
-  const { activeFolder, expandedPaths, setActiveFolder, toggleExpanded } = useFileTreeStore();
+  const {
+    activeFolder,
+    expandedPaths,
+    setActiveFolder,
+    toggleExpanded,
+    setSelectedFile,
+  } = useFileTreeStore();
 
   const childFolders =
     node.children?.filter((child) => child.type === 'folder') ?? [];
@@ -24,7 +72,10 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
       <TreeItem
         level={level}
         isActive={isActive}
-        onClick={() => setActiveFolder(node.path || null)}
+        onClick={() => {
+          setActiveFolder(node.path || null);
+          setSelectedFile(null);
+        }}
         icon="📁"
         label={node.name}
         expander={
@@ -46,9 +97,13 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
       />
       {hasChildren && isExpanded && (
         <div>
-          {childFolders.map((child) => (
-            <FolderChildren key={child.path} node={child} level={level + 1} />
-          ))}
+          {(node.children ?? []).map((child) =>
+            child.type === 'folder' ? (
+              <FolderChildren key={`folder-${child.path}`} node={child} level={level + 1} />
+            ) : (
+              <FileLeaf key={`file-${child.path}`} node={child} level={level + 1} />
+            ),
+          )}
         </div>
       )}
     </>
@@ -56,20 +111,27 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
 };
 
 export function FileTree() {
-  const { tree, activeFolder, setActiveFolder } = useFileTreeStore();
+  const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
 
   return (
     <div>
       <TreeItem
         level={0}
         isActive={!activeFolder}
-        onClick={() => setActiveFolder(null)}
+        onClick={() => {
+          setActiveFolder(null);
+          setSelectedFile(null);
+        }}
         icon="🗂️"
         label="All Notes"
       />
-      {tree.map((node) => (
-        <FolderChildren key={node.path || node.name} node={node} level={0} />
-      ))}
+      {tree.map((node) =>
+        node.type === 'folder' ? (
+          <FolderChildren key={`folder-${node.path || node.name}`} node={node} level={0} />
+        ) : (
+          <FileLeaf key={`file-${node.path}`} node={node} level={0} />
+        ),
+      )}
     </div>
   );
 }
