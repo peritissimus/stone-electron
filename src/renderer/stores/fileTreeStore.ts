@@ -34,7 +34,6 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   loading: false,
   error: null,
   counts: {},
-  counts: {},
 
   setTree: (tree) => set({ tree }),
   setActiveFolder: (path) =>
