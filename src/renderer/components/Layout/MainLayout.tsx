@@ -3,7 +3,14 @@
  */
 
 import { useEffect } from 'react';
-import { Sidebar, NoteEditor, SearchPanel, LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/Layout';
+import {
+  Sidebar,
+  NoteEditor,
+  SearchPanel,
+  LayoutContainer,
+  SidebarPanel,
+  MainContentArea,
+} from '@renderer/components/Layout';
 import { SettingsModal } from '@renderer/components/Settings';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';

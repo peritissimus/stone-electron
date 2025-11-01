@@ -103,7 +103,13 @@ export function Sidebar() {
     }
   };
 
-  const handleCreateWorkspace = async ({ name, folderPath }: { name: string; folderPath: string }) => {
+  const handleCreateWorkspace = async ({
+    name,
+    folderPath,
+  }: {
+    name: string;
+    folderPath: string;
+  }) => {
     setIsWorkspaceModalProcessing(true);
     try {
       const response = await window.electron.invoke<Workspace>(WORKSPACE_CHANNELS.CREATE, {
@@ -127,7 +133,9 @@ export function Sidebar() {
       setWorkspaceModalOpen(false);
     } catch (error) {
       logger.error('Failed to create workspace:', error);
-      alert(`Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(
+        `Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     } finally {
       setIsWorkspaceModalProcessing(false);
     }
@@ -161,55 +169,6 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      <Header
-        left={<Heading3 className="text-sm">Stone</Heading3>}
-        right={
-          <ControlGroup gap="sm" background="bg-transparent">
-            <IconButton
-              size="normal"
-              icon={<Plus size={13} />}
-              label="New Note"
-              tooltip="Create new note"
-              onClick={handleCreateNote}
-              disabled={isCreating}
-            />
-            <IconButton
-              size="normal"
-              icon={<ArrowsClockwise size={13} />}
-              label="Sync"
-              tooltip="Sync with file system"
-              onClick={async () => {
-                try {
-                  const res = await syncWorkspace();
-                  if (res.success) {
-                    logger.info('Sync complete', res.data);
-                    await loadWorkspaces();
-                    await loadFileTree();
-                    if (activeFolder) {
-                      await loadNotes({ folderPath: activeFolder });
-                    } else {
-                      await loadNotes();
-                    }
-                  } else {
-                    logger.error('Sync failed', res.error);
-                    alert(res.error?.message || 'Sync failed');
-                  }
-                } catch (e) {
-                  logger.error('Sync error', e);
-                  alert('Sync failed');
-                }
-              }}
-            />
-            <IconButton
-              size="normal"
-              icon={<Gear size={13} />}
-              label="Settings"
-              onClick={openSettings}
-            />
-          </ControlGroup>
-        }
-      />
-
       <div className="px-3 py-2 border-b border-border">
         <div className="flex flex-col gap-1.5">
           <Heading3 className="text-sm">Workspace</Heading3>
@@ -248,17 +207,6 @@ export function Sidebar() {
                 <SelectItem value={CREATE_WORKSPACE_OPTION}>+ Create workspace…</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 px-2 text-xs"
-              onClick={() => setWorkspaceModalOpen(true)}
-              disabled={isWorkspaceModalProcessing}
-            >
-              <Plus size={12} className="mr-1" />
-              <span className="hidden sm:inline">New</span>
-            </Button>
           </div>
           {activeWorkspace?.folderPath && (
             <p className="text-[10px] text-muted-foreground truncate">
@@ -346,5 +294,4 @@ export function Sidebar() {
       />
     </div>
   );
-
 }

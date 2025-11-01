@@ -41,7 +41,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           'transition-colors',
           'hover:bg-muted',
           'active:bg-muted/80',
-          className
+          className,
         )}
         aria-label={label || tooltip}
         title={tooltip}
@@ -50,6 +50,6 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         {icon}
       </button>
     );
-  }
+  },
 );
 IconButton.displayName = 'IconButton';
