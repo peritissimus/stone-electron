@@ -63,9 +63,8 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
     setActiveFolder,
     toggleExpanded,
     setSelectedFile,
+    counts,
   } = useFileTreeStore();
-  const { notes } = useNoteStore();
-  const activeNotes = useMemo(() => notes.filter((note) => !note.isArchived), [notes]);
 
   const normalizedPath = normalizePath(node.path);
   const childFolders = node.children ?? [];
@@ -74,15 +73,7 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
   const isExpanded = expandedPaths.has(normalizedPath);
   const isActive = normalizePath(activeFolder || '') === normalizedPath;
 
-  const noteCount = useMemo(() => {
-    return activeNotes.filter((note) => {
-      if (!note.filePath) return false;
-      const normalizedFilePath = normalizePath(note.filePath);
-      return normalizedPath
-        ? normalizedFilePath.startsWith(`${normalizedPath}/`)
-        : !normalizedFilePath.includes('/');
-    }).length;
-  }, [activeNotes, normalizedPath]);
+  const noteCount = counts[normalizedPath || '__root__'] || 0;
 
   return (
     <>
@@ -133,9 +124,7 @@ const FolderChildren: React.FC<FileTreeNodeProps> = ({ node, level }) => {
 };
 
 export function FileTree() {
-  const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
-  const { notes } = useNoteStore();
-  const activeNotes = useMemo(() => notes.filter((note) => !note.isArchived), [notes]);
+  const { tree, activeFolder, setActiveFolder, setSelectedFile, counts } = useFileTreeStore();
 
   return (
     <div>

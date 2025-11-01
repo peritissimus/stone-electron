@@ -14,6 +14,7 @@ interface FileTreeState {
   expandedPaths: Set<string>;
   loading: boolean;
   error: string | null;
+  counts: Record<string, number>;
   setTree: (tree: FileTreeNode[]) => void;
   setActiveFolder: (path: string | null) => void;
   setSelectedFile: (path: string | null) => void;
@@ -22,6 +23,7 @@ interface FileTreeState {
   collapseAll: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setCounts: (counts: Record<string, number>) => void;
 }
 
 export const useFileTreeStore = create<FileTreeState>((set, get) => ({
@@ -31,6 +33,8 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   expandedPaths: new Set(),
   loading: false,
   error: null,
+  counts: {},
+  counts: {},
 
   setTree: (tree) => set({ tree }),
   setActiveFolder: (path) =>
@@ -93,4 +97,6 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
 
   setError: (error) => set({ error }),
+
+  setCounts: (counts) => set({ counts }),
 }));

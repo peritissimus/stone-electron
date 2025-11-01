@@ -60,6 +60,7 @@ export function useFileTreeAPI() {
     setSelectedFile,
     setLoading,
     setError,
+    setCounts,
     expandAll,
     collapseAll,
   } = useFileTreeStore();
@@ -84,11 +85,15 @@ export function useFileTreeAPI() {
 
       const response = await window.electron.invoke<{
         structure: FolderStructure[];
+        counts?: Record<string, number>;
       }>(WORKSPACE_CHANNELS.SCAN, { workspaceId });
 
       if (response.success && response.data) {
         const tree = toFileTree(response.data.structure || []);
         setTree(tree);
+        if (response.data.counts) {
+          setCounts(response.data.counts);
+        }
         if (prevActive) {
           setActiveFolder(prevActive);
           if (prevSelected) {
