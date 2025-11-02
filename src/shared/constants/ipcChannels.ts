@@ -25,6 +25,7 @@ export const NOTE_CHANNELS = {
   UPDATE: 'notes:update',
   DELETE: 'notes:delete',
   GET: 'notes:get',
+  GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
   FAVORITE: 'notes:favorite',
   PIN: 'notes:pin',
@@ -134,19 +135,19 @@ export const EVENTS = {
   SETTINGS_CHANGED: 'settings:changed',
 } as const;
 
-// Get all channels as a flat object for validation
-export const ALL_CHANNELS = {
-  ...WORKSPACE_CHANNELS,
-  ...NOTE_CHANNELS,
-  ...NOTEBOOK_CHANNELS,
-  ...TAG_CHANNELS,
-  ...SEARCH_CHANNELS,
-  ...ATTACHMENT_CHANNELS,
-  ...DATABASE_CHANNELS,
-  ...SETTINGS_CHANNELS,
-} as const;
+// Get all channels as an array for validation
+// We need to collect all channel values to avoid key conflicts
+// (multiple objects have keys like CREATE, UPDATE, DELETE, GET_ALL)
+export const ALL_CHANNELS = [
+  ...Object.values(WORKSPACE_CHANNELS),
+  ...Object.values(NOTE_CHANNELS),
+  ...Object.values(NOTEBOOK_CHANNELS),
+  ...Object.values(TAG_CHANNELS),
+  ...Object.values(SEARCH_CHANNELS),
+  ...Object.values(ATTACHMENT_CHANNELS),
+  ...Object.values(DATABASE_CHANNELS),
+  ...Object.values(SETTINGS_CHANNELS),
+] as const;
 
-// Get all events as a flat object
-export const ALL_EVENTS = {
-  ...EVENTS,
-} as const;
+// Get all events as an array
+export const ALL_EVENTS = Object.values(EVENTS) as const;
