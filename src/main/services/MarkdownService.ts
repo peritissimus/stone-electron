@@ -5,8 +5,59 @@
 import TurndownService from 'turndown';
 import { marked } from 'marked';
 
+/**
+ * LRU cache entry for markdown parsing
+ */
+interface CacheEntry {
+  html: string;
+  mtime: number;
+}
+
+/**
+ * Simple LRU cache for markdown to HTML conversion
+ */
+class MarkdownCache {
+  private cache = new Map<string, CacheEntry>();
+  private maxSize: number;
+
+  constructor(maxSize = 100) {
+    this.maxSize = maxSize;
+  }
+
+  get(key: string, mtime: number): string | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+
+    // Invalidate if file was modified
+    if (entry.mtime !== mtime) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    // Move to end (most recently used)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.html;
+  }
+
+  set(key: string, html: string, mtime: number): void {
+    // Remove oldest entry if at capacity
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, { html, mtime });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
 export class MarkdownService {
   private turndownService: TurndownService;
+  private parseCache = new MarkdownCache(100);
 
   constructor() {
     // Initialize Turndown service for HTML -> Markdown conversion
@@ -54,11 +105,20 @@ export class MarkdownService {
   }
 
   /**
-   * Convert Markdown to HTML
+   * Convert Markdown to HTML with caching
+   * @param markdown - Markdown content to convert
+   * @param cacheKey - Optional cache key (e.g., file path)
+   * @param mtime - Optional file modification time in milliseconds
    */
-  async markdownToHtml(markdown: string): Promise<string> {
+  async markdownToHtml(markdown: string, cacheKey?: string, mtime?: number): Promise<string> {
     if (!markdown || markdown.trim() === '') {
       return '';
+    }
+
+    // Check cache if key and mtime provided
+    if (cacheKey && mtime !== undefined) {
+      const cached = this.parseCache.get(cacheKey, mtime);
+      if (cached) return cached;
     }
 
     try {
@@ -68,11 +128,25 @@ export class MarkdownService {
         breaks: true, // Convert \n to <br>
       });
 
-      return await marked.parse(markdown);
+      const html = await marked.parse(markdown);
+
+      // Cache result if key and mtime provided
+      if (cacheKey && mtime !== undefined) {
+        this.parseCache.set(cacheKey, html, mtime);
+      }
+
+      return html;
     } catch (error) {
       console.error('Error converting Markdown to HTML:', error);
       return markdown; // Return original if conversion fails
     }
+  }
+
+  /**
+   * Clear the markdown parse cache
+   */
+  clearCache(): void {
+    this.parseCache.clear();
   }
 
   /**
@@ -84,9 +158,7 @@ export class MarkdownService {
       filter: (node) => {
         return (
           node.nodeName === 'MARK' ||
-          (node.nodeName === 'SPAN' &&
-            node.classList &&
-            node.classList.contains('bg-accent'))
+          (node.nodeName === 'SPAN' && node.classList && node.classList.contains('bg-accent'))
         );
       },
       replacement: (content) => {
@@ -98,9 +170,7 @@ export class MarkdownService {
     this.turndownService.addRule('fencedCodeBlock', {
       filter: (node, options): boolean => {
         return (
-          node.nodeName === 'PRE' &&
-          node.firstChild !== null &&
-          node.firstChild.nodeName === 'CODE'
+          node.nodeName === 'PRE' && node.firstChild !== null && node.firstChild.nodeName === 'CODE'
         );
       },
       replacement: (content, node, options) => {
@@ -204,11 +274,17 @@ function simpleHtmlToMarkdown(input: string): string {
   // Headings
   for (let i = 6; i >= 1; i--) {
     const re = new RegExp(`<h${i}[^>]*>([\n\s\S]*?)<\\/h${i}>`, 'gi');
-    out = out.replace(re, (_, text: string) => `\n\n${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`);
+    out = out.replace(
+      re,
+      (_, text: string) => `\n\n${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`,
+    );
   }
 
   // Paragraphs
-  out = out.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (_, text: string) => `\n\n${stripTags(text).trim()}\n\n`);
+  out = out.replace(
+    /<p[^>]*>([\s\S]*?)<\/p>/gi,
+    (_, text: string) => `\n\n${stripTags(text).trim()}\n\n`,
+  );
 
   // Line breaks
   out = out.replace(/<br\s*\/?>(\s*)/gi, `\n`);
@@ -250,7 +326,10 @@ function simpleHtmlToMarkdown(input: string): string {
   );
 
   // Inline code
-  out = out.replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_, code: string) => `\`${stripTags(decodeHtmlEntities(code))}\``);
+  out = out.replace(
+    /<code[^>]*>([\s\S]*?)<\/code>/gi,
+    (_, code: string) => `\`${stripTags(decodeHtmlEntities(code))}\``,
+  );
 
   // Emphasis and strong
   out = out.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, (_, t: string) => `**${stripTags(t)}**`);

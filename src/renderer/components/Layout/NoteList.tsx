@@ -215,25 +215,25 @@ export function NoteList() {
               label={node.name}
               onClick={() => handleFolderClick(normalizedPath)}
               right={
-                <Text size="xs" variant="muted" className="text-[10px]">
-                  {count}
-                </Text>
-              }
-              expander={
-                hasChildren ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggleExpanded(normalizedPath);
-                    }}
-                    aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-                  >
-                    {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                  </Button>
-                ) : undefined
+                <>
+                  {hasChildren && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleExpanded(normalizedPath);
+                      }}
+                      aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
+                    >
+                      {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
+                    </Button>
+                  )}
+                  <Text size="xs" variant="muted" className="text-[10px]">
+                    {count}
+                  </Text>
+                </>
               }
             />
             {isExpanded && node.children && node.children.length > 0 && (

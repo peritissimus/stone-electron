@@ -24,6 +24,9 @@ interface FileTreeState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setCounts: (counts: Record<string, number>) => void;
+  updateFileInTree: (relativePath: string, update: Partial<FileTreeNode>) => void;
+  addFileToTree: (relativePath: string, node: FileTreeNode) => void;
+  removeFileFromTree: (relativePath: string) => void;
 }
 
 export const useFileTreeStore = create<FileTreeState>((set, get) => ({
@@ -42,10 +45,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
         return { activeFolder: null, selectedFile: null };
       }
 
-      const normalized = path
-        .replace(/\\/g, '/')
-        .replace(/^\/+/, '')
-        .replace(/\/+$/, '');
+      const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
 
       const nextExpanded = new Set(state.expandedPaths);
       const segments = normalized.split('/');
@@ -98,4 +98,75 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   setError: (error) => set({ error }),
 
   setCounts: (counts) => set({ counts }),
+
+  updateFileInTree: (relativePath, update) =>
+    set((state) => {
+      const updateNode = (nodes: FileTreeNode[]): FileTreeNode[] => {
+        return nodes.map((node) => {
+          if (node.path === relativePath) {
+            return { ...node, ...update };
+          }
+          if (node.type === 'folder' && node.children) {
+            return { ...node, children: updateNode(node.children) };
+          }
+          return node;
+        });
+      };
+      return { tree: updateNode(state.tree) };
+    }),
+
+  addFileToTree: (relativePath, newNode) =>
+    set((state) => {
+      const segments = relativePath.split('/');
+      const parentPath = segments.slice(0, -1).join('/');
+
+      const addNode = (nodes: FileTreeNode[]): FileTreeNode[] => {
+        // Root level addition
+        if (!parentPath) {
+          const exists = nodes.some((n) => n.path === newNode.path);
+          if (exists) return nodes;
+          return [...nodes, newNode].sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+            return a.name.localeCompare(b.name);
+          });
+        }
+
+        // Nested addition
+        return nodes.map((node) => {
+          if (node.path === parentPath && node.type === 'folder') {
+            const children = node.children || [];
+            const exists = children.some((n) => n.path === newNode.path);
+            if (exists) return node;
+            return {
+              ...node,
+              children: [...children, newNode].sort((a, b) => {
+                if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+                return a.name.localeCompare(b.name);
+              }),
+            };
+          }
+          if (node.type === 'folder' && node.children) {
+            return { ...node, children: addNode(node.children) };
+          }
+          return node;
+        });
+      };
+
+      return { tree: addNode(state.tree) };
+    }),
+
+  removeFileFromTree: (relativePath) =>
+    set((state) => {
+      const removeNode = (nodes: FileTreeNode[]): FileTreeNode[] => {
+        return nodes
+          .filter((node) => node.path !== relativePath)
+          .map((node) => {
+            if (node.type === 'folder' && node.children) {
+              return { ...node, children: removeNode(node.children) };
+            }
+            return node;
+          });
+      };
+      return { tree: removeNode(state.tree) };
+    }),
 }));

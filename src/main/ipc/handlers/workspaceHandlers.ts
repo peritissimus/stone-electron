@@ -9,6 +9,7 @@ import { getRepositories } from '../../repositories';
 import { getFileSystemService } from '../../services/FileSystemService';
 import { getFileWatcherService } from '../../services/FileWatcherService';
 import { createHandler, IpcError } from '../utils';
+import { resolveInsideRoot, normalizeRelativePath as normalizeRelUtil } from '../../utils/path';
 
 /**
  * Register all workspace handlers
@@ -16,12 +17,7 @@ import { createHandler, IpcError } from '../utils';
 export function registerWorkspaceHandlers() {
   const repos = getRepositories();
   const fsService = getFileSystemService();
-  const normalizeRelativePath = (input?: string) =>
-    (input || '')
-      .replace(/\\/g, '/')
-      .replace(/^\.\//, '')
-      .replace(/^\/+/, '')
-      .replace(/\/+$/, '');
+  const normalizeRelativePath = (input?: string) => normalizeRelUtil(input || '');
   const getParentRelativePath = (relative: string) => {
     const normalized = normalizeRelativePath(relative);
     if (!normalized.includes('/')) {
@@ -149,17 +145,12 @@ export function registerWorkspaceHandlers() {
         throw new IpcError('NOT_FOUND', 'Active workspace not found');
       }
 
-      const parentRelativeRaw = request.parentPath || '';
-      const parentRelative = parentRelativeRaw
-        .replace(/\\/g, '/')
-        .replace(/^\.\//, '')
-        .replace(/^\/+/, '')
-        .replace(/\/+$/, '');
+      const parentRelative = normalizeRelativePath(request.parentPath || '');
 
-      const targetBase =
-        parentRelative && parentRelative.length > 0
-          ? path.join(workspace.folderPath, parentRelative)
-          : workspace.folderPath;
+      const targetBase = resolveInsideRoot(
+        workspace.folderPath,
+        parentRelative && parentRelative.length > 0 ? parentRelative : '.',
+      );
 
       const folderName = await fsService.generateUniqueFolderName(
         targetBase,
@@ -171,7 +162,7 @@ export function registerWorkspaceHandlers() {
           ? path.posix.join(parentRelative, folderName)
           : folderName;
 
-      await fsService.createFolder(path.join(workspace.folderPath, newRelative));
+      await fsService.createFolder(resolveInsideRoot(workspace.folderPath, newRelative));
 
       await repos.notebook.syncWithWorkspaceFolders(workspace.id);
       await repos.note.syncWithFileSystem(workspace.id);
@@ -197,16 +188,17 @@ export function registerWorkspaceHandlers() {
         throw new IpcError('INVALID_INPUT', 'Folder path is required');
       }
 
-      const currentAbsolute = path.join(workspace.folderPath, targetRelative);
+      const currentAbsolute = resolveInsideRoot(workspace.folderPath, targetRelative);
       const exists = await fsService.fileExists(currentAbsolute);
       if (!exists) {
         throw new IpcError('NOT_FOUND', 'Folder does not exist');
       }
 
       const parentRelative = getParentRelativePath(targetRelative);
-      const parentAbsolute = parentRelative
-        ? path.join(workspace.folderPath, parentRelative)
-        : workspace.folderPath;
+      const parentAbsolute = resolveInsideRoot(
+        workspace.folderPath,
+        parentRelative ? parentRelative : '.',
+      );
 
       const desiredName = request.name && request.name.trim().length > 0 ? request.name : 'Folder';
       const newFolderName = await fsService.generateUniqueFolderName(
@@ -218,7 +210,7 @@ export function registerWorkspaceHandlers() {
       const newRelative = parentRelative
         ? path.posix.join(parentRelative, newFolderName)
         : newFolderName;
-      const newAbsolute = path.join(workspace.folderPath, newRelative);
+      const newAbsolute = resolveInsideRoot(workspace.folderPath, newRelative);
 
       if (newAbsolute !== currentAbsolute) {
         await fsService.renameFolder(currentAbsolute, newAbsolute);
@@ -248,7 +240,7 @@ export function registerWorkspaceHandlers() {
         throw new IpcError('INVALID_INPUT', 'Folder path is required');
       }
 
-      const targetAbsolute = path.join(workspace.folderPath, targetRelative);
+      const targetAbsolute = resolveInsideRoot(workspace.folderPath, targetRelative);
       const exists = await fsService.fileExists(targetAbsolute);
       if (!exists) {
         throw new IpcError('NOT_FOUND', 'Folder does not exist');

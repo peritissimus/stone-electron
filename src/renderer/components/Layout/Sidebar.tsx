@@ -20,7 +20,7 @@ import {
 } from '@renderer/components/ui/select';
 import { Heading3 } from '@renderer/components/ui/text';
 import { logger } from '@renderer/utils/logger';
-import { TagWithCount, type Workspace } from '@shared/types';
+import { TagWithCount, type Workspace, type Note } from '@shared/types';
 import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise } from 'phosphor-react';
 import {
   Header,
@@ -56,9 +56,66 @@ export function Sidebar() {
     loadWorkspaces();
   }, [loadWorkspaces]);
 
-  // Listen to workspace file changes and refresh tree/notes
+  // Listen to workspace file changes with targeted updates
   useEffect(() => {
-    const refresh = async () => {
+    const { addFileToTree, removeFileFromTree, updateFileInTree } = useFileTreeStore.getState();
+    const { updateNoteByPath, removeNoteByPath, getNoteByFilePath } = useNoteStore.getState();
+
+    // Handler for file created
+    const handleFileCreated = async (...args: unknown[]) => {
+      const payload = args[0] as { workspaceId: string; path: string };
+      logger.debug('[Sidebar] FILE_CREATED:', payload.path);
+
+      // Add to tree optimistically
+      const segments = payload.path.split('/');
+      const name = segments[segments.length - 1].replace(/\.md$/, '');
+      addFileToTree(payload.path, {
+        name,
+        path: payload.path,
+        type: 'file',
+      });
+
+      // Reload notes for the current folder to pick up the new note
+      if (activeFolder) {
+        await loadNotes({ folderPath: activeFolder });
+      } else {
+        await loadNotes();
+      }
+    };
+
+    // Handler for file changed
+    const handleFileChanged = async (...args: unknown[]) => {
+      const payload = args[0] as { workspaceId: string; path: string };
+      logger.debug('[Sidebar] FILE_CHANGED:', payload.path);
+
+      // Update note in store if it exists
+      const note = getNoteByFilePath(payload.path);
+      if (note) {
+        // Fetch updated note details
+        try {
+          const response = await window.electron.invoke<Note>('notes:getById', { id: note.id });
+          if (response.success && response.data) {
+            updateNoteByPath(payload.path, response.data);
+          }
+        } catch (error) {
+          logger.error('[Sidebar] Error fetching updated note:', error);
+        }
+      }
+    };
+
+    // Handler for file deleted
+    const handleFileDeleted = (...args: unknown[]) => {
+      const payload = args[0] as { workspaceId: string; path: string };
+      logger.debug('[Sidebar] FILE_DELETED:', payload.path);
+
+      // Remove from tree and notes
+      removeFileFromTree(payload.path);
+      removeNoteByPath(payload.path);
+    };
+
+    // Handler for full workspace sync (fallback for complex operations)
+    const handleWorkspaceUpdated = async () => {
+      logger.debug('[Sidebar] WORKSPACE_UPDATED - full refresh');
       await loadFileTree();
       if (activeFolder) {
         await loadNotes({ folderPath: activeFolder });
@@ -67,10 +124,13 @@ export function Sidebar() {
       }
     };
 
-    const offCreated = window.electron.on(EVENTS.FILE_CREATED, refresh);
-    const offChanged = window.electron.on(EVENTS.FILE_CHANGED, refresh);
-    const offDeleted = window.electron.on(EVENTS.FILE_DELETED, refresh);
-    const offWorkspaceUpdated = window.electron.on(EVENTS.WORKSPACE_UPDATED, refresh);
+    const offCreated = window.electron.on(EVENTS.FILE_CREATED, handleFileCreated);
+    const offChanged = window.electron.on(EVENTS.FILE_CHANGED, handleFileChanged);
+    const offDeleted = window.electron.on(EVENTS.FILE_DELETED, handleFileDeleted);
+    const offWorkspaceUpdated = window.electron.on(
+      EVENTS.WORKSPACE_UPDATED,
+      handleWorkspaceUpdated,
+    );
 
     return () => {
       offCreated?.();

@@ -2,31 +2,33 @@
  * Note Store - Zustand state management for notes
  */
 
-import { create } from 'zustand'
-import { Note } from '@shared/types'
+import { create } from 'zustand';
+import { Note } from '@shared/types';
 
 interface NoteState {
-  notes: Note[]
-  activeNoteId: string | null
-  loading: boolean
-  error: string | null
+  notes: Note[];
+  activeNoteId: string | null;
+  loading: boolean;
+  error: string | null;
 
   // Actions
-  setNotes: (notes: Note[]) => void
-  addNote: (note: Note) => void
-  updateNote: (note: Note) => void
-  deleteNote: (id: string) => void
-  setActiveNote: (id: string | null) => void
-  setLoading: (loading: boolean) => void
-  setError: (error: string | null) => void
+  setNotes: (notes: Note[]) => void;
+  addNote: (note: Note) => void;
+  updateNote: (note: Note) => void;
+  deleteNote: (id: string) => void;
+  setActiveNote: (id: string | null) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  updateNoteByPath: (filePath: string, updates: Partial<Note>) => void;
+  removeNoteByPath: (filePath: string) => void;
 
   // Computed
-  getActiveNote: () => Note | null
-  getNotesByNotebook: (notebookId: string) => Note[]
-  getFavoriteNotes: () => Note[]
-  getPinnedNotes: () => Note[]
-  getArchivedNotes: () => Note[]
-  getNoteByFilePath: (filePath: string) => Note | null
+  getActiveNote: () => Note | null;
+  getNotesByNotebook: (notebookId: string) => Note[];
+  getFavoriteNotes: () => Note[];
+  getPinnedNotes: () => Note[];
+  getArchivedNotes: () => Note[];
+  getNoteByFilePath: (filePath: string) => Note | null;
 }
 
 export const useNoteStore = create<NoteState>((set, get) => ({
@@ -60,32 +62,50 @@ export const useNoteStore = create<NoteState>((set, get) => ({
   setError: (error) => set({ error }),
 
   getActiveNote: () => {
-    const state = get()
-    return state.notes.find((n) => n.id === state.activeNoteId) || null
+    const state = get();
+    return state.notes.find((n) => n.id === state.activeNoteId) || null;
   },
 
   getNotesByNotebook: (notebookId) => {
-    return get().notes.filter((n) => n.notebookId === notebookId)
+    return get().notes.filter((n) => n.notebookId === notebookId);
   },
 
   getFavoriteNotes: () => {
-    return get().notes.filter((n) => n.isFavorite)
+    return get().notes.filter((n) => n.isFavorite);
   },
 
   getPinnedNotes: () => {
-    return get().notes.filter((n) => n.isPinned)
+    return get().notes.filter((n) => n.isPinned);
   },
 
   getArchivedNotes: () => {
-    return get().notes.filter((n) => n.isArchived)
+    return get().notes.filter((n) => n.isArchived);
   },
 
   getNoteByFilePath: (filePath) => {
-    if (!filePath) return null
-    const normalized = filePath.replace(/\\/g, '/')
-    const state = get()
-    return (
-      state.notes.find((note) => (note.filePath || '').replace(/\\/g, '/') === normalized) || null
-    )
+    if (!filePath) return null;
+    const normalized = filePath.replace(/\\/g, '/');
+    return get().notes.find((n) => n.filePath?.replace(/\\/g, '/') === normalized) || null;
   },
-}))
+
+  updateNoteByPath: (filePath, updates) =>
+    set((state) => {
+      const normalized = filePath.replace(/\\/g, '/');
+      return {
+        notes: state.notes.map((n) =>
+          n.filePath?.replace(/\\/g, '/') === normalized ? { ...n, ...updates } : n,
+        ),
+      };
+    }),
+
+  removeNoteByPath: (filePath) =>
+    set((state) => {
+      const normalized = filePath.replace(/\\/g, '/');
+      const removedNote = state.notes.find((n) => n.filePath?.replace(/\\/g, '/') === normalized);
+      return {
+        notes: state.notes.filter((n) => n.filePath?.replace(/\\/g, '/') !== normalized),
+        activeNoteId:
+          removedNote && state.activeNoteId === removedNote.id ? null : state.activeNoteId,
+      };
+    }),
+}));

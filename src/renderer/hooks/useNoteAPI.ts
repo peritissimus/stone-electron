@@ -9,7 +9,12 @@ import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/utils/logger';
 
 export function useNoteAPI() {
-  const { setNotes, addNote, updateNote, deleteNote, setLoading, setError } = useNoteStore();
+  const setNotes = useNoteStore((state) => state.setNotes);
+  const addNote = useNoteStore((state) => state.addNote);
+  const updateNote = useNoteStore((state) => state.updateNote);
+  const deleteNote = useNoteStore((state) => state.deleteNote);
+  const setLoading = useNoteStore((state) => state.setLoading);
+  const setError = useNoteStore((state) => state.setError);
 
   const loadNotes = useCallback(
     async (filters?: {
