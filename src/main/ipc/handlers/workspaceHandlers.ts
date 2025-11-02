@@ -10,6 +10,7 @@ import { getFileSystemService } from '../../services/FileSystemService';
 import { getFileWatcherService } from '../../services/FileWatcherService';
 import { createHandler, IpcError } from '../utils';
 import { resolveInsideRoot, normalizeRelativePath as normalizeRelUtil } from '../../utils/path';
+import { logger } from '../../utils/logger';
 
 /**
  * Register all workspace handlers
@@ -341,24 +342,24 @@ export function registerWorkspaceHandlers() {
 
       const start = Date.now();
       // Log start
-      console.info(
+      logger.info(
         `[IPC][workspaces:sync] Start sync for workspace ${active.id} at ${active.folderPath}`,
       );
 
       // Sync notebooks from folders
       const nbResult = await repos.notebook.syncWithWorkspaceFolders(active.id);
-      console.info(
+      logger.info(
         `[IPC][workspaces:sync] Notebook sync: created=${nbResult.created}, updated=${nbResult.updated}, errors=${nbResult.errors.length}`,
       );
 
       // Sync notes from files
       const noteResult = await repos.note.syncWithFileSystem(active.id);
-      console.info(
+      logger.info(
         `[IPC][workspaces:sync] Note sync: created=${noteResult.created}, updated=${noteResult.updated}, deleted=${noteResult.deleted}, errors=${noteResult.errors.length}`,
       );
 
       const dur = Date.now() - start;
-      console.info(`[IPC][workspaces:sync] Done in ${dur}ms`);
+      logger.info(`[IPC][workspaces:sync] Done in ${dur}ms`);
 
       return {
         workspaceId: active.id,

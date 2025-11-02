@@ -4,6 +4,7 @@
 
 import TurndownService from 'turndown';
 import { marked } from 'marked';
+import { logger } from '../utils/logger';
 
 /**
  * LRU cache entry for markdown parsing
@@ -98,7 +99,7 @@ export class MarkdownService {
       // In main process, avoid noisy logs during bulk sync. Fall back to the
       // original content so we never block saves.
       if (process?.env?.NODE_ENV !== 'test') {
-        console.warn('HTML→Markdown conversion failed, writing content as-is.');
+        logger.warn('HTML→Markdown conversion failed, writing content as-is.');
       }
       return html;
     }
@@ -137,7 +138,7 @@ export class MarkdownService {
 
       return html;
     } catch (error) {
-      console.error('Error converting Markdown to HTML:', error);
+      logger.error('Error converting Markdown to HTML:', error);
       return markdown; // Return original if conversion fails
     }
   }

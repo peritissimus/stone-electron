@@ -6,7 +6,23 @@ import { createClient } from '@libsql/client/sqlite3';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { app } from 'electron';
+
+// Conditionally import electron
+let app: any = null;
+try {
+  app = require('electron').app;
+} catch {
+  // Electron not available, use fallback
+  app = {
+    getPath: (name: string) => {
+      if (name === 'userData') {
+        return path.join(os.homedir(), '.stone');
+      }
+      return os.tmpdir();
+    },
+    isPackaged: false,
+  };
+}
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
@@ -81,8 +97,9 @@ export class DatabaseManager {
           const notebookRepository = new NotebookRepository();
           const noteRepository = new NoteRepository();
 
-          const notebookSyncResults =
-            await notebookRepository.syncWithWorkspaceFolders(workspace.id);
+          const notebookSyncResults = await notebookRepository.syncWithWorkspaceFolders(
+            workspace.id,
+          );
           logger.info(`Workspace "${workspace.name}" notebook sync:`, {
             created: notebookSyncResults.created,
             updated: notebookSyncResults.updated,

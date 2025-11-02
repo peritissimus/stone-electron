@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { Notebook } from '@shared/types';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
+import { logger } from '@renderer/utils/logger';
 
 export function useNotebookAPI() {
   const { setNotebooks, addNotebook, updateNotebook, deleteNotebook, setLoading, setError } =
@@ -17,19 +18,19 @@ export function useNotebookAPI() {
       setError(null);
       try {
         const params = { include_counts: true, flat } as any;
-        console.info('[useNotebookAPI.loadNotebooks] invoking', params);
+        logger.info('[useNotebookAPI.loadNotebooks] invoking', params);
         const response = await window.electron.invoke<{ notebooks: Notebook[] }>(
           NOTEBOOK_CHANNELS.GET_ALL,
           params,
         );
-        console.info('[useNotebookAPI.loadNotebooks] response', response);
+        logger.info('[useNotebookAPI.loadNotebooks] response', response);
         if (response.success && response.data) {
           setNotebooks(response.data.notebooks);
         } else {
           setError(response.error?.message || 'Failed to load notebooks');
         }
       } catch (error) {
-        console.error('[useNotebookAPI.loadNotebooks] error', error);
+        logger.error('[useNotebookAPI.loadNotebooks] error', error);
         setError(error instanceof Error ? error.message : 'Failed to load notebooks');
       } finally {
         setLoading(false);

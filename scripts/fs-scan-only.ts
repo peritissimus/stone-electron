@@ -12,6 +12,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { logger } from '../src/main/utils/logger';
 
 function parseArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -67,6 +68,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[fs-scan] Error:', err);
+  logger.error('Error:', err);
   process.exit(1);
 });

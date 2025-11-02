@@ -858,7 +858,7 @@ export class NoteRepository {
     try {
       const workspace = await this.workspaceRepository.findById(workspaceId);
       if (!workspace) {
-        console.error(`Workspace not found: ${workspaceId}`);
+        logger.error(`Workspace not found: ${workspaceId}`);
         return null;
       }
 
@@ -912,7 +912,7 @@ export class NoteRepository {
       const mtime = stats.mtimeMs;
       return await this.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
     } catch (error) {
-      console.error(`Error reading content from file ${filePath}:`, error);
+      logger.error(`Error reading content from file ${filePath}:`, error);
       return null;
     }
   }
@@ -943,7 +943,7 @@ export class NoteRepository {
 
       await this.fileSystemService.writeMarkdownFile(absolutePath, markdownContent, metadata);
     } catch (error) {
-      console.error(`Error saving content to file ${filePath}:`, error);
+      logger.error(`Error saving content to file ${filePath}:`, error);
       throw error;
     }
   }
@@ -955,14 +955,14 @@ export class NoteRepository {
     try {
       const workspace = await this.workspaceRepository.findById(workspaceId);
       if (!workspace) {
-        console.warn(`Workspace not found: ${workspaceId}, skipping file deletion`);
+        logger.warn(`Workspace not found: ${workspaceId}, skipping file deletion`);
         return;
       }
 
       const absolutePath = resolveInsideRoot(workspace.folderPath, filePath);
       await this.fileSystemService.deleteMarkdownFile(absolutePath);
     } catch (error) {
-      console.error(`Error deleting markdown file ${filePath}:`, error);
+      logger.error(`Error deleting markdown file ${filePath}:`, error);
       // Don't throw - allow database deletion to proceed even if file is missing
     }
   }
@@ -986,7 +986,7 @@ export class NoteRepository {
 
       await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
     } catch (error) {
-      console.error(`Error renaming markdown file ${oldFilePath} to ${newFilePath}:`, error);
+      logger.error(`Error renaming markdown file ${oldFilePath} to ${newFilePath}:`, error);
       throw error;
     }
   }
@@ -1059,7 +1059,7 @@ export class NoteRepository {
                 if (nb[0]?.id) notebookId = nb[0].id;
               }
             } catch (e) {
-              console.warn('Could not resolve notebook for file', file.relativePath, e);
+              logger.warn('Could not resolve notebook for file', file.relativePath, e);
             }
 
             // Create new note from file
