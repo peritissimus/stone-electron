@@ -29,10 +29,14 @@ export function registerNoteHandlers() {
       ) => {
         const note = await repos.note.create({
           title: request.title || 'Untitled',
-          content: request.content || '',
           notebookId: null,
           folderPath: request.folderPath,
         } as any);
+
+        // Save content to file if provided
+        if (request.content && note.filePath && note.workspaceId) {
+          await repos.note.update(note.id, { content: request.content } as any);
+        }
 
         // Add tags if provided
         if (request.tags && request.tags.length > 0) {
@@ -73,21 +77,24 @@ export function registerNoteHandlers() {
           throw new IpcError('NOT_FOUND', 'Note not found');
         }
 
-        // Create version if content changed significantly
-        if (request.content && request.content !== (oldNote.content || '')) {
-          await repos.version.createVersion(
-            oldNote.id,
-            oldNote.title || 'Untitled',
-            oldNote.content || '',
-          );
+        // Create version if content changed (load current content first)
+        if (request.content) {
+          const currentContent = await repos.note.getContentById(oldNote.id);
+          if (currentContent && request.content !== currentContent) {
+            await repos.version.createVersion(
+              oldNote.id,
+              oldNote.title || 'Untitled',
+              currentContent,
+            );
+          }
         }
 
-        // Update note
+        // Update note metadata and/or content
         const updateData: Record<string, unknown> = {};
         if (request.title !== undefined) updateData.title = request.title;
-        if (request.content !== undefined) updateData.content = request.content;
         if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
         if (request.folderPath !== undefined) (updateData as any).folderPath = request.folderPath;
+        if (request.content !== undefined) (updateData as any).content = request.content;
 
         const note = await repos.note.update(request.id, updateData as any);
 
@@ -131,7 +138,7 @@ export function registerNoteHandlers() {
     }),
   );
 
-  // notes:get
+  // notes:get - Get note metadata only (no content)
   ipcMain.handle(
     NOTE_CHANNELS.GET,
     createHandler(
@@ -164,6 +171,18 @@ export function registerNoteHandlers() {
         return result;
       },
     ),
+  );
+
+  // notes:getContent - Get note content from file
+  ipcMain.handle(
+    NOTE_CHANNELS.GET_CONTENT,
+    createHandler(async (event, request: { id: string }) => {
+      const content = await repos.note.getContentById(request.id);
+      if (content === null) {
+        throw new IpcError('NOT_FOUND', 'Note content not found');
+      }
+      return { content };
+    }),
   );
 
   // notes:getAll
@@ -250,23 +269,11 @@ export function registerNoteHandlers() {
           notes.map(async (note) => {
             const noteTags = await repos.tag.getTagsForNote(note.id);
             const attachments = await repos.attachment.getAttachmentsForNote(note.id);
-            let contentPreview = '';
-
-            if (note.filePath && note.workspaceId) {
-              try {
-                const noteWithContent = await repos.note.findById(note.id);
-                contentPreview = (noteWithContent?.content || '').substring(0, 200);
-              } catch (error) {
-                logger.warn(`[IPC][notes:getAll] Failed to load content for preview ${note.id}`, error);
-              }
-            }
 
             return {
               ...note,
               tags: noteTags,
-              contentPreview,
-              tagCount: noteTags.length,
-              attachmentCount: attachments.length,
+              attachments,
             };
           }),
         );
@@ -357,28 +364,33 @@ export function registerNoteHandlers() {
       // Create a new version from current state before restoring
       const currentNote = await repos.note.findById(request.noteId);
       if (currentNote) {
+        // Create a version before restoring
+        const currentContent = await repos.note.getContentById(currentNote.id);
         await repos.version.createVersion(
           currentNote.id,
           currentNote.title || 'Untitled',
-          currentNote.content || '',
+          currentContent || '',
         );
       }
 
-      // Restore the version
+      // Restore the version (content is passed via the data parameter)
       const note = await repos.note.update(request.noteId, {
         title: version.title,
         content: version.content,
-      });
+      } as any);
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.NOTE_VERSION_RESTORED, { note, version });
       });
 
+      // Get the restored content
+      const restoredContent = await repos.note.getContentById(note.id);
+
       return {
         id: note.id,
         title: note.title,
-        content: note.content,
+        content: restoredContent,
         versionNumber: version.versionNumber,
         message: 'Version restored successfully',
       };
