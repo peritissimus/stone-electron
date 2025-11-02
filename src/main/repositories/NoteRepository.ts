@@ -81,9 +81,7 @@ export class NoteRepository {
       if (options.where.title !== undefined && options.where.title !== null) {
         conditions.push(eq(notes.title, options.where.title));
       }
-      if (options.where.content !== undefined && options.where.content !== null) {
-        conditions.push(eq(notes.content, options.where.content));
-      }
+
       if (options.where.notebookId !== undefined) {
         if (options.where.notebookId === null) {
           conditions.push(isNull(notes.notebookId));
@@ -139,9 +137,7 @@ export class NoteRepository {
         case 'title':
           orderByColumn = options.sort.order === 'DESC' ? desc(notes.title) : asc(notes.title);
           break;
-        case 'content':
-          orderByColumn = options.sort.order === 'DESC' ? desc(notes.content) : asc(notes.content);
-          break;
+
         case 'notebookId':
           orderByColumn =
             options.sort.order === 'DESC' ? desc(notes.notebookId) : asc(notes.notebookId);
@@ -217,7 +213,6 @@ export class NoteRepository {
       deletedAt: data.deletedAt ?? null,
       createdAt: now,
       updatedAt: now,
-      content: null,
     };
 
     // If creating from an existing file, just link it (no write)
@@ -265,10 +260,10 @@ export class NoteRepository {
         const relativePath = relativeFolder ? path.posix.join(relativeFolder, filename) : filename;
 
         // Save content to file - ensure first line is the title
-        let content = data.content ?? '';
+        let content = '';
         if (!content.trim().startsWith('# ')) {
           // If content doesn't start with a heading, prepend the title as H1
-          content = `# ${title}\n\n${content}`;
+          content = `# ${title}\n\n`;
         }
         await this.saveContentToFile(relativePath, activeWorkspace.id, content, {
           tags: [], // TODO: Get tags from note
@@ -316,10 +311,6 @@ export class NoteRepository {
       ...data,
       updatedAt: now,
     };
-    const contentUpdate = data.content;
-    if ('content' in updateData) {
-      delete updateData.content;
-    }
 
     // Remove undefined values
     Object.keys(updateData).forEach((key) => {
@@ -329,9 +320,7 @@ export class NoteRepository {
     });
 
     const hasFileBacking = Boolean(existingNote.filePath && existingNote.workspaceId);
-    if (contentUpdate !== undefined && contentUpdate !== null && !hasFileBacking) {
-      throw new Error('Cannot update note content without a markdown file');
-    }
+    const contentUpdate = (data as any).content;
 
     // If note has a file path and workspace, update the file
     if (hasFileBacking) {
@@ -524,39 +513,38 @@ export class NoteRepository {
   }
 
   /**
-   * Find a note by ID
+   * Find a note by ID (metadata only, no content)
    */
   async findById(id: string): Promise<Note | null> {
     const result = await this.db.select().from(notes).where(eq(notes.id, id)).limit(1);
 
     if (result.length === 0) return null;
 
-    const note = result[0];
+    return result[0];
+  }
+
+  /**
+   * Get note content by ID (loads from file system)
+   */
+  async getContentById(id: string): Promise<string | null> {
+    const note = await this.findById(id);
+
+    if (!note) return null;
 
     // If note has a file path, read content from file system
     if (note.filePath && note.workspaceId) {
       const fileContent = await this.getContentFromFile(note.id, note.filePath, note.workspaceId);
 
       if (fileContent !== null) {
-        // Return note with content from file
-        return {
-          ...note,
-          content: fileContent,
-        };
+        return fileContent;
       }
 
-      logger.warn(`Could not read markdown file for note ${id}; returning empty content`);
-      return {
-        ...note,
-        content: '',
-      };
+      logger.warn(`Could not read markdown file for note ${id}`);
+      return '';
     }
 
     // Notes without file backing return empty content
-    return {
-      ...note,
-      content: '',
-    };
+    return '';
   }
 
   /**
@@ -576,21 +564,16 @@ export class NoteRepository {
     for (const note of baseResults) {
       const titleMatch = note.title?.toLowerCase().includes(lowerQuery) ?? false;
       let contentMatch = false;
-      let content = '';
 
       if (note.filePath && note.workspaceId) {
         const fileContent = await this.getContentFromFile(note.id, note.filePath, note.workspaceId);
         if (fileContent !== null) {
-          content = fileContent;
           contentMatch = fileContent.toLowerCase().includes(lowerQuery);
         }
       }
 
       if (titleMatch || contentMatch) {
-        matches.push({
-          ...note,
-          content,
-        });
+        matches.push(note);
       }
     }
 

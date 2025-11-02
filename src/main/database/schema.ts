@@ -28,7 +28,6 @@ export const notebooks = sqliteTable('notebooks', {
 export const notes = sqliteTable('notes', {
   id: text('id').primaryKey(),
   title: text('title').default('Untitled'),
-  content: text('content'), // Nullable - content may be stored in file
   filePath: text('file_path'), // Path to markdown file (relative to workspace)
   notebookId: text('notebook_id').references(() => notebooks.id, { onDelete: 'set null' }),
   workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
