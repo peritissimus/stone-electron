@@ -216,6 +216,7 @@ export class NoteRepository {
       deletedAt: data.deletedAt ?? null,
       createdAt: now,
       updatedAt: now,
+      content: null,
     };
 
     // If creating from an existing file, just link it (no write)
@@ -224,7 +225,6 @@ export class NoteRepository {
         ...noteData,
         filePath: data.filePath,
         workspaceId: data.workspaceId,
-        content: null,
       };
     } else if (activeWorkspace) {
       noteData.workspaceId = activeWorkspace.id;
@@ -279,16 +279,13 @@ export class NoteRepository {
           ...noteData,
           filePath: relativePath,
           workspaceId: activeWorkspace.id,
-          content: null, // Content lives in file
         };
       } catch (error) {
-        console.error('Error creating markdown file, falling back to database storage:', error);
-        // Fall back to database storage
-        noteData.content = data.content ?? '';
+        logger.error('Error creating markdown file during note creation:', error);
+        throw new Error('Failed to create note file on disk');
       }
     } else {
-      // No active workspace - store in database only (legacy mode)
-      noteData.content = data.content ?? '';
+      throw new Error('Cannot create note without an active workspace');
     }
 
     await this.db.insert(notes).values(noteData);
@@ -317,6 +314,10 @@ export class NoteRepository {
       ...data,
       updatedAt: now,
     };
+    const contentUpdate = data.content;
+    if ('content' in updateData) {
+      delete updateData.content;
+    }
 
     // Remove undefined values
     Object.keys(updateData).forEach((key) => {
@@ -325,8 +326,13 @@ export class NoteRepository {
       }
     });
 
+    const hasFileBacking = Boolean(existingNote.filePath && existingNote.workspaceId);
+    if (contentUpdate !== undefined && contentUpdate !== null && !hasFileBacking) {
+      throw new Error('Cannot update note content without a markdown file');
+    }
+
     // If note has a file path and workspace, update the file
-    if (existingNote.filePath && existingNote.workspaceId) {
+    if (hasFileBacking) {
       try {
         const workspace = await this.workspaceRepository.findById(existingNote.workspaceId);
         if (workspace) {
@@ -389,8 +395,8 @@ export class NoteRepository {
 
         // If content is being updated, write to file
         if (
-          data.content !== undefined &&
-          data.content !== null &&
+          contentUpdate !== undefined &&
+          contentUpdate !== null &&
           existingNote.workspaceId &&
           (updateData.filePath || existingNote.filePath)
         ) {
@@ -398,7 +404,7 @@ export class NoteRepository {
           const workspaceId = existingNote.workspaceId!;
 
           // Ensure the first line of content matches the title
-          let contentToSave = data.content;
+          let contentToSave = contentUpdate;
           const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
           if (!contentToSave.trim().startsWith('# ')) {
             // If content doesn't start with a heading, prepend the title as H1
@@ -417,13 +423,10 @@ export class NoteRepository {
             favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
             pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,
           });
-
-          // Don't store content in database
-          delete updateData.content;
         }
       } catch (error) {
-        console.error('Error updating markdown file:', error);
-        // Fall through to update database anyway
+        logger.error('Error updating markdown file:', error);
+        throw new Error('Failed to update note file on disk');
       }
     }
 
@@ -532,14 +535,20 @@ export class NoteRepository {
           ...note,
           content: fileContent,
         };
-      } else {
-        // File couldn't be read, fall back to database content
-        console.warn(`Could not read file for note ${id}, using database content`);
       }
+
+      logger.warn(`Could not read markdown file for note ${id}; returning empty content`);
+      return {
+        ...note,
+        content: '',
+      };
     }
 
-    // Return note with database content (legacy notes or file read failed)
-    return note;
+    // Notes without file backing return empty content
+    return {
+      ...note,
+      content: '',
+    };
   }
 
   /**
@@ -547,18 +556,37 @@ export class NoteRepository {
    */
   async searchFullText(query: string, limit: number = 50): Promise<Note[]> {
     // For now, use simple LIKE search
-    const searchPattern = `%${query}%`;
-    return await this.findAll({
+    const baseResults = await this.findAll({
       where: { isDeleted: false },
       sort: { field: 'updatedAt', order: 'DESC' },
       limit,
-    }).then((notes) =>
-      notes.filter(
-        (note) =>
-          (note.title?.toLowerCase().includes(query.toLowerCase()) ?? false) ||
-          (note.content?.toLowerCase().includes(query.toLowerCase()) ?? false),
-      ),
-    );
+    });
+
+    const lowerQuery = query.toLowerCase();
+    const matches: Note[] = [];
+
+    for (const note of baseResults) {
+      const titleMatch = note.title?.toLowerCase().includes(lowerQuery) ?? false;
+      let contentMatch = false;
+      let content = '';
+
+      if (note.filePath && note.workspaceId) {
+        const fileContent = await this.getContentFromFile(note.id, note.filePath, note.workspaceId);
+        if (fileContent !== null) {
+          content = fileContent;
+          contentMatch = fileContent.toLowerCase().includes(lowerQuery);
+        }
+      }
+
+      if (titleMatch || contentMatch) {
+        matches.push({
+          ...note,
+          content,
+        });
+      }
+    }
+
+    return matches;
   }
 
   /**
@@ -874,8 +902,22 @@ export class NoteRepository {
 
       const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath);
 
+      // Strip the title heading from content for editor display
+      let contentForEditor = markdownFile.content;
+      const note = await this.db
+        .select({ title: notes.title })
+        .from(notes)
+        .where(eq(notes.id, noteId))
+        .limit(1);
+      if (note.length > 0 && note[0].title) {
+        const escapedTitle = note[0].title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const titleHeading = `# ${escapedTitle}`;
+        const titleHeadingRegex = new RegExp(`^${titleHeading}\\s*\\n*`);
+        contentForEditor = contentForEditor.replace(titleHeadingRegex, '');
+      }
+
       // Convert markdown to HTML for TipTap editor
-      return await this.markdownService.markdownToHtml(markdownFile.content);
+      return await this.markdownService.markdownToHtml(contentForEditor);
     } catch (error) {
       console.error(`Error reading content from file ${filePath}:`, error);
       return null;

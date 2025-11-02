@@ -7,13 +7,14 @@
  * - spacious: Relaxed spacing, larger text (14px)
  */
 
-export type SizeVariant = 'compact' | 'normal' | 'spacious';
+export type SizeVariant = 'compact' | 'normal' | 'spacious' | 'roomy';
 
 // Typography sizes by variant
 export const sizeTextClasses: Record<SizeVariant, string> = {
   compact: 'text-xs',      // 12px
   normal: 'text-sm',       // 13px (default)
   spacious: 'text-base',   // 14px
+  roomy: 'text-lg',        // 16px
 };
 
 // Padding by size variant
@@ -21,6 +22,7 @@ export const sizePaddingClasses: Record<SizeVariant, string> = {
   compact: 'p-1',          // 4px
   normal: 'p-2',           // 8px
   spacious: 'p-3',         // 12px
+  roomy: 'p-4',            // 16px
 };
 
 // Height by size variant
@@ -28,6 +30,7 @@ export const sizeHeightClasses: Record<SizeVariant, string> = {
   compact: 'h-6',          // 24px
   normal: 'h-8',           // 32px
   spacious: 'h-10',        // 40px
+  roomy: 'h-12',           // 48px
 };
 
 // Gap/spacing classes

@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  FileText,
-  FolderSimple,
-  FolderOpen,
-  DotsThreeVertical,
-  PencilSimple,
-  Trash,
-  Plus,
-} from 'phosphor-react';
+import { FileText, FolderSimple, FolderOpen, DotsThreeVertical, PencilSimple, Trash, Plus, Files } from 'phosphor-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,7 +116,6 @@ interface FolderNodeProps {
   onCreateNote: (folderPath: string | null) => Promise<void>;
   onRenameFile: (noteId: string, currentTitle: string) => void;
   onDeleteFile: (noteId: string) => Promise<void>;
-  onCreateFolder: (folderPath: string | null) => Promise<void>;
   onRenameFolder: (folderPath: string, currentName: string) => void;
   onDeleteFolder: (folderPath: string) => Promise<void>;
 }
@@ -135,7 +126,6 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
   onCreateNote,
   onRenameFile,
   onDeleteFile,
-  onCreateFolder,
   onRenameFolder,
   onDeleteFolder,
 }) => {
@@ -200,20 +190,21 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem
+                  onSelect={() => {
+                    setActiveFolder(null);
+                    setSelectedFile(null);
+                  }}
+                >
+                  <Files size={14} className="mr-2 text-muted-foreground" />
+                  <Text size="xs">All Notes</Text>
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   onSelect={async () => {
                     await onCreateNote(normalizedPath);
                   }}
                 >
                   <Plus size={14} className="mr-2 text-muted-foreground" />
                   <Text size="xs">New Note</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    await onCreateFolder(normalizedPath || null);
-                  }}
-                >
-                  <Plus size={14} className="mr-2 text-muted-foreground" />
-                  <Text size="xs">New Folder</Text>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={isRootFolder}
@@ -253,7 +244,6 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
                 onCreateNote={onCreateNote}
                 onRenameFile={onRenameFile}
                 onDeleteFile={onDeleteFile}
-                onCreateFolder={onCreateFolder}
                 onRenameFolder={onRenameFolder}
                 onDeleteFolder={onDeleteFolder}
               />
@@ -274,7 +264,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
 };
 
 export function FileTree() {
-  const { tree, setActiveFolder, setSelectedFile } = useFileTreeStore();
+  const { tree, setActiveFolder, setSelectedFile, counts } = useFileTreeStore();
   const { setActiveNote } = useNoteStore();
   const { createNote, updateNote, deleteNote } = useNoteAPI();
   const { loadFileTree, createFolder, renameFolder, deleteFolder } = useFileTreeAPI();
@@ -332,22 +322,6 @@ export function FileTree() {
     }
   };
 
-  const handleCreateFolder = async (parentPath: string | null) => {
-    try {
-      const newFolderPath = await createFolder({ parentPath });
-      if (newFolderPath) {
-        await loadFileTree();
-        const normalized = normalizePath(newFolderPath);
-        setActiveFolder(normalized || null);
-        setSelectedFile(null);
-        const folderName = normalized.split('/').pop() || 'New Folder';
-        setRenameFolderTarget({ path: normalized, name: folderName });
-      }
-    } catch (error) {
-      console.error('Failed to create folder', error);
-    }
-  };
-
   const handleRenameFolder = async (folderPath: string, newName: string) => {
     const trimmed = newName.trim();
     if (!trimmed) return;
@@ -384,8 +358,25 @@ export function FileTree() {
     }
   };
 
+  const rootNoteCount = counts['__root__'] || 0;
+
   return (
     <div>
+      <TreeItem
+        level={0}
+        isActive={!activeFolder}
+        onClick={() => {
+          setActiveFolder(null);
+          setSelectedFile(null);
+        }}
+        icon={<Files size={14} className="text-muted-foreground" />}
+        label="All Notes"
+        right={
+          <Text size="xs" variant="muted">
+            {rootNoteCount}
+          </Text>
+        }
+      />
       {tree.map((node) =>
         node.type === 'folder' ? (
           <FolderChildren
@@ -395,7 +386,6 @@ export function FileTree() {
             onCreateNote={handleCreateNoteInFolder}
             onRenameFile={(noteId, title) => setRenameTarget({ noteId, title })}
             onDeleteFile={handleDeleteNote}
-            onCreateFolder={handleCreateFolder}
             onRenameFolder={(path, name) =>
               setRenameFolderTarget({ path: normalizePath(path), name })
             }

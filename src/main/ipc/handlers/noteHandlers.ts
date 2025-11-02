@@ -250,10 +250,21 @@ export function registerNoteHandlers() {
           notes.map(async (note) => {
             const noteTags = await repos.tag.getTagsForNote(note.id);
             const attachments = await repos.attachment.getAttachmentsForNote(note.id);
+            let contentPreview = '';
+
+            if (note.filePath && note.workspaceId) {
+              try {
+                const noteWithContent = await repos.note.findById(note.id);
+                contentPreview = (noteWithContent?.content || '').substring(0, 200);
+              } catch (error) {
+                logger.warn(`[IPC][notes:getAll] Failed to load content for preview ${note.id}`, error);
+              }
+            }
+
             return {
               ...note,
               tags: noteTags,
-              contentPreview: (note.content || '').substring(0, 200),
+              contentPreview,
               tagCount: noteTags.length,
               attachmentCount: attachments.length,
             };
