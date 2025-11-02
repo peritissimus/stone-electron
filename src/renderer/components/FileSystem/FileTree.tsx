@@ -264,7 +264,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
 };
 
 export function FileTree() {
-  const { tree, setActiveFolder, setSelectedFile, counts } = useFileTreeStore();
+  const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
   const { setActiveNote } = useNoteStore();
   const { createNote, updateNote, deleteNote } = useNoteAPI();
   const { loadFileTree, createFolder, renameFolder, deleteFolder } = useFileTreeAPI();
@@ -358,25 +358,8 @@ export function FileTree() {
     }
   };
 
-  const rootNoteCount = counts['__root__'] || 0;
-
   return (
     <div>
-      <TreeItem
-        level={0}
-        isActive={!activeFolder}
-        onClick={() => {
-          setActiveFolder(null);
-          setSelectedFile(null);
-        }}
-        icon={<Files size={14} className="text-muted-foreground" />}
-        label="All Notes"
-        right={
-          <Text size="xs" variant="muted">
-            {rootNoteCount}
-          </Text>
-        }
-      />
       {tree.map((node) =>
         node.type === 'folder' ? (
           <FolderChildren
