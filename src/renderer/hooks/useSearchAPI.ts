@@ -9,14 +9,11 @@ import { Note } from '@shared/types';
 interface SearchResult {
   id: string;
   title: string;
-  content: string;
   notebookId: string | null;
   relevance?: number;
   similarity?: number;
   score?: number;
   title_highlight?: string;
-  content_highlight?: string;
-  content_preview?: string;
   search_type?: 'fts' | 'semantic' | 'hybrid';
   createdAt: number;
 }
