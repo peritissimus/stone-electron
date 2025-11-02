@@ -8,7 +8,8 @@ This document provides guidelines for AI assistants (like Claude) working on the
 2. **Preserve macOS design** - Follow the established design system
 3. **Use TypeScript path aliases** - `@renderer/`, `@main/`, `@shared/`
 4. **Test changes** - Build and verify before marking tasks complete
-5. **Document changes** - Update relevant docs when modifying architecture
+5. **Document changes** - Update CLAUDE.md or existing docs only (never create new doc files)
+6. **Content storage** - Files are source of truth, database is metadata only
 
 ## Development Workflow
 
@@ -383,6 +384,46 @@ Always read a file first before attempting to edit/write it.
 
 ## Project-Specific Knowledge
 
+### Content Architecture (CRITICAL!)
+
+**Files are the source of truth. Database stores metadata only.**
+
+❌ **NEVER do this:**
+```typescript
+const note = await repos.note.findById(id);
+console.log(note.content); // ERROR: content field doesn't exist!
+```
+
+✅ **ALWAYS do this:**
+```typescript
+// 1. Get metadata (fast - from DB)
+const note = await repos.note.findById(id);
+// { id, title, filePath, flags, timestamps } - NO content
+
+// 2. Get content when needed (lazy - from file)
+const content = await repos.note.getContentById(id);
+// HTML converted from markdown file
+```
+
+**Key Rules:**
+1. Database table `notes` has NO `content` column (removed in migration 0002)
+2. Content is loaded on-demand from markdown files
+3. Use `getContentById()` to load content from files
+4. Autosave writes to file only, not database
+5. List views show metadata only (no content loading)
+6. Search results return metadata only (no content field)
+
+**IPC Channels:**
+- `notes:get` - Returns note metadata (no content)
+- `notes:getContent` - Loads content from file (lazy)
+- `notes:update` - Writes content to file (not DB)
+
+**Silent Autosave:**
+```typescript
+// Autosave without triggering re-renders
+await updateNote(noteId, { content: html }, true); // silent=true
+```
+
 ### Electron Window Configuration
 
 - Title bar is hidden (`hiddenInset`)
@@ -407,9 +448,36 @@ Always read a file first before attempting to edit/write it.
 ### Database
 
 - SQLite with better-sqlite3
-- FTS5 for full-text search
+- FTS5 for full-text search on title only (not content)
 - Foreign keys enabled
 - Timestamps are Unix epoch (seconds)
+- **Content is NOT stored in database** - files only!
+
+**Tables:**
+- `notes` - Metadata only (id, title, filePath, flags, timestamps)
+- `notebooks` - Folder structure
+- `tags` - Tag definitions
+- `note_tags` - Note-tag relationships
+- `note_versions` - Version metadata (no content field)
+- `notes_fts` - Full-text search on title only
+
+## Documentation Rules (CRITICAL!)
+
+❌ **NEVER create these files:**
+- `TESTING_NOTES.md`
+- `CHANGES.md`
+- `ARCHITECTURE.md`
+- `API_CHANGES.md`
+- `MIGRATION_GUIDE.md`
+- Any standalone documentation file
+
+✅ **ALWAYS update existing files:**
+- Add notes to `CLAUDE.md` for development info
+- Update `README.md` for user-facing changes
+- Update `AGENTS.md` (this file) for agent-specific rules
+- Add to existing component docs (e.g., `COMPOSITES_GUIDE.md`)
+
+**Why?** To avoid documentation sprawl and keep all knowledge centralized.
 
 ## When Stuck
 
@@ -418,7 +486,8 @@ Always read a file first before attempting to edit/write it.
 3. **Check the logs** in Electron DevTools console
 4. **Rebuild main process** if IPC not working
 5. **Delete database** if schema issues
-6. **Ask user for clarification** if requirements unclear
+6. **Remember content architecture** - files not DB!
+7. **Ask user for clarification** if requirements unclear
 
 ## Success Checklist
 
@@ -428,9 +497,12 @@ Before marking a task complete:
 - [ ] Uses pnpm (not npm)
 - [ ] Uses path aliases (@renderer/, etc.)
 - [ ] Follows macOS design system
+- [ ] Uses composites (not inline classes)
 - [ ] Uses CSS variables (not hardcoded colors)
 - [ ] Properly typed with TypeScript
 - [ ] Includes error handling
+- [ ] **Respects content architecture** (files not DB)
+- [ ] **Didn't create standalone docs** (updated existing only)
 - [ ] Tested in the app
 - [ ] No console errors
 - [ ] Works in both light and dark mode
