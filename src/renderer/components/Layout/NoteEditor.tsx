@@ -28,7 +28,7 @@ import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import { Text, Body } from '@renderer/components/ui/text';
 import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
-import { Header, IconButton } from '@renderer/components/composites';
+import { Header, IconButton, PanelFooter } from '@renderer/components/composites';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -256,18 +256,15 @@ export function NoteEditor() {
       {/* Editor Header */}
       <Header
         divided
+        size="roomy"
         left={
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center">
             <Input
               value={title}
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Untitled Note"
-              className="w-full text-xl font-semibold bg-transparent border-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 py-2 h-auto placeholder:text-muted-foreground/60 text-foreground resize-none overflow-hidden"
-              style={{ fontSize: '1.25rem', lineHeight: '1.75rem' }}
+              className="w-full h-10 px-0 border-0 bg-transparent text-2xl font-semibold leading-tight text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-            <div className="text-xs text-muted-foreground mt-1">
-              {activeNote?.filePath && <span className="font-mono">{activeNote.filePath}</span>}
-            </div>
           </div>
         }
         right={
@@ -357,9 +354,6 @@ export function NoteEditor() {
         }
       />
 
-      {/* Toolbar */}
-      <EditorToolbar editor={editor} />
-
       {/* Editor Content */}
       <div className="flex-1 min-h-0 overflow-y-auto bg-background relative">
         {isLoading && (
@@ -379,6 +373,10 @@ export function NoteEditor() {
           </div>
         </div>
       </div>
+
+      <PanelFooter size="compact" justify="start">
+        <EditorToolbar editor={editor} className="w-full" />
+      </PanelFooter>
     </div>
   );
 }

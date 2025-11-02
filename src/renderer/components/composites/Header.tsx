@@ -32,17 +32,17 @@ export const Header = React.forwardRef<HTMLDivElement, HeaderProps>(
       <div
         ref={ref}
         className={cn(
-          'px-3 border-b border-l border-r border-border',
+          'px-4 border-b border-border',
           sizeHeightClasses[size],
           'flex-shrink-0 bg-card',
-          'flex items-center justify-between',
+          'flex items-center gap-3',
           className,
         )}
         {...props}
       >
-        {left && <div className="ml-[72px] flex-1">{left}</div>}
-        {children && <div className="flex-1">{children}</div>}
-        {right && <div className="flex items-center">{right}</div>}
+        {left && <div className="flex-1 min-w-0">{left}</div>}
+        {children && <div className="flex-1 min-w-0">{children}</div>}
+        {right && <div className="flex items-center gap-2">{right}</div>}
       </div>
     );
   },

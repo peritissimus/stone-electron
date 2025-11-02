@@ -67,8 +67,31 @@ export class FileSystemService {
       const dir = path.dirname(filePath);
       await fs.mkdir(dir, { recursive: true });
 
-      // Prepare file content with frontmatter
-      const fileContent = matter.stringify(content, metadata || {});
+      // Prepare metadata without undefined values
+      const normalizedMetadata: Record<string, unknown> = {};
+      if (metadata) {
+        const sanitizedTags = Array.isArray(metadata.tags)
+          ? metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0)
+          : undefined;
+        if (sanitizedTags && sanitizedTags.length > 0) {
+          normalizedMetadata.tags = sanitizedTags;
+        }
+        if (metadata.favorite !== undefined) {
+          normalizedMetadata.favorite = metadata.favorite;
+        }
+        if (metadata.pinned !== undefined) {
+          normalizedMetadata.pinned = metadata.pinned;
+        }
+        if (metadata.created) {
+          normalizedMetadata.created = metadata.created;
+        }
+        if (metadata.modified) {
+          normalizedMetadata.modified = metadata.modified;
+        }
+      }
+
+      const hasMetadata = Object.keys(normalizedMetadata).length > 0;
+      const fileContent = hasMetadata ? matter.stringify(content, normalizedMetadata) : content;
 
       await fs.writeFile(filePath, fileContent, 'utf-8');
     } catch (error) {
@@ -139,11 +162,15 @@ export class FileSystemService {
   ): Promise<MarkdownFile[]> {
     const files: MarkdownFile[] = [];
 
-    logger.info(`[FileSystem] 📂 Scanning folder: ${folderPath} (recursive: ${recursive})`);
+    if (process.env.NODE_ENV !== 'production') {
+      logger.debug(`[FileSystem] Scanning folder: ${folderPath} (recursive: ${recursive})`);
+    }
 
     try {
       const entries = await fs.readdir(folderPath, { withFileTypes: true });
-      logger.info(`[FileSystem] 📋 Found ${entries.length} entries in ${folderPath}`);
+      if (process.env.NODE_ENV !== 'production') {
+        logger.debug(`[FileSystem] Found ${entries.length} entries in ${folderPath}`);
+      }
 
       let folderCount = 0;
       let markdownCount = 0;
@@ -165,30 +192,38 @@ export class FileSystemService {
 
         if (entry.isDirectory()) {
           folderCount++;
-          logger.info(`[FileSystem] 📁 Found subfolder: ${entry.name}`);
+          if (process.env.NODE_ENV !== 'production') {
+            logger.debug(`[FileSystem] Found subfolder: ${entry.name}`);
+          }
           if (recursive) {
             const subFiles = await this.scanFolder(fullPath, recursive, basePath);
             files.push(...subFiles);
           }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
           markdownCount++;
-          logger.info(`[FileSystem] 📝 Found markdown file: ${entry.name}`);
+          if (process.env.NODE_ENV !== 'production') {
+            logger.debug(`[FileSystem] Found markdown file: ${entry.name}`);
+          }
           try {
             const file = await this.readMarkdownFile(fullPath);
             file.relativePath = relativePath;
             files.push(file);
-            logger.info(`[FileSystem] ✅ Successfully read: ${entry.name} (title: "${file.title}")`);
+            if (process.env.NODE_ENV !== 'production') {
+              logger.debug(
+                `[FileSystem] Read: ${entry.name} (title: "${file.title}")`,
+              );
+            }
           } catch (error) {
             logger.warn(`[FileSystem] ⚠️  Skipping unreadable file ${fullPath}:`, error);
           }
         }
       }
-
-      logger.info(`[FileSystem] 📊 Scan summary for ${folderPath}:`);
-      logger.info(`[FileSystem]    - Folders: ${folderCount}`);
-      logger.info(`[FileSystem]    - Markdown files: ${markdownCount}`);
-      logger.info(`[FileSystem]    - Skipped (hidden): ${skippedCount}`);
-      logger.info(`[FileSystem]    - Total markdown files collected: ${files.length}`);
+      logger.debug(`[FileSystem] Scan summary for ${folderPath}`, {
+        folders: folderCount,
+        markdownFiles: markdownCount,
+        skipped: skippedCount,
+        total: files.length,
+      });
     } catch (error) {
       logger.error(`[FileSystem] ❌ Error scanning folder ${folderPath}:`, error);
       throw error;
