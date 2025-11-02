@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/ui/select';
-import { Heading3 } from '@renderer/components/ui/text';
+import { Heading3, Text } from '@renderer/components/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { TagWithCount, type Workspace, type Note } from '@shared/types';
 import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise } from 'phosphor-react';
@@ -29,6 +29,8 @@ import {
   PanelFooter,
   SectionHeader,
   ControlGroup,
+  sizeHeightClasses,
+  sizePaddingClasses,
 } from '@renderer/components/composites';
 import { InputModal } from '@renderer/components/Common';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
@@ -38,6 +40,7 @@ import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/FileSystem/FileTree';
 import { CreateWorkspaceModal } from '@renderer/components/Workspace/CreateWorkspaceModal';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
+import { cn } from '@/renderer/lib/utils';
 
 export function Sidebar() {
   const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
@@ -233,10 +236,8 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      <div className="px-3 py-2 border-b border-border">
-        <div className="flex flex-col gap-1.5">
-          <Heading3 className="text-sm">Workspace</Heading3>
-          <div className="flex items-center gap-2">
+      <div className={cn("flex w-full items-center border-b border-border", sizeHeightClasses['spacious'], sizePaddingClasses['compact']) }>
+          <div className="flex items-center gap-2 w-full">
             <Select
               value={activeWorkspaceId ?? ''}
               onValueChange={async (value) => {
@@ -245,7 +246,7 @@ export function Sidebar() {
                   return;
                 }
                 if (!value) {
-                  return;
+                  return
                 }
                 await setActiveWorkspace(value);
                 await loadFileTree();
@@ -261,23 +262,23 @@ export function Sidebar() {
                     <SelectGroup>
                       {workspaces.map((workspace) => (
                         <SelectItem key={workspace.id} value={workspace.id}>
-                          {workspace.name}
+                          <Text size="xs">
+                            {workspace.name}
+                          </Text>
                         </SelectItem>
                       ))}
                     </SelectGroup>
                     <SelectSeparator />
                   </>
                 )}
-                <SelectItem value={CREATE_WORKSPACE_OPTION}>+ Create workspace…</SelectItem>
+                <SelectItem value={CREATE_WORKSPACE_OPTION}>
+                  <Text size="xs">
+                  + Create workspace…
+                  </Text>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {activeWorkspace?.folderPath && (
-            <p className="text-[10px] text-muted-foreground truncate">
-              {activeWorkspace.folderPath}
-            </p>
-          )}
-        </div>
       </div>
 
       {/* Panel Tabs - Flex layout */}

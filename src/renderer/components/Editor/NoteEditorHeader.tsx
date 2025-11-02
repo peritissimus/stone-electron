@@ -3,7 +3,7 @@
  */
 import { Star, PushPin, Archive, DotsThreeVertical, Check, Trash } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
-import { IconButton } from '@renderer/components/composites';
+import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@renderer/components/ui/dropdown-menu';
+import { cn } from '@/renderer/lib/utils';
 
 export interface NoteEditorHeaderProps {
   title: string;
@@ -36,7 +37,7 @@ export function NoteEditorHeader({
   onDelete,
 }: NoteEditorHeaderProps) {
   return (
-    <div className="h-10 px-4 border-b border-border flex-shrink-0 bg-card flex items-center gap-3">
+    <div className={cn("px-4 border-b border-border flex-shrink-0 bg-card flex items-center gap-3",sizeHeightClasses['spacious'])}>
       <div className="flex-1 min-w-0">
         <div className="flex-1 min-w-0 flex items-center">
           <Input
