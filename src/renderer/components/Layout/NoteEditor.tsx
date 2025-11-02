@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@renderer/components/ui/dropdown-menu';
+import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 
@@ -46,10 +47,10 @@ export function NoteEditor() {
   const activeNoteId = activeNote?.id;
   const activeNoteIdRef = useRef<string | null>(activeNoteId ?? null);
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
-  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, loadNoteById } =
-    useNoteAPI();
+  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote } = useNoteAPI();
 
   const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const saveTimeoutRef = useRef<number | null>(null);
   const isSavingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +75,7 @@ export function NoteEditor() {
         HTMLAttributes: { class: 'bg-accent' },
       }),
     ],
-    content: activeNote?.content || '',
+    content: '',
     editorProps: {
       attributes: {
         class: 'prose dark:prose-invert max-w-none focus:outline-none min-h-[500px]',
@@ -93,7 +94,8 @@ export function NoteEditor() {
         saveTimeoutRef.current = null;
         isSavingRef.current = true;
         try {
-          const result = await updateNote(noteId, { content: editor.getHTML() });
+          // Use silent=true to save without triggering store update/re-render
+          const result = await updateNote(noteId, { content: editor.getHTML() }, true);
           if (!result) {
             console.error('Autosave failed: updateNote returned falsy result');
           }
@@ -108,15 +110,37 @@ export function NoteEditor() {
     },
   });
 
-  // Update editor when active note changes
+  // Load content when active note changes
   useEffect(() => {
-    if (activeNote && editor) {
+    if (!activeNote || !editor) return;
+
+    const loadContent = async () => {
+      setIsLoading(true);
       setTitle(activeNote.title || '');
-      if (activeNote.content !== undefined && activeNote.content !== editor.getHTML()) {
-        editor.commands.setContent(activeNote.content);
+
+      try {
+        // Load content from file
+        const response = await window.electron.invoke<{ content: string }>(
+          NOTE_CHANNELS.GET_CONTENT,
+          { id: activeNote.id },
+        );
+
+        if (response.success && response.data) {
+          const loadedContent = response.data.content;
+          setContent(loadedContent);
+          editor.commands.setContent(loadedContent);
+        }
+      } catch (error) {
+        console.error('Failed to load note content:', error);
+        setContent('');
+        editor.commands.setContent('');
+      } finally {
+        setIsLoading(false);
       }
-    }
-  }, [activeNote?.id, activeNote?.content, editor]);
+    };
+
+    loadContent();
+  }, [activeNote?.id, editor]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -127,19 +151,6 @@ export function NoteEditor() {
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      activeNote &&
-      activeNote.filePath &&
-      (activeNote.content === null || activeNote.content === undefined)
-    ) {
-      setIsLoading(true);
-      loadNoteById(activeNote.id).finally(() => {
-        setIsLoading(false);
-      });
-    }
-  }, [activeNote?.id, activeNote?.content, activeNote?.filePath, loadNoteById]);
-
   // Autosave on window blur
   useEffect(() => {
     const handleWindowBlur = () => {
@@ -149,7 +160,8 @@ export function NoteEditor() {
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
         isSavingRef.current = true;
-        updateNote(noteId, { content: editor.getHTML() })
+        // Use silent=true to save without triggering store update/re-render
+        updateNote(noteId, { content: editor.getHTML() }, true)
           .then((result) => {
             if (!result) {
               console.error('Blur autosave failed: updateNote returned falsy result');
@@ -198,7 +210,8 @@ export function NoteEditor() {
         saveTimeoutRef.current = null;
         isSavingRef.current = true;
         try {
-          const result = await updateNote(noteId, { title: newTitle });
+          // Use silent=true to save without triggering store update/re-render
+          const result = await updateNote(noteId, { title: newTitle }, true);
           if (!result) {
             console.error('Title autosave failed: updateNote returned falsy result');
           }

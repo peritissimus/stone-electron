@@ -83,9 +83,6 @@ export function NoteList() {
     const note = getNoteByFilePath(selectedFile);
     if (note) {
       setActiveNote(note.id);
-      if (!note.content) {
-        loadNoteById(note.id);
-      }
     }
   }, [selectedFile, notes, getNoteByFilePath, setActiveNote, loadNoteById]);
 
@@ -145,9 +142,6 @@ export function NoteList() {
     const note = getNoteByFilePath(normalized);
     if (note) {
       setActiveNote(note.id);
-      if (!note.content) {
-        loadNoteById(note.id);
-      }
     }
   };
 
@@ -250,7 +244,7 @@ export function NoteList() {
       const updatedAt = note
         ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
         : '';
-      const preview = note ? stripHtml(note.content)?.slice(0, 120) : '';
+      const preview = '';
       const isPinned = note?.isPinned;
       const isFavorite = note?.isFavorite;
 

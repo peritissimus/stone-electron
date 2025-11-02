@@ -81,12 +81,16 @@ export function useNoteAPI() {
     async (
       id: string,
       data: { title?: string; content?: string; folderPath?: string; notebookId?: string },
+      silent = false,
     ) => {
       setError(null);
       try {
         const response = await window.electron.invoke<Note>(NOTE_CHANNELS.UPDATE, { id, ...data });
         if (response.success && response.data) {
-          updateNote(response.data);
+          // Only update store if not silent (silent = autosave without re-render)
+          if (!silent) {
+            updateNote(response.data);
+          }
           return response.data;
         } else {
           setError(response.error?.message || 'Failed to update note');
@@ -263,10 +267,10 @@ export function useNoteAPI() {
     updateNote: updateNoteContent,
     deleteNote: deleteNoteById,
     toggleFavorite,
-   togglePin,
-   toggleArchive,
-   getVersions,
-   restoreVersion,
+    togglePin,
+    toggleArchive,
+    getVersions,
+    restoreVersion,
     loadNoteById,
     getBacklinks,
   };
