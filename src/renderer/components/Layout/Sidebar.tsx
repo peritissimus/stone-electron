@@ -93,7 +93,7 @@ export function Sidebar() {
       if (note) {
         // Fetch updated note details
         try {
-          const response = await window.electron.invoke<Note>('notes:getById', { id: note.id });
+          const response = await window.electron.invoke<Note>('notes:get', { id: note.id });
           if (response.success && response.data) {
             updateNoteByPath(payload.path, response.data);
           }
