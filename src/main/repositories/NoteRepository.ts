@@ -199,8 +199,7 @@ export class NoteRepository {
   async create(data: Partial<Note>): Promise<Note> {
     const id = generateId();
     const now = new Date();
-    const title =
-      data.title && data.title.trim().length > 0 ? data.title : 'Untitled';
+    const title = data.title && data.title.trim().length > 0 ? data.title : 'Untitled Note';
     const requestedFolder = this.normalizeFolderPath((data as any).folderPath);
 
     // Check if we have an active workspace
@@ -230,8 +229,15 @@ export class NoteRepository {
     } else if (activeWorkspace) {
       noteData.workspaceId = activeWorkspace.id;
       try {
-        // Determine the target folder (notebook folder or workspace root)
-        let relativeFolder = requestedFolder;
+        // Determine the target folder (default to Personal if not specified)
+        let relativeFolder = requestedFolder || 'Personal';
+
+        // Ensure Personal folder exists
+        const personalFolderPath = path.join(activeWorkspace.folderPath, 'Personal');
+        if (!(await this.fileSystemService.fileExists(personalFolderPath))) {
+          await this.fileSystemService.createFolder(personalFolderPath);
+          logger.info(`Created Personal folder: ${personalFolderPath}`);
+        }
 
         if (!relativeFolder && data.notebookId) {
           const notebook = await this.getNotebookInfo(data.notebookId);
@@ -254,12 +260,14 @@ export class NoteRepository {
           title,
           '.md',
         );
-        const relativePath = relativeFolder
-          ? path.posix.join(relativeFolder, filename)
-          : filename;
+        const relativePath = relativeFolder ? path.posix.join(relativeFolder, filename) : filename;
 
-        // Save content to file
-        const content = data.content ?? '';
+        // Save content to file - ensure first line is the title
+        let content = data.content ?? '';
+        if (!content.trim().startsWith('# ')) {
+          // If content doesn't start with a heading, prepend the title as H1
+          content = `# ${title}\n\n${content}`;
+        }
         await this.saveContentToFile(relativePath, activeWorkspace.id, content, {
           tags: [], // TODO: Get tags from note
           favorite: data.isFavorite ?? undefined,
@@ -300,9 +308,10 @@ export class NoteRepository {
     const existingNote = await this.findById(id);
     if (!existingNote) throw new Error('Note not found');
 
-    const requestedFolder = (data as any).folderPath !== undefined
-      ? this.normalizeFolderPath((data as any).folderPath)
-      : undefined;
+    const requestedFolder =
+      (data as any).folderPath !== undefined
+        ? this.normalizeFolderPath((data as any).folderPath)
+        : undefined;
 
     const updateData: any = {
       ...data,
@@ -369,7 +378,11 @@ export class NoteRepository {
               : filename;
 
           if (newRelativePath !== currentRelativePath) {
-            await this.renameMarkdownFile(currentRelativePath, newRelativePath, existingNote.workspaceId);
+            await this.renameMarkdownFile(
+              currentRelativePath,
+              newRelativePath,
+              existingNote.workspaceId,
+            );
             updateData.filePath = newRelativePath;
           }
         }
@@ -383,7 +396,23 @@ export class NoteRepository {
         ) {
           const filePathToUse = updateData.filePath || existingNote.filePath!;
           const workspaceId = existingNote.workspaceId!;
-          await this.saveContentToFile(filePathToUse, workspaceId, data.content, {
+
+          // Ensure the first line of content matches the title
+          let contentToSave = data.content;
+          const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
+          if (!contentToSave.trim().startsWith('# ')) {
+            // If content doesn't start with a heading, prepend the title as H1
+            contentToSave = `# ${currentTitle}\n\n${contentToSave}`;
+          } else {
+            // Update the existing heading to match the current title
+            const lines = contentToSave.split('\n');
+            if (lines[0].startsWith('# ')) {
+              lines[0] = `# ${currentTitle}`;
+              contentToSave = lines.join('\n');
+            }
+          }
+
+          await this.saveContentToFile(filePathToUse, workspaceId, contentToSave, {
             tags: [], // TODO: Get tags
             favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
             pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,

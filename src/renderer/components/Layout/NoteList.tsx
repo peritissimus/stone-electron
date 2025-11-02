@@ -36,7 +36,8 @@ import { Header, ControlGroup, ListContainer, TreeItem } from '@renderer/compone
 
 import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
 
-const normalizePath = (path: string) => path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+const normalizePath = (path: string) =>
+  path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
 const getParentPath = (path: string) => {
   const normalized = normalizePath(path);
   const idx = normalized.lastIndexOf('/');
@@ -44,7 +45,12 @@ const getParentPath = (path: string) => {
   return normalized.slice(0, idx);
 };
 const stripHtml = (html?: string | null) =>
-  html ? html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
+  html
+    ? html
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    : '';
 
 export function NoteList() {
   const { notes, setActiveNote, getNoteByFilePath } = useNoteStore();
@@ -279,8 +285,12 @@ export function NoteList() {
 
     setIsCreating(true);
     try {
+      // Generate a default title for the new note
+      const now = new Date();
+      const defaultTitle = `Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
       const note = await createNote({
-        title: '',
+        title: defaultTitle,
         content: '',
         folderPath: activeFolder || undefined,
       });

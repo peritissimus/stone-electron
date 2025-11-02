@@ -13,6 +13,8 @@ export const WORKSPACE_CHANNELS = {
   SCAN: 'workspaces:scan',
   SYNC: 'workspaces:sync',
   CREATE_FOLDER: 'workspaces:createFolder',
+  RENAME_FOLDER: 'workspaces:renameFolder',
+  DELETE_FOLDER: 'workspaces:deleteFolder',
   VALIDATE_PATH: 'workspaces:validatePath',
   SELECT_FOLDER: 'workspaces:selectFolder',
 } as const;

@@ -110,11 +110,86 @@ export function useFileTreeAPI() {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setTree, setActiveFolder, collapseAll]);
+  }, [setLoading, setError, setTree, setActiveFolder]);
+
+  const createFolder = useCallback(
+    async ({ parentPath, name }: { parentPath?: string | null; name?: string } = {}) => {
+      try {
+        const response = await window.electron.invoke<{ folderPath: string }>(
+          WORKSPACE_CHANNELS.CREATE_FOLDER,
+          {
+            name: name ?? 'New Folder',
+            parentPath: parentPath ?? undefined,
+          },
+        );
+
+        if (response.success && response.data) {
+          return response.data.folderPath;
+        }
+
+        setError(response.error?.message || 'Failed to create folder');
+        return null;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to create folder');
+        return null;
+      }
+    },
+    [setError],
+  );
+
+  const renameFolder = useCallback(
+    async (path: string, name: string) => {
+      try {
+        const response = await window.electron.invoke<{ folderPath: string }>(
+          WORKSPACE_CHANNELS.RENAME_FOLDER,
+          {
+            path,
+            name,
+          },
+        );
+
+        if (response.success && response.data) {
+          return response.data.folderPath;
+        }
+
+        setError(response.error?.message || 'Failed to rename folder');
+        return null;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to rename folder');
+        return null;
+      }
+    },
+    [setError],
+  );
+
+  const deleteFolder = useCallback(
+    async (path: string) => {
+      try {
+        const response = await window.electron.invoke<{ success: boolean }>(
+          WORKSPACE_CHANNELS.DELETE_FOLDER,
+          { path },
+        );
+
+        if (response.success && response.data) {
+          return response.data.success;
+        }
+
+        setError(response.error?.message || 'Failed to delete folder');
+        return false;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to delete folder');
+        return false;
+      }
+    },
+    [setError],
+  );
 
   return {
     loadFileTree,
     expandAll,
     collapseAll,
+    createFolder,
+    renameFolder,
+    deleteFolder,
   };
 }

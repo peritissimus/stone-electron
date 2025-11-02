@@ -26,6 +26,8 @@ export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElem
   label: React.ReactNode;
   /** Right side content (count, badge, etc) */
   right?: React.ReactNode;
+  /** Props for the right slot container */
+  rightSlotProps?: React.HTMLAttributes<HTMLDivElement>;
   children?: React.ReactNode;
 }
 
@@ -52,6 +54,7 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
       icon,
       label,
       right,
+      rightSlotProps,
       children,
       className,
       ...props
@@ -61,12 +64,20 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
     const textSize = sizeTextClasses[size];
     const padding = size === 'compact' ? 'py-0.5' : size === 'spacious' ? 'py-2' : 'py-1';
     const paddingLeft = level * indentPx + 2;
+    const {
+      className: rightClassName,
+      onClick: rightOnClick,
+      onPointerDown: rightOnPointerDown,
+      onPointerUp: rightOnPointerUp,
+      ...restRightSlotProps
+    } = rightSlotProps ?? {};
 
     return (
       <>
         <ContainerFlex
           align="center"
           gap="none"
+          justify={right ? 'between' : 'start'}
           className="px-1 w-full"
           style={{ paddingLeft: `${paddingLeft}px` }}
         >
@@ -75,7 +86,7 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
             type="button"
             variant="ghost"
             className={cn(
-              'w-full flex-1 justify-start gap-1.5 px-1.5 text-left',
+              'flex-1 min-w-0 justify-start gap-1.5 px-1.5 text-left',
               padding,
               textSize,
               'h-auto rounded-md transition-colors',
@@ -94,8 +105,27 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
             <Text as="span" size="xs" className="flex-1 truncate text-left">
               {label}
             </Text>
-            {right && <div className="ml-auto flex-shrink-0 text-right">{right}</div>}
           </Button>
+          {right && (
+            <div
+              {...restRightSlotProps}
+              className={cn('ml-2 flex items-center gap-1 flex-shrink-0', rightClassName)}
+              onClick={(event) => {
+                event.stopPropagation();
+                rightOnClick?.(event);
+              }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                rightOnPointerDown?.(event);
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+                rightOnPointerUp?.(event);
+              }}
+            >
+              {right}
+            </div>
+          )}
         </ContainerFlex>
 
         {children}
