@@ -62,7 +62,7 @@ export function Sidebar() {
   // Listen to workspace file changes with targeted updates
   useEffect(() => {
     const { addFileToTree, removeFileFromTree, updateFileInTree } = useFileTreeStore.getState();
-    const { updateNoteByPath, removeNoteByPath, getNoteByFilePath } = useNoteStore.getState();
+    const { updateNoteByPath, removeNoteByPath, getNoteByFilePath, updateNote: updateNoteInStore } = useNoteStore.getState();
 
     // Handler for file created
     const handleFileCreated = async (...args: unknown[]) => {
@@ -127,6 +127,17 @@ export function Sidebar() {
       }
     };
 
+    // Handler for note updated (to catch file path changes from title updates)
+    const handleNoteUpdated = (...args: unknown[]) => {
+      const payload = args[0] as { note: Note };
+      logger.debug('[Sidebar] NOTE_UPDATED:', payload.note);
+
+      // Update note in store
+      if (payload.note) {
+        updateNoteInStore(payload.note);
+      }
+    };
+
     const offCreated = window.electron.on(EVENTS.FILE_CREATED, handleFileCreated);
     const offChanged = window.electron.on(EVENTS.FILE_CHANGED, handleFileChanged);
     const offDeleted = window.electron.on(EVENTS.FILE_DELETED, handleFileDeleted);
@@ -134,12 +145,14 @@ export function Sidebar() {
       EVENTS.WORKSPACE_UPDATED,
       handleWorkspaceUpdated,
     );
+    const offNoteUpdated = window.electron.on(EVENTS.NOTE_UPDATED, handleNoteUpdated);
 
     return () => {
       offCreated?.();
       offChanged?.();
       offDeleted?.();
       offWorkspaceUpdated?.();
+      offNoteUpdated?.();
     };
   }, [activeFolder, loadFileTree, loadNotes]);
 
