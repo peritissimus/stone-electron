@@ -8,6 +8,11 @@ import matter from 'gray-matter';
 import { getMarkdownService } from './MarkdownService';
 import { logger } from '../utils/logger';
 
+/**
+ * Max bytes to read for fast title extraction (enough for frontmatter + first heading)
+ */
+const FAST_READ_BYTES = 2048;
+
 export interface MarkdownFile {
   path: string;
   relativePath: string;
@@ -34,20 +39,44 @@ export class FileSystemService {
   private markdownService = getMarkdownService();
 
   /**
-   * Read a markdown file with frontmatter
+   * Read a markdown file with frontmatter (fast - only reads head for title/metadata)
    */
-  async readMarkdownFile(filePath: string): Promise<MarkdownFile> {
+  async readMarkdownFile(filePath: string, fullContent = false): Promise<MarkdownFile> {
     try {
-      const fileContent = await fs.readFile(filePath, 'utf-8');
-      const parsed = matter(fileContent);
+      if (fullContent) {
+        // Full read for actual note opening
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const parsed = matter(fileContent);
 
-      return {
-        path: filePath,
-        relativePath: filePath,
-        title: this.markdownService.extractTitle(parsed.content),
-        content: parsed.content,
-        metadata: parsed.data as MarkdownFile['metadata'],
-      };
+        return {
+          path: filePath,
+          relativePath: filePath,
+          title: this.markdownService.extractTitle(parsed.content),
+          content: parsed.content,
+          metadata: parsed.data as MarkdownFile['metadata'],
+        };
+      }
+
+      // Fast read - only get frontmatter + first heading
+      const handle = await fs.open(filePath, 'r');
+      try {
+        const buffer = Buffer.alloc(FAST_READ_BYTES);
+        const { bytesRead } = await handle.read(buffer, 0, FAST_READ_BYTES, 0);
+        const headContent = buffer.slice(0, bytesRead).toString('utf-8');
+
+        const parsed = matter(headContent);
+        const title = this.markdownService.extractTitle(parsed.content);
+
+        return {
+          path: filePath,
+          relativePath: filePath,
+          title,
+          content: '', // Empty for fast scans
+          metadata: parsed.data as MarkdownFile['metadata'],
+        };
+      } finally {
+        await handle.close();
+      }
     } catch (error) {
       logger.error(`Error reading markdown file ${filePath}:`, error);
       throw error;
@@ -205,13 +234,12 @@ export class FileSystemService {
             logger.debug(`[FileSystem] Found markdown file: ${entry.name}`);
           }
           try {
-            const file = await this.readMarkdownFile(fullPath);
+            // Fast scan - don't read full content
+            const file = await this.readMarkdownFile(fullPath, false);
             file.relativePath = relativePath;
             files.push(file);
             if (process.env.NODE_ENV !== 'production') {
-              logger.debug(
-                `[FileSystem] Read: ${entry.name} (title: "${file.title}")`,
-              );
+              logger.debug(`[FileSystem] Read: ${entry.name} (title: "${file.title}")`);
             }
           } catch (error) {
             logger.warn(`[FileSystem] ⚠️  Skipping unreadable file ${fullPath}:`, error);
@@ -333,8 +361,7 @@ export class FileSystemService {
     excludePath?: string,
   ): Promise<string> {
     const sanitizedBase = this.markdownService.sanitizeFilename(baseName || 'Notebook');
-    const base =
-      sanitizedBase && sanitizedBase.trim().length > 0 ? sanitizedBase : 'Notebook';
+    const base = sanitizedBase && sanitizedBase.trim().length > 0 ? sanitizedBase : 'Notebook';
     let folderName = base;
     let counter = 1;
 

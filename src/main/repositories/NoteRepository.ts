@@ -20,6 +20,7 @@ import { getMarkdownService } from '../services/MarkdownService';
 import { WorkspaceRepository } from './WorkspaceRepository';
 import { logger } from '../utils/logger';
 import path from 'path';
+import { resolveInsideRoot } from '../utils/path';
 
 /**
  * Note Repository
@@ -250,9 +251,10 @@ export class NoteRepository {
           relativeFolder = (notebook.folderPath || '').replace(/\\/g, '/');
         }
 
-        const targetFolderAbsolute = relativeFolder
-          ? path.join(activeWorkspace.folderPath, relativeFolder)
-          : activeWorkspace.folderPath;
+        const targetFolderAbsolute = resolveInsideRoot(
+          activeWorkspace.folderPath,
+          relativeFolder || '.',
+        );
 
         // Generate unique filename
         const filename = await this.fileSystemService.generateUniqueFilename(
@@ -334,9 +336,15 @@ export class NoteRepository {
     // If note has a file path and workspace, update the file
     if (hasFileBacking) {
       try {
+        if (!existingNote.workspaceId) {
+          throw new Error('Note has no workspace ID');
+        }
         const workspace = await this.workspaceRepository.findById(existingNote.workspaceId);
         if (workspace) {
           const currentRelativePath = updateData.filePath || existingNote.filePath;
+          if (!currentRelativePath) {
+            throw new Error('Note has no file path');
+          }
           const currentFolder = currentRelativePath.includes('/')
             ? currentRelativePath.slice(0, currentRelativePath.lastIndexOf('/'))
             : '';
@@ -363,10 +371,10 @@ export class NoteRepository {
             updateData.notebookId = data.notebookId ?? null;
           }
 
-          const targetDirAbsolute =
-            targetFolderRelative && targetFolderRelative.length > 0
-              ? path.join(workspace.folderPath, targetFolderRelative)
-              : workspace.folderPath;
+          const targetDirAbsolute = resolveInsideRoot(
+            workspace.folderPath,
+            targetFolderRelative && targetFolderRelative.length > 0 ? targetFolderRelative : '.',
+          );
 
           let filename = path.basename(currentRelativePath);
 
@@ -384,11 +392,11 @@ export class NoteRepository {
               : filename;
 
           if (newRelativePath !== currentRelativePath) {
-            await this.renameMarkdownFile(
-              currentRelativePath,
-              newRelativePath,
-              existingNote.workspaceId,
-            );
+            const workspaceId = existingNote.workspaceId;
+            if (!workspaceId) {
+              throw new Error('Note has no workspace ID');
+            }
+            await this.renameMarkdownFile(currentRelativePath, newRelativePath, workspaceId);
             updateData.filePath = newRelativePath;
           }
         }
@@ -872,7 +880,7 @@ export class NoteRepository {
       }
 
       let relativePath = filePath.replace(/\\/g, '/');
-      let absolutePath = path.join(workspace.folderPath, relativePath);
+      let absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
 
       const fileExists = await this.fileSystemService.fileExists(absolutePath);
 
@@ -890,7 +898,7 @@ export class NoteRepository {
 
         if (basenameMatch) {
           relativePath = basenameMatch.relativePath.replace(/\\/g, '/');
-          absolutePath = path.join(workspace.folderPath, relativePath);
+          absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
           await this.db
             .update(notes)
             .set({ filePath: relativePath, updatedAt: new Date() })
@@ -900,7 +908,7 @@ export class NoteRepository {
         }
       }
 
-      const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath);
+      const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath, true);
 
       // Strip the title heading from content for editor display
       let contentForEditor = markdownFile.content;
@@ -916,8 +924,10 @@ export class NoteRepository {
         contentForEditor = contentForEditor.replace(titleHeadingRegex, '');
       }
 
-      // Convert markdown to HTML for TipTap editor
-      return await this.markdownService.markdownToHtml(contentForEditor);
+      // Convert markdown to HTML for TipTap editor with caching
+      const stats = await this.fileSystemService.getFileStats(absolutePath);
+      const mtime = stats.mtimeMs;
+      return await this.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
     } catch (error) {
       console.error(`Error reading content from file ${filePath}:`, error);
       return null;
@@ -943,7 +953,7 @@ export class NoteRepository {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
 
-      const absolutePath = path.join(workspace.folderPath, filePath);
+      const absolutePath = resolveInsideRoot(workspace.folderPath, filePath);
 
       // Convert HTML content to markdown
       const markdownContent = this.markdownService.htmlToMarkdown(content);
@@ -966,7 +976,7 @@ export class NoteRepository {
         return;
       }
 
-      const absolutePath = path.join(workspace.folderPath, filePath);
+      const absolutePath = resolveInsideRoot(workspace.folderPath, filePath);
       await this.fileSystemService.deleteMarkdownFile(absolutePath);
     } catch (error) {
       console.error(`Error deleting markdown file ${filePath}:`, error);
@@ -988,8 +998,8 @@ export class NoteRepository {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
 
-      const oldAbsolutePath = path.join(workspace.folderPath, oldFilePath);
-      const newAbsolutePath = path.join(workspace.folderPath, newFilePath);
+      const oldAbsolutePath = resolveInsideRoot(workspace.folderPath, oldFilePath);
+      const newAbsolutePath = resolveInsideRoot(workspace.folderPath, newFilePath);
 
       await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
     } catch (error) {

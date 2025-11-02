@@ -2,7 +2,7 @@
  * Note Editor Component - TipTap Rich Text Editor
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -21,34 +21,42 @@ import {
   Plus,
   Trash,
   Check,
-  Warning,
   Spinner,
 } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
-import { Text, Body } from '@renderer/components/ui/text';
-import { ContainerFlex, ContainerCenter } from '@renderer/components/ui';
+import { ContainerFlex } from '@renderer/components/ui';
 import { Header, IconButton, PanelFooter } from '@renderer/components/composites';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@renderer/components/ui/dropdown-menu';
 
-type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 
 export function NoteEditor() {
-  const { getActiveNote, setActiveNote } = useNoteStore();
+  const selectActiveNote = useCallback((state: NoteStoreState) => {
+    if (!state.activeNoteId) return null;
+    return state.notes.find((note) => note.id === state.activeNoteId) || null;
+  }, []);
+  const activeNote = useNoteStore(selectActiveNote);
+  const activeNoteId = activeNote?.id;
+  const activeNoteIdRef = useRef<string | null>(activeNoteId ?? null);
+  const setActiveNote = useNoteStore((state) => state.setActiveNote);
   const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, loadNoteById } =
     useNoteAPI();
-  const activeNote = getActiveNote();
 
   const [title, setTitle] = useState('');
-  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>('idle');
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const isSavingRef = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    activeNoteIdRef.current = activeNoteId ?? null;
+  }, [activeNoteId]);
 
   const editor = useEditor({
     extensions: [
@@ -73,33 +81,30 @@ export function NoteEditor() {
       },
     },
     onUpdate: ({ editor }) => {
-      if (!activeNote) return;
-
-      // Set status to indicate changes are pending
-      setAutosaveStatus('idle');
+      const noteId = activeNoteIdRef.current;
+      if (!noteId) return;
 
       // Debounce save
-      if (saveTimeout) clearTimeout(saveTimeout);
-      const timeout = setTimeout(async () => {
-        setAutosaveStatus('saving');
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      const timeout = window.setTimeout(async () => {
+        saveTimeoutRef.current = null;
+        isSavingRef.current = true;
         try {
-          const result = await updateNote(activeNote.id, { content: editor.getHTML() });
-          if (result) {
-            setAutosaveStatus('saved');
-            setLastSaved(new Date());
-            // Reset to idle after showing saved status
-            setTimeout(() => setAutosaveStatus('idle'), 2000);
-          } else {
-            setAutosaveStatus('error');
+          const result = await updateNote(noteId, { content: editor.getHTML() });
+          if (!result) {
+            console.error('Autosave failed: updateNote returned falsy result');
           }
         } catch (error) {
           console.error('Autosave failed:', error);
-          setAutosaveStatus('error');
-          // Reset error status after 3 seconds
-          setTimeout(() => setAutosaveStatus('idle'), 3000);
+        } finally {
+          isSavingRef.current = false;
         }
       }, 1000);
-      setSaveTimeout(timeout);
+
+      saveTimeoutRef.current = timeout;
     },
   });
 
@@ -107,8 +112,6 @@ export function NoteEditor() {
   useEffect(() => {
     if (activeNote && editor) {
       setTitle(activeNote.title || '');
-      setAutosaveStatus('idle');
-      setLastSaved(null);
       if (activeNote.content !== undefined && activeNote.content !== editor.getHTML()) {
         editor.commands.setContent(activeNote.content);
       }
@@ -118,11 +121,11 @@ export function NoteEditor() {
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [saveTimeout]);
+  }, []);
 
   useEffect(() => {
     if (
@@ -140,31 +143,29 @@ export function NoteEditor() {
   // Autosave on window blur
   useEffect(() => {
     const handleWindowBlur = () => {
-      if (activeNote && editor && saveTimeout) {
+      const noteId = activeNoteIdRef.current;
+      if (noteId && editor && saveTimeoutRef.current) {
         // Clear pending timeout and save immediately
-        clearTimeout(saveTimeout);
-        setSaveTimeout(null);
-        setAutosaveStatus('saving');
-        updateNote(activeNote.id, { content: editor.getHTML() })
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+        isSavingRef.current = true;
+        updateNote(noteId, { content: editor.getHTML() })
           .then((result) => {
-            if (result) {
-              setAutosaveStatus('saved');
-              setLastSaved(new Date());
-              setTimeout(() => setAutosaveStatus('idle'), 2000);
-            } else {
-              setAutosaveStatus('error');
+            if (!result) {
+              console.error('Blur autosave failed: updateNote returned falsy result');
             }
           })
           .catch((error) => {
             console.error('Blur autosave failed:', error);
-            setAutosaveStatus('error');
-            setTimeout(() => setAutosaveStatus('idle'), 3000);
+          })
+          .finally(() => {
+            isSavingRef.current = false;
           });
       }
     };
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (autosaveStatus === 'saving' || saveTimeout) {
+      if (isSavingRef.current || saveTimeoutRef.current) {
         // Show confirmation dialog if save is in progress
         e.preventDefault();
         e.returnValue = 'Changes are being saved. Are you sure you want to leave?';
@@ -178,38 +179,38 @@ export function NoteEditor() {
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [activeNote, editor, saveTimeout, updateNote, autosaveStatus]);
+  }, [editor, updateNote]);
 
   // Handle title change
   const handleTitleChange = useCallback(
     async (newTitle: string) => {
       setTitle(newTitle);
-      if (!activeNote) return;
+      if (!activeNoteId) return;
 
       // Clear any pending content save
-      if (saveTimeout) clearTimeout(saveTimeout);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
 
       // Save title immediately (shorter debounce for titles)
-      const timeout = setTimeout(async () => {
-        setAutosaveStatus('saving');
+      const noteId = activeNoteId;
+      const timeout = window.setTimeout(async () => {
+        saveTimeoutRef.current = null;
+        isSavingRef.current = true;
         try {
-          const result = await updateNote(activeNote.id, { title: newTitle });
-          if (result) {
-            setAutosaveStatus('saved');
-            setLastSaved(new Date());
-            setTimeout(() => setAutosaveStatus('idle'), 2000);
-          } else {
-            setAutosaveStatus('error');
+          const result = await updateNote(noteId, { title: newTitle });
+          if (!result) {
+            console.error('Title autosave failed: updateNote returned falsy result');
           }
         } catch (error) {
           console.error('Title autosave failed:', error);
-          setAutosaveStatus('error');
-          setTimeout(() => setAutosaveStatus('idle'), 3000);
+        } finally {
+          isSavingRef.current = false;
         }
       }, 500);
-      setSaveTimeout(timeout);
+      saveTimeoutRef.current = timeout;
     },
-    [activeNote, updateNote],
+    [activeNoteId, updateNote],
   );
 
   if (!activeNote) {
@@ -268,65 +269,8 @@ export function NoteEditor() {
           </div>
         }
         right={
-          <ContainerFlex align="center" gap="sm">
-            {/* Enhanced Autosave Status Indicator */}
-            <div className="flex items-center gap-2">
-              {autosaveStatus === 'saving' && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
-                  <Spinner size={14} className="animate-spin text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                    Saving...
-                  </span>
-                </div>
-              )}
-              {autosaveStatus === 'saved' && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800">
-                  <Check size={14} className="text-green-600 dark:text-green-400" />
-                  <span className="text-xs font-medium text-green-700 dark:text-green-300">
-                    Saved
-                  </span>
-                  {lastSaved && (
-                    <span className="text-xs text-green-600 dark:text-green-400 ml-1">
-                      {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  )}
-                </div>
-              )}
-              {autosaveStatus === 'error' && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800">
-                  <Warning size={14} className="text-red-600 dark:text-red-400" />
-                  <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                    Save failed
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1">
-              <IconButton
-                size="normal"
-                icon={<Star size={16} />}
-                tooltip="Toggle Favorite"
-                onClick={() => toggleFavorite(activeNote.id)}
-                className={activeNote.isFavorite ? 'bg-secondary text-yellow-600' : ''}
-              />
-              <IconButton
-                size="normal"
-                icon={<PushPin size={16} />}
-                tooltip="Toggle Pin"
-                onClick={() => togglePin(activeNote.id)}
-                className={activeNote.isPinned ? 'bg-secondary text-blue-600' : ''}
-              />
-              <IconButton
-                size="normal"
-                icon={<Archive size={16} />}
-                tooltip="Archive Note"
-                onClick={() => {
-                  toggleArchive(activeNote.id);
-                  setActiveNote(null);
-                }}
-                className={activeNote.isArchived ? 'bg-secondary text-purple-600' : ''}
-              />
+          <ContainerFlex align="center" gap="none">
+            <div className="flex items-center justify-center">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton
@@ -336,6 +280,39 @@ export function NoteEditor() {
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => toggleFavorite(activeNote.id)}>
+                    <Star
+                      size={14}
+                      className="mr-2"
+                      weight={activeNote.isFavorite ? 'fill' : 'regular'}
+                    />
+                    {activeNote.isFavorite ? 'Remove Favorite' : 'Add to Favorites'}
+                    {activeNote.isFavorite && <Check size={14} className="ml-auto text-primary" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => togglePin(activeNote.id)}>
+                    <PushPin
+                      size={14}
+                      className="mr-2"
+                      weight={activeNote.isPinned ? 'fill' : 'regular'}
+                    />
+                    {activeNote.isPinned ? 'Unpin Note' : 'Pin Note'}
+                    {activeNote.isPinned && <Check size={14} className="ml-auto text-primary" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      toggleArchive(activeNote.id);
+                      setActiveNote(null);
+                    }}
+                  >
+                    <Archive
+                      size={14}
+                      className="mr-2"
+                      weight={activeNote.isArchived ? 'fill' : 'regular'}
+                    />
+                    {activeNote.isArchived ? 'Unarchive Note' : 'Archive Note'}
+                    {activeNote.isArchived && <Check size={14} className="ml-auto text-primary" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
                       if (window.confirm('Are you sure you want to delete this note?')) {

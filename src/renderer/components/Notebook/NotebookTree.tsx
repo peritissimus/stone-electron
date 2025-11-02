@@ -83,27 +83,27 @@ function NotebookTreeItem({
         icon={notebook.icon || '📁'}
         label={notebook.name}
         right={
-          notebook.note_count !== undefined && (
-            <Text as="span" size="xs" variant="muted" className="text-[10px]">
-              {notebook.note_count}
-            </Text>
-          )
-        }
-        expander={
-          hasChildren ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-5 w-5 p-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand();
-              }}
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
-            </Button>
-          ) : undefined
+          <>
+            {hasChildren && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-5 w-5 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand();
+                }}
+                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
+              </Button>
+            )}
+            {notebook.note_count !== undefined && (
+              <Text as="span" size="xs" variant="muted" className="text-[10px]">
+                {notebook.note_count}
+              </Text>
+            )}
+          </>
         }
       >
         {hasChildren && isExpanded && (
