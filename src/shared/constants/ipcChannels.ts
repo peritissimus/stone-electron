@@ -147,7 +147,7 @@ export const ALL_CHANNELS = [
   ...Object.values(ATTACHMENT_CHANNELS),
   ...Object.values(DATABASE_CHANNELS),
   ...Object.values(SETTINGS_CHANNELS),
-] as const;
+];
 
 // Get all events as an array
-export const ALL_EVENTS = Object.values(EVENTS) as const;
+export const ALL_EVENTS = Object.values(EVENTS);
