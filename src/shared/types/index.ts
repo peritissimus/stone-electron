@@ -81,16 +81,12 @@ export interface IpcResponse<T> {
 export interface SearchResult {
   id: UUID;
   title: string;
-  content: string;
   notebookId: UUID | null;
   relevance?: number;
   similarity?: number;
   score?: number;
   title_highlight?: string;
-  content_highlight?: string;
-  content_preview?: string;
   search_type?: 'fts' | 'semantic' | 'hybrid';
-  createdAt: UnixTimestamp;
 }
 
 export interface SearchResults {
