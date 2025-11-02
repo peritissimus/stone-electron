@@ -13,9 +13,10 @@
 
 import os from 'os';
 import path from 'path';
-import { getDatabaseManager } from '@main/database';
-import { Repositories } from '@main/repositories';
-import { getFileSystemService } from '@main/services/FileSystemService';
+import { getDatabaseManager } from '../src/main/database/DatabaseManager';
+import { logger } from '../src/main/utils/logger';
+import { Repositories } from '../src/main/repositories';
+import { getFileSystemService } from '../src/main/services/FileSystemService';
 
 function parseArg(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -86,6 +87,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[fs-check] Error:', err);
+  logger.error('Error:', err);
   process.exit(1);
 });

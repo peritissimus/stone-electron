@@ -216,7 +216,7 @@ export function registerNoteHandlers() {
           logger.warn('[IPC][notes:getAll] sync error', syncError);
         }
         // Log filters
-        console.info('[IPC][notes:getAll] request', {
+        logger.info('[IPC][notes:getAll] request', {
           notebookId: request.notebookId,
           tagId: request.tagId,
           is_favorite: request.is_favorite,
@@ -279,7 +279,7 @@ export function registerNoteHandlers() {
         );
 
         const total = enrichedNotes.length;
-        console.info('[IPC][notes:getAll] returning count', total);
+        logger.info('[IPC][notes:getAll] returning count', total);
 
         return {
           notes: enrichedNotes,

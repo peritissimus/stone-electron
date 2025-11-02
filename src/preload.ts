@@ -8,29 +8,36 @@ import { IpcResponse } from '@shared/types';
 import { ALL_CHANNELS, ALL_EVENTS } from '@shared/constants/ipcChannels';
 
 /**
+ * Simple logger for preload script
+ */
+const logger = {
+  info: (...args: unknown[]) => console.info('[PRELOAD]', ...args),
+  error: (...args: unknown[]) => console.error('[PRELOAD]', ...args),
+  warn: (...args: unknown[]) => console.warn('[PRELOAD]', ...args),
+  debug: (...args: unknown[]) => console.debug('[PRELOAD]', ...args),
+};
+
+/**
  * Exposed API for renderer process
  */
 const ALLOWED_CHANNELS = new Set<string>(ALL_CHANNELS);
 const ALLOWED_EVENTS = new Set<string>(ALL_EVENTS);
 
 // Debug logging
-console.log('[PRELOAD] ALL_CHANNELS:', ALL_CHANNELS);
-console.log('[PRELOAD] ALLOWED_CHANNELS size:', ALLOWED_CHANNELS.size);
-console.log(
-  '[PRELOAD] ALLOWED_CHANNELS contains notes:getAll:',
-  ALLOWED_CHANNELS.has('notes:getAll'),
-);
-console.log('[PRELOAD] First 10 allowed channels:', Array.from(ALLOWED_CHANNELS).slice(0, 10));
+logger.debug('ALL_CHANNELS:', ALL_CHANNELS);
+logger.debug('ALLOWED_CHANNELS size:', ALLOWED_CHANNELS.size);
+logger.debug('ALLOWED_CHANNELS contains notes:getAll:', ALLOWED_CHANNELS.has('notes:getAll'));
+logger.debug('First 10 allowed channels:', Array.from(ALLOWED_CHANNELS).slice(0, 10));
 
 const api = {
   /**
    * Invoke an IPC handler
    */
   invoke: <T = unknown>(channel: string, ...args: unknown[]): Promise<IpcResponse<T>> => {
-    console.log(`[PRELOAD] Checking channel: ${channel}, allowed:`, ALLOWED_CHANNELS.has(channel));
+    logger.debug(`Checking channel: ${channel}, allowed:`, ALLOWED_CHANNELS.has(channel));
     if (!ALLOWED_CHANNELS.has(channel)) {
-      console.error(
-        `[PRELOAD] Blocked channel: ${channel}. Available channels:`,
+      logger.error(
+        `Blocked channel: ${channel}. Available channels:`,
         Array.from(ALLOWED_CHANNELS),
       );
       return Promise.reject(new Error(`Blocked IPC channel: ${channel}`));
