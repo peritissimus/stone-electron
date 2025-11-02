@@ -65,7 +65,7 @@ const config: Config = {
         xl: '0 16px 48px rgba(0, 0, 0, 0.2)',
       },
       spacing: {
-        titlebar: '44px',
+        titlebar: '51px',
       },
       keyframes: {
         'accordion-down': {

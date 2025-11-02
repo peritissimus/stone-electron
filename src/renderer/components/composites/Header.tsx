@@ -6,7 +6,7 @@
 
 import * as React from 'react';
 import { cn } from '@renderer/lib/utils';
-import { SizeVariant } from './tokens';
+import { SizeVariant, sizeHeightClasses } from './tokens';
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Size variant */
@@ -28,14 +28,12 @@ export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
  */
 export const Header = React.forwardRef<HTMLDivElement, HeaderProps>(
   ({ size = 'normal', divided = true, left, right, children, className, ...props }, ref) => {
-    const paddingY = size === 'compact' ? 'py-1.5' : size === 'spacious' ? 'py-3' : 'py-2';
-
     return (
       <div
         ref={ref}
         className={cn(
-          'px-3 ',
-          paddingY,
+          'px-3 border-b border-l border-r border-border',
+          sizeHeightClasses[size],
           'flex-shrink-0 bg-card',
           'flex items-center justify-between',
           className,

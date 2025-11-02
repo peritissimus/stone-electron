@@ -146,8 +146,12 @@ export function Sidebar() {
 
     setIsCreating(true);
     try {
+      // Generate a default title for the new note
+      const now = new Date();
+      const defaultTitle = `Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
       const note = await createNote({
-        title: '',
+        title: defaultTitle,
         content: '',
         folderPath: activeFolder || undefined,
       });

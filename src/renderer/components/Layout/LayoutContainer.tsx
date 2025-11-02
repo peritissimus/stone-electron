@@ -57,12 +57,14 @@ export function LayoutContainer({
   return (
     <>
       <Header
-        left={<Heading3 className="text-sm">Stone</Heading3>}
+        size="normal"
+        className="fixed top-0 left-0 right-0 z-10"
+        left={<Heading3 className="text-xs">Stone</Heading3>}
         right={
           <ControlGroup gap="sm" background="bg-transparent">
             <IconButton
-              size="normal"
-              icon={<ArrowsClockwise size={13} />}
+              size="compact"
+              icon={<ArrowsClockwise size={11} />}
               label="Sync"
               tooltip="Sync with file system"
               onClick={async () => {
@@ -88,8 +90,8 @@ export function LayoutContainer({
               }}
             />
             <IconButton
-              size="normal"
-              icon={<Gear size={13} />}
+              size="compact"
+              icon={<Gear size={11} />}
               label="Settings"
               onClick={openSettings}
             />
@@ -97,7 +99,7 @@ export function LayoutContainer({
         }
       />
 
-      <div className={`flex h-[calc(100vh-52px)] bg-background overflow-hidden ${className}`}>
+      <div className={`flex h-screen pt-6 bg-background overflow-hidden ${className}`}>
         {/* Sidebar Panel */}
         {showSidebar && sidebar && (
           <ResizablePanel

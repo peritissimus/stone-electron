@@ -16,6 +16,19 @@ import { createHandler, IpcError } from '../utils';
 export function registerWorkspaceHandlers() {
   const repos = getRepositories();
   const fsService = getFileSystemService();
+  const normalizeRelativePath = (input?: string) =>
+    (input || '')
+      .replace(/\\/g, '/')
+      .replace(/^\.\//, '')
+      .replace(/^\/+/, '')
+      .replace(/\/+$/, '');
+  const getParentRelativePath = (relative: string) => {
+    const normalized = normalizeRelativePath(relative);
+    if (!normalized.includes('/')) {
+      return '';
+    }
+    return normalized.slice(0, normalized.lastIndexOf('/'));
+  };
 
   // workspaces:selectFolder
   ipcMain.handle(
@@ -168,6 +181,89 @@ export function registerWorkspaceHandlers() {
       });
 
       return { folderPath: newRelative };
+    }),
+  );
+
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.RENAME_FOLDER,
+    createHandler(async (event, request: { path: string; name: string }) => {
+      const workspace = await repos.workspace.getActive();
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Active workspace not found');
+      }
+
+      const targetRelative = normalizeRelativePath(request.path);
+      if (!targetRelative) {
+        throw new IpcError('INVALID_INPUT', 'Folder path is required');
+      }
+
+      const currentAbsolute = path.join(workspace.folderPath, targetRelative);
+      const exists = await fsService.fileExists(currentAbsolute);
+      if (!exists) {
+        throw new IpcError('NOT_FOUND', 'Folder does not exist');
+      }
+
+      const parentRelative = getParentRelativePath(targetRelative);
+      const parentAbsolute = parentRelative
+        ? path.join(workspace.folderPath, parentRelative)
+        : workspace.folderPath;
+
+      const desiredName = request.name && request.name.trim().length > 0 ? request.name : 'Folder';
+      const newFolderName = await fsService.generateUniqueFolderName(
+        parentAbsolute,
+        desiredName,
+        currentAbsolute,
+      );
+
+      const newRelative = parentRelative
+        ? path.posix.join(parentRelative, newFolderName)
+        : newFolderName;
+      const newAbsolute = path.join(workspace.folderPath, newRelative);
+
+      if (newAbsolute !== currentAbsolute) {
+        await fsService.renameFolder(currentAbsolute, newAbsolute);
+      }
+
+      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+      await repos.note.syncWithFileSystem(workspace.id);
+
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+      });
+
+      return { folderPath: newRelative };
+    }),
+  );
+
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.DELETE_FOLDER,
+    createHandler(async (event, request: { path: string }) => {
+      const workspace = await repos.workspace.getActive();
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Active workspace not found');
+      }
+
+      const targetRelative = normalizeRelativePath(request.path);
+      if (!targetRelative) {
+        throw new IpcError('INVALID_INPUT', 'Folder path is required');
+      }
+
+      const targetAbsolute = path.join(workspace.folderPath, targetRelative);
+      const exists = await fsService.fileExists(targetAbsolute);
+      if (!exists) {
+        throw new IpcError('NOT_FOUND', 'Folder does not exist');
+      }
+
+      await fsService.deleteFolder(targetAbsolute, true);
+
+      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+      await repos.note.syncWithFileSystem(workspace.id);
+
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+      });
+
+      return { success: true };
     }),
   );
 
