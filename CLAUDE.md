@@ -143,15 +143,43 @@ This runs automatically via the `postinstall` script.
 - **Migrations**: SQL files in `migrations/` directory
 - **Format**: SQLite with FTS5 for full-text search
 
+### Architecture: Content Storage
+
+**IMPORTANT: Content is stored in FILES, NOT in the database.**
+
+- **Database** = Metadata only (title, flags, timestamps, paths)
+- **Files** = Actual note content (markdown files)
+- **Source of Truth** = Files on disk
+
 ### Tables
 
 - `notebooks` - Hierarchical notebook organization
-- `notes` - Main notes with title, content, flags
+- `notes` - Metadata only (NO content field - removed in migration 0002)
 - `tags` - Tags for categorization
 - `note_tags` - Many-to-many relationship
 - `attachments` - File attachments
-- `note_versions` - Version history
-- `notes_fts` - Full-text search (FTS5)
+- `note_versions` - Version history (NO content field)
+- `notes_fts` - Full-text search on title only
+
+### Content Loading
+
+```typescript
+// Get metadata (fast - from DB)
+const note = await repos.note.findById(id);
+// { id, title, filePath, flags, timestamps }
+
+// Get content (lazy - from file)
+const content = await repos.note.getContentById(id);
+// HTML converted from markdown file
+```
+
+### Why This Architecture?
+
+1. **Performance** - List views don't load file content
+2. **Scalability** - Large notes don't bloat the database
+3. **Separation** - Clear boundary between metadata and content
+4. **Git-friendly** - Markdown files can be version controlled
+5. **No re-renders** - Autosave writes to file without updating store
 
 ## Important Notes
 
@@ -160,6 +188,8 @@ This runs automatically via the `postinstall` script.
 3. **Native modules**: Rebuild after installing new native deps
 4. **Migrations**: Place in `migrations/` as `001_name.sql`
 5. **macOS design**: Follow the existing design tokens and spacing
+6. **Content storage**: NEVER store content in DB - files are source of truth
+7. **Documentation**: NEVER create standalone documentation files like TESTING_NOTES.md, CHANGES.md, etc. Add notes to CLAUDE.md or existing docs only.
 
 ## UI Components - Composite System
 
@@ -329,3 +359,33 @@ pnpm build:renderer
 ```bash
 pnpm  typecheck         # Check for TypeScript errors
 ```
+
+## Development Rules for AI Assistants
+
+### Documentation
+
+❌ **NEVER create these files:**
+- `TESTING_NOTES.md`
+- `CHANGES.md`
+- `ARCHITECTURE.md`
+- `API_CHANGES.md`
+- Any standalone documentation file
+
+✅ **ALWAYS update existing files:**
+- Add notes to `CLAUDE.md` (this file)
+- Update `README.md` for user-facing changes
+- Add to component-specific docs (e.g., `COMPOSITES_GUIDE.md`)
+
+### Content Architecture Rules
+
+1. **Never access `note.content`** - it doesn't exist in the type
+2. **Use `getContentById()`** to load content from files
+3. **Silent autosave** - use `updateNote(id, data, true)` to prevent re-renders
+4. **List views** - show metadata only, no content previews
+5. **Search results** - return metadata only, no content fields
+
+### IPC Channels
+
+- `notes:get` - Returns metadata only (no content)
+- `notes:getContent` - Returns content from file (lazy load)
+- `notes:update` - Accepts content, writes to file only (not DB)
