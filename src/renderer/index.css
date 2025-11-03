@@ -28,6 +28,22 @@
   --card-foreground: 0 0% 15%;
 
   --radius: 10px;
+
+  /* Code Syntax Colors - Light Theme */
+  --code-bg: 0 0% 98%;
+  --code-text: 0 0% 20%;
+  --code-comment: 0 0% 55%;
+  --code-keyword: 262 60% 50%;
+  --code-string: 142 60% 40%;
+  --code-number: 28 80% 50%;
+  --code-function: 211 100% 45%;
+  --code-variable: 0 0% 30%;
+  --code-type: 45 80% 45%;
+  --code-operator: 180 40% 45%;
+  --code-punctuation: 0 0% 45%;
+  --code-attribute: 330 60% 50%;
+  --code-tag: 211 80% 45%;
+  --code-property: 262 50% 50%;
 }
 
 /* Dark Mode Colors - macOS Inspired Dark Theme */
@@ -52,6 +68,22 @@
   --popover-foreground: 0 0% 90%;
   --card: 0 0% 14%;
   --card-foreground: 0 0% 90%;
+
+  /* Code Syntax Colors - Dark Theme */
+  --code-bg: 0 0% 10%;
+  --code-text: 0 0% 88%;
+  --code-comment: 0 0% 50%;
+  --code-keyword: 262 70% 70%;
+  --code-string: 142 50% 60%;
+  --code-number: 28 70% 65%;
+  --code-function: 211 80% 65%;
+  --code-variable: 0 0% 85%;
+  --code-type: 45 70% 65%;
+  --code-operator: 180 50% 65%;
+  --code-punctuation: 0 0% 60%;
+  --code-attribute: 330 60% 65%;
+  --code-tag: 211 70% 65%;
+  --code-property: 262 60% 70%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -76,6 +108,22 @@
     --popover-foreground: 0 0% 90%;
     --card: 0 0% 14%;
     --card-foreground: 0 0% 90%;
+
+    /* Code Syntax Colors - Dark Theme */
+    --code-bg: 0 0% 10%;
+    --code-text: 0 0% 88%;
+    --code-comment: 0 0% 50%;
+    --code-keyword: 262 70% 70%;
+    --code-string: 142 50% 60%;
+    --code-number: 28 70% 65%;
+    --code-function: 211 80% 65%;
+    --code-variable: 0 0% 85%;
+    --code-type: 45 70% 65%;
+    --code-operator: 180 50% 65%;
+    --code-punctuation: 0 0% 60%;
+    --code-attribute: 330 60% 65%;
+    --code-tag: 211 70% 65%;
+    --code-property: 262 60% 70%;
   }
 }
 
@@ -104,13 +152,29 @@ body {
   line-height: 1.5;
 }
 
+/* Better font for editor content */
+.prose {
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Arial', sans-serif;
+  font-size: 14px;
+  line-height: 1.2;
+  letter-spacing: -0.011em;
+}
+
 .dark body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
 }
 
 code {
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Menlo', 'Courier New', monospace;
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
+pre code {
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 /* Remove default focus outline, we'll use Tailwind's */
@@ -171,6 +235,7 @@ textarea:focus {
 
 .ProseMirror {
   @apply focus:outline-none;
+  transition: opacity 0.15s ease;
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
@@ -187,30 +252,59 @@ textarea:focus {
 }
 
 .prose h1 {
-  @apply text-3xl font-bold mb-4 mt-6;
+  @apply text-3xl font-bold mb-3 mt-6 text-foreground;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .prose h2 {
-  @apply text-2xl font-bold mb-3 mt-5;
+  @apply text-2xl font-bold mb-2.5 mt-5 text-foreground;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
 }
 
 .prose h3 {
-  @apply text-xl font-bold mb-2 mt-4;
+  @apply text-xl font-bold mb-2 mt-4 text-foreground;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
-.prose h4,
+.prose h4 {
+  @apply text-lg font-bold mb-2 mt-3.5 text-foreground;
+  letter-spacing: -0.008em;
+  line-height: 1.35;
+}
+
 .prose h5,
 .prose h6 {
-  @apply text-lg font-bold mb-2 mt-3;
+  @apply text-base font-bold mb-1.5 mt-3 text-foreground;
+  line-height: 1.4;
 }
 
 .prose p {
-  @apply mb-4;
+  @apply mb-3 text-foreground/90;
+}
+
+.prose strong,
+.prose b {
+  @apply font-semibold text-foreground;
+  font-weight: 600;
+}
+
+.prose em,
+.prose i {
+  @apply italic;
+  font-style: italic;
+}
+
+.prose strong em,
+.prose em strong {
+  @apply font-semibold italic;
 }
 
 .prose ul,
 .prose ol {
-  @apply mb-4 pl-6;
+  @apply mb-3 pl-5;
 }
 
 .prose ul {
@@ -222,35 +316,185 @@ textarea:focus {
 }
 
 .prose li {
-  @apply mb-1;
+  @apply mb-0;
+  line-height: 1.5;
 }
 
 .prose blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-4;
+  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-3 italic my-3 text-muted-foreground;
+  font-size: 0.97em;
 }
 
+/* Highlight mark */
+.highlight-mark {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  @apply px-1 rounded;
+}
+
+/* Inline code */
 .prose code {
-  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
+  background-color: hsl(var(--code-bg));
+  color: hsl(var(--code-keyword));
+  @apply px-1.5 py-0.5 rounded font-mono;
+  font-size: 0.9em;
+  font-weight: 450;
 }
 
+/* Code blocks */
 .prose pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4;
+  background-color: hsl(var(--code-bg));
+  border: 1px solid hsl(var(--border));
+  @apply p-4 rounded-xl overflow-x-auto my-4 shadow-lg;
 }
 
 .prose pre code {
   @apply bg-transparent p-0;
+  font-size: 13px;
+  color: hsl(var(--code-text));
+}
+
+/* Code block wrapper for syntax highlighting */
+.code-block-wrapper {
+  background-color: hsl(var(--code-bg));
+  border: 1px solid hsl(var(--border));
+  @apply p-4 rounded-xl overflow-x-auto my-4 shadow-lg;
+}
+
+.code-block-wrapper pre {
+  @apply bg-transparent p-0 m-0 border-0 shadow-none;
+}
+
+/* Syntax highlighting colors - Custom theme matching app colors */
+.hljs {
+  color: hsl(var(--code-text));
+  display: block;
+  overflow-x: auto;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: hsl(var(--code-comment));
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section {
+  color: hsl(var(--code-keyword));
+  font-weight: 500;
+}
+
+.hljs-function .hljs-keyword {
+  color: hsl(var(--code-keyword));
+}
+
+.hljs-subst {
+  color: hsl(var(--code-text));
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-meta-string {
+  color: hsl(var(--code-string));
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-params,
+.hljs-template-tag {
+  color: hsl(var(--code-number));
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-title.class_.inherited__ {
+  color: hsl(var(--code-function));
+  font-weight: 500;
+}
+
+.hljs-variable,
+.hljs-template-variable {
+  color: hsl(var(--code-variable));
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: hsl(var(--code-type));
+}
+
+.hljs-operator {
+  color: hsl(var(--code-operator));
+}
+
+.hljs-punctuation {
+  color: hsl(var(--code-punctuation));
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-regexp,
+.hljs-link {
+  color: hsl(var(--code-attribute));
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-meta {
+  color: hsl(var(--code-tag));
+}
+
+.hljs-property,
+.hljs-code,
+.hljs-doctag,
+.hljs-formula {
+  color: hsl(var(--code-property));
+}
+
+.hljs-deletion {
+  color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+.hljs-addition {
+  color: hsl(var(--code-string));
+  background-color: hsl(var(--code-string) / 0.1);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
 }
 
 .prose a {
-  @apply text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300;
+  @apply text-blue-600 dark:text-blue-400 underline decoration-blue-400/50 hover:text-blue-800 dark:hover:text-blue-300;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  text-underline-offset: 2px;
 }
 
 .prose img {
-  @apply rounded-lg my-4;
+  @apply rounded-xl my-4 shadow-md;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.prose img:hover {
+  transform: scale(1.01);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
 }
 
 .prose hr {
-  @apply border-gray-300 dark:border-gray-600 my-6;
+  @apply border-slate-300 dark:border-slate-700 my-5;
 }
 
 /* Task List Styles */
@@ -272,14 +516,47 @@ textarea:focus {
 
 /* Table Styles */
 .prose table {
-  @apply w-full border-collapse my-4;
+  @apply w-full border-collapse my-3;
 }
 
 .prose table td,
 .prose table th {
-  @apply border border-gray-300 dark:border-gray-600 px-3 py-2;
+  @apply border border-gray-300 dark:border-gray-600 px-3 py-1.5;
+  font-size: 0.95em;
 }
 
 .prose table th {
-  @apply bg-gray-100 dark:bg-gray-800 font-bold;
+  @apply bg-gray-100 dark:bg-gray-800 font-semibold;
+  font-size: 0.9em;
+}
+
+/* Text formatting */
+.prose strong {
+  @apply font-semibold text-foreground;
+  font-weight: 600;
+}
+
+.prose em {
+  @apply italic;
+  font-style: italic;
+}
+
+.prose del,
+.prose s {
+  @apply text-muted-foreground line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+/* Nested lists */
+.prose ul ul,
+.prose ul ol,
+.prose ol ul,
+.prose ol ol {
+  @apply mt-1 mb-1;
+}
+
+/* Better text selection */
+.prose ::selection {
+  background-color: hsl(var(--primary) / 0.2);
+  color: inherit;
 }
