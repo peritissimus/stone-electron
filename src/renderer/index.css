@@ -154,8 +154,7 @@ body {
 
 /* Better font for editor content - Notion style */
 .prose {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
   font-size: 16px;
   line-height: 1.65;
   letter-spacing: -0.003em;
@@ -168,7 +167,8 @@ body {
 }
 
 code {
-  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Menlo', 'Courier New', monospace;
+  font-family:
+    'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Menlo', 'Courier New', monospace;
   font-size: 0.9em;
   font-weight: 400;
 }
@@ -417,7 +417,8 @@ textarea:focus {
   background-color: hsl(var(--code-bg));
   border: none;
   @apply p-6 m-0 overflow-x-auto;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -541,7 +542,9 @@ textarea:focus {
 
 .prose a {
   @apply text-blue-600 dark:text-blue-400 no-underline hover:underline;
-  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
   cursor: pointer;
@@ -549,12 +552,18 @@ textarea:focus {
 
 .prose img {
   @apply rounded-lg my-4;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px, rgba(15, 15, 15, 0.1) 0px 2px 4px;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow:
+    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.1) 0px 2px 4px;
 }
 
 .prose img:hover {
-  box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px, rgba(15, 15, 15, 0.2) 0px 3px 9px;
+  box-shadow:
+    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.2) 0px 3px 9px;
 }
 
 .prose hr {
@@ -581,17 +590,48 @@ textarea:focus {
 
 /* Table Styles */
 .prose table {
-  @apply w-full border-collapse my-3;
+  @apply w-full my-3;
+  border-collapse: collapse;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stone-table {
+  @apply w-full my-3;
+  border-collapse: collapse;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stone-table-header,
+.stone-table-cell {
+  @apply border border-border px-3 py-1.5 align-top;
+  font-size: 0.95em;
+  color: hsl(var(--foreground) / 0.9);
+  background-color: hsl(var(--card));
+}
+
+.stone-table-header {
+  @apply bg-muted font-semibold;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9em;
 }
 
 .prose table td,
 .prose table th {
-  @apply border border-gray-300 dark:border-gray-600 px-3 py-1.5;
+  @apply border border-border px-3 py-1.5 align-top;
   font-size: 0.95em;
+  color: hsl(var(--foreground) / 0.9);
+  background-color: hsl(var(--card));
 }
 
 .prose table th {
-  @apply bg-gray-100 dark:bg-gray-800 font-semibold;
+  @apply bg-muted font-semibold;
+  color: hsl(var(--muted-foreground));
   font-size: 0.9em;
 }
 
@@ -717,7 +757,7 @@ textarea:focus {
   color: hsl(var(--muted-foreground));
 }
 
-/* Mermaid Diagram Styles - GitHub/Notion-like Integration */
+/* Mermaid Diagram Styles - Excalidraw-inspired */
 .mermaid-preview {
   background: hsl(var(--background));
   padding: 1.5rem;
@@ -728,50 +768,146 @@ textarea:focus {
   height: auto;
   display: block;
   margin: 0 auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08));
 }
 
-/* Mermaid diagram text styling */
+/* Excalidraw-style rounded shapes */
+.mermaid-preview svg .node rect {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+.mermaid-preview svg .node circle,
+.mermaid-preview svg .node ellipse {
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+.mermaid-preview svg .node polygon {
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+/* Mermaid diagram text styling - Excalidraw feel */
 .mermaid-preview .nodeLabel,
 .mermaid-preview .edgeLabel {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
+  font-family:
+    ui-rounded,
+    'SF Pro Rounded',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Softer edge lines */
+.mermaid-preview svg .edgePath path {
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg .edgePath marker path {
+  stroke-width: 1.5 !important;
+}
+
+/* StateDiagram-v2 tweaks */
+.mermaid-preview svg g[class*='state'] rect {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg g[class*='state'] path {
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg .transition path {
+  stroke-width: 2.5 !important;
 }
 
 /* Dark mode adjustments for Mermaid */
 .dark .mermaid-preview svg {
-  filter: brightness(0.9) contrast(1.1);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) brightness(0.95);
 }
 
 .dark .mermaid-preview .nodeLabel,
 .dark .mermaid-preview .edgeLabel {
-  color: hsl(var(--foreground));
+  color: #e2e8f0;
 }
 
-/* Mermaid hover effects */
+/* Excalidraw-style hover effects */
 .mermaid-preview svg .node rect,
 .mermaid-preview svg .node circle,
 .mermaid-preview svg .node ellipse,
 .mermaid-preview svg .node polygon {
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .mermaid-preview svg .node:hover rect,
 .mermaid-preview svg .node:hover circle,
 .mermaid-preview svg .node:hover ellipse,
 .mermaid-preview svg .node:hover polygon {
-  filter: brightness(0.95);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12)) brightness(1.02);
+  transform: translateY(-1px);
+}
+
+/* Add subtle background grid effect (optional, Excalidraw-like) */
+.mermaid-preview {
+  background-color: hsl(var(--card) / 0.65);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
+}
+
+.dark .mermaid-preview {
+  background-color: hsl(var(--background) / 0.45);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
 }
 
 /* Mermaid code editor in edit mode */
-.code-block-wrapper[data-language="mermaid"] pre {
+.code-block-wrapper[data-language='mermaid'] pre {
   min-height: 200px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
 
-.code-block-wrapper[data-language="mermaid"] code {
+.code-block-wrapper[data-language='mermaid'] code {
   display: block;
   white-space: pre;
   font-size: 14px;
   line-height: 1.7;
   color: hsl(var(--code-text));
+}
+
+/* Use Patrick Hand handwriting font for all Mermaid diagrams */
+.mermaid-preview,
+.mermaid-preview svg text,
+.mermaid-preview .nodeLabel,
+.mermaid-preview .edgeLabel,
+.mermaid-preview .label,
+.mermaid-preview .label text {
+  font-family:
+    'Patrick Hand', 'Bradley Hand', 'Noteworthy', 'Chalkboard SE', 'Segoe Print', cursive !important;
+}
+
+.mermaid-preview svg path,
+.mermaid-preview svg line,
+.mermaid-preview svg polyline,
+.mermaid-preview svg polygon,
+.mermaid-preview svg rect,
+.mermaid-preview svg circle,
+.mermaid-preview svg ellipse {
+  stroke-width: 1.5px !important;
 }

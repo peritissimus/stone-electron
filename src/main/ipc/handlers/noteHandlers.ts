@@ -206,15 +206,9 @@ export function registerNoteHandlers() {
         },
       ) => {
         let notes;
-        try {
-          const workspace = await repos.workspace.getActive();
-          if (workspace) {
-            await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-            await repos.note.syncWithFileSystem(workspace.id);
-          }
-        } catch (syncError) {
-          logger.warn('[IPC][notes:getAll] sync error', syncError);
-        }
+        // Note: We no longer run a full sync here. The FileWatcherService
+        // maintains DB <-> filesystem alignment for add/unlink events.
+        // Running sync on every list fetch caused redundant scans and log spam.
         // Log filters
         logger.info('[IPC][notes:getAll] request', {
           notebookId: request.notebookId,

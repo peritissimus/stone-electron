@@ -29,6 +29,7 @@
     "fs:scan": "tsx scripts/fs-scan-only.ts"
   },
   "dependencies": {
+    "@fontsource/patrick-hand": "^5.2.8",
     "@libsql/client": "^0.15.15",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -56,6 +57,10 @@
     "@tiptap/extension-image": "^2.26.4",
     "@tiptap/extension-link": "^2.26.4",
     "@tiptap/extension-placeholder": "^2.27.1",
+    "@tiptap/extension-table": "^2.27.1",
+    "@tiptap/extension-table-cell": "^2.27.1",
+    "@tiptap/extension-table-header": "^2.27.1",
+    "@tiptap/extension-table-row": "^2.27.1",
     "@tiptap/extension-task-item": "^2.27.1",
     "@tiptap/extension-task-list": "^2.27.1",
     "@tiptap/pm": "^2.27.1",
@@ -75,6 +80,7 @@
     "electron-store": "^8.0.0",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
+    "jsdom": "^27.1.0",
     "lowlight": "^2.9.0",
     "lucide-react": "^0.548.0",
     "markdown-it": "^13.0.2",
@@ -91,12 +97,14 @@
     "tailwindcss": "^3.3.6",
     "tippy.js": "^6.3.7",
     "turndown": "^7.2.2",
+    "turndown-plugin-gfm": "^1.0.2",
     "vectra": "^0.3.0",
     "zod": "^3.22.4",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",

@@ -11,6 +11,10 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
+import Table from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
 import { lowlight } from 'lowlight';
 import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid';
 
@@ -105,6 +109,24 @@ export function useTipTapEditor() {
           class: 'task-item',
         },
         nested: true,
+      }),
+      Table.configure({
+        resizable: false,
+        allowTableNodeSelection: true,
+        HTMLAttributes: {
+          class: 'stone-table',
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: 'stone-table-header',
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: 'stone-table-cell',
+        },
       }),
       Placeholder.configure({
         placeholder: 'Type / for commands, or start writing...',

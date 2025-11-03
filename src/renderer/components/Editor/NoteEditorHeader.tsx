@@ -1,7 +1,7 @@
 /**
  * Note Editor Header Component
  */
-import { Star, PushPin, Archive, DotsThreeVertical, Check, Trash } from 'phosphor-react';
+import { Star, PushPin, Archive, DotsThreeVertical, Check, Trash, FloppyDisk } from 'phosphor-react';
 import { Input } from '@renderer/components/ui/input';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
@@ -23,6 +23,8 @@ export interface NoteEditorHeaderProps {
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onDelete: () => void;
+  showSave?: boolean;
+  onSave?: () => void;
 }
 
 export function NoteEditorHeader({
@@ -35,6 +37,8 @@ export function NoteEditorHeader({
   onTogglePin,
   onToggleArchive,
   onDelete,
+  showSave = false,
+  onSave,
 }: NoteEditorHeaderProps) {
   return (
     <div className={cn("px-4 border-b border-border flex-shrink-0 bg-card flex items-center gap-3",sizeHeightClasses['spacious'])}>
@@ -49,6 +53,14 @@ export function NoteEditorHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {showSave && (
+          <IconButton
+            size="normal"
+            icon={<FloppyDisk size={16} />}
+            tooltip="Save changes"
+            onClick={onSave}
+          />
+        )}
         <div className="flex items-center justify-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

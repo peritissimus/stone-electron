@@ -23,6 +23,11 @@ import {
   TextItalic,
   TextStrikethrough,
   CaretDown,
+  ArrowLineUp,
+  ArrowLineDown,
+  ArrowLineLeft,
+  ArrowLineRight,
+  Trash,
 } from 'phosphor-react';
 import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 import {
@@ -80,6 +85,9 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       editor.commands.updateAttributes('codeBlock', { language });
     }
   };
+
+  const isInTable =
+    editor.isActive('table') || editor.isActive('tableRow') || editor.isActive('tableCell');
 
   return (
     <div
@@ -248,6 +256,62 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
           <Minus size={14} />
         </ToolbarButton>
       </div>
+
+      {isInTable && (
+        <>
+          <ToolbarDivider size="sm" />
+          <div className="flex items-center gap-0.5 mr-2">
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().addRowBefore().run()}
+              disabled={!editor.can().chain().focus().addRowBefore().run()}
+              tooltip="Insert row above"
+            >
+              <ArrowLineUp size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().addRowAfter().run()}
+              disabled={!editor.can().chain().focus().addRowAfter().run()}
+              tooltip="Insert row below"
+            >
+              <ArrowLineDown size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().addColumnBefore().run()}
+              disabled={!editor.can().chain().focus().addColumnBefore().run()}
+              tooltip="Insert column before"
+            >
+              <ArrowLineLeft size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().addColumnAfter().run()}
+              disabled={!editor.can().chain().focus().addColumnAfter().run()}
+              tooltip="Insert column after"
+            >
+              <ArrowLineRight size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().deleteRow().run()}
+              disabled={!editor.can().chain().focus().deleteRow().run()}
+              tooltip="Delete row"
+            >
+              <Trash size={14} />
+            </ToolbarButton>
+            <ToolbarButton
+              size="compact"
+              onClick={() => editor.chain().focus().deleteColumn().run()}
+              disabled={!editor.can().chain().focus().deleteColumn().run()}
+              tooltip="Delete column"
+            >
+              <Trash size={14} />
+            </ToolbarButton>
+          </div>
+        </>
+      )}
 
       <ToolbarDivider />
 

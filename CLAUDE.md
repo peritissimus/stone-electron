@@ -409,11 +409,27 @@ graph TD
 
 **Design:**
 - Seamlessly integrated into code blocks
-- Custom theme matching app's primary blue (HSL 211, 100%, 50%)
+- Theme derives from design tokens (CSS variables)
 - Clean borders and spacing consistent with Notion
 - Automatic dark mode support
 - Hover effects on diagram nodes
 - Code remains visible for easy editing
+
+Notes on theming:
+- Mermaid theme variables are computed from `--background`, `--foreground`, `--primary`, `--accent`, `--muted`, `--border`, `--card`.
+- Update tokens in `src/renderer/index.css` to adjust colors app‑wide; diagrams pick them up automatically.
+- See `src/renderer/components/Editor/CodeBlockComponent.tsx:20` for `initializeMermaid()` that maps tokens to Mermaid `themeVariables`.
+
+State diagram font:
+- State diagrams (`stateDiagram`, `stateDiagram-v2`) use a handwriting font stack preferring `Patrick Hand` with macOS fallbacks (`Bradley Hand`, `Noteworthy`, `Chalkboard SE`).
+- We bundle Patrick Hand via `@fontsource/patrick-hand` (imported in `src/renderer/main.tsx:8`).
+- Update or swap the font by adjusting that import; Mermaid’s override lives in `initializeMermaid()`.
+
+### Tables
+
+- TipTap table extensions are enabled (Table, TableRow, TableHeader, TableCell) so pasted Markdown tables render and remain editable.
+- Styling lives in `src/renderer/index.css` (`.stone-table*` classes) to keep cells on-brand.
+- Markdown↔HTML conversion uses Turndown with GFM support, so tables survive round-trips through the file system.
 
 ### Code Block Support
 
@@ -619,3 +635,18 @@ pnpm  typecheck         # Check for TypeScript errors
 - `notes:get` - Returns metadata only (no content)
 - `notes:getContent` - Returns content from file (lazy load)
 - `notes:update` - Accepts content, writes to file only (not DB)
+### File Watcher and Sync Behavior
+
+To reduce redundant scans and log noise during autosave, the sync flow is adjusted:
+
+- The file watcher only schedules a full workspace sync for structural changes (file add/unlink). Pure content edits (change events from autosave) do not trigger a sync.
+- `notes:getAll` no longer performs a full sync on each call; it simply queries the database. The watcher maintains DB↔filesystem alignment.
+- Use `workspaces:sync` to trigger a manual integrity pass when needed (e.g., after bulk external changes), and initial sync still runs on startup.
+
+This preserves correctness (files are the source of truth; DB stores metadata) while avoiding unnecessary rescans on frequent content writes.
+
+### Editor Saving Behavior
+
+- Autosave for editor content is disabled. The editor now shows a Save button in the note header when content changes are detected.
+- Clicking Save converts the current editor document to Markdown and writes it to the backing file via `notes:update`.
+- Title edits continue to persist promptly with a short debounce, so renaming a note still updates the filename and metadata without requiring a manual save.
