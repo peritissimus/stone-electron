@@ -21,8 +21,8 @@ export function NoteEditorContent({ editor, isLoading }: NoteEditorContentProps)
           </div>
         </div>
       )}
-      <div className="max-w-[800px] mx-auto px-8 py-6">
-        <div className="min-h-[calc(100vh-150px)]">
+      <div className="max-w-[900px] mx-auto px-16 py-12">
+        <div className="min-h-[calc(100vh-200px)]">
           <EditorContent
             editor={editor}
             className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-none"

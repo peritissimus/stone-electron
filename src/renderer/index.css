@@ -4,34 +4,34 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Root CSS Variables - macOS Inspired Light Theme */
+/* Root CSS Variables - Notion-like Light Theme */
 :root {
-  --border: 0 0% 85%;
-  --input: 0 0% 92%;
-  --ring: 0 0% 85%;
-  --background: 0 0% 96.5%;
-  --foreground: 0 0% 15%;
-  --sidebar: 0 0% 90%;
+  --border: 0 0% 90%;
+  --input: 0 0% 96%;
+  --ring: 0 0% 80%;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 12%;
+  --sidebar: 0 0% 98%;
   --primary: 211 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 15%;
+  --secondary: 0 0% 97%;
+  --secondary-foreground: 0 0% 12%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  --accent: 211 100% 96%;
+  --muted: 0 0% 97%;
+  --muted-foreground: 0 0% 50%;
+  --accent: 211 100% 97%;
   --accent-foreground: 211 100% 50%;
   --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 15%;
+  --popover-foreground: 0 0% 12%;
   --card: 0 0% 100%;
-  --card-foreground: 0 0% 15%;
+  --card-foreground: 0 0% 12%;
 
-  --radius: 10px;
+  --radius: 6px;
 
   /* Code Syntax Colors - Light Theme */
-  --code-bg: 0 0% 98%;
-  --code-text: 0 0% 20%;
+  --code-bg: 0 0% 97%;
+  --code-text: 0 0% 18%;
   --code-comment: 0 0% 55%;
   --code-keyword: 262 60% 50%;
   --code-string: 142 60% 40%;
@@ -46,32 +46,32 @@
   --code-property: 262 50% 50%;
 }
 
-/* Dark Mode Colors - macOS Inspired Dark Theme */
+/* Dark Mode Colors - Notion-like Dark Theme */
 .dark {
-  --border: 0 0% 20%;
-  --input: 0 0% 20%;
+  --border: 0 0% 22%;
+  --input: 0 0% 24%;
   --ring: 211 100% 60%;
-  --background: 0 0% 12%;
-  --foreground: 0 0% 90%;
-  --sidebar: 0 0% 16%;
+  --background: 0 0% 11%;
+  --foreground: 0 0% 92%;
+  --sidebar: 0 0% 15%;
   --primary: 211 100% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 18%;
-  --secondary-foreground: 0 0% 90%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 92%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 18%;
+  --muted: 0 0% 20%;
   --muted-foreground: 0 0% 60%;
   --accent: 211 100% 20%;
   --accent-foreground: 211 100% 60%;
-  --popover: 0 0% 14%;
-  --popover-foreground: 0 0% 90%;
-  --card: 0 0% 14%;
-  --card-foreground: 0 0% 90%;
+  --popover: 0 0% 15%;
+  --popover-foreground: 0 0% 92%;
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 92%;
 
   /* Code Syntax Colors - Dark Theme */
-  --code-bg: 0 0% 10%;
-  --code-text: 0 0% 88%;
+  --code-bg: 0 0% 14%;
+  --code-text: 0 0% 90%;
   --code-comment: 0 0% 50%;
   --code-keyword: 262 70% 70%;
   --code-string: 142 50% 60%;
@@ -88,30 +88,30 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 22%;
+    --input: 0 0% 24%;
     --ring: 211 100% 60%;
-    --background: 0 0% 12%;
-    --foreground: 0 0% 90%;
-    --sidebar: 0 0% 16%;
+    --background: 0 0% 11%;
+    --foreground: 0 0% 92%;
+    --sidebar: 0 0% 15%;
     --primary: 211 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 92%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --muted: 0 0% 18%;
+    --muted: 0 0% 20%;
     --muted-foreground: 0 0% 60%;
     --accent: 211 100% 20%;
     --accent-foreground: 211 100% 60%;
-    --popover: 0 0% 14%;
-    --popover-foreground: 0 0% 90%;
-    --card: 0 0% 14%;
-    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 92%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 92%;
 
     /* Code Syntax Colors - Dark Theme */
-    --code-bg: 0 0% 10%;
-    --code-text: 0 0% 88%;
+    --code-bg: 0 0% 14%;
+    --code-text: 0 0% 90%;
     --code-comment: 0 0% 50%;
     --code-keyword: 262 70% 70%;
     --code-string: 142 50% 60%;
@@ -152,13 +152,14 @@ body {
   line-height: 1.5;
 }
 
-/* Better font for editor content */
+/* Better font for editor content - Notion style */
 .prose {
   font-family:
-    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Arial', sans-serif;
-  font-size: 14px;
-  line-height: 1.2;
-  letter-spacing: -0.011em;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  letter-spacing: -0.003em;
+  color: hsl(var(--foreground));
 }
 
 .dark body {
@@ -238,12 +239,46 @@ textarea:focus {
   transition: opacity 0.15s ease;
 }
 
+/* Notion-like block hover states */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6,
+.ProseMirror ul,
+.ProseMirror ol,
+.ProseMirror blockquote {
+  position: relative;
+  transition: background-color 0.1s ease;
+  padding: 3px 2px;
+  margin-left: -2px;
+  margin-right: -2px;
+  border-radius: 3px;
+}
+
+.ProseMirror p:hover,
+.ProseMirror h1:hover,
+.ProseMirror h2:hover,
+.ProseMirror h3:hover,
+.ProseMirror h4:hover,
+.ProseMirror h5:hover,
+.ProseMirror h6:hover,
+.ProseMirror ul:hover,
+.ProseMirror ol:hover,
+.ProseMirror blockquote:hover {
+  background-color: hsl(var(--muted) / 0.3);
+}
+
 .ProseMirror p.is-editor-empty:first-child::before {
-  @apply text-gray-400 dark:text-gray-500;
-  content: attr(data-placeholder);
+  content: 'Type / for commands, or start writing...';
+  color: hsl(var(--muted-foreground) / 0.5);
   float: left;
   height: 0;
   pointer-events: none;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 /* Prose Styling for Editor Content */
@@ -252,37 +287,50 @@ textarea:focus {
 }
 
 .prose h1 {
-  @apply text-3xl font-bold mb-3 mt-6 text-foreground;
-  letter-spacing: -0.02em;
+  @apply text-5xl font-bold mb-2 mt-12 text-foreground;
+  letter-spacing: -0.022em;
   line-height: 1.2;
+  font-weight: 700;
 }
 
 .prose h2 {
-  @apply text-2xl font-bold mb-2.5 mt-5 text-foreground;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
+  @apply text-3xl font-bold mb-2 mt-10 text-foreground;
+  letter-spacing: -0.019em;
+  line-height: 1.3;
+  font-weight: 700;
 }
 
 .prose h3 {
-  @apply text-xl font-bold mb-2 mt-4 text-foreground;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
+  @apply text-2xl font-bold mb-1.5 mt-8 text-foreground;
+  letter-spacing: -0.014em;
+  line-height: 1.35;
+  font-weight: 600;
 }
 
 .prose h4 {
-  @apply text-lg font-bold mb-2 mt-3.5 text-foreground;
-  letter-spacing: -0.008em;
-  line-height: 1.35;
+  @apply text-xl font-semibold mb-1.5 mt-6 text-foreground;
+  letter-spacing: -0.011em;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .prose h5,
 .prose h6 {
-  @apply text-base font-bold mb-1.5 mt-3 text-foreground;
-  line-height: 1.4;
+  @apply text-lg font-semibold mb-1 mt-5 text-foreground;
+  line-height: 1.5;
+  font-weight: 600;
 }
 
 .prose p {
-  @apply mb-3 text-foreground/90;
+  @apply mb-2 text-foreground;
+  line-height: 1.65;
+  font-size: 16px;
+  cursor: text;
+}
+
+.prose p:empty::before {
+  content: ' ';
+  display: inline-block;
 }
 
 .prose strong,
@@ -304,7 +352,8 @@ textarea:focus {
 
 .prose ul,
 .prose ol {
-  @apply mb-3 pl-5;
+  @apply mb-2 pl-6;
+  line-height: 1.65;
 }
 
 .prose ul {
@@ -316,13 +365,16 @@ textarea:focus {
 }
 
 .prose li {
-  @apply mb-0;
-  line-height: 1.5;
+  @apply mb-1;
+  line-height: 1.65;
+  font-size: 16px;
 }
 
 .prose blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-3 italic my-3 text-muted-foreground;
-  font-size: 0.97em;
+  @apply border-l-4 border-gray-300 dark:border-gray-700 pl-4 italic my-4;
+  font-size: 16px;
+  line-height: 1.65;
+  color: hsl(var(--foreground) / 0.7);
 }
 
 /* Highlight mark */
@@ -332,37 +384,47 @@ textarea:focus {
   @apply px-1 rounded;
 }
 
-/* Inline code */
+/* Inline code - Notion style */
 .prose code {
-  background-color: hsl(var(--code-bg));
-  color: hsl(var(--code-keyword));
-  @apply px-1.5 py-0.5 rounded font-mono;
-  font-size: 0.9em;
-  font-weight: 450;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground) / 0.85);
+  @apply px-2 py-1 rounded font-mono;
+  font-size: 0.875em;
+  font-weight: 500;
+  border: 1px solid hsl(var(--border) / 0.5);
 }
 
-/* Code blocks */
+/* Code blocks - Notion style */
 .prose pre {
   background-color: hsl(var(--code-bg));
-  border: 1px solid hsl(var(--border));
-  @apply p-4 rounded-xl overflow-x-auto my-4 shadow-lg;
+  border: 1px solid hsl(var(--border) / 0.5);
+  @apply p-6 rounded-lg overflow-x-auto my-3;
 }
 
 .prose pre code {
-  @apply bg-transparent p-0;
-  font-size: 13px;
+  @apply bg-transparent p-0 border-0;
+  font-size: 14px;
+  line-height: 1.7;
   color: hsl(var(--code-text));
 }
 
-/* Code block wrapper for syntax highlighting */
+/* Code block wrapper for syntax highlighting - Notion style */
 .code-block-wrapper {
-  background-color: hsl(var(--code-bg));
-  border: 1px solid hsl(var(--border));
-  @apply p-4 rounded-xl overflow-x-auto my-4 shadow-lg;
+  @apply relative;
 }
 
 .code-block-wrapper pre {
-  @apply bg-transparent p-0 m-0 border-0 shadow-none;
+  background-color: hsl(var(--code-bg));
+  border: none;
+  @apply p-6 m-0 overflow-x-auto;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.code-block-wrapper pre code {
+  @apply bg-transparent p-0 border-0;
+  color: hsl(var(--code-text));
 }
 
 /* Syntax highlighting colors - Custom theme matching app colors */
@@ -478,23 +540,26 @@ textarea:focus {
 }
 
 .prose a {
-  @apply text-blue-600 dark:text-blue-400 underline decoration-blue-400/50 hover:text-blue-800 dark:hover:text-blue-300;
+  @apply text-blue-600 dark:text-blue-400 no-underline hover:underline;
   transition: color 0.15s ease, text-decoration-color 0.15s ease;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
 }
 
 .prose img {
-  @apply rounded-xl my-4 shadow-md;
+  @apply rounded-lg my-4;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px, rgba(15, 15, 15, 0.1) 0px 2px 4px;
 }
 
 .prose img:hover {
-  transform: scale(1.01);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+  box-shadow: rgba(15, 15, 15, 0.1) 0px 0px 0px 1px, rgba(15, 15, 15, 0.2) 0px 3px 9px;
 }
 
 .prose hr {
-  @apply border-slate-300 dark:border-slate-700 my-5;
+  @apply border-border my-6;
+  border-top-width: 1px;
 }
 
 /* Task List Styles */
@@ -530,10 +595,11 @@ textarea:focus {
   font-size: 0.9em;
 }
 
-/* Text formatting */
+/* Text formatting - Notion style */
 .prose strong {
   @apply font-semibold text-foreground;
   font-weight: 600;
+  letter-spacing: -0.003em;
 }
 
 .prose em {
@@ -555,8 +621,157 @@ textarea:focus {
   @apply mt-1 mb-1;
 }
 
-/* Better text selection */
+/* Better text selection - Notion style */
 .prose ::selection {
-  background-color: hsl(var(--primary) / 0.2);
+  background-color: hsl(var(--primary) / 0.15);
   color: inherit;
+}
+
+/* Notion-like focus and cursor styles */
+.ProseMirror-focused {
+  outline: none;
+}
+
+.ProseMirror {
+  caret-color: hsl(var(--foreground));
+}
+
+/* Empty lines should still be clickable */
+.ProseMirror p:empty,
+.ProseMirror h1:empty,
+.ProseMirror h2:empty,
+.ProseMirror h3:empty {
+  min-height: 1.5em;
+}
+
+/* Tippy.js styles for slash command menu */
+.tippy-box[data-theme~='slash-command'] {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.tippy-box[data-theme~='slash-command'] .tippy-content {
+  padding: 0;
+}
+
+.tippy-box[data-theme~='slash-command'] .tippy-arrow {
+  display: none;
+}
+
+/* Task list styles - Notion-like checkboxes */
+.task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.task-item > label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 0.15rem;
+}
+
+.task-item > label > input[type='checkbox'] {
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 0.25rem;
+  border: 1.5px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  cursor: pointer;
+  margin: 0;
+  appearance: none;
+  transition: all 0.15s ease;
+}
+
+.task-item > label > input[type='checkbox']:hover {
+  border-color: hsl(var(--primary));
+  background-color: hsl(var(--accent));
+}
+
+.task-item > label > input[type='checkbox']:checked {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+  background-size: 80%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.task-item > div {
+  flex: 1;
+  padding-top: 0.15rem;
+}
+
+.task-item[data-checked='true'] > div {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Mermaid Diagram Styles - GitHub/Notion-like Integration */
+.mermaid-preview {
+  background: hsl(var(--background));
+  padding: 1.5rem;
+}
+
+.mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Mermaid diagram text styling */
+.mermaid-preview .nodeLabel,
+.mermaid-preview .edgeLabel {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+/* Dark mode adjustments for Mermaid */
+.dark .mermaid-preview svg {
+  filter: brightness(0.9) contrast(1.1);
+}
+
+.dark .mermaid-preview .nodeLabel,
+.dark .mermaid-preview .edgeLabel {
+  color: hsl(var(--foreground));
+}
+
+/* Mermaid hover effects */
+.mermaid-preview svg .node rect,
+.mermaid-preview svg .node circle,
+.mermaid-preview svg .node ellipse,
+.mermaid-preview svg .node polygon {
+  transition: all 0.2s ease;
+}
+
+.mermaid-preview svg .node:hover rect,
+.mermaid-preview svg .node:hover circle,
+.mermaid-preview svg .node:hover ellipse,
+.mermaid-preview svg .node:hover polygon {
+  filter: brightness(0.95);
+}
+
+/* Mermaid code editor in edit mode */
+.code-block-wrapper[data-language="mermaid"] pre {
+  min-height: 200px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.code-block-wrapper[data-language="mermaid"] code {
+  display: block;
+  white-space: pre;
+  font-size: 14px;
+  line-height: 1.7;
+  color: hsl(var(--code-text));
 }

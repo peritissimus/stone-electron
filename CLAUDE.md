@@ -89,12 +89,13 @@ stone/
 - **Framework**: Electron + React + TypeScript
 - **UI**:
   - shadcn/ui (Radix UI primitives)
-  - Tailwind CSS (macOS-inspired design)
+  - Tailwind CSS (Notion-inspired design)
   - Lucide icons
 - **Editor**: TipTap (rich text editor) with syntax highlighting
   - CodeBlockLowlight for code blocks
   - Lowlight (highlight.js) for syntax highlighting
   - Supports 19+ programming languages
+  - Notion-like design and interactions
 - **Database**: better-sqlite3
 - **State**: Zustand
 - **Build**: Vite
@@ -112,12 +113,14 @@ TypeScript and Vite are configured with these aliases:
 
 ## Design System
 
-The app follows macOS design guidelines with:
+The app follows Notion's design principles with:
 
-- **Font**: SF Pro Display/Text (system fonts)
-- **Colors**: Neutral grays with blue accent (#007AFF)
-- **Border radius**: 10px (macOS-style)
-- **Font size**: 13px base (macOS standard)
+- **Font**: System fonts (SF Pro / Segoe UI / Helvetica Neue)
+- **Colors**: Clean whites and subtle grays with blue accent
+- **Border radius**: 6px (Notion-style)
+- **Font size**: 16px base (editor), 13px (UI)
+- **Layout**: Wide, spacious editor (900px max-width)
+- **Interactions**: Hover states on blocks, smooth transitions
 
 ### CSS Variables
 
@@ -337,6 +340,81 @@ For detailed information, see:
 
 ## Editor Features
 
+### Notion-like Block Options & Slash Commands
+
+The editor includes Notion-style block interactions:
+
+**Slash Commands:**
+- Type `/` anywhere to open the command menu
+- Search by name or keyword (e.g., "h1", "list", "code")
+- Navigate with arrow keys, select with Enter
+- Available commands:
+  - `/h1`, `/h2`, `/h3` - Headings
+  - `/bullet`, `/number` - Lists
+  - `/todo`, `/task` - Checklist
+  - `/code` - Code block
+  - `/quote` - Blockquote
+  - `/divider` - Horizontal rule
+
+**Block Options Menu:**
+- Hover over any block to see the `⋮⋮` drag handle and `+` button
+- Click `+` to add a new block type
+- Drag the `⋮⋮` handle to reorder blocks (Notion-style)
+- All blocks have hover states for easy interaction
+
+**To-do Lists:**
+- Create with `/todo` or the block menu
+- Click checkboxes to mark complete
+- Completed items show strikethrough
+- Notion-style checkbox design
+
+### Mermaid Diagram Support
+
+The editor supports **Mermaid diagrams** with **GitHub/Notion-style rendering** - just use a code block with language set to "mermaid":
+
+**Features:**
+- **Automatic rendering** - code blocks with `mermaid` language auto-render diagrams
+- **Live preview** - diagram updates as you type (300ms debounce)
+- **Toggle view** - switch between diagram view and code editor
+- **Error handling** - helpful error messages with syntax issues
+- **Language selector** - easy dropdown to switch to/from mermaid
+
+**Usage (GitHub/Notion Style):**
+1. Type `/code` or use the block menu to insert a code block
+2. Select **"Mermaid"** from the language dropdown (top-right of code block)
+3. Type your Mermaid diagram syntax in the code editor
+4. The diagram automatically renders - click **"Edit Code"** to modify
+5. Toggle between "Edit Code" and "View Diagram" as needed
+
+**Supported Diagram Types:**
+- Flowcharts (`graph`, `flowchart`)
+- Sequence diagrams (`sequenceDiagram`)
+- Class diagrams (`classDiagram`)
+- State diagrams (`stateDiagram`)
+- ER diagrams (`erDiagram`)
+- Gantt charts (`gantt`)
+- Pie charts (`pie`)
+- Git graphs (`gitGraph`)
+- Timeline, Kanban, Mindmap, and many more...
+
+**Example - Just create a code block and set language to "mermaid":**
+```
+graph TD
+  A[Start] --> B{Decision}
+  B -->|Yes| C[Action 1]
+  B -->|No| D[Action 2]
+  C --> E[End]
+  D --> E
+```
+
+**Design:**
+- Seamlessly integrated into code blocks
+- Custom theme matching app's primary blue (HSL 211, 100%, 50%)
+- Clean borders and spacing consistent with Notion
+- Automatic dark mode support
+- Hover effects on diagram nodes
+- Code remains visible for easy editing
+
 ### Code Block Support
 
 The note editor includes enhanced code block support with syntax highlighting:
@@ -350,7 +428,7 @@ The note editor includes enhanced code block support with syntax highlighting:
 - CSS, Markdown
 
 **Usage:**
-1. Click the "Code Block" button in the toolbar
+1. Type `/code` or click the "Code Block" button in toolbar
 2. A language selector appears when in a code block
 3. Select your language from the dropdown
 4. Code is automatically syntax highlighted
@@ -388,41 +466,101 @@ All colors use HSL CSS variables (`--code-*`) that automatically adapt to light/
 - Consistent with app's color system in both themes
 - Inline code uses keyword color on subtle background
 
-### Typography
+### Typography - Notion Style
 
-The editor uses Apple's SF Pro Text font with:
-- **14px base font size** - optimized for screen reading
-- **1.6 line height** - tighter, more comfortable spacing
-- **Letter spacing -0.011em** - improved density
-- **Improved heading hierarchy:**
-  - H1: 3xl (24px) - line-height 1.2
-  - H2: 2xl (20px) - line-height 1.25
-  - H3: xl (18px) - line-height 1.3
-  - H4: lg (16px) - line-height 1.35
-  - H5/H6: base (14px) - line-height 1.4
-- **SF Mono** for all code elements (13px, line-height 1.5)
-- **Reduced spacing:**
-  - Paragraphs: 3 units bottom margin (was 5)
-  - Headings: Tighter top/bottom margins
-  - Lists: Minimal item spacing (0.5 units)
-  - Code blocks: 4 units padding (was 5)
-  - Images: 4 units margin (was 6)
+The editor uses a Notion-inspired design with:
+- **16px base font size** - large, comfortable reading
+- **1.65 line height** - spacious, Notion-like spacing
+- **Letter spacing -0.003em** - optimized for readability
+- **Large heading hierarchy:**
+  - H1: 5xl (48px) - line-height 1.2, very prominent
+  - H2: 3xl (30px) - line-height 1.3
+  - H3: 2xl (24px) - line-height 1.35
+  - H4: xl (20px) - line-height 1.4
+  - H5/H6: lg (18px) - line-height 1.5
+- **SF Mono** for all code elements (14px, line-height 1.7)
+- **Spacious layout:**
+  - Paragraphs: 2 units bottom margin
+  - Headings: Large top margins for visual hierarchy
+  - Lists: Proper spacing with 1.65 line-height
+  - Code blocks: 6 units padding, rounded-lg
+  - Wide editor: 900px max-width with 16 units horizontal padding
 
-### Enhanced Features
+### Notion-like Features
 
-- **Smooth transitions** on links, images, and editor state
+- **Block hover states** - subtle background on all block elements
+- **Smooth transitions** on all interactive elements
+- **Clean, minimal design:**
+  - Subtle borders (90% lightness in light mode)
+  - Pure white background (#FFFFFF)
+  - No heavy shadows, just subtle borders
 - **Better text formatting:**
   - Bold text uses semibold (600) weight
   - Strikethrough with 1.5px thickness
-  - Custom text selection color (primary blue at 20% opacity)
+  - Custom text selection color (primary blue at 15% opacity)
 - **Improved inline code:**
-  - 0.9em font size (90% of base)
-  - 450 font weight for subtle emphasis
-  - Keyword color on subtle background
+  - 0.875em font size with subtle border
+  - Muted background matching Notion's style
+  - Proper padding and weight
 - **Polished interactions:**
-  - Links with 2px underline offset
-  - Images scale to 101% on hover with enhanced shadow
-  - Code blocks with proper syntax color contrast
+  - Links show underline only on hover
+  - Images with Notion-style shadows
+  - Empty blocks have min-height for easy clicking
+  - Placeholder text: "Type / for commands, or start writing..."
+  - Slash commands with fuzzy search
+  - Block hover menus with drag handles
+- **Wide, spacious layout:**
+  - 900px max-width (vs typical 800px)
+  - Generous padding (16 units horizontal, 12 units vertical)
+  - Comfortable reading experience
+
+### Extensions Added
+
+The editor now includes these TipTap extensions:
+- `@tiptap/extension-placeholder` - Smart placeholder text
+- `@tiptap/suggestion` - Powers slash commands
+- `@tiptap/extension-task-list` - To-do lists
+- `@tiptap/extension-task-item` - Individual tasks
+- Custom `SlashCommand` extension - Notion-like command palette
+- `tippy.js` - Tooltip positioning for menus
+
+## Code Block & Mermaid Implementation Notes
+
+### Markdown Conversion (HTML ↔ Markdown)
+
+The app uses TurndownService to convert between HTML (editor format) and Markdown (file storage format). For code blocks to preserve their language information:
+
+**Code blocks store language in `data-language` attribute:**
+- `CodeBlockComponent.tsx` adds `data-language={language}` to wrapper divs
+- TurndownService has custom rules to read this attribute
+- When saving: HTML → Markdown conversion preserves ```language fences
+- When loading: Markdown → HTML conversion restores language selector
+
+**Important:** Without the `data-language` attribute, code blocks lose their language on save/load cycles, causing Mermaid diagrams to become plain text.
+
+### Mermaid Auto-Rendering with Toggle
+
+Mermaid diagrams work via language detection in code blocks:
+1. User creates code block (`/code`)
+2. Selects "Mermaid" from language dropdown
+3. `CodeBlockComponent` detects `language === 'mermaid'`
+4. Component shows rendered diagram by default (300ms debounce)
+5. User can toggle "Edit Code" to modify the source
+6. Click "View Diagram" to return to rendered view
+7. On save, HTML → Markdown preserves the language in fence: ```mermaid
+
+**Toggle Implementation:**
+- State managed via `showCode` boolean in component
+- Default view: diagram rendered (showCode = false)
+- Edit mode: code editor visible (showCode = true)
+- Button text changes: "Edit Code" ↔ "View Diagram"
+
+This GitHub/Notion-style approach means:
+- No custom TipTap node required
+- Mermaid code is portable (standard markdown)
+- Works with existing code block infrastructure
+- Easy to switch between languages
+- Clean UX with diagram-first presentation
 
 ## Troubleshooting
 
