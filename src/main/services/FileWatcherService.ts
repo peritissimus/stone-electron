@@ -90,8 +90,11 @@ export class FileWatcherService {
         sendEvent('FILE_DELETED', { workspaceId: workspace.id, path: rel });
       }
 
-      // Debounce a full sync for this workspace
-      this.scheduleSync(workspace.id);
+      // Debounce a full sync for this workspace only for structural changes
+      // Content edits ("change") don't require a full workspace rescan
+      if (kind === 'add' || kind === 'unlink') {
+        this.scheduleSync(workspace.id);
+      }
     };
 
     watcher
@@ -157,4 +160,3 @@ export function getFileWatcherService(): FileWatcherService {
   if (!watcherInstance) watcherInstance = new FileWatcherService();
   return watcherInstance;
 }
-

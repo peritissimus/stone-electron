@@ -4,6 +4,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
+import { jsonToMarkdown } from '../utils/jsonToMarkdown';
 
 export interface UseAutosaveOptions {
   updateNote: (
@@ -43,8 +44,11 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
         clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = null;
         isSavingRef.current = true;
+        const jsonContent = editor.getJSON();
+        const markdownContent = jsonToMarkdown(jsonContent);
+        console.log('Blur autosave JSON->Markdown result:', markdownContent.substring(0, 500));
         // Use silent=true to save without triggering store update/re-render
-        updateNote(noteId, { content: editor.getHTML() }, true)
+        updateNote(noteId, { content: markdownContent }, true)
           .then((result) => {
             if (!result) {
               console.error('Blur autosave failed: updateNote returned falsy result');
@@ -93,8 +97,11 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
         saveTimeoutRef.current = null;
         isSavingRef.current = true;
         try {
+          const jsonContent = editor.getJSON();
+          const markdownContent = jsonToMarkdown(jsonContent);
+          console.log('Autosave JSON->Markdown result:', markdownContent.substring(0, 500));
           // Use silent=true to save without triggering store update/re-render
-          await updateNote(noteId, { content: editor.getHTML() }, true);
+          await updateNote(noteId, { content: markdownContent }, true);
         } catch (error) {
           console.error('Autosave failed:', error);
         } finally {
@@ -144,7 +151,7 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
     [updateNote],
   );
 
-  // Immediate title save (shorter debounce)
+  // Immediate title save (shorter debounce for titles)
   const saveTitle = useCallback(
     async (title: string) => {
       if (!activeNoteId) return;
