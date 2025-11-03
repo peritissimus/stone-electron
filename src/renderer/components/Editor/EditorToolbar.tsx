@@ -84,7 +84,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   return (
     <div
       className={cn(
-        'bg-card/60 px-2 py-1 flex items-center gap-1 flex-wrap border border-border/60 rounded-md shadow-none',
+        'bg-background/95 backdrop-blur-sm px-3 py-2 flex items-center gap-1 flex-wrap border-b border-border/50',
         className,
       )}
     >

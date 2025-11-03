@@ -177,10 +177,57 @@ export class MarkdownService {
       replacement: (content, node, options) => {
         const codeElement = node.firstChild as HTMLElement;
         const className = codeElement.className || '';
-        const language = className.replace('language-', '').replace('code-block', '').trim();
+
+        // Try to extract language from class name
+        let language = className.replace('language-', '').replace('hljs', '').replace('code-block', '').trim();
+
+        // If no language in class, check for data-language attribute on parent wrapper
+        if (!language) {
+          let parent = node.parentElement;
+          while (parent) {
+            const dataLang = parent.getAttribute('data-language');
+            if (dataLang) {
+              language = dataLang;
+              break;
+            }
+            parent = parent.parentElement;
+          }
+        }
 
         const code = codeElement.textContent || '';
         const fence = options.fence || '```';
+
+        return `\n\n${fence}${language}\n${code}\n${fence}\n\n`;
+      },
+    });
+
+    // Handle our custom code block wrapper structure
+    this.turndownService.addRule('customCodeBlockWrapper', {
+      filter: (node): boolean => {
+        return (
+          node.nodeName === 'DIV' &&
+          node.classList &&
+          node.classList.contains('code-block-wrapper')
+        );
+      },
+      replacement: (content, node) => {
+        // Find the pre > code element
+        const preElement = node.querySelector('pre');
+        const codeElement = preElement?.querySelector('code');
+
+        if (!preElement || !codeElement) {
+          return content;
+        }
+
+        // Try to get language from select element or data attribute
+        let language = '';
+        const selectElement = node.querySelector('select') as HTMLSelectElement;
+        if (selectElement && selectElement.value) {
+          language = selectElement.value;
+        }
+
+        const code = codeElement.textContent || '';
+        const fence = '```';
 
         return `\n\n${fence}${language}\n${code}\n${fence}\n\n`;
       },

@@ -8,7 +8,11 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
+import Placeholder from '@tiptap/extension-placeholder';
 import { lowlight } from 'lowlight';
+import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid';
 
 // Import common languages for syntax highlighting
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -29,6 +33,9 @@ import json from 'highlight.js/lib/languages/json';
 import xml from 'highlight.js/lib/languages/xml';
 import css from 'highlight.js/lib/languages/css';
 import markdown from 'highlight.js/lib/languages/markdown';
+
+// Import slash command extension
+import { SlashCommand } from '@renderer/extensions/SlashCommand';
 
 // Register languages with lowlight
 lowlight.registerLanguage('javascript', javascript);
@@ -62,14 +69,17 @@ lowlight.registerLanguage('css', css);
 lowlight.registerLanguage('markdown', markdown);
 lowlight.registerLanguage('md', markdown);
 
+// Note: 'mermaid' language is handled by CodeBlockWithMermaid extension
+// which auto-renders diagrams when language is set to 'mermaid'
+
 export function useTipTapEditor() {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },
-        codeBlock: false, // Disable default code block to use CodeBlockLowlight
+        codeBlock: false, // Disable default code block to use CodeBlockWithMermaid
       }),
-      CodeBlockLowlight.configure({
+      CodeBlockWithMermaid.configure({
         lowlight,
         HTMLAttributes: {
           class: 'code-block-wrapper',
@@ -85,11 +95,29 @@ export function useTipTapEditor() {
       Highlight.configure({
         HTMLAttributes: { class: 'highlight-mark' },
       }),
+      TaskList.configure({
+        HTMLAttributes: {
+          class: 'task-list',
+        },
+      }),
+      TaskItem.configure({
+        HTMLAttributes: {
+          class: 'task-item',
+        },
+        nested: true,
+      }),
+      Placeholder.configure({
+        placeholder: 'Type / for commands, or start writing...',
+        showOnlyWhenEditable: true,
+        showOnlyCurrent: true,
+        includeChildren: true,
+      }),
+      SlashCommand,
     ],
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[300px]',
+        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
       },
     },
   });
