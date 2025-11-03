@@ -2,7 +2,7 @@
  * Editor Toolbar Component
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Editor } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
 import {
@@ -22,16 +22,64 @@ import {
   TextHTwo,
   TextItalic,
   TextStrikethrough,
+  CaretDown,
 } from 'phosphor-react';
 import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/ui/select';
 
 export interface EditorToolbarProps {
   editor: Editor | null;
   className?: string;
 }
 
+const LANGUAGES = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'php', label: 'PHP' },
+  { value: 'swift', label: 'Swift' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'bash', label: 'Bash' },
+  { value: 'json', label: 'JSON' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'plaintext', label: 'Plain Text' },
+];
+
 export function EditorToolbar({ editor, className }: EditorToolbarProps) {
+  const [selectedLanguage, setSelectedLanguage] = useState('javascript');
+
   if (!editor) return null;
+
+  const handleCodeBlockInsert = () => {
+    editor.chain().focus().toggleCodeBlock().run();
+    // Set the language attribute after creating the code block
+    if (editor.isActive('codeBlock')) {
+      editor.commands.updateAttributes('codeBlock', { language: selectedLanguage });
+    }
+  };
+
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language);
+    // If currently in a code block, update its language
+    if (editor.isActive('codeBlock')) {
+      editor.commands.updateAttributes('codeBlock', { language });
+    }
+  };
 
   return (
     <div
@@ -172,12 +220,26 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          onClick={handleCodeBlockInsert}
           active={editor.isActive('codeBlock')}
           tooltip="Code Block"
         >
           <Code size={14} />
         </ToolbarButton>
+        {editor.isActive('codeBlock') && (
+          <Select value={selectedLanguage} onValueChange={handleLanguageChange}>
+            <SelectTrigger className="h-6 w-[110px] text-xs border-border/60 bg-background/50">
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value} className="text-xs">
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <ToolbarButton
           size="compact"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}

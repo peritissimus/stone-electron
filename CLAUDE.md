@@ -91,7 +91,10 @@ stone/
   - shadcn/ui (Radix UI primitives)
   - Tailwind CSS (macOS-inspired design)
   - Lucide icons
-- **Editor**: TipTap (rich text editor)
+- **Editor**: TipTap (rich text editor) with syntax highlighting
+  - CodeBlockLowlight for code blocks
+  - Lowlight (highlight.js) for syntax highlighting
+  - Supports 19+ programming languages
 - **Database**: better-sqlite3
 - **State**: Zustand
 - **Build**: Vite
@@ -331,6 +334,95 @@ For detailed information, see:
 - **COMPOSITES_IMPORTS.md** - Import patterns
 - **REFACTORING_EXAMPLES.md** - Before/after examples
 - **COMPOSITES_CHECKLIST.md** - Developer checklist
+
+## Editor Features
+
+### Code Block Support
+
+The note editor includes enhanced code block support with syntax highlighting:
+
+**Supported Languages:**
+- JavaScript/TypeScript
+- Python, Java, C++, C#
+- Go, Rust, Ruby, PHP
+- Swift, Kotlin, SQL
+- Bash/Shell, JSON, HTML/XML
+- CSS, Markdown
+
+**Usage:**
+1. Click the "Code Block" button in the toolbar
+2. A language selector appears when in a code block
+3. Select your language from the dropdown
+4. Code is automatically syntax highlighted
+
+**Custom Color Scheme:**
+
+The syntax highlighting uses a custom color scheme that integrates with the app's design system:
+
+*Light Theme:*
+- **Background**: Near-white (98% lightness)
+- **Keywords**: Purple (hue 262) - matches app's secondary accent
+- **Strings**: Green (hue 142) - for readability
+- **Numbers**: Orange (hue 28) - warm accent
+- **Functions**: Primary blue (hue 211) - uses app's primary color
+- **Types**: Gold (hue 45) - complements the palette
+- **Operators**: Cyan (hue 180) - subtle distinction
+- **Comments**: Medium gray (55% lightness)
+
+*Dark Theme:*
+- **Background**: Deep dark (10% lightness) - consistent with app background
+- **Keywords**: Light purple (70% lightness)
+- **Strings**: Soft green (60% lightness)
+- **Numbers**: Light orange (65% lightness)
+- **Functions**: Light blue (65% lightness) - uses app's primary color
+- **Types**: Light gold (65% lightness)
+- **Operators**: Light cyan (65% lightness)
+- **Comments**: Medium gray (50% lightness)
+
+All colors use HSL CSS variables (`--code-*`) that automatically adapt to light/dark mode.
+
+**Styling:**
+- Uses SF Mono font family (macOS monospace)
+- Custom theme matching app's neutral + blue design
+- Enhanced readability with proper spacing
+- Consistent with app's color system in both themes
+- Inline code uses keyword color on subtle background
+
+### Typography
+
+The editor uses Apple's SF Pro Text font with:
+- **14px base font size** - optimized for screen reading
+- **1.6 line height** - tighter, more comfortable spacing
+- **Letter spacing -0.011em** - improved density
+- **Improved heading hierarchy:**
+  - H1: 3xl (24px) - line-height 1.2
+  - H2: 2xl (20px) - line-height 1.25
+  - H3: xl (18px) - line-height 1.3
+  - H4: lg (16px) - line-height 1.35
+  - H5/H6: base (14px) - line-height 1.4
+- **SF Mono** for all code elements (13px, line-height 1.5)
+- **Reduced spacing:**
+  - Paragraphs: 3 units bottom margin (was 5)
+  - Headings: Tighter top/bottom margins
+  - Lists: Minimal item spacing (0.5 units)
+  - Code blocks: 4 units padding (was 5)
+  - Images: 4 units margin (was 6)
+
+### Enhanced Features
+
+- **Smooth transitions** on links, images, and editor state
+- **Better text formatting:**
+  - Bold text uses semibold (600) weight
+  - Strikethrough with 1.5px thickness
+  - Custom text selection color (primary blue at 20% opacity)
+- **Improved inline code:**
+  - 0.9em font size (90% of base)
+  - 450 font weight for subtle emphasis
+  - Keyword color on subtle background
+- **Polished interactions:**
+  - Links with 2px underline offset
+  - Images scale to 101% on hover with enhanced shadow
+  - Code blocks with proper syntax color contrast
 
 ## Troubleshooting
 
