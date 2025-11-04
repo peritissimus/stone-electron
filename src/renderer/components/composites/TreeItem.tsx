@@ -7,9 +7,9 @@
 import * as React from 'react';
 import { cn } from '@renderer/lib/utils';
 import { SizeVariant, sizeTextClasses } from './tokens';
-import { Button } from '@renderer/components/ui/button';
-import { Text } from '@renderer/components/ui/text';
-import { ContainerFlex } from '@renderer/components/ui';
+import { Button } from '@renderer/components/base/ui/button';
+import { Text } from '@renderer/components/base/ui/text';
+import { ContainerFlex } from '@renderer/components/base/ui';
 
 export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Size variant */
