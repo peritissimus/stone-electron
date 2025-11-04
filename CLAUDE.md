@@ -1,5 +1,56 @@
 # Stone - Development Guide for Claude
 
+## Release Notes 0.1.4
+
+Date: 2025-11-03
+
+Highlights
+- Content architecture finalized: files are the source of truth; database stores metadata only. Migration drops `notes.content`.
+- TipTap editor integrated with autosave, content loading, and improved header/toolbar styling.
+- File system sync: workspaces sync with disk on startup; markdown renames emit repository events.
+- UI/UX polish across editor and layout with macOS-style spacing and tokens.
+- Logger adoption across scripts/handlers (replaces console logging).
+
+New
+- Editor
+  - Note Editor components for content, header, and empty state.
+  - Autosave after inactivity; silent saves write to file without store churn.
+  - Content loading via new hooks; HTML persisted to markdown files on disk.
+- IPC
+  - `notes:getContent` channel to lazily load content from file.
+  - Refactor: centralized all channel registration; array-based `all_channels` for consistency.
+- File System / Repositories
+  - Workspace sync on startup scans folders and aligns DB metadata.
+  - Emits events on markdown file rename to keep references fresh.
+- UI
+  - Enhanced editor header and sync button styling; spacing aligned to tokens.
+  - Sidebar/file tree refinements; folder file counts and active folder state.
+
+Fixes
+- Correct typing for `ALL_EVENTS` in IPC channel constants.
+- Folder segment counting logic in workspace handlers.
+
+Breaking/Migrations
+- Migration 0002 removes `notes.content` column. Database now stores metadata only.
+- Content is always read/written from files. List/search return metadata only.
+
+Upgrade Notes
+- Run migrations and rebuild before testing:
+  - pnpm install
+  - pnpm build:main && pnpm build:renderer
+  - Start app: pnpm dev:electron
+- If schema conflicts occur, delete the local DB to re-run migrations (see migrations/).
+- Update any code that previously read `note.content` from DB:
+  - Use repository method: `repos.note.getContentById(id)` or IPC `notes:getContent`.
+  - Write updates via file content paths; DB stays metadata-only.
+
+Developer Notes
+- Always use pnpm commands (never npm/yarn).
+- If `better-sqlite3` errors occur after upgrades, rebuild native modules:
+  - pnpm electron-rebuild -f -w better-sqlite3
+- Maintain macOS aesthetic and composite components; avoid inline classes.
+
+
 ## Node.js Version
 
 This project requires **Node.js 20.16.0**. Use the included `.nvmrc` file:
