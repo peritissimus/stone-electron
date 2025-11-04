@@ -700,56 +700,118 @@ textarea:focus {
   display: none;
 }
 
-/* Task list styles - Notion-like checkboxes */
+/* Task list styles - Logseq-inspired todos */
 .task-list {
   list-style: none;
   padding-left: 0;
+  margin: 0;
+}
+
+.task-list .task-list {
+  margin-top: 0.25rem;
+  margin-left: 1.75rem;
+  padding-left: 0.75rem;
+  padding-top: 0.25rem;
+  border-left: 1px solid hsl(var(--border));
 }
 
 .task-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(3.4rem, auto) 1fr;
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.22rem 0.65rem 0.22rem 0.55rem;
+  margin-bottom: 0.15rem;
+  border-radius: 0.6rem;
+  transition: background-color 0.18s ease;
 }
 
-.task-item > label {
-  display: flex;
+.task-item:hover {
+  background-color: hsl(var(--muted) / 0.45);
+}
+
+.task-item:focus-within {
+  background-color: hsl(var(--muted) / 0.55);
+}
+
+.task-state-button {
+  display: inline-flex;
   align-items: center;
-  cursor: pointer;
-  user-select: none;
-  margin-top: 0.15rem;
-}
-
-.task-item > label > input[type='checkbox'] {
-  width: 1.125rem;
-  height: 1.125rem;
-  border-radius: 0.25rem;
-  border: 1.5px solid hsl(var(--border));
+  justify-content: center;
+  grid-column: 1;
+  align-self: start;
+  padding: 0.22rem 0.65rem;
+  min-width: 3.1rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border));
   background-color: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
+  transition: all 0.2s ease;
   margin: 0;
-  appearance: none;
-  transition: all 0.15s ease;
 }
 
-.task-item > label > input[type='checkbox']:hover {
+.task-state-button:hover {
   border-color: hsl(var(--primary));
-  background-color: hsl(var(--accent));
+  color: hsl(var(--primary));
 }
 
-.task-item > label > input[type='checkbox']:checked {
+.task-state-button:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+  color: hsl(var(--primary));
+}
+
+.task-item[data-state='todo'] .task-state-button {
+  border-style: dashed;
+}
+
+.task-item[data-state='doing'] .task-state-button {
+  background-color: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.task-item[data-state='waiting'] .task-state-button {
+  background-color: hsl(var(--accent) / 0.6);
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
+}
+
+.task-item[data-state='hold'] .task-state-button {
+  border-style: dashed;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.task-item[data-state='done'] .task-state-button {
   background-color: hsl(var(--primary));
   border-color: hsl(var(--primary));
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
-  background-size: 80%;
-  background-position: center;
-  background-repeat: no-repeat;
+  color: hsl(var(--primary-foreground));
+}
+
+.task-item[data-state='canceled'] .task-state-button {
+  background-color: hsl(var(--destructive) / 0.16);
+  border-color: hsl(var(--destructive));
+  color: hsl(var(--destructive));
+  text-decoration: line-through;
+}
+
+.task-item[data-state='idea'] .task-state-button {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
 }
 
 .task-item > div {
-  flex: 1;
-  padding-top: 0.15rem;
+  grid-column: 2;
+  padding-top: 0;
 }
 
 .task-item[data-checked='true'] > div {
