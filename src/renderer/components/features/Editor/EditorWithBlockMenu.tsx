@@ -25,7 +25,7 @@ export function EditorWithBlockMenu({ editor }: EditorWithBlockMenuProps) {
       {/* Editor Content */}
       <EditorContent
         editor={editor}
-        className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-none"
+        className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden"
       />
     </div>
   );

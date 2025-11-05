@@ -432,11 +432,11 @@ const splitBreakpointClasses: Record<SplitBreakpoint, string> = {
 };
 
 const splitRatioClasses: Record<SplitRatio, string> = {
-  '1:1': '[&>*]:flex-1',
-  '1:2': '[&>*:first-child]:flex-1 [&>*:last-child]:flex-[2]',
-  '2:1': '[&>*:first-child]:flex-[2] [&>*:last-child]:flex-1',
-  '1:3': '[&>*:first-child]:flex-1 [&>*:last-child]:flex-[3]',
-  '3:1': '[&>*:first-child]:flex-[3] [&>*:last-child]:flex-1',
+  '1:1': '*:flex-1',
+  '1:2': '[&>*:first-child]:flex-1 [&>*:last-child]:flex-2',
+  '2:1': '[&>*:first-child]:flex-2 [&>*:last-child]:flex-1',
+  '1:3': '[&>*:first-child]:flex-1 [&>*:last-child]:flex-3',
+  '3:1': '[&>*:first-child]:flex-3 [&>*:last-child]:flex-1',
 };
 
 export interface ContainerSplitProps extends React.HTMLAttributes<HTMLDivElement> {

@@ -150,7 +150,7 @@ export function useTipTapEditor() {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
+        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-hidden min-h-[400px]',
       },
     },
   });
