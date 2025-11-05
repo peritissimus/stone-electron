@@ -325,15 +325,6 @@ export function Sidebar() {
           </TabsTrigger>
         </TabsList>
 
-        {/* Quick Links - Minimal */}
-        <SectionHeader divided>
-          <div className="space-y-0.5">
-            <QuickLink icon={<Star size={12} />} label="Favorites" size="compact" />
-            <QuickLink icon={<Clock size={12} />} label="Recent" size="compact" />
-            <QuickLink icon={<Archive size={12} />} label="Archive" size="compact" />
-          </div>
-        </SectionHeader>
-
         {/* Panel Content - Scrollable */}
         <div className="flex-1 overflow-y-auto">
           <TabsContent value="folders" className="mt-0 px-1.5 py-1">
