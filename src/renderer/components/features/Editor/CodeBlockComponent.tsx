@@ -366,9 +366,9 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
             contentEditable={false}
             onClick={() => setShowCode(!showCode)}
             className={cn(
-              'px-3 py-1 text-xs rounded bg-background/90 backdrop-blur-sm',
+              'px-3 py-1 text-xs rounded bg-background/90 backdrop-blur-xs',
               'border border-border text-foreground cursor-pointer',
-              'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+              'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
               'hover:bg-accent transition-colors',
               'font-medium',
             )}
@@ -383,9 +383,9 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           value={language}
           onChange={(e) => updateAttributes({ language: e.target.value })}
           className={cn(
-            'px-2 py-1 text-xs rounded bg-background/90 backdrop-blur-sm',
+            'px-2 py-1 text-xs rounded bg-background/90 backdrop-blur-xs',
             'border border-border text-foreground cursor-pointer',
-            'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1',
+            'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
             'hover:bg-accent transition-colors',
           )}
         >
