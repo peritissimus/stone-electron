@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect } from 'react';
-import { MainLayout } from '@renderer/components/features/Layout';
+import { MainLayout } from '@renderer/components/composites';
 import { useUIStore } from '@renderer/stores/uiStore';
 
 export const App: React.FC = () => {

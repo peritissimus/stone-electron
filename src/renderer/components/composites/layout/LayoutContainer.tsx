@@ -2,7 +2,7 @@
  * LayoutContainer Component - Main layout structure with resizable panels
  */
 
-import { ResizablePanel } from '@renderer/components/features/Layout/ResizablePanel';
+import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
