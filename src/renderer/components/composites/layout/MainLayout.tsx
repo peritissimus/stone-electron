@@ -3,15 +3,11 @@
  */
 
 import { useEffect } from 'react';
-import {
-  Sidebar,
-  NoteEditor,
-  SearchPanel,
-  LayoutContainer,
-  SidebarPanel,
-  MainContentArea,
-} from '@renderer/components/features/Layout';
-import { SettingsModal } from '@renderer/components/features/Settings';
+import { Sidebar } from '@renderer/components/features/navigation';
+import { NoteEditor } from '@renderer/components/features/editor';
+import { SearchPanel } from '@renderer/components/features/search';
+import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
+import { SettingsModal } from '@renderer/components/features/settings';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';

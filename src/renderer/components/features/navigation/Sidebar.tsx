@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { TagList } from '@renderer/components/features/Tag';
+import { TagList } from '@renderer/components/features/tag';
 import { Button } from '@renderer/components/base/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/base/ui/tabs';
 import {
@@ -31,14 +31,14 @@ import {
   ControlGroup,
   sizeHeightClasses,
   sizePaddingClasses,
+  InputModal,
 } from '@renderer/components/composites';
-import { InputModal } from '@renderer/components/base/common';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { FileTree } from '@renderer/components/features/FileSystem/FileTree';
-import { CreateWorkspaceModal } from '@renderer/components/features/Workspace/CreateWorkspaceModal';
+import { FileTree } from '@renderer/components/features/filesystem';
+import { CreateWorkspaceModal } from '@renderer/components/features/workspace';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
 
@@ -364,7 +364,7 @@ export function Sidebar() {
         isOpen={tagModalOpen}
         onClose={() => setTagModalOpen(false)}
         onSubmit={handleNewTag}
-        title="Create New Tag"
+        left={<Heading3>Create New Tag</Heading3>}
         placeholder="Enter tag name"
         submitLabel="Create"
       />

@@ -7,6 +7,7 @@ Successfully migrated Stone's UI from inline styling to a token-based composite 
 ## What Was Built
 
 ### 1. Design Token System
+
 - **Size Variants**: `compact`, `normal`, `spacious`
 - **Spacing Tokens**: `xs`, `sm`, `md`, `lg`, `xl`
 - **Centralized** in `src/renderer/components/composites/tokens.ts`
@@ -14,23 +15,27 @@ Successfully migrated Stone's UI from inline styling to a token-based composite 
 ### 2. Composite Components (13 Total)
 
 #### Navigation & Headers
+
 - **Header** - Top navigation with left/right content
 - **IconButton** - Preset icon buttons
 - **QuickLink** - Sidebar quick navigation links
 - **SectionHeader** - Section headers with dividers
 
 #### Lists & Items
+
 - **ListItem** - Consistent list item styling
 - **ListContainer** - Wrapper for list layouts (list/grid/card modes)
 - **CompactCard** - Grid and card view items
 - **TreeItem** - Tree structure items with indentation
 
 #### Controls & Groups
+
 - **ControlGroup** - Related button/toggle groups
 - **ToolbarButton** - Toolbar button styling
 - **ToolbarDivider** - Toolbar section dividers
 
 #### Layout
+
 - **Spacer** - Layout spacing without divs
 - **PanelFooter** - Footer areas with borders
 
@@ -67,9 +72,10 @@ Successfully migrated Stone's UI from inline styling to a token-based composite 
    - IconButton → `<IconButton size="normal" icon={} />`
    - Removed: manual header styling
 
-6. **InputModal** (Common/InputModal.tsx)
-   - ContainerStack → `<ContainerStack gap="md" />`
-   - Replaced: `className="grid gap-4 py-4"`
+6. **InputModal** (Composites/InputModal.tsx) ✅ MOVED TO COMPOSITES
+   - Token-based sizing: `size="compact|normal|spacious"`
+   - Left/right content pattern: `left={<Heading3>Title</Heading3>}`
+   - Replaced: Manual Dialog + Input + Button combinations
 
 ## File Structure
 
@@ -101,12 +107,14 @@ src/renderer/components/
 ## Migration Results
 
 ### Code Reduction
+
 - **Header component**: 5 lines → 1 component
 - **ControlGroup**: 4 lines → 1 component
 - **ListItem with icon/subtitle**: 12 lines → 3 lines
 - **EditorToolbar buttons**: 40 lines → Composite throughout
 
 ### Quality Improvements
+
 - ✅ No more magic numbers
 - ✅ Consistent spacing throughout
 - ✅ Easy dark mode support (uses CSS variables)
@@ -116,17 +124,16 @@ src/renderer/components/
 ## Usage Patterns
 
 ### Basic Header
+
 ```tsx
-<Header
-  left={<Title>Notes</Title>}
-  right={<Button>New</Button>}
-/>
+<Header left={<Title>Notes</Title>} right={<Button>New</Button>} />
 ```
 
 ### List with Items
+
 ```tsx
 <ListContainer viewMode="list">
-  {notes.map(note => (
+  {notes.map((note) => (
     <ListItem
       key={note.id}
       isActive={note.id === activeId}
@@ -139,6 +146,7 @@ src/renderer/components/
 ```
 
 ### Tree Structure
+
 ```tsx
 <TreeItem
   level={0}
@@ -148,13 +156,12 @@ src/renderer/components/
   label="Notebooks"
   expander={<CaretDown />}
 >
-  {hasChildren && (
-    <TreeItem level={1}>...</TreeItem>
-  )}
+  {hasChildren && <TreeItem level={1}>...</TreeItem>}
 </TreeItem>
 ```
 
 ### Toolbar
+
 ```tsx
 <ToolbarButton
   active={editor.isActive('bold')}
@@ -184,6 +191,7 @@ All components support token-based sizing:
 ## Best Practices Going Forward
 
 ### ✅ DO
+
 ```tsx
 // Use composites for UI patterns
 <Header left={<Title>Notes</Title>} right={<Action />} />
@@ -203,6 +211,7 @@ All components support token-based sizing:
 ```
 
 ### ❌ DON'T
+
 ```tsx
 // Don't mix inline classes with composites
 <Header className="px-3 py-2" />  // Wrong!
@@ -225,6 +234,7 @@ All components support token-based sizing:
 ## Remaining Components
 
 For future refactoring:
+
 - SettingsModal - Can use Header + PanelFooter
 - SearchPanel - Can use Header + ListContainer + ListItem
 - TipTapEditor - Already refactored header
@@ -254,6 +264,7 @@ For future refactoring:
 ## Conclusion
 
 The composite component system is now fully implemented for critical UI areas. The system is:
+
 - **Scalable**: Easy to add new components
 - **Maintainable**: Single source of truth for styling
 - **Consistent**: Token-based sizing throughout

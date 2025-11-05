@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModalLayout } from '@renderer/components/features/Layout/ModalLayout';
+import { ModalLayout } from './ModalLayout';
 import { Button } from '@renderer/components/base/ui/button';
 import { Text } from '@renderer/components/base/ui/text';
 

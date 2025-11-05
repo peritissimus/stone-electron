@@ -8,7 +8,7 @@ import { Database, HardDrive, Download, CheckCircle } from 'phosphor-react';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
 import { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
 import { logger } from '@renderer/utils/logger';
-import { TabbedModal } from '@renderer/components/features/Layout/TabbedModal';
+import { TabbedModal } from '@renderer/components/composites';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';

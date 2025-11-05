@@ -16,13 +16,13 @@ import {
   DropdownMenuTrigger,
 } from '@renderer/components/base/ui/dropdown-menu';
 import { IconButton, TreeItem } from '@renderer/components/composites';
-import { Text } from '@renderer/components/base/ui/text';
+import { Text, Heading3 } from '@renderer/components/base/ui/text';
 import {
   useFileTreeStore,
   FileTreeNode as StoreFileTreeNode,
 } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { InputModal } from '@renderer/components/base/common';
+import { InputModal } from '@renderer/components/composites';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 
@@ -402,7 +402,7 @@ export function FileTree() {
             setRenameTarget(null);
           }
         }}
-        title="Rename Note"
+        left={<Heading3>Rename Note</Heading3>}
         placeholder="Note title"
         submitLabel="Rename"
         defaultValue={renameTarget?.title ?? ''}
@@ -416,7 +416,7 @@ export function FileTree() {
             setRenameFolderTarget(null);
           }
         }}
-        title="Rename Folder"
+        left={<Heading3>Rename Folder</Heading3>}
         placeholder="Folder name"
         submitLabel="Rename"
         defaultValue={renameFolderTarget?.name ?? ''}

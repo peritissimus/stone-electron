@@ -12,7 +12,7 @@ import {
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
-} from '@renderer/components/features/Editor';
+} from '@renderer/components/features/editor';
 import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
