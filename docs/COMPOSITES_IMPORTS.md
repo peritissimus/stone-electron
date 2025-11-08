@@ -17,7 +17,7 @@ import {
   TreeItem,
   ToolbarButton,
   ToolbarDivider,
-  type SizeVariant
+  type SizeVariant,
 } from '@renderer/components/composites';
 ```
 
@@ -35,46 +35,33 @@ import * as Composites from '@renderer/components/composites';
 ## Selective Imports
 
 ### Navigation & Headers Only
+
 ```tsx
-import {
-  Header,
-  IconButton,
-  QuickLink,
-  SectionHeader
-} from '@renderer/components/composites';
+import { Header, IconButton, QuickLink, SectionHeader } from '@renderer/components/composites';
 ```
 
 ### Lists & Items Only
+
 ```tsx
-import {
-  ListItem,
-  ListContainer,
-  CompactCard
-} from '@renderer/components/composites';
+import { ListItem, ListContainer, CompactCard } from '@renderer/components/composites';
 ```
 
 ### Controls Only
+
 ```tsx
-import {
-  ControlGroup,
-  ToolbarButton,
-  ToolbarDivider
-} from '@renderer/components/composites';
+import { ControlGroup, ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 ```
 
 ### Tree Components Only
+
 ```tsx
-import {
-  TreeItem
-} from '@renderer/components/composites';
+import { TreeItem } from '@renderer/components/composites';
 ```
 
 ### Layout Only
+
 ```tsx
-import {
-  Spacer,
-  PanelFooter
-} from '@renderer/components/composites';
+import { Spacer, PanelFooter } from '@renderer/components/composites';
 ```
 
 ## Import Tokens Only
@@ -87,7 +74,7 @@ import {
   sizePaddingClasses,
   gapClasses,
   spacerSizeClasses,
-  justifyClasses
+  justifyClasses,
 } from '@renderer/components/composites';
 ```
 
@@ -95,33 +82,16 @@ import {
 
 ```tsx
 // Headers & Navigation
-import {
-  Header,
-  IconButton,
-  QuickLink,
-  SectionHeader
-} from '@renderer/components/composites';
+import { Header, IconButton, QuickLink, SectionHeader } from '@renderer/components/composites';
 
 // Lists & Items
-import {
-  ListItem,
-  ListContainer,
-  CompactCard,
-  TreeItem
-} from '@renderer/components/composites';
+import { ListItem, ListContainer, CompactCard, TreeItem } from '@renderer/components/composites';
 
 // Controls
-import {
-  ControlGroup,
-  ToolbarButton,
-  ToolbarDivider
-} from '@renderer/components/composites';
+import { ControlGroup, ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 
 // Layout
-import {
-  Spacer,
-  PanelFooter
-} from '@renderer/components/composites';
+import { Spacer, PanelFooter } from '@renderer/components/composites';
 ```
 
 ## TypeScript Types
@@ -141,30 +111,34 @@ import type {
   QuickLinkProps,
   TreeItemProps,
   ToolbarButtonProps,
-  ToolbarDividerProps
+  ToolbarDividerProps,
 } from '@renderer/components/composites';
 ```
 
 ## Path Aliases
 
 The project uses these path aliases:
+
 - `@renderer/` → `src/renderer/`
 - `@main/` → `src/main/`
 - `@shared/` → `src/shared/`
 
 So all imports use:
+
 ```tsx
 import { Header } from '@renderer/components/composites';
 ```
 
 **NOT:**
+
 ```tsx
-import { Header } from '../../../components/composites';  // Don't do this!
+import { Header } from '../../../components/composites'; // Don't do this!
 ```
 
 ## Common Import Patterns
 
 ### Page Component with Multiple Sections
+
 ```tsx
 import React from 'react';
 import {
@@ -172,20 +146,17 @@ import {
   ListContainer,
   ListItem,
   PanelFooter,
-  IconButton
+  IconButton,
 } from '@renderer/components/composites';
-import { Button } from '@renderer/components/ui/button';
+import { Button } from '@renderer/components/base/ui/button';
 
 export function MyPage() {
   return (
     <>
-      <Header
-        left={<Title />}
-        right={<IconButton icon={<Icon />} />}
-      />
+      <Header left={<Title />} right={<IconButton icon={<Icon />} />} />
 
       <ListContainer viewMode="list">
-        {items.map(item => (
+        {items.map((item) => (
           <ListItem key={item.id} title={item.title} />
         ))}
       </ListContainer>
@@ -199,6 +170,7 @@ export function MyPage() {
 ```
 
 ### Sidebar Component
+
 ```tsx
 import {
   Header,
@@ -206,16 +178,13 @@ import {
   QuickLink,
   SectionHeader,
   PanelFooter,
-  TreeItem
+  TreeItem,
 } from '@renderer/components/composites';
 
 export function Sidebar() {
   return (
     <>
-      <Header
-        left={<Title>Stone</Title>}
-        right={<IconButton icon={<Settings />} />}
-      />
+      <Header left={<Title>Stone</Title>} right={<IconButton icon={<Settings />} />} />
 
       <SectionHeader title="Quick Links" />
       <QuickLink icon={<Star />} label="Favorites" />
@@ -234,11 +203,9 @@ export function Sidebar() {
 ```
 
 ### Editor/Toolbar Component
+
 ```tsx
-import {
-  ToolbarButton,
-  ToolbarDivider
-} from '@renderer/components/composites';
+import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 
 export function EditorToolbar({ editor }) {
   return (
@@ -268,40 +235,46 @@ export function EditorToolbar({ editor }) {
 ## Avoiding Common Mistakes
 
 ### ❌ DON'T import from wrong path
+
 ```tsx
-import { Header } from '@renderer/components/composites/Header';  // Wrong!
-import { Header } from './composites/Header';                     // Wrong!
+import { Header } from '@renderer/components/composites/Header'; // Wrong!
+import { Header } from './composites/Header'; // Wrong!
 ```
 
 ### ✅ DO use the index export
+
 ```tsx
-import { Header } from '@renderer/components/composites';  // Correct!
+import { Header } from '@renderer/components/composites'; // Correct!
 ```
 
 ### ❌ DON'T forget to import composites
+
 ```tsx
 export function MyComponent() {
-  return <Header />  // Will fail - Header is not defined!
+  return <Header />; // Will fail - Header is not defined!
 }
 ```
 
 ### ✅ DO import before using
+
 ```tsx
 import { Header } from '@renderer/components/composites';
 
 export function MyComponent() {
-  return <Header />  // Works!
+  return <Header />; // Works!
 }
 ```
 
 ## IDE Auto-completion
 
 Most IDEs (VS Code, WebStorm) will auto-suggest imports. When you type:
+
 ```tsx
 <Header />
 ```
 
 Your IDE should suggest:
+
 ```
 Import 'Header' from '@renderer/components/composites'
 ```
@@ -311,22 +284,18 @@ Just accept the suggestion and the import will be added automatically.
 ## File Organization
 
 When organizing imports in your component files, follow this order:
+
 ```tsx
 // 1. React and external libraries
 import React, { useState } from 'react';
 import { useStore } from 'zustand';
 
 // 2. Internal composites
-import {
-  Header,
-  ListContainer,
-  ListItem,
-  PanelFooter
-} from '@renderer/components/composites';
+import { Header, ListContainer, ListItem, PanelFooter } from '@renderer/components/composites';
 
 // 3. UI components
-import { Button } from '@renderer/components/ui/button';
-import { Input } from '@renderer/components/ui/input';
+import { Button } from '@renderer/components/base/ui/button';
+import { Input } from '@renderer/components/base/ui/input';
 
 // 4. Stores and hooks
 import { useNoteStore } from '@renderer/stores/noteStore';

@@ -75,7 +75,7 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('blur-sm', handleWindowBlur);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [editor, updateNote]);

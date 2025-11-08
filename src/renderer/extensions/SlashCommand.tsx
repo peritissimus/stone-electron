@@ -6,7 +6,11 @@ import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion from '@tiptap/suggestion';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
-import { SlashCommandMenu, SlashCommandMenuRef, defaultSlashCommands } from '../components/Editor/SlashCommandMenu';
+import {
+  SlashCommandMenu,
+  SlashCommandMenuRef,
+  defaultSlashCommands,
+} from '../components/features/editor/SlashCommandMenu';
 
 export const SlashCommand = Extension.create({
   name: 'slashCommand',
@@ -40,7 +44,7 @@ export const SlashCommand = Extension.create({
             const titleMatch = item.title.toLowerCase().includes(searchQuery);
             const descMatch = item.description.toLowerCase().includes(searchQuery);
             const searchTermsMatch = item.searchTerms?.some((term) =>
-              term.toLowerCase().includes(searchQuery)
+              term.toLowerCase().includes(searchQuery),
             );
             return titleMatch || descMatch || searchTermsMatch;
           });
