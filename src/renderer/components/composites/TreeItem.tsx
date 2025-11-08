@@ -7,9 +7,9 @@
 import * as React from 'react';
 import { cn } from '@renderer/lib/utils';
 import { SizeVariant, sizeTextClasses } from './tokens';
-import { Button } from '@renderer/components/ui/button';
-import { Text } from '@renderer/components/ui/text';
-import { ContainerFlex } from '@renderer/components/ui';
+import { Button } from '@renderer/components/base/ui/button';
+import { Text } from '@renderer/components/base/ui/text';
+import { ContainerFlex } from '@renderer/components/base/ui';
 
 export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   /** Size variant */
@@ -26,8 +26,8 @@ export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElem
   label: React.ReactNode;
   /** Right side content (count, badge, etc) */
   right?: React.ReactNode;
-  /** Expander button (for folders) */
-  expander?: React.ReactNode;
+  /** Props for the right slot container */
+  rightSlotProps?: React.HTMLAttributes<HTMLDivElement>;
   children?: React.ReactNode;
 }
 
@@ -41,55 +41,59 @@ export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElem
  *   onClick={onSelect}
  *   icon="📁"
  *   label="Notebooks"
- *   expander={<CaretDown />}
  *   right={<Badge>{count}</Badge>}
  * />
  */
 export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
-  ({
-    size = 'normal',
-    isActive = false,
-    level = 0,
-    indentPx = 10,
-    icon,
-    label,
-    right,
-    expander,
-    children,
-    className,
-    ...props
-  }, ref) => {
+  (
+    {
+      size = 'normal',
+      isActive = false,
+      level = 0,
+      indentPx = 10,
+      icon,
+      label,
+      right,
+      rightSlotProps,
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const textSize = sizeTextClasses[size];
     const padding = size === 'compact' ? 'py-0.5' : size === 'spacious' ? 'py-2' : 'py-1';
     const paddingLeft = level * indentPx + 2;
+    const {
+      className: rightClassName,
+      onClick: rightOnClick,
+      onPointerDown: rightOnPointerDown,
+      onPointerUp: rightOnPointerUp,
+      ...restRightSlotProps
+    } = rightSlotProps ?? {};
 
     return (
       <>
         <ContainerFlex
           align="center"
           gap="none"
-          className="px-1"
+          justify={right ? 'between' : 'start'}
+          className="px-1 w-full"
           style={{ paddingLeft: `${paddingLeft}px` }}
         >
-          {expander && (
-            <div className="flex-shrink-0 w-5 flex items-center justify-center">
-              {expander}
-            </div>
-          )}
-
           <Button
             ref={ref}
             type="button"
             variant="ghost"
             className={cn(
-              'flex-1 justify-start gap-1.5 px-1.5',
+              'flex-1 min-w-0 justify-start gap-1.5 px-1.5 text-left',
               padding,
               textSize,
               'h-auto rounded-md transition-colors',
               isActive
-                ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                ? 'bg-secondary text-accent-foreground hover:bg-accent/90'
                 : 'hover:bg-muted/50',
-              className
+              className,
             )}
             {...props}
           >
@@ -98,16 +102,35 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
                 {icon}
               </Text>
             )}
-            <Text as="span" size="xs" className="flex-1 truncate">
+            <Text as="span" size="xs" className="flex-1 truncate text-left">
               {label}
             </Text>
-            {right && <div className="flex-shrink-0">{right}</div>}
           </Button>
+          {right && (
+            <div
+              {...restRightSlotProps}
+              className={cn('ml-2 flex items-center gap-1 flex-shrink-0', rightClassName)}
+              onClick={(event) => {
+                event.stopPropagation();
+                rightOnClick?.(event);
+              }}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                rightOnPointerDown?.(event);
+              }}
+              onPointerUp={(event) => {
+                event.stopPropagation();
+                rightOnPointerUp?.(event);
+              }}
+            >
+              {right}
+            </div>
+          )}
         </ContainerFlex>
 
         {children}
       </>
     );
-  }
+  },
 );
 TreeItem.displayName = 'TreeItem';

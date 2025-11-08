@@ -1,5 +1,5 @@
-import { defineConfig } from 'vite'
-import path from 'path'
+import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
   resolve: {
@@ -22,20 +22,50 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'electron',
-        'better-sqlite3',
+        '@libsql/client',
+        '@libsql/client/sqlite3',
         'vectra',
         'electron-store',
         'electron-log',
         'nanoid',
+        'jsdom',
         'path',
         'fs',
+        'fs/promises',
         'crypto',
         'os',
+        'vm',
+        'url',
+        'util',
+        'http',
+        'https',
+        'stream',
+        'zlib',
+        'net',
+        'tls',
+        'assert',
         'node:path',
         'node:fs',
+        'node:fs/promises',
         'node:crypto',
         'node:os',
+        'node:vm',
+        'node:url',
+        'node:util',
+        'node:http',
+        'node:https',
+        'node:stream',
+        'node:zlib',
+        'node:net',
+        'node:tls',
+        'node:assert',
+        // Watcher/libs
+        'chokidar',
+        'readdirp',
+        'events',
+        'node:events',
+        'node:stream',
       ],
     },
   },
-})
+});

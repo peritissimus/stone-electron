@@ -55,7 +55,6 @@ export function registerSearchHandlers() {
             ...note,
             relevance: 1.0, // FTS5 ranking could be added here
             title_highlight: note.title,
-            content_highlight: (note.content || '').substring(0, 200),
           })),
           total: results.length,
           query_time_ms: queryTime,
@@ -81,7 +80,6 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            contentPreview: (note.content || '').substring(0, 200),
             similarity: 0.8, // Placeholder similarity score
           })),
           total: results.length,
@@ -115,7 +113,6 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            contentPreview: (note.content || '').substring(0, 200),
             score: 1.0,
             search_type: 'fts' as const,
           })),

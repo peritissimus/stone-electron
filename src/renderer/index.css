@@ -1,81 +1,213 @@
 /* Global Styles for Stone */
 
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import 'tailwindcss';
 
-/* Root CSS Variables - macOS Inspired Light Theme */
-:root {
-  --border: 0 0% 85%;
-  --input: 0 0% 92%;
-  --ring: 211 100% 50%;
-  --background: 0 0% 96.5%;
-  --foreground: 0 0% 15%;
-  --sidebar: 0 0% 90%;
-  --primary: 211 100% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 15%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  --accent: 211 100% 96%;
-  --accent-foreground: 211 100% 50%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 15%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 15%;
+@custom-variant dark (&:is(.dark *));
 
-  --radius: 10px;
+@theme {
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text,
+    Helvetica Neue, Arial, sans-serif;
+
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-sidebar: hsl(var(--sidebar));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.2);
+
+  --spacing-titlebar: 51px;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
 }
 
-/* Dark Mode Colors - macOS Inspired Dark Theme */
-.dark {
-  --border: 0 0% 20%;
-  --input: 0 0% 20%;
-  --ring: 211 100% 60%;
-  --background: 0 0% 12%;
-  --foreground: 0 0% 90%;
-  --sidebar: 0 0% 16%;
-  --primary: 211 100% 60%;
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+/* Root CSS Variables - Notion-like Light Theme */
+:root {
+  --border: 0 0% 90%;
+  --input: 0 0% 96%;
+  --ring: 0 0% 80%;
+  --background: 0 0% 100%;
+  --foreground: 0 0% 12%;
+  --sidebar: 0 0% 98%;
+  --primary: 211 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 18%;
-  --secondary-foreground: 0 0% 90%;
+  --secondary: 0 0% 97%;
+  --secondary-foreground: 0 0% 12%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 18%;
+  --muted: 0 0% 97%;
+  --muted-foreground: 0 0% 50%;
+  --accent: 211 100% 97%;
+  --accent-foreground: 211 100% 50%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 12%;
+
+  --radius: 6px;
+
+  /* Code Syntax Colors - Light Theme */
+  --code-bg: 0 0% 97%;
+  --code-text: 0 0% 18%;
+  --code-comment: 0 0% 55%;
+  --code-keyword: 262 60% 50%;
+  --code-string: 142 60% 40%;
+  --code-number: 28 80% 50%;
+  --code-function: 211 100% 45%;
+  --code-variable: 0 0% 30%;
+  --code-type: 45 80% 45%;
+  --code-operator: 180 40% 45%;
+  --code-punctuation: 0 0% 45%;
+  --code-attribute: 330 60% 50%;
+  --code-tag: 211 80% 45%;
+  --code-property: 262 50% 50%;
+}
+
+/* Dark Mode Colors - Notion-like Dark Theme */
+.dark {
+  --border: 0 0% 22%;
+  --input: 0 0% 24%;
+  --ring: 211 100% 60%;
+  --background: 0 0% 11%;
+  --foreground: 0 0% 92%;
+  --sidebar: 0 0% 15%;
+  --primary: 211 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 0 0% 20%;
+  --secondary-foreground: 0 0% 92%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 0 0% 20%;
   --muted-foreground: 0 0% 60%;
   --accent: 211 100% 20%;
   --accent-foreground: 211 100% 60%;
-  --popover: 0 0% 14%;
-  --popover-foreground: 0 0% 90%;
-  --card: 0 0% 14%;
-  --card-foreground: 0 0% 90%;
+  --popover: 0 0% 15%;
+  --popover-foreground: 0 0% 92%;
+  --card: 0 0% 15%;
+  --card-foreground: 0 0% 92%;
+
+  /* Code Syntax Colors - Dark Theme */
+  --code-bg: 0 0% 14%;
+  --code-text: 0 0% 90%;
+  --code-comment: 0 0% 50%;
+  --code-keyword: 262 70% 70%;
+  --code-string: 142 50% 60%;
+  --code-number: 28 70% 65%;
+  --code-function: 211 80% 65%;
+  --code-variable: 0 0% 85%;
+  --code-type: 45 70% 65%;
+  --code-operator: 180 50% 65%;
+  --code-punctuation: 0 0% 60%;
+  --code-attribute: 330 60% 65%;
+  --code-tag: 211 70% 65%;
+  --code-property: 262 60% 70%;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
+    --border: 0 0% 22%;
+    --input: 0 0% 24%;
     --ring: 211 100% 60%;
-    --background: 0 0% 12%;
-    --foreground: 0 0% 90%;
-    --sidebar: 0 0% 16%;
+    --background: 0 0% 11%;
+    --foreground: 0 0% 92%;
+    --sidebar: 0 0% 15%;
     --primary: 211 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 90%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 92%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --muted: 0 0% 18%;
+    --muted: 0 0% 20%;
     --muted-foreground: 0 0% 60%;
     --accent: 211 100% 20%;
     --accent-foreground: 211 100% 60%;
-    --popover: 0 0% 14%;
-    --popover-foreground: 0 0% 90%;
-    --card: 0 0% 14%;
-    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 15%;
+    --popover-foreground: 0 0% 92%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 92%;
+
+    /* Code Syntax Colors - Dark Theme */
+    --code-bg: 0 0% 14%;
+    --code-text: 0 0% 90%;
+    --code-comment: 0 0% 50%;
+    --code-keyword: 262 70% 70%;
+    --code-string: 142 50% 60%;
+    --code-number: 28 70% 65%;
+    --code-function: 211 80% 65%;
+    --code-variable: 0 0% 85%;
+    --code-type: 45 70% 65%;
+    --code-operator: 180 50% 65%;
+    --code-punctuation: 0 0% 60%;
+    --code-attribute: 330 60% 65%;
+    --code-tag: 211 70% 65%;
+    --code-property: 262 60% 70%;
   }
 }
 
@@ -95,12 +227,22 @@ html.dark {
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
-    'Helvetica Neue', 'Arial', sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', 'Arial',
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 13px;
   line-height: 1.5;
+}
+
+/* Better font for editor content - Notion style */
+.prose {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  letter-spacing: -0.003em;
+  color: hsl(var(--foreground));
 }
 
 .dark body {
@@ -109,7 +251,15 @@ body {
 }
 
 code {
-  font-family: 'Fira Code', 'Courier New', monospace;
+  font-family:
+    'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', 'Menlo', 'Courier New', monospace;
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
+pre code {
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 /* Remove default focus outline, we'll use Tailwind's */
@@ -169,15 +319,50 @@ textarea:focus {
 }
 
 .ProseMirror {
-  @apply focus:outline-none;
+  @apply focus:outline-hidden;
+  transition: opacity 0.15s ease;
+}
+
+/* Notion-like block hover states */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6,
+.ProseMirror ul,
+.ProseMirror ol,
+.ProseMirror blockquote {
+  position: relative;
+  transition: background-color 0.1s ease;
+  padding: 3px 2px;
+  margin-left: -2px;
+  margin-right: -2px;
+  border-radius: 3px;
+}
+
+.ProseMirror p:hover,
+.ProseMirror h1:hover,
+.ProseMirror h2:hover,
+.ProseMirror h3:hover,
+.ProseMirror h4:hover,
+.ProseMirror h5:hover,
+.ProseMirror h6:hover,
+.ProseMirror ul:hover,
+.ProseMirror ol:hover,
+.ProseMirror blockquote:hover {
+  background-color: hsl(var(--muted) / 0.3);
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
-  @apply text-gray-400 dark:text-gray-500;
-  content: attr(data-placeholder);
+  content: 'Type / for commands, or start writing...';
+  color: hsl(var(--muted-foreground) / 0.5);
   float: left;
   height: 0;
   pointer-events: none;
+  font-size: 16px;
+  font-weight: 400;
 }
 
 /* Prose Styling for Editor Content */
@@ -186,30 +371,73 @@ textarea:focus {
 }
 
 .prose h1 {
-  @apply text-3xl font-bold mb-4 mt-6;
+  @apply text-5xl font-bold mb-2 mt-12 text-foreground;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .prose h2 {
-  @apply text-2xl font-bold mb-3 mt-5;
+  @apply text-3xl font-bold mb-2 mt-10 text-foreground;
+  letter-spacing: -0.019em;
+  line-height: 1.3;
+  font-weight: 700;
 }
 
 .prose h3 {
-  @apply text-xl font-bold mb-2 mt-4;
+  @apply text-2xl font-bold mb-1.5 mt-8 text-foreground;
+  letter-spacing: -0.014em;
+  line-height: 1.35;
+  font-weight: 600;
 }
 
-.prose h4,
+.prose h4 {
+  @apply text-xl font-semibold mb-1.5 mt-6 text-foreground;
+  letter-spacing: -0.011em;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
 .prose h5,
 .prose h6 {
-  @apply text-lg font-bold mb-2 mt-3;
+  @apply text-lg font-semibold mb-1 mt-5 text-foreground;
+  line-height: 1.5;
+  font-weight: 600;
 }
 
 .prose p {
-  @apply mb-4;
+  @apply mb-2 text-foreground;
+  line-height: 1.65;
+  font-size: 16px;
+  cursor: text;
+}
+
+.prose p:empty::before {
+  content: ' ';
+  display: inline-block;
+}
+
+.prose strong,
+.prose b {
+  @apply font-semibold text-foreground;
+  font-weight: 600;
+}
+
+.prose em,
+.prose i {
+  @apply italic;
+  font-style: italic;
+}
+
+.prose strong em,
+.prose em strong {
+  @apply font-semibold italic;
 }
 
 .prose ul,
 .prose ol {
-  @apply mb-4 pl-6;
+  @apply mb-2 pl-6;
+  line-height: 1.65;
 }
 
 .prose ul {
@@ -222,34 +450,209 @@ textarea:focus {
 
 .prose li {
   @apply mb-1;
+  line-height: 1.65;
+  font-size: 16px;
 }
 
 .prose blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-4;
+  @apply border-l-4 border-gray-300 dark:border-gray-700 pl-4 italic my-4;
+  font-size: 16px;
+  line-height: 1.65;
+  color: hsl(var(--foreground) / 0.7);
 }
 
+/* Highlight mark */
+.highlight-mark {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  @apply px-1 rounded;
+}
+
+/* Inline code - Notion style */
 .prose code {
-  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground) / 0.85);
+  @apply px-2 py-1 rounded font-mono;
+  font-size: 0.875em;
+  font-weight: 500;
+  border: 1px solid hsl(var(--border) / 0.5);
 }
 
+/* Code blocks - Notion style */
 .prose pre {
-  @apply bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto my-4;
+  background-color: hsl(var(--code-bg));
+  border: 1px solid hsl(var(--border) / 0.5);
+  @apply p-6 rounded-lg overflow-x-auto my-3;
 }
 
 .prose pre code {
-  @apply bg-transparent p-0;
+  @apply bg-transparent p-0 border-0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: hsl(var(--code-text));
+}
+
+/* Code block wrapper for syntax highlighting - Notion style */
+.code-block-wrapper {
+  @apply relative;
+}
+
+.code-block-wrapper pre {
+  background-color: hsl(var(--code-bg));
+  border: none;
+  @apply p-6 m-0 overflow-x-auto;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.code-block-wrapper pre code {
+  @apply bg-transparent p-0 border-0;
+  color: hsl(var(--code-text));
+}
+
+/* Syntax highlighting colors - Custom theme matching app colors */
+.hljs {
+  color: hsl(var(--code-text));
+  display: block;
+  overflow-x: auto;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: hsl(var(--code-comment));
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-section {
+  color: hsl(var(--code-keyword));
+  font-weight: 500;
+}
+
+.hljs-function .hljs-keyword {
+  color: hsl(var(--code-keyword));
+}
+
+.hljs-subst {
+  color: hsl(var(--code-text));
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-meta-string {
+  color: hsl(var(--code-string));
+}
+
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-params,
+.hljs-template-tag {
+  color: hsl(var(--code-number));
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-title.class_.inherited__ {
+  color: hsl(var(--code-function));
+  font-weight: 500;
+}
+
+.hljs-variable,
+.hljs-template-variable {
+  color: hsl(var(--code-variable));
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: hsl(var(--code-type));
+}
+
+.hljs-operator {
+  color: hsl(var(--code-operator));
+}
+
+.hljs-punctuation {
+  color: hsl(var(--code-punctuation));
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-regexp,
+.hljs-link {
+  color: hsl(var(--code-attribute));
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-meta {
+  color: hsl(var(--code-tag));
+}
+
+.hljs-property,
+.hljs-code,
+.hljs-doctag,
+.hljs-formula {
+  color: hsl(var(--code-property));
+}
+
+.hljs-deletion {
+  color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.1);
+}
+
+.hljs-addition {
+  color: hsl(var(--code-string));
+  background-color: hsl(var(--code-string) / 0.1);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
 }
 
 .prose a {
-  @apply text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:hover:text-blue-300;
+  @apply text-blue-600 dark:text-blue-400 no-underline hover:underline;
+  transition:
+    color 0.15s ease,
+    text-decoration-color 0.15s ease;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
 }
 
 .prose img {
   @apply rounded-lg my-4;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow:
+    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.1) 0px 2px 4px;
+}
+
+.prose img:hover {
+  box-shadow:
+    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
+    rgba(15, 15, 15, 0.2) 0px 3px 9px;
 }
 
 .prose hr {
-  @apply border-gray-300 dark:border-gray-600 my-6;
+  @apply border-border my-6;
+  border-top-width: 1px;
 }
 
 /* Task List Styles */
@@ -271,14 +674,386 @@ textarea:focus {
 
 /* Table Styles */
 .prose table {
-  @apply w-full border-collapse my-4;
+  @apply w-full my-3;
+  border-collapse: collapse;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stone-table {
+  @apply w-full my-3;
+  border-collapse: collapse;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.stone-table-header,
+.stone-table-cell {
+  @apply border border-border px-3 py-1.5 align-top;
+  font-size: 0.95em;
+  color: hsl(var(--foreground) / 0.9);
+  background-color: hsl(var(--card));
+}
+
+.stone-table-header {
+  @apply bg-muted font-semibold;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9em;
 }
 
 .prose table td,
 .prose table th {
-  @apply border border-gray-300 dark:border-gray-600 px-3 py-2;
+  @apply border border-border px-3 py-1.5 align-top;
+  font-size: 0.95em;
+  color: hsl(var(--foreground) / 0.9);
+  background-color: hsl(var(--card));
 }
 
 .prose table th {
-  @apply bg-gray-100 dark:bg-gray-800 font-bold;
+  @apply bg-muted font-semibold;
+  color: hsl(var(--muted-foreground));
+  font-size: 0.9em;
+}
+
+/* Text formatting - Notion style */
+.prose strong {
+  @apply font-semibold text-foreground;
+  font-weight: 600;
+  letter-spacing: -0.003em;
+}
+
+.prose em {
+  @apply italic;
+  font-style: italic;
+}
+
+.prose del,
+.prose s {
+  @apply text-muted-foreground line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+/* Nested lists */
+.prose ul ul,
+.prose ul ol,
+.prose ol ul,
+.prose ol ol {
+  @apply mt-1 mb-1;
+}
+
+/* Better text selection - Notion style */
+.prose ::selection {
+  background-color: hsl(var(--primary) / 0.15);
+  color: inherit;
+}
+
+/* Notion-like focus and cursor styles */
+.ProseMirror-focused {
+  outline: none;
+}
+
+.ProseMirror {
+  caret-color: hsl(var(--foreground));
+}
+
+/* Empty lines should still be clickable */
+.ProseMirror p:empty,
+.ProseMirror h1:empty,
+.ProseMirror h2:empty,
+.ProseMirror h3:empty {
+  min-height: 1.5em;
+}
+
+/* Tippy.js styles for slash command menu */
+.tippy-box[data-theme~='slash-command'] {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.tippy-box[data-theme~='slash-command'] .tippy-content {
+  padding: 0;
+}
+
+.tippy-box[data-theme~='slash-command'] .tippy-arrow {
+  display: none;
+}
+
+/* Task list styles - Logseq-inspired todos */
+.task-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.task-list .task-list {
+  margin-top: 0.25rem;
+  margin-left: 1.75rem;
+  padding-left: 0.75rem;
+  padding-top: 0.25rem;
+  border-left: 1px solid hsl(var(--border));
+}
+
+.task-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(3.4rem, auto) 1fr;
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.22rem 0.65rem 0.22rem 0.55rem;
+  margin-bottom: 0.15rem;
+  border-radius: 0.6rem;
+  transition: background-color 0.18s ease;
+}
+
+.task-item:hover {
+  background-color: hsl(var(--muted) / 0.45);
+}
+
+.task-item:focus-within {
+  background-color: hsl(var(--muted) / 0.55);
+}
+
+.task-state-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  grid-column: 1;
+  align-self: start;
+  padding: 0.22rem 0.65rem;
+  min-width: 3.1rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.task-state-button:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.task-state-button:focus-visible {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
+  color: hsl(var(--primary));
+}
+
+.task-item[data-state='todo'] .task-state-button {
+  border-style: dashed;
+}
+
+.task-item[data-state='doing'] .task-state-button {
+  background-color: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+.task-item[data-state='waiting'] .task-state-button {
+  background-color: hsl(var(--accent) / 0.6);
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
+}
+
+.task-item[data-state='hold'] .task-state-button {
+  border-style: dashed;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+.task-item[data-state='done'] .task-state-button {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.task-item[data-state='canceled'] .task-state-button {
+  background-color: hsl(var(--destructive) / 0.16);
+  border-color: hsl(var(--destructive));
+  color: hsl(var(--destructive));
+  text-decoration: line-through;
+}
+
+.task-item[data-state='idea'] .task-state-button {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
+}
+
+.task-item > div {
+  grid-column: 2;
+  padding-top: 0;
+}
+
+.task-item[data-checked='true'] > div {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Mermaid Diagram Styles - Excalidraw-inspired */
+.mermaid-preview {
+  background: hsl(var(--background));
+  padding: 1.5rem;
+}
+
+.mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08));
+}
+
+/* Excalidraw-style rounded shapes */
+.mermaid-preview svg .node rect {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+.mermaid-preview svg .node circle,
+.mermaid-preview svg .node ellipse {
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+.mermaid-preview svg .node polygon {
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+}
+
+/* Mermaid diagram text styling - Excalidraw feel */
+.mermaid-preview .nodeLabel,
+.mermaid-preview .edgeLabel {
+  font-family:
+    ui-rounded,
+    'SF Pro Rounded',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    system-ui,
+    sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Softer edge lines */
+.mermaid-preview svg .edgePath path {
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg .edgePath marker path {
+  stroke-width: 1.5 !important;
+}
+
+/* StateDiagram-v2 tweaks */
+.mermaid-preview svg g[class*='state'] rect {
+  rx: 8 !important;
+  ry: 8 !important;
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg g[class*='state'] path {
+  stroke-width: 2.5 !important;
+}
+
+.mermaid-preview svg .transition path {
+  stroke-width: 2.5 !important;
+}
+
+/* Dark mode adjustments for Mermaid */
+.dark .mermaid-preview svg {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) brightness(0.95);
+}
+
+.dark .mermaid-preview .nodeLabel,
+.dark .mermaid-preview .edgeLabel {
+  color: #e2e8f0;
+}
+
+/* Excalidraw-style hover effects */
+.mermaid-preview svg .node rect,
+.mermaid-preview svg .node circle,
+.mermaid-preview svg .node ellipse,
+.mermaid-preview svg .node polygon {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.mermaid-preview svg .node:hover rect,
+.mermaid-preview svg .node:hover circle,
+.mermaid-preview svg .node:hover ellipse,
+.mermaid-preview svg .node:hover polygon {
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12)) brightness(1.02);
+  transform: translateY(-1px);
+}
+
+/* Add subtle background grid effect (optional, Excalidraw-like) */
+.mermaid-preview {
+  background-color: hsl(var(--card) / 0.65);
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
+}
+
+.dark .mermaid-preview {
+  background-color: hsl(var(--background) / 0.45);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  background-position: -1px -1px;
+}
+
+/* Mermaid code editor in edit mode */
+.code-block-wrapper[data-language='mermaid'] pre {
+  min-height: 200px;
+  font-family:
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.code-block-wrapper[data-language='mermaid'] code {
+  display: block;
+  white-space: pre;
+  font-size: 14px;
+  line-height: 1.7;
+  color: hsl(var(--code-text));
+}
+
+/* Use Patrick Hand handwriting font for all Mermaid diagrams */
+.mermaid-preview,
+.mermaid-preview svg text,
+.mermaid-preview .nodeLabel,
+.mermaid-preview .edgeLabel,
+.mermaid-preview .label,
+.mermaid-preview .label text {
+  font-family:
+    'Patrick Hand', 'Bradley Hand', 'Noteworthy', 'Chalkboard SE', 'Segoe Print', cursive !important;
+}
+
+.mermaid-preview svg path,
+.mermaid-preview svg line,
+.mermaid-preview svg polyline,
+.mermaid-preview svg polygon,
+.mermaid-preview svg rect,
+.mermaid-preview svg circle,
+.mermaid-preview svg ellipse {
+  stroke-width: 1.5px !important;
 }

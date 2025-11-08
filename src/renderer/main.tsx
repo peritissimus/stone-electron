@@ -6,6 +6,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from '@renderer/App'
 import './index.css'
+import '@fontsource/patrick-hand/latin.css'
+import 'tippy.js/dist/tippy.css'
 
 const root = document.getElementById('root')
 
