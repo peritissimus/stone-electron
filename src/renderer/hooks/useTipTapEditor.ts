@@ -9,7 +9,7 @@ import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
+import LogseqTaskItem from '@renderer/extensions/LogseqTaskItem';
 import Placeholder from '@tiptap/extension-placeholder';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
@@ -104,11 +104,22 @@ export function useTipTapEditor() {
           class: 'task-list',
         },
       }),
-      TaskItem.configure({
+      LogseqTaskItem.configure({
         HTMLAttributes: {
           class: 'task-item',
         },
         nested: true,
+        states: [
+          { value: 'todo', label: 'TODO' },
+          { value: 'doing', label: 'DOING' },
+          { value: 'waiting', label: 'WAIT', shortLabel: 'WAIT' },
+          { value: 'hold', label: 'HOLD' },
+          { value: 'done', label: 'DONE', done: true },
+          { value: 'canceled', label: 'CANCELED', done: true, shortLabel: 'CAN' },
+          { value: 'idea', label: 'IDEA' },
+        ],
+        defaultState: 'todo',
+        doneStates: ['done', 'canceled'],
       }),
       Table.configure({
         resizable: false,
@@ -139,7 +150,7 @@ export function useTipTapEditor() {
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-none min-h-[400px]',
+        class: 'prose prose-stone dark:prose-invert max-w-none focus:outline-hidden min-h-[400px]',
       },
     },
   });

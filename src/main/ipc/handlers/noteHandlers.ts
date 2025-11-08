@@ -4,9 +4,174 @@
 
 import { ipcMain, BrowserWindow } from 'electron';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
+import type { Attachment, Note, Tag } from '@shared/types';
 import { getRepositories } from '../../repositories';
 import { createHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
+
+type RepositoriesInstance = ReturnType<typeof getRepositories>;
+
+type NoteWithRelations = Note & {
+  tags: Tag[];
+  attachments: Attachment[];
+};
+
+interface CreateNoteRequest {
+  title?: string;
+  content?: string;
+  folderPath?: string | null;
+  tags?: string[];
+}
+
+interface UpdateNoteRequest {
+  id: string;
+  title?: string;
+  content?: string;
+  notebookId?: string | null;
+  folderPath?: string | null;
+  tags?: string[];
+  isFavorite?: boolean;
+  isPinned?: boolean;
+  isArchived?: boolean;
+}
+
+interface GetAllNotesRequest {
+  notebookId?: string;
+  folderPath?: string;
+  tagId?: string;
+  is_favorite?: boolean;
+  is_pinned?: boolean;
+  is_archived?: boolean;
+  is_deleted?: boolean;
+  sort?: 'updated' | 'created' | 'title';
+  order?: 'asc' | 'desc';
+  limit?: number;
+  offset?: number;
+}
+
+type NoteCreateData = Partial<Note> & { folderPath?: string | null };
+type NoteUpdateData = Partial<Note> & { content?: string; folderPath?: string | null };
+
+async function buildNoteWithRelations(
+  note: Note,
+  repos: RepositoriesInstance,
+): Promise<NoteWithRelations> {
+  const [tags, attachments] = await Promise.all([
+    repos.tag.getTagsForNote(note.id),
+    repos.attachment.getAttachmentsForNote(note.id),
+  ]);
+
+  return {
+    ...note,
+    tags,
+    attachments,
+  };
+}
+
+function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {
+  BrowserWindow.getAllWindows().forEach((win) => {
+    win.webContents.send(eventName, { note });
+  });
+}
+
+async function buildNoteResponse(
+  note: Note,
+  repos: RepositoriesInstance,
+  eventName?: string,
+): Promise<NoteWithRelations> {
+  const noteWithRelations = await buildNoteWithRelations(note, repos);
+
+  if (eventName) {
+    broadcastNoteEvent(eventName, noteWithRelations);
+  }
+
+  return noteWithRelations;
+}
+
+function resolveSortField(sort?: GetAllNotesRequest['sort']): keyof Note {
+  switch (sort) {
+    case 'created':
+      return 'createdAt';
+    case 'title':
+      return 'title';
+    default:
+      return 'updatedAt';
+  }
+}
+
+function resolveSortOrder(order?: GetAllNotesRequest['order']): 'ASC' | 'DESC' {
+  return order === 'asc' ? 'ASC' : 'DESC';
+}
+
+async function resolveDefaultNoteList(
+  request: GetAllNotesRequest,
+  repos: RepositoriesInstance,
+): Promise<Note[]> {
+  const workspace = await repos.workspace.getActive();
+
+  const where: Partial<Note> = {
+    isDeleted: request.is_deleted ?? false,
+  };
+
+  if (workspace) {
+    where.workspaceId = workspace.id;
+  }
+
+  const sortField = resolveSortField(request.sort);
+  const sortOrder = resolveSortOrder(request.order);
+
+  return repos.note.findAll({
+    where,
+    sort: {
+      field: sortField,
+      order: sortOrder,
+    },
+    limit: request.limit,
+    offset: request.offset,
+  });
+}
+
+async function resolveNotesList(
+  request: GetAllNotesRequest,
+  repos: RepositoriesInstance,
+): Promise<Note[]> {
+  if (request.tagId) {
+    return repos.note.findByTags([request.tagId]);
+  }
+
+  if (request.is_favorite === true) {
+    return repos.note.getFavorites();
+  }
+
+  if (request.is_pinned === true) {
+    return repos.note.getPinned();
+  }
+
+  if (request.is_deleted === true) {
+    return repos.note.getDeleted();
+  }
+
+  if (request.is_archived === true) {
+    return repos.note.getArchived();
+  }
+
+  if (request.folderPath) {
+    return repos.note.findByFolder(request.folderPath);
+  }
+
+  if (request.notebookId) {
+    return repos.note.findByNotebook(request.notebookId);
+  }
+
+  return resolveDefaultNoteList(request, repos);
+}
+
+async function enrichNotes(
+  notes: Note[],
+  repos: RepositoriesInstance,
+): Promise<NoteWithRelations[]> {
+  return Promise.all(notes.map((note) => buildNoteWithRelations(note, repos)));
+}
 
 /**
  * Register all note handlers
@@ -17,106 +182,73 @@ export function registerNoteHandlers() {
   // notes:create
   ipcMain.handle(
     NOTE_CHANNELS.CREATE,
-    createHandler(
-      async (
-        event,
-        request: {
-          title?: string;
-          content?: string;
-          folderPath?: string;
-          tags?: string[];
-        },
-      ) => {
-        const note = await repos.note.create({
-          title: request.title || 'Untitled',
-          notebookId: null,
-          folderPath: request.folderPath,
-        } as any);
+    createHandler(async (event, request: CreateNoteRequest) => {
+      const createData: NoteCreateData = {
+        title: request.title || 'Untitled',
+        notebookId: null,
+        folderPath: request.folderPath ?? undefined,
+      };
 
-        // Save content to file if provided
-        if (request.content && note.filePath && note.workspaceId) {
-          await repos.note.update(note.id, { content: request.content } as any);
-        }
+      const note = await repos.note.create(createData);
 
-        // Add tags if provided
-        if (request.tags && request.tags.length > 0) {
-          await repos.tag.setTagsForNote(note.id, request.tags);
-        }
+      if (request.content && note.filePath && note.workspaceId) {
+        const contentUpdate: NoteUpdateData = { content: request.content };
+        await repos.note.update(note.id, contentUpdate);
+      }
 
-        // Get tags for response
-        const tags = await repos.tag.getTagsForNote(note.id);
-        const noteWithTags = { ...note, tags };
+      if (request.tags && request.tags.length > 0) {
+        await repos.tag.setTagsForNote(note.id, request.tags);
+      }
 
-        // Broadcast event
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send(EVENTS.NOTE_CREATED, { note: noteWithTags });
-        });
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_CREATED);
 
-        return noteWithTags;
-      },
-    ),
+      return noteWithRelations;
+    }),
   );
 
   // notes:update
   ipcMain.handle(
     NOTE_CHANNELS.UPDATE,
-    createHandler(
-      async (
-        event,
-        request: {
-          id: string;
-          title?: string;
-          content?: string;
-          notebookId?: string;
-          folderPath?: string;
-          tags?: string[];
-        },
-      ) => {
-        const oldNote = await repos.note.findById(request.id);
-        if (!oldNote) {
-          throw new IpcError('NOT_FOUND', 'Note not found');
+    createHandler(async (event, request: UpdateNoteRequest) => {
+      const oldNote = await repos.note.findById(request.id);
+      if (!oldNote) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      if (request.content) {
+        const currentContent = await repos.note.getContentById(oldNote.id);
+        if (currentContent && request.content !== currentContent) {
+          await repos.version.createVersion(
+            oldNote.id,
+            oldNote.title || 'Untitled',
+            currentContent,
+          );
         }
+      }
 
-        // Create version if content changed (load current content first)
-        if (request.content) {
-          const currentContent = await repos.note.getContentById(oldNote.id);
-          if (currentContent && request.content !== currentContent) {
-            await repos.version.createVersion(
-              oldNote.id,
-              oldNote.title || 'Untitled',
-              currentContent,
-            );
-          }
-        }
+      const updateData: NoteUpdateData = {};
+      if (request.title !== undefined) updateData.title = request.title;
+      if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
+      if (request.folderPath !== undefined) updateData.folderPath = request.folderPath;
+      if (request.content !== undefined) updateData.content = request.content;
+      if (request.isFavorite !== undefined) updateData.isFavorite = request.isFavorite;
+      if (request.isPinned !== undefined) updateData.isPinned = request.isPinned;
+      if (request.isArchived !== undefined) updateData.isArchived = request.isArchived;
 
-        // Update note metadata and/or content
-        const updateData: Record<string, unknown> = {};
-        if (request.title !== undefined) updateData.title = request.title;
-        if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
-        if (request.folderPath !== undefined) (updateData as any).folderPath = request.folderPath;
-        if (request.content !== undefined) (updateData as any).content = request.content;
+      const note = await repos.note.update(request.id, updateData);
 
-        const note = await repos.note.update(request.id, updateData as any);
+      if (request.tags) {
+        await repos.tag.setTagsForNote(note.id, request.tags);
+      }
 
-        // Update tags if provided
-        if (request.tags) {
-          await repos.tag.setTagsForNote(note.id, request.tags);
-        }
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
 
-        const tags = await repos.tag.getTagsForNote(note.id);
-        const noteWithTags = { ...note, tags };
-
-        // Broadcast event
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send(EVENTS.NOTE_UPDATED, { note: noteWithTags });
-        });
-
-        return noteWithTags;
-      },
-    ),
+      return noteWithRelations;
+    }),
   );
 
   // notes:delete
+
   ipcMain.handle(
     NOTE_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string; permanent?: boolean }) => {
@@ -151,13 +283,10 @@ export function registerNoteHandlers() {
           throw new IpcError('NOT_FOUND', 'Note not found');
         }
 
-        const tags = await repos.tag.getTagsForNote(note.id);
-        const attachments = await repos.attachment.getAttachmentsForNote(note.id);
+        const noteWithRelations = await buildNoteWithRelations(note, repos);
 
         const result: Record<string, unknown> = {
-          ...note,
-          tags,
-          attachments,
+          ...noteWithRelations,
         };
 
         if (request.include_versions) {
@@ -188,100 +317,31 @@ export function registerNoteHandlers() {
   // notes:getAll
   ipcMain.handle(
     NOTE_CHANNELS.GET_ALL,
-    createHandler(
-      async (
-        event,
-        request: {
-          notebookId?: string;
-          folderPath?: string;
-          tagId?: string;
-          is_favorite?: boolean;
-          is_pinned?: boolean;
-          is_archived?: boolean;
-          is_deleted?: boolean;
-          sort?: 'updated' | 'created' | 'title';
-          order?: 'asc' | 'desc';
-          limit?: number;
-          offset?: number;
-        },
-      ) => {
-        let notes;
-        // Note: We no longer run a full sync here. The FileWatcherService
-        // maintains DB <-> filesystem alignment for add/unlink events.
-        // Running sync on every list fetch caused redundant scans and log spam.
-        // Log filters
-        logger.info('[IPC][notes:getAll] request', {
-          notebookId: request.notebookId,
-          tagId: request.tagId,
-          is_favorite: request.is_favorite,
-          is_pinned: request.is_pinned,
-          is_archived: request.is_archived,
-          is_deleted: request.is_deleted,
-        });
+    createHandler(async (event, request: GetAllNotesRequest) => {
+      // Note: We no longer run a full sync here. The FileWatcherService
+      // maintains DB <-> filesystem alignment for add/unlink events.
+      // Running sync on every list fetch caused redundant scans and log spam.
+      logger.info('[IPC][notes:getAll] request', {
+        notebookId: request.notebookId,
+        tagId: request.tagId,
+        is_favorite: request.is_favorite,
+        is_pinned: request.is_pinned,
+        is_archived: request.is_archived,
+        is_deleted: request.is_deleted,
+      });
 
-        if (request.tagId) {
-          notes = await repos.note.findByTags([request.tagId]);
-        } else if (request.is_favorite === true) {
-          notes = await repos.note.getFavorites();
-        } else if (request.is_pinned === true) {
-          notes = await repos.note.getPinned();
-        } else if (request.is_deleted === true) {
-          notes = await repos.note.getDeleted();
-        } else if (request.is_archived === true) {
-          notes = await repos.note.getArchived();
-        } else if (request.folderPath) {
-          notes = await repos.note.findByFolder(request.folderPath);
-        } else if (request.notebookId) {
-          notes = await repos.note.findByNotebook(request.notebookId);
-        } else {
-          const workspace = await repos.workspace.getActive();
-          const baseWhere: Record<string, unknown> = {};
-          if (workspace) baseWhere.workspaceId = workspace.id;
-          baseWhere.isDeleted = request.is_deleted ?? false;
-          const where: Record<string, unknown> = {};
-          Object.assign(where, baseWhere);
-          if (request.is_deleted !== undefined) where.isDeleted = request.is_deleted;
+      const notes = await resolveNotesList(request, repos);
+      const enrichedNotes = await enrichNotes(notes, repos);
 
-          const sortField =
-            request.sort === 'updated'
-              ? 'updatedAt'
-              : request.sort === 'created'
-                ? 'createdAt'
-                : request.sort || 'updatedAt';
-          notes = await repos.note.findAll({
-            where,
-            sort: {
-              field: sortField as any,
-              order: (request.order?.toUpperCase() as 'ASC' | 'DESC') || 'DESC',
-            },
-            limit: request.limit,
-            offset: request.offset,
-          });
-        }
+      const total = enrichedNotes.length;
+      logger.info('[IPC][notes:getAll] returning count', total);
 
-        const enrichedNotes = await Promise.all(
-          notes.map(async (note) => {
-            const noteTags = await repos.tag.getTagsForNote(note.id);
-            const attachments = await repos.attachment.getAttachmentsForNote(note.id);
-
-            return {
-              ...note,
-              tags: noteTags,
-              attachments,
-            };
-          }),
-        );
-
-        const total = enrichedNotes.length;
-        logger.info('[IPC][notes:getAll] returning count', total);
-
-        return {
-          notes: enrichedNotes,
-          total,
-          hasMore: request.limit ? total > request.limit + (request.offset || 0) : false,
-        };
-      },
-    ),
+      return {
+        notes: enrichedNotes,
+        total,
+        hasMore: request.limit ? total > request.limit + (request.offset || 0) : false,
+      };
+    }),
   );
 
   // notes:favorite
@@ -289,15 +349,9 @@ export function registerNoteHandlers() {
     NOTE_CHANNELS.FAVORITE,
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.toggleFavorite(request.id);
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
 
-      const tags = await repos.tag.getTagsForNote(note.id);
-      const noteWithTags = { ...note, tags };
-
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_UPDATED, { note: noteWithTags });
-      });
-
-      return noteWithTags;
+      return noteWithRelations;
     }),
   );
 
@@ -306,15 +360,9 @@ export function registerNoteHandlers() {
     NOTE_CHANNELS.PIN,
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.togglePin(request.id);
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
 
-      const tags = await repos.tag.getTagsForNote(note.id);
-      const noteWithTags = { ...note, tags };
-
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_UPDATED, { note: noteWithTags });
-      });
-
-      return noteWithTags;
+      return noteWithRelations;
     }),
   );
 
@@ -323,15 +371,9 @@ export function registerNoteHandlers() {
     NOTE_CHANNELS.ARCHIVE,
     createHandler(async (event, request: { id: string }) => {
       const note = await repos.note.toggleArchive(request.id);
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
 
-      const tags = await repos.tag.getTagsForNote(note.id);
-      const noteWithTags = { ...note, tags };
-
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_UPDATED, { note: noteWithTags });
-      });
-
-      return noteWithTags;
+      return noteWithRelations;
     }),
   );
 
@@ -368,14 +410,16 @@ export function registerNoteHandlers() {
       }
 
       // Restore the version (content is passed via the data parameter)
-      const note = await repos.note.update(request.noteId, {
+      const restoreData: NoteUpdateData = {
         title: version.title,
         content: version.content,
-      } as any);
+      };
+      const note = await repos.note.update(request.noteId, restoreData);
+      const enrichedNote = await buildNoteWithRelations(note, repos);
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_VERSION_RESTORED, { note, version });
+        win.webContents.send(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
       });
 
       // Get the restored content
