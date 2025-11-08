@@ -308,7 +308,7 @@ export function Sidebar() {
         className="flex flex-col flex-1 overflow-hidden"
       >
         {/* Tab Triggers - Compact */}
-        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border flex-shrink-0">
+        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
           <TabsTrigger
             value="folders"
             className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"

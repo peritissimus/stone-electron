@@ -51,7 +51,7 @@ export function NoteEditorHeader({
   return (
     <div
       className={cn(
-        'px-4 border-b border-border flex-shrink-0 bg-card flex items-center gap-3',
+        'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
         sizeHeightClasses['spacious'],
       )}
     >
