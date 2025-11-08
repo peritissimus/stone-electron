@@ -3,6 +3,7 @@
  */
 
 import {
+  workspaces,
   notes,
   notebooks,
   tags,
@@ -19,6 +20,9 @@ export type UUID = string & { readonly __brand: 'UUID' };
 export type UnixTimestamp = number;
 
 // Infer types from Drizzle schema
+export type Workspace = typeof workspaces.$inferSelect;
+export type InsertWorkspace = typeof workspaces.$inferInsert;
+
 export type Note = typeof notes.$inferSelect;
 export type InsertNote = typeof notes.$inferInsert;
 
@@ -77,16 +81,12 @@ export interface IpcResponse<T> {
 export interface SearchResult {
   id: UUID;
   title: string;
-  content: string;
   notebookId: UUID | null;
   relevance?: number;
   similarity?: number;
   score?: number;
   title_highlight?: string;
-  content_highlight?: string;
-  content_preview?: string;
   search_type?: 'fts' | 'semantic' | 'hybrid';
-  createdAt: UnixTimestamp;
 }
 
 export interface SearchResults {

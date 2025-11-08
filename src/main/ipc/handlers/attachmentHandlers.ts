@@ -9,6 +9,7 @@ import { createHandler, IpcError } from '../utils';
 import path from 'path';
 import fs from 'fs';
 import { getDatabaseManager } from '../../database';
+import { getMarkdownService } from '../../services/MarkdownService';
 
 /**
  * Register all attachment handlers
@@ -33,7 +34,10 @@ export function registerAttachmentHandlers() {
 
         // Get file stats
         const stats = fs.statSync(request.file_path);
-        const filename = request.filename || path.basename(request.file_path);
+        const rawName = request.filename || path.basename(request.file_path);
+        const base = path.basename(rawName);
+        const sanitized = getMarkdownService().sanitizeFilename(base);
+        const filename = sanitized || 'attachment';
 
         // Determine MIME type (basic implementation)
         const ext = path.extname(filename).toLowerCase();
@@ -57,12 +61,17 @@ export function registerAttachmentHandlers() {
           fs.mkdirSync(attachmentsDir, { recursive: true });
         }
 
-        // Copy file to attachments directory
-        const destPath = path.join(attachmentsDir, filename);
-        fs.copyFileSync(request.file_path, destPath);
+        // Copy file to attachments directory with containment check
+        const resolvedDest = path.resolve(attachmentsDir, filename);
+        const rootAbs = path.resolve(attachmentsDir);
+        const withSep = rootAbs.endsWith(path.sep) ? rootAbs : rootAbs + path.sep;
+        if (!resolvedDest.startsWith(withSep) && resolvedDest !== rootAbs) {
+          throw new IpcError('INVALID_INPUT', 'Invalid attachment filename');
+        }
+        fs.copyFileSync(request.file_path, resolvedDest);
 
         // Create attachment record
-        const relativePath = path.join('attachments', request.noteId, filename);
+        const relativePath = path.join('attachments', request.noteId, filename).replace(/\\/g, '/');
         const attachment = await repos.attachment.create({
           noteId: request.noteId,
           filename,
@@ -92,9 +101,14 @@ export function registerAttachmentHandlers() {
 
       // Delete physical file
       const dbManager = getDatabaseManager();
-      const filePath = path.join(dbManager.getDataPath(), attachment.path);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      const attachmentsRoot = path.join(dbManager.getDataPath(), 'attachments');
+      const filePath = path.resolve(dbManager.getDataPath(), attachment.path);
+      const rootAbs = path.resolve(attachmentsRoot);
+      const withSep = rootAbs.endsWith(path.sep) ? rootAbs : rootAbs + path.sep;
+      if (filePath.startsWith(withSep) || filePath === rootAbs) {
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
       }
 
       // Delete attachment record

@@ -1,10 +1,22 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
 
+// Workspaces table
+export const workspaces = sqliteTable('workspaces', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  folderPath: text('folder_path').notNull().unique(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  lastAccessedAt: integer('last_accessed_at', { mode: 'timestamp' }).notNull(),
+});
+
 // Notebooks table
 export const notebooks = sqliteTable('notebooks', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   parentId: text('parent_id'),
+  workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
+  folderPath: text('folder_path'), // Relative path within workspace
   icon: text('icon').default('📁'),
   color: text('color').default('#3b82f6'),
   position: integer('position').default(0),
@@ -16,8 +28,9 @@ export const notebooks = sqliteTable('notebooks', {
 export const notes = sqliteTable('notes', {
   id: text('id').primaryKey(),
   title: text('title').default('Untitled'),
-  content: text('content').default(''),
+  filePath: text('file_path'), // Path to markdown file (relative to workspace)
   notebookId: text('notebook_id').references(() => notebooks.id, { onDelete: 'set null' }),
+  workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
   isFavorite: integer('is_favorite', { mode: 'boolean' }).default(false),
   isPinned: integer('is_pinned', { mode: 'boolean' }).default(false),
   isArchived: integer('is_archived', { mode: 'boolean' }).default(false),

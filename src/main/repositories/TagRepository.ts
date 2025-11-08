@@ -91,11 +91,10 @@ export class TagRepository {
    * Execute operations in a transaction
    */
   async transaction<T>(callback: () => T | Promise<T>): Promise<T> {
-    const db = getDatabaseManager().getDb();
-    const result = db.transaction(() => {
-      return callback();
-    })();
-    return result;
+    const db = getDatabaseManager().getDrizzle();
+    return await db.transaction(async () => {
+      return await callback();
+    });
   }
 
   /**

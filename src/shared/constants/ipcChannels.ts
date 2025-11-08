@@ -2,12 +2,30 @@
  * IPC Channel Constants for Stone Application
  */
 
+// Workspace Operations
+export const WORKSPACE_CHANNELS = {
+  CREATE: 'workspaces:create',
+  UPDATE: 'workspaces:update',
+  DELETE: 'workspaces:delete',
+  GET_ALL: 'workspaces:getAll',
+  GET_ACTIVE: 'workspaces:getActive',
+  SET_ACTIVE: 'workspaces:setActive',
+  SCAN: 'workspaces:scan',
+  SYNC: 'workspaces:sync',
+  CREATE_FOLDER: 'workspaces:createFolder',
+  RENAME_FOLDER: 'workspaces:renameFolder',
+  DELETE_FOLDER: 'workspaces:deleteFolder',
+  VALIDATE_PATH: 'workspaces:validatePath',
+  SELECT_FOLDER: 'workspaces:selectFolder',
+} as const;
+
 // Note Operations
 export const NOTE_CHANNELS = {
   CREATE: 'notes:create',
   UPDATE: 'notes:update',
   DELETE: 'notes:delete',
   GET: 'notes:get',
+  GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
   FAVORITE: 'notes:favorite',
   PIN: 'notes:pin',
@@ -15,7 +33,7 @@ export const NOTE_CHANNELS = {
   GET_VERSIONS: 'notes:getVersions',
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
-} as const
+} as const;
 
 // Notebook Operations
 export const NOTEBOOK_CHANNELS = {
@@ -24,7 +42,7 @@ export const NOTEBOOK_CHANNELS = {
   DELETE: 'notebooks:delete',
   GET_ALL: 'notebooks:getAll',
   MOVE: 'notebooks:move',
-} as const
+} as const;
 
 // Tag Operations
 export const TAG_CHANNELS = {
@@ -33,7 +51,7 @@ export const TAG_CHANNELS = {
   GET_ALL: 'tags:getAll',
   ADD_TO_NOTE: 'tags:addToNote',
   REMOVE_FROM_NOTE: 'tags:removeFromNote',
-} as const
+} as const;
 
 // Search Operations
 export const SEARCH_CHANNELS = {
@@ -42,14 +60,14 @@ export const SEARCH_CHANNELS = {
   HYBRID: 'search:hybrid',
   BY_TAG: 'search:byTag',
   BY_DATE_RANGE: 'search:byDateRange',
-} as const
+} as const;
 
 // Attachment Operations
 export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',
   DELETE: 'attachments:delete',
   GET_ALL: 'attachments:getAll',
-} as const
+} as const;
 
 // Database Operations
 export const DATABASE_CHANNELS = {
@@ -62,17 +80,27 @@ export const DATABASE_CHANNELS = {
   VACUUM: 'db:vacuum',
   CHECK_INTEGRITY: 'db:checkIntegrity',
   GET_MIGRATION_HISTORY: 'db:getMigrationHistory',
-} as const
+} as const;
 
 // Settings Operations
 export const SETTINGS_CHANNELS = {
   GET: 'settings:get',
   SET: 'settings:set',
   GET_ALL: 'settings:getAll',
-} as const
+} as const;
 
 // Events
 export const EVENTS = {
+  // Workspace events
+  WORKSPACE_CREATED: 'workspaces:created',
+  WORKSPACE_UPDATED: 'workspaces:updated',
+  WORKSPACE_DELETED: 'workspaces:deleted',
+  WORKSPACE_SWITCHED: 'workspaces:switched',
+  WORKSPACE_SCANNED: 'workspaces:scanned',
+  FILE_CHANGED: 'files:changed',
+  FILE_CREATED: 'files:created',
+  FILE_DELETED: 'files:deleted',
+
   // Note events
   NOTE_CREATED: 'notes:created',
   NOTE_UPDATED: 'notes:updated',
@@ -105,20 +133,21 @@ export const EVENTS = {
 
   // Settings events
   SETTINGS_CHANGED: 'settings:changed',
-} as const
+} as const;
 
-// Get all channels as a flat object for validation
-export const ALL_CHANNELS = {
-  ...NOTE_CHANNELS,
-  ...NOTEBOOK_CHANNELS,
-  ...TAG_CHANNELS,
-  ...SEARCH_CHANNELS,
-  ...ATTACHMENT_CHANNELS,
-  ...DATABASE_CHANNELS,
-  ...SETTINGS_CHANNELS,
-} as const
+// Get all channels as an array for validation
+// We need to collect all channel values to avoid key conflicts
+// (multiple objects have keys like CREATE, UPDATE, DELETE, GET_ALL)
+export const ALL_CHANNELS = [
+  ...Object.values(WORKSPACE_CHANNELS),
+  ...Object.values(NOTE_CHANNELS),
+  ...Object.values(NOTEBOOK_CHANNELS),
+  ...Object.values(TAG_CHANNELS),
+  ...Object.values(SEARCH_CHANNELS),
+  ...Object.values(ATTACHMENT_CHANNELS),
+  ...Object.values(DATABASE_CHANNELS),
+  ...Object.values(SETTINGS_CHANNELS),
+];
 
-// Get all events as a flat object
-export const ALL_EVENTS = {
-  ...EVENTS,
-} as const
+// Get all events as an array
+export const ALL_EVENTS = Object.values(EVENTS);

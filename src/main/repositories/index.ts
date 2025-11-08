@@ -2,12 +2,14 @@
  * Repository Module Exports
  */
 
+import { WorkspaceRepository } from './WorkspaceRepository';
 import { NoteRepository } from './NoteRepository';
 import { NotebookRepository } from './NotebookRepository';
 import { TagRepository } from './TagRepository';
 import { VersionRepository } from './VersionRepository';
 import { AttachmentRepository } from './AttachmentRepository';
 
+export { WorkspaceRepository } from './WorkspaceRepository';
 export { NoteRepository } from './NoteRepository';
 export { NotebookRepository } from './NotebookRepository';
 export { TagRepository } from './TagRepository';
@@ -18,6 +20,7 @@ export { AttachmentRepository } from './AttachmentRepository';
  * Repository Collection
  */
 export class Repositories {
+  public workspace: WorkspaceRepository;
   public note: NoteRepository;
   public notebook: NotebookRepository;
   public tag: TagRepository;
@@ -25,6 +28,7 @@ export class Repositories {
   public attachment: AttachmentRepository;
 
   constructor() {
+    this.workspace = new WorkspaceRepository();
     this.note = new NoteRepository();
     this.notebook = new NotebookRepository();
     this.tag = new TagRepository();

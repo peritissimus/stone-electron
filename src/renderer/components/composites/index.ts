@@ -28,4 +28,20 @@ export { PanelFooter, type PanelFooterProps } from './PanelFooter';
 export { SectionHeader, type SectionHeaderProps } from './SectionHeader';
 export { QuickLink, type QuickLinkProps } from './QuickLink';
 export { TreeItem, type TreeItemProps } from './TreeItem';
-export { ToolbarButton, ToolbarDivider, type ToolbarButtonProps, type ToolbarDividerProps } from './ToolbarButton';
+export {
+  ToolbarButton,
+  ToolbarDivider,
+  type ToolbarButtonProps,
+  type ToolbarDividerProps,
+} from './ToolbarButton';
+export { InputModal, type InputModalProps } from './InputModal';
+
+// Layout components
+export { LayoutContainer, type LayoutContainerProps } from './layout/LayoutContainer';
+export { MainContentArea } from './layout/MainContentArea';
+export { MainLayout } from './layout/MainLayout';
+export { ModalLayout, type ModalLayoutProps } from './layout/ModalLayout';
+export { NoteListPanel } from './layout/NoteListPanel';
+export { ResizablePanel, type ResizablePanelProps } from './layout/ResizablePanel';
+export { SidebarPanel } from './layout/SidebarPanel';
+export { TabbedModal, type TabbedModalProps, type TabItem } from './layout/TabbedModal';

@@ -8,7 +8,8 @@ This document provides guidelines for AI assistants (like Claude) working on the
 2. **Preserve macOS design** - Follow the established design system
 3. **Use TypeScript path aliases** - `@renderer/`, `@main/`, `@shared/`
 4. **Test changes** - Build and verify before marking tasks complete
-5. **Document changes** - Update relevant docs when modifying architecture
+5. **Document changes** - Update CLAUDE.md or existing docs only (never create new doc files)
+6. **Content storage** - Files are source of truth, database is metadata only
 
 ## Development Workflow
 
@@ -71,6 +72,7 @@ Stone uses a **token-based composite component system** to eliminate inline styl
 ### The System
 
 Instead of writing inline classes:
+
 ```tsx
 // ❌ AVOID - inline classes
 <div className="px-3 pt-titlebar pb-2.5 border-b border-border">
@@ -79,83 +81,95 @@ Instead of writing inline classes:
 ```
 
 Use composites:
+
 ```tsx
 // ✅ USE - composites
 import { Header, IconButton } from '@renderer/components/composites';
-<Header left={<Title />} right={<IconButton icon={<Icon />} />} />
+<Header left={<Title />} right={<IconButton icon={<Icon />} />} />;
 ```
 
 ### 13 Composite Components Available
 
 **Navigation & Headers:**
+
 - `<Header />` - Top navigation (replaces manual header divs)
 - `<IconButton />` - Icon buttons (replaces `className="h-8 w-8"`)
 - `<QuickLink />` - Sidebar links
 - `<SectionHeader />` - Section headers
 
 **Lists & Items:**
+
 - `<ListItem />` - List items (replaces custom button styling)
 - `<ListContainer />` - List wrapper (handles list/grid/card modes)
 - `<CompactCard />` - Grid/card items
 - `<TreeItem />` - Tree items (replaces `style={{ paddingLeft }}`)
 
 **Controls:**
+
 - `<ControlGroup />` - Button/toggle groups (replaces manual divs)
 - `<ToolbarButton />` - Toolbar buttons
 - `<ToolbarDivider />` - Toolbar dividers
 
 **Layout:**
+
 - `<Spacer />` - Spacing (replaces `<div className="h-4" />`)
 - `<PanelFooter />` - Footer sections (replaces manual footer styling)
 
 ### Size Tokens
 
 All composites support size variants:
+
 ```tsx
-size="compact"   // h-6 (24px), text-xs (12px) - tight spacing
-size="normal"    // h-8 (32px), text-sm (13px) - default
-size="spacious"  // h-10 (40px), text-base (14px) - relaxed spacing
+size = 'compact'; // h-6 (24px), text-xs (12px) - tight spacing
+size = 'normal'; // h-8 (32px), text-sm (13px) - default
+size = 'spacious'; // h-10 (40px), text-base (14px) - relaxed spacing
 ```
 
 ### Common Usage
 
 **Header:**
+
 ```tsx
 import { Header } from '@renderer/components/composites';
-<Header
-  left={<Title>Notes</Title>}
-  right={<IconButton icon={<Plus />} tooltip="New" />}
-/>
+<Header left={<Title>Notes</Title>} right={<IconButton icon={<Plus />} tooltip="New" />} />;
 ```
 
 **List:**
+
 ```tsx
 import { ListContainer, ListItem } from '@renderer/components/composites';
 <ListContainer viewMode="list">
-  {items.map(item => (
+  {items.map((item) => (
     <ListItem title={item.name} isActive={item.id === active} />
   ))}
-</ListContainer>
+</ListContainer>;
 ```
 
 **Controls:**
+
 ```tsx
 import { ControlGroup } from '@renderer/components/composites';
 <ControlGroup gap="sm" background="bg-muted">
-  <Toggle><ListIcon /></Toggle>
-  <Toggle><GridIcon /></Toggle>
-</ControlGroup>
+  <Toggle>
+    <ListIcon />
+  </Toggle>
+  <Toggle>
+    <GridIcon />
+  </Toggle>
+</ControlGroup>;
 ```
 
 ### Critical Rules
 
 ✅ **ALWAYS:**
+
 - Use composites from `@renderer/components/composites`
 - Use size tokens: `size="compact"`, `size="normal"`, `size="spacious"`
 - Use `left` and `right` props instead of wrapper divs
 - Import from the composites index, not individual files
 
 ❌ **NEVER:**
+
 - Add inline classes like `className="px-3 py-2"` to composites
 - Use `style={{ paddingLeft }}` for indentation (use `<TreeItem level={} />`)
 - Create custom button styling (use `<IconButton />`)
@@ -165,6 +179,7 @@ import { ControlGroup } from '@renderer/components/composites';
 ### Documentation
 
 For complete details:
+
 - See **COMPOSITES_QUICK_REF.md** for quick overview
 - See **COMPOSITES_GUIDE.md** for full API reference
 - See **REFACTORING_EXAMPLES.md** for before/after comparisons
@@ -177,6 +192,7 @@ For complete details:
 Always use CSS variables, never hardcoded colors:
 
 ✅ **Good:**
+
 ```tsx
 <div className="bg-background text-foreground border-border">
 <button className="bg-primary text-primary-foreground">
@@ -184,6 +200,7 @@ Always use CSS variables, never hardcoded colors:
 ```
 
 ❌ **Bad:**
+
 ```tsx
 <div className="bg-white text-black border-gray-200">
 <button className="bg-blue-600 text-white">
@@ -195,6 +212,7 @@ Always use CSS variables, never hardcoded colors:
 Use composites for spacing instead of inline classes:
 
 ✅ **Good:**
+
 ```tsx
 import { Header, Spacer } from '@renderer/components/composites';
 <Header left={<Title />} />
@@ -202,12 +220,14 @@ import { Header, Spacer } from '@renderer/components/composites';
 ```
 
 ❌ **Bad:**
+
 ```tsx
 <div className="px-3 py-2">Header</div>
 <div className="h-4" />
 ```
 
 Follow macOS-style compact spacing:
+
 - **With composites**: size="compact", size="normal", size="spacious"
 - **In containers**: `gap-1`, `gap-2`, `gap-3` (4px, 8px, 12px)
 
@@ -266,40 +286,40 @@ The component will be automatically placed in `src/renderer/components/ui/` with
 
 ```typescript
 try {
-  const response = await window.api.invoke('channel:name', params)
+  const response = await window.api.invoke('channel:name', params);
   if (response.success && response.data) {
     // Handle success
   } else {
     // Log and show error
-    logger.error('Operation failed:', response.error)
-    alert(response.error?.message || 'Operation failed')
+    logger.error('Operation failed:', response.error);
+    alert(response.error?.message || 'Operation failed');
   }
 } catch (error) {
-  logger.error('Exception:', error)
-  alert('An error occurred')
+  logger.error('Exception:', error);
+  alert('An error occurred');
 }
 ```
 
 ### Backend (Main Process)
 
 ```typescript
-import { createHandler, IpcError } from '../utils'
+import { createHandler, IpcError } from '../utils';
 
 ipcMain.handle(
   'channel:name',
   createHandler(async (event, request) => {
     // Validation
     if (!request.param) {
-      throw new IpcError('INVALID_INPUT', 'Param is required')
+      throw new IpcError('INVALID_INPUT', 'Param is required');
     }
-    
+
     // Operation
-    const result = await doSomething(request.param)
-    
+    const result = await doSomething(request.param);
+
     // Return data (createHandler wraps in success response)
-    return result
-  })
-)
+    return result;
+  }),
+);
 ```
 
 ## Testing Strategy
@@ -326,26 +346,30 @@ pnpm build
 ## Common Mistakes to Avoid
 
 ### 1. NOT using composites (CRITICAL!)
+
 ❌ `<div className="px-3 pt-titlebar pb-2.5 border-b border-border">`
 ✅ `<Header left={<Title />} />`
 
 ❌ `<button className="h-8 w-8 p-0"><Icon /></button>`
 ✅ `<IconButton size="normal" icon={<Icon />} />`
 
-❌ `<div style={{ paddingLeft: `${level * 10}px` }}>`
+❌ `<div style={{ paddingLeft: `${level \* 10}px` }}>`
 ✅ `<TreeItem level={level} />`
 
 See **COMPOSITES_QUICK_REF.md** for when to use which composite.
 
 ### 2. Using npm instead of pnpm
+
 ❌ `npm install`
 ✅ `pnpm install`
 
 ### 3. Hardcoding colors
+
 ❌ `className="bg-gray-800 text-white"`
 ✅ `className="bg-background text-foreground"`
 
 ### 4. Wrong import paths
+
 ❌ `import { cn } from "../../../lib/utils"`
 ✅ `import { cn } from "@renderer/lib/utils"`
 
@@ -353,35 +377,88 @@ See **COMPOSITES_QUICK_REF.md** for when to use which composite.
 ✅ `import { Header } from '@renderer/components/composites'`
 
 ### 5. Skipping migration files
+
 ❌ Modifying schema directly in code
 ✅ Create SQL migration in `migrations/`
 
 ### 6. Large button/text sizes
+
 ❌ `className="text-base px-4 py-3"`
 ✅ `className="text-xs px-3 py-2"` or better: `<Header />`, `<IconButton />`
 
 ### 7. Forgetting to rebuild native modules
+
 After installing/updating better-sqlite3:
+
 ```bash
 pnpm electron-rebuild -f -w better-sqlite3
 ```
 
 ### 8. Not using the logger
+
 ❌ `console.log('Something happened')`
 ✅ `logger.info('Something happened')`
 
 ### 9. Creating files without reading
+
 Always read a file first before attempting to edit/write it.
 
 ### 10. Mixing inline classes with composites
+
 ❌ `<Header className="px-3 py-2" />`
 ✅ `<Header size="normal" />` (composites handle all styling)
 
 ### 11. Creating wrapper divs instead of using left/right props
+
 ❌ `<Header><div className="flex gap-2"><Button /><Button /></div></Header>`
 ✅ `<Header right={<ControlGroup><Button /><Button /></ControlGroup>} />`
 
 ## Project-Specific Knowledge
+
+### Content Architecture (CRITICAL!)
+
+**Files are the source of truth. Database stores metadata only.**
+
+❌ **NEVER do this:**
+
+```typescript
+const note = await repos.note.findById(id);
+console.log(note.content); // ERROR: content field doesn't exist!
+```
+
+✅ **ALWAYS do this:**
+
+```typescript
+// 1. Get metadata (fast - from DB)
+const note = await repos.note.findById(id);
+// { id, title, filePath, flags, timestamps } - NO content
+
+// 2. Get content when needed (lazy - from file)
+const content = await repos.note.getContentById(id);
+// HTML converted from markdown file
+```
+
+**Key Rules:**
+
+1. Database table `notes` has NO `content` column (removed in migration 0002)
+2. Content is loaded on-demand from markdown files
+3. Use `getContentById()` to load content from files
+4. Autosave writes to file only, not database
+5. List views show metadata only (no content loading)
+6. Search results return metadata only (no content field)
+
+**IPC Channels:**
+
+- `notes:get` - Returns note metadata (no content)
+- `notes:getContent` - Loads content from file (lazy)
+- `notes:update` - Writes content to file (not DB)
+
+**Silent Autosave:**
+
+```typescript
+// Autosave without triggering re-renders
+await updateNote(noteId, { content: html }, true); // silent=true
+```
 
 ### Electron Window Configuration
 
@@ -407,9 +484,39 @@ Always read a file first before attempting to edit/write it.
 ### Database
 
 - SQLite with better-sqlite3
-- FTS5 for full-text search
+- FTS5 for full-text search on title only (not content)
 - Foreign keys enabled
 - Timestamps are Unix epoch (seconds)
+- **Content is NOT stored in database** - files only!
+
+**Tables:**
+
+- `notes` - Metadata only (id, title, filePath, flags, timestamps)
+- `notebooks` - Folder structure
+- `tags` - Tag definitions
+- `note_tags` - Note-tag relationships
+- `note_versions` - Version metadata (no content field)
+- `notes_fts` - Full-text search on title only
+
+## Documentation Rules (CRITICAL!)
+
+❌ **NEVER create these files:**
+
+- `TESTING_NOTES.md`
+- `CHANGES.md`
+- `ARCHITECTURE.md`
+- `API_CHANGES.md`
+- `MIGRATION_GUIDE.md`
+- Any standalone documentation file
+
+✅ **ALWAYS update existing files:**
+
+- Add notes to `CLAUDE.md` for development info
+- Update `README.md` for user-facing changes
+- Update `AGENTS.md` (this file) for agent-specific rules
+- Add to existing component docs (e.g., `COMPOSITES_GUIDE.md`)
+
+**Why?** To avoid documentation sprawl and keep all knowledge centralized.
 
 ## When Stuck
 
@@ -418,7 +525,8 @@ Always read a file first before attempting to edit/write it.
 3. **Check the logs** in Electron DevTools console
 4. **Rebuild main process** if IPC not working
 5. **Delete database** if schema issues
-6. **Ask user for clarification** if requirements unclear
+6. **Remember content architecture** - files not DB!
+7. **Ask user for clarification** if requirements unclear
 
 ## Success Checklist
 
@@ -428,9 +536,12 @@ Before marking a task complete:
 - [ ] Uses pnpm (not npm)
 - [ ] Uses path aliases (@renderer/, etc.)
 - [ ] Follows macOS design system
+- [ ] Uses composites (not inline classes)
 - [ ] Uses CSS variables (not hardcoded colors)
 - [ ] Properly typed with TypeScript
 - [ ] Includes error handling
+- [ ] **Respects content architecture** (files not DB)
+- [ ] **Didn't create standalone docs** (updated existing only)
 - [ ] Tested in the app
 - [ ] No console errors
 - [ ] Works in both light and dark mode
@@ -438,6 +549,7 @@ Before marking a task complete:
 ## Quick Reference
 
 ### Most Common Commands
+
 ```bash
 pnpm dev:electron                          # Start development
 pnpm build:main                            # Rebuild main process
@@ -446,6 +558,7 @@ pnpm electron-rebuild -f -w better-sqlite3 # Rebuild native module
 ```
 
 ### Most Common Paths
+
 ```
 src/renderer/components/Layout/  # Main UI components
 src/renderer/components/ui/      # shadcn components
@@ -454,9 +567,10 @@ migrations/                      # Database migrations
 ```
 
 ### Most Common Imports
+
 ```typescript
 // Utils
-import { cn } from "@renderer/lib/utils"
+import { cn } from '@renderer/lib/utils';
 
 // Composites (USE THESE!)
 import {
@@ -465,22 +579,22 @@ import {
   ListContainer,
   IconButton,
   ControlGroup,
-  TreeItem
-} from "@renderer/components/composites"
+  TreeItem,
+} from '@renderer/components/composites';
 
 // Stores
-import { useNoteStore } from "@renderer/stores/noteStore"
-import { useUIStore } from "@renderer/stores/uiStore"
+import { useNoteStore } from '@renderer/stores/noteStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 
 // Logger
-import { logger } from "@renderer/utils/logger"
+import { logger } from '@renderer/utils/logger';
 
 // Icons
-import { Star, Pin, Archive } from "lucide-react"
+import { Star, Pin, Archive } from 'lucide-react';
 
 // shadcn (only for specialized components)
-import { Button } from "@renderer/components/ui/button"
-import { Dialog } from "@renderer/components/ui/dialog"
+import { Button } from '@renderer/components/base/ui/button';
+import { Dialog } from '@renderer/components/base/ui/dialog';
 ```
 
 ---

@@ -28,6 +28,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Purpose**: Fundamental building blocks that implement the design system.
 
 **Characteristics**:
+
 - Direct implementation or thin wrappers around shadcn/Radix primitives
 - No business logic
 - Design token integration (colors, spacing, typography)
@@ -37,6 +38,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Examples**: `Text`, `Button`, `Input`, `Dialog`, `Card`
 
 **Rules**:
+
 1. Must use `forwardRef` to support refs
 2. Must include `displayName` for debugging
 3. Must use `cn()` utility for className merging
@@ -50,6 +52,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Purpose**: Reusable patterns combining multiple base components.
 
 **Characteristics**:
+
 - Combine 2+ base components
 - Implement common UI patterns
 - Domain-agnostic (could be used in any app)
@@ -59,6 +62,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Examples**: `ActionCard`, `SettingsSection`, `StatusCard`
 
 **Rules**:
+
 1. Must compose from base components only
 2. Must accept `className` prop for overrides
 3. Should limit customization to common use cases
@@ -72,6 +76,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Purpose**: Application-specific components with business logic.
 
 **Characteristics**:
+
 - Implement specific features
 - Connect to stores (Zustand)
 - Handle IPC communication
@@ -81,6 +86,7 @@ This document defines the rules and patterns for building UI components in Stone
 **Examples**: `NoteEditor`, `NotebookTree`, `TagList`, `SearchPanel`
 
 **Rules**:
+
 1. Can use any base or composite components
 2. Can connect to Zustand stores
 3. Can call IPC handlers
@@ -239,31 +245,39 @@ export function NoteEditor() {
 
 ### Component Names
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Base Component | PascalCase (noun) | `Button`, `Input`, `Dialog` |
-| Composite Component | PascalCase (descriptive) | `ActionCard`, `SettingsSection` |
-| Feature Component | PascalCase (feature name) | `NoteEditor`, `NotebookTree` |
-| Convenience Component | PascalCase (semantic) | `Heading1`, `Body`, `Label` |
+| Type                  | Pattern                   | Example                         |
+| --------------------- | ------------------------- | ------------------------------- |
+| Base Component        | PascalCase (noun)         | `Button`, `Input`, `Dialog`     |
+| Composite Component   | PascalCase (descriptive)  | `ActionCard`, `SettingsSection` |
+| Feature Component     | PascalCase (feature name) | `NoteEditor`, `NotebookTree`    |
+| Convenience Component | PascalCase (semantic)     | `Heading1`, `Body`, `Label`     |
 
 ### File Names
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Component | kebab-case.tsx | `action-card.tsx` |
-| Index (barrel) | index.ts | `index.ts` |
-| Types | same as component | `action-card.tsx` (types inline) |
+| Type           | Pattern           | Example                          |
+| -------------- | ----------------- | -------------------------------- |
+| Component      | kebab-case.tsx    | `action-card.tsx`                |
+| Index (barrel) | index.ts          | `index.ts`                       |
+| Types          | same as component | `action-card.tsx` (types inline) |
 
 ### Prop Interfaces
 
 ```typescript
 // Pattern: {ComponentName}Props
-interface ActionCardProps { /* ... */ }
-interface NoteEditorProps { /* ... */ }
+interface ActionCardProps {
+  /* ... */
+}
+interface NoteEditorProps {
+  /* ... */
+}
 
 // For specific variants
-interface DialogTriggerProps { /* ... */ }
-interface DialogContentProps { /* ... */ }
+interface DialogTriggerProps {
+  /* ... */
+}
+interface DialogContentProps {
+  /* ... */
+}
 ```
 
 ---
@@ -314,8 +328,8 @@ Button.displayName = 'Button';
 ```typescript
 // ActionCard.tsx
 import React from 'react';
-import { Button } from '@renderer/components/ui/button';
-import { Body } from '@renderer/components/ui/text';
+import { Button } from '@renderer/components/base/ui/button';
+import { Body } from '@renderer/components/base/ui/text';
 import { cn } from '@renderer/lib/utils';
 
 // 1. Props interface
@@ -384,12 +398,12 @@ export { Message } from './Message';
 
 ```typescript
 interface ActionCardProps {
-  title: string;              // Required (no default)
-  description: string;         // Required (no default)
-  onClick: () => void;         // Required (no default)
-  variant?: ButtonVariant;     // Optional (has default: 'default')
-  loading?: boolean;           // Optional (has default: false)
-  className?: string;          // Optional (has default: '')
+  title: string; // Required (no default)
+  description: string; // Required (no default)
+  onClick: () => void; // Required (no default)
+  variant?: ButtonVariant; // Optional (has default: 'default')
+  loading?: boolean; // Optional (has default: false)
+  className?: string; // Optional (has default: '')
 }
 ```
 
@@ -424,12 +438,12 @@ interface ComponentProps {
 
 ### Prop Naming
 
-| Purpose | Pattern | Example |
-|---------|---------|---------|
-| Event handler | `on[Event]` | `onClick`, `onChange` |
+| Purpose       | Pattern                  | Example                 |
+| ------------- | ------------------------ | ----------------------- |
+| Event handler | `on[Event]`              | `onClick`, `onChange`   |
 | Boolean state | `is[State]` or adjective | `isLoading`, `disabled` |
-| Content slot | noun | `icon`, `children` |
-| Style variant | noun | `variant`, `size` |
+| Content slot  | noun                     | `icon`, `children`      |
+| Style variant | noun                     | `variant`, `size`       |
 
 ---
 
@@ -438,11 +452,13 @@ interface ComponentProps {
 ### 1. Use Tailwind Classes
 
 **Do**:
+
 ```typescript
 <div className="flex items-center gap-2 p-4 border border-border rounded-lg">
 ```
 
 **Don't**:
+
 ```typescript
 <div style={{ display: 'flex', padding: '16px' }}>
 ```
@@ -450,11 +466,13 @@ interface ComponentProps {
 ### 2. Use Design Tokens
 
 **Do**:
+
 ```typescript
 <div className="bg-background text-foreground border-border">
 ```
 
 **Don't**:
+
 ```typescript
 <div className="bg-white text-black border-gray-200">
 ```
@@ -462,6 +480,7 @@ interface ComponentProps {
 ### 3. Use cn() for Conditional Classes
 
 **Do**:
+
 ```typescript
 import { cn } from '@renderer/lib/utils';
 
@@ -473,6 +492,7 @@ import { cn } from '@renderer/lib/utils';
 ```
 
 **Don't**:
+
 ```typescript
 <div className={`base-classes ${isActive ? 'active-classes' : ''} ${className}`}>
 ```
@@ -480,26 +500,29 @@ import { cn } from '@renderer/lib/utils';
 ### 4. macOS Design System Values
 
 **Spacing**: Use 4px increments
+
 ```typescript
-p-1   // 4px
-p-2   // 8px
-p-3   // 12px
-p-4   // 16px
+p - 1; // 4px
+p - 2; // 8px
+p - 3; // 12px
+p - 4; // 16px
 ```
 
 **Border Radius**: Use consistent values
+
 ```typescript
-rounded-md   // 6px (small elements)
-rounded-lg   // 10px (cards, modals - macOS standard)
-rounded-xl   // 12px (large containers)
+rounded - md; // 6px (small elements)
+rounded - lg; // 10px (cards, modals - macOS standard)
+rounded - xl; // 12px (large containers)
 ```
 
 **Font Sizes**: Match macOS standards
+
 ```typescript
-text-xs   // 11px
-text-sm   // 13px (macOS standard)
-text-base // 14px
-text-lg   // 16px
+text - xs; // 11px
+text - sm; // 13px (macOS standard)
+text - base; // 14px
+text - lg; // 16px
 ```
 
 ---
@@ -604,24 +627,24 @@ Stone includes a comprehensive container system inspired by Every Layout pattern
 
 ### Container Components Overview
 
-| Component | Purpose | Common Use Cases |
-|-----------|---------|------------------|
-| `Container` | Width constraint + padding | Page content, sections |
-| `ContainerSection` | Semantic sectioning | Page sections with vertical spacing |
-| `ContainerStack` | Vertical layout | Form fields, card content |
-| `ContainerCluster` | Horizontal wrap layout | Tags, buttons, inline items |
-| `ContainerGrid` | CSS Grid layout | Card grids, data tables |
-| `ContainerFlex` | Flexible layout | Toolbars, headers, complex layouts |
-| `ContainerSplit` | Two-column responsive | Sidebar + main, form + preview |
-| `ContainerCenter` | Centered content | Empty states, modals, landing |
-| `ContainerScrollable` | Scroll container | Note lists, long content |
+| Component             | Purpose                    | Common Use Cases                    |
+| --------------------- | -------------------------- | ----------------------------------- |
+| `Container`           | Width constraint + padding | Page content, sections              |
+| `ContainerSection`    | Semantic sectioning        | Page sections with vertical spacing |
+| `ContainerStack`      | Vertical layout            | Form fields, card content           |
+| `ContainerCluster`    | Horizontal wrap layout     | Tags, buttons, inline items         |
+| `ContainerGrid`       | CSS Grid layout            | Card grids, data tables             |
+| `ContainerFlex`       | Flexible layout            | Toolbars, headers, complex layouts  |
+| `ContainerSplit`      | Two-column responsive      | Sidebar + main, form + preview      |
+| `ContainerCenter`     | Centered content           | Empty states, modals, landing       |
+| `ContainerScrollable` | Scroll container           | Note lists, long content            |
 
 ### Container - Basic Width Constraint
 
 Constrains content width with horizontal padding and optional centering.
 
 ```typescript
-import { Container } from '@renderer/components/ui';
+import { Container } from '@renderer/components/base/ui';
 
 // Default: lg size (1152px), md padding, centered
 <Container>
@@ -643,7 +666,7 @@ import { Container } from '@renderer/components/ui';
 Semantic `<section>` element with consistent vertical spacing.
 
 ```typescript
-import { ContainerSection, Container } from '@renderer/components/ui';
+import { ContainerSection, Container } from '@renderer/components/base/ui';
 
 <ContainerSection spacing="lg" background="muted">
   <Container>
@@ -661,7 +684,7 @@ import { ContainerSection, Container } from '@renderer/components/ui';
 Vertical flex layout with consistent gap between children.
 
 ```typescript
-import { ContainerStack } from '@renderer/components/ui';
+import { ContainerStack } from '@renderer/components/base/ui';
 
 // Form layout
 <ContainerStack gap="md">
@@ -689,7 +712,7 @@ import { ContainerStack } from '@renderer/components/ui';
 Horizontal layout that wraps items to next line with consistent spacing.
 
 ```typescript
-import { ContainerCluster } from '@renderer/components/ui';
+import { ContainerCluster } from '@renderer/components/base/ui';
 
 // Tags layout
 <ContainerCluster gap="sm" justify="start" wrap>
@@ -714,7 +737,7 @@ import { ContainerCluster } from '@renderer/components/ui';
 Responsive grid layout with automatic responsive behavior.
 
 ```typescript
-import { ContainerGrid } from '@renderer/components/ui';
+import { ContainerGrid } from '@renderer/components/base/ui';
 
 // 3-column grid, 2 on tablet, 1 on mobile
 <ContainerGrid cols={3} gap="lg" mobileCols={1} tabletCols={2}>
@@ -737,7 +760,7 @@ import { ContainerGrid } from '@renderer/components/ui';
 Full control over flexbox properties for complex layouts.
 
 ```typescript
-import { ContainerFlex } from '@renderer/components/ui';
+import { ContainerFlex } from '@renderer/components/base/ui';
 
 // Toolbar
 <ContainerFlex direction="row" justify="between" align="center" gap="md">
@@ -763,7 +786,7 @@ import { ContainerFlex } from '@renderer/components/ui';
 Responsive two-column layout that stacks on mobile.
 
 ```typescript
-import { ContainerSplit } from '@renderer/components/ui';
+import { ContainerSplit } from '@renderer/components/base/ui';
 
 // 2:1 ratio (main content : sidebar)
 <ContainerSplit ratio="2:1" gap="lg" breakpoint="md">
@@ -792,7 +815,7 @@ import { ContainerSplit } from '@renderer/components/ui';
 Centers content horizontally and optionally vertically.
 
 ```typescript
-import { ContainerCenter } from '@renderer/components/ui';
+import { ContainerCenter } from '@renderer/components/base/ui';
 
 // Empty state
 <ContainerCenter maxWidth="md" centerVertically minHeight="400px">
@@ -821,7 +844,7 @@ import { ContainerCenter } from '@renderer/components/ui';
 Customizable scrollable container.
 
 ```typescript
-import { ContainerScrollable } from '@renderer/components/ui';
+import { ContainerScrollable } from '@renderer/components/base/ui';
 
 // Vertical scroll (default)
 <ContainerScrollable direction="vertical" maxHeight="500px">
@@ -975,7 +998,7 @@ Stone also includes these shadcn container components:
 - **Collapsible**: Simple show/hide container
 
 ```typescript
-import { ScrollArea, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@renderer/components/ui';
+import { ScrollArea, Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@renderer/components/base/ui';
 
 // ScrollArea with custom scrollbars
 <ScrollArea className="h-[400px]">
@@ -1061,6 +1084,7 @@ export const Button = /* ... */;
 ### 2. Use Interface for Props
 
 **Do**:
+
 ```typescript
 interface ActionCardProps {
   title: string;
@@ -1068,10 +1092,11 @@ interface ActionCardProps {
 ```
 
 **Don't**:
+
 ```typescript
 type ActionCardProps = {
   title: string;
-}
+};
 ```
 
 **Reason**: Interfaces can be extended and provide better error messages.
@@ -1308,7 +1333,7 @@ Feature → src/renderer/components/[Feature]/
 
 ```typescript
 // Before
-function Card(props: any) { }
+function Card(props: any) {}
 
 // After
 interface CardProps {
@@ -1316,7 +1341,7 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
 }
-function Card({ title, children, className }: CardProps) { }
+function Card({ title, children, className }: CardProps) {}
 ```
 
 ### Step 4: Apply Styling Patterns
@@ -1358,14 +1383,14 @@ Is it a primitive UI element (button, input, text)?
 
 ```typescript
 // Base components
-import { Button, Input, Dialog } from '@renderer/components/ui';
-import { Heading2, Body } from '@renderer/components/ui/text';
+import { Button, Input, Dialog } from '@renderer/components/base/ui';
+import { Heading2, Body } from '@renderer/components/base/ui/text';
 
 // Composite components
-import { ActionCard, SettingsSection } from '@renderer/components/Settings';
+import { ActionCard, SettingsSection } from '@renderer/components/features/Settings';
 
 // Feature components
-import { NoteEditor } from '@renderer/components/Editor/NoteEditor';
+import { NoteEditor } from '@renderer/components/features/Editor/NoteEditor';
 
 // Utils
 import { cn } from '@renderer/lib/utils';
@@ -1395,16 +1420,19 @@ import { cn } from '@renderer/lib/utils';
 ## Examples in Codebase
 
 ### Base Components
+
 - `src/renderer/components/ui/text.tsx` - Comprehensive text system
 - `src/renderer/components/ui/button.tsx` - Button with variants
 - `src/renderer/components/ui/dialog.tsx` - Modal system
 
 ### Composite Components
+
 - `src/renderer/components/Settings/ActionCard.tsx` - Action card pattern
 - `src/renderer/components/Settings/SettingsSection.tsx` - Section wrapper
 - `src/renderer/components/Settings/StatusCard.tsx` - Status display
 
 ### Feature Components
+
 - `src/renderer/components/Editor/NoteEditor.tsx` - Note editing
 - `src/renderer/components/Notebook/NotebookTree.tsx` - Notebook navigation
 - `src/renderer/components/Tag/TagList.tsx` - Tag management

@@ -9,11 +9,17 @@ import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/utils/logger';
 
 export function useNoteAPI() {
-  const { setNotes, addNote, updateNote, deleteNote, setLoading, setError } = useNoteStore();
+  const setNotes = useNoteStore((state) => state.setNotes);
+  const addNote = useNoteStore((state) => state.addNote);
+  const updateNote = useNoteStore((state) => state.updateNote);
+  const deleteNote = useNoteStore((state) => state.deleteNote);
+  const setLoading = useNoteStore((state) => state.setLoading);
+  const setError = useNoteStore((state) => state.setError);
 
   const loadNotes = useCallback(
     async (filters?: {
       notebookId?: string;
+      folderPath?: string;
       tagIds?: string[];
       isFavorite?: boolean;
       isPinned?: boolean;
@@ -22,16 +28,24 @@ export function useNoteAPI() {
       setLoading(true);
       setError(null);
       try {
+        const params = filters || {};
+        logger.info('[useNoteAPI.loadNotes] invoking with params', params);
         const response = await window.electron.invoke<{ notes: Note[] }>(
           NOTE_CHANNELS.GET_ALL,
-          filters || {},
+          params,
         );
+        logger.info('[useNoteAPI.loadNotes] response', response);
         if (response.success && response.data) {
+          const count = Array.isArray((response.data as any).notes)
+            ? (response.data as any).notes.length
+            : 0;
+          logger.info('[useNoteAPI.loadNotes] setting notes length', count);
           setNotes(response.data.notes);
         } else {
           setError(response.error?.message || 'Failed to load notes');
         }
       } catch (error) {
+        logger.error('[useNoteAPI.loadNotes] error', error);
         setError(error instanceof Error ? error.message : 'Failed to load notes');
       } finally {
         setLoading(false);
@@ -41,7 +55,7 @@ export function useNoteAPI() {
   );
 
   const createNote = useCallback(
-    async (data: { title: string; content: string; notebookId?: string }) => {
+    async (data: { title: string; content: string; folderPath?: string }) => {
       setLoading(true);
       setError(null);
       try {
@@ -64,12 +78,19 @@ export function useNoteAPI() {
   );
 
   const updateNoteContent = useCallback(
-    async (id: string, data: { title?: string; content?: string; notebookId?: string }) => {
+    async (
+      id: string,
+      data: { title?: string; content?: string; folderPath?: string; notebookId?: string },
+      silent = false,
+    ) => {
       setError(null);
       try {
         const response = await window.electron.invoke<Note>(NOTE_CHANNELS.UPDATE, { id, ...data });
         if (response.success && response.data) {
-          updateNote(response.data);
+          // Only update store if not silent (silent = autosave without re-render)
+          if (!silent) {
+            updateNote(response.data);
+          }
           return response.data;
         } else {
           setError(response.error?.message || 'Failed to update note');
@@ -202,6 +223,26 @@ export function useNoteAPI() {
     [updateNote, setError],
   );
 
+  const loadNoteById = useCallback(
+    async (id: string) => {
+      setError(null);
+      try {
+        const response = await window.electron.invoke<Note>(NOTE_CHANNELS.GET, { id });
+        if (response.success && response.data) {
+          updateNote(response.data);
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to load note');
+          return null;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to load note');
+        return null;
+      }
+    },
+    [updateNote, setError],
+  );
+
   const getBacklinks = useCallback(async (noteId: string) => {
     try {
       const response = await window.electron.invoke<{ backlinks: Note[] }>(
@@ -230,6 +271,7 @@ export function useNoteAPI() {
     toggleArchive,
     getVersions,
     restoreVersion,
+    loadNoteById,
     getBacklinks,
   };
 }

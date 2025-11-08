@@ -5,6 +5,7 @@
  * the main process and renderer process.
  */
 
+import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerNoteHandlers } from './handlers/noteHandlers'
 import { registerNotebookHandlers } from './handlers/notebookHandlers'
 import { registerTagHandlers } from './handlers/tagHandlers'
@@ -20,6 +21,9 @@ import { logger } from '../utils/logger'
  * IPC communication channels between main and renderer processes.
  */
 export function registerAllIpcHandlers(): void {
+  // Workspace handlers
+  registerWorkspaceHandlers()
+
   // Core entity handlers
   registerNoteHandlers()
   registerNotebookHandlers()
