@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useNoteContent } from '@renderer/hooks/useNoteContent';
@@ -49,6 +50,38 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     activeNote,
     editor,
   });
+
+  // Sync selectedFile with activeNote to highlight the file in the tree
+  useEffect(() => {
+    if (!activeNoteFilePath) {
+      logger.info('[NoteEditor] No active note file path, skipping sync');
+      return;
+    }
+
+    logger.info('[NoteEditor] Syncing selectedFile with activeNote', {
+      activeNoteId,
+      activeNoteFilePath,
+    });
+
+    const { setSelectedFile, setActiveFolder } = useFileTreeStore.getState();
+    const normalizedPath = activeNoteFilePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+
+    logger.info('[NoteEditor] Setting selectedFile in FileTree', {
+      originalPath: activeNoteFilePath,
+      normalizedPath,
+    });
+
+    // Set the selected file to highlight it in the tree
+    setSelectedFile(normalizedPath);
+
+    // Also set the active folder
+    const lastSlash = normalizedPath.lastIndexOf('/');
+    if (lastSlash > 0) {
+      const folderPath = normalizedPath.substring(0, lastSlash);
+      logger.info('[NoteEditor] Setting active folder', { folderPath });
+      setActiveFolder(folderPath);
+    }
+  }, [activeNoteFilePath, activeNoteId]);
 
   // After content loads into the editor, set baseline for dirty tracking
   useEffect(() => {
