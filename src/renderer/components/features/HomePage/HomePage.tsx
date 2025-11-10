@@ -4,7 +4,6 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useTagStore } from '@renderer/stores/tagStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useUIStore } from '@renderer/stores/uiStore';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
 
@@ -103,7 +102,6 @@ export function HomePage() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { tags } = useTagStore();
   const { tree, setSelectedFile, setActiveFolder } = useFileTreeStore();
-  const { setSidebarPanel } = useUIStore();
 
   // Get the active workspace
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
@@ -181,13 +179,9 @@ export function HomePage() {
       }
     }
 
-    // Set the active note
+    // Set the active note - this will trigger the editor to show
     logger.info('[HomePage] Setting active note', { noteId });
     setActiveNote(noteId);
-
-    // Switch to folders view to show the editor
-    logger.info('[HomePage] Switching to folders view');
-    setSidebarPanel('folders');
   };
 
   return (
@@ -217,46 +211,31 @@ export function HomePage() {
                 icon={<FileText className="w-5 h-5" />}
                 label="Total Notes"
                 value={totalNotes}
-                onClick={totalNotes > 0 ? () => setSidebarPanel('folders') : undefined}
               />
               <StatCard
                 icon={<Star className="w-5 h-5" />}
                 label="Favorites"
                 value={favoriteNotes}
-                onClick={favoriteNotes > 0 ? () => {
-                  // TODO: Add filter for favorites
-                  setSidebarPanel('folders');
-                } : undefined}
               />
               <StatCard
                 icon={<Pin className="w-5 h-5" />}
                 label="Pinned"
                 value={pinnedNotes}
-                onClick={pinnedNotes > 0 ? () => {
-                  // TODO: Add filter for pinned
-                  setSidebarPanel('folders');
-                } : undefined}
               />
               <StatCard
                 icon={<Archive className="w-5 h-5" />}
                 label="Archived"
                 value={archivedNotes}
-                onClick={archivedNotes > 0 ? () => {
-                  // TODO: Add filter for archived
-                  setSidebarPanel('folders');
-                } : undefined}
               />
               <StatCard
                 icon={<FolderOpen className="w-5 h-5" />}
                 label="Folders"
                 value={totalFolders}
-                onClick={totalFolders > 0 ? () => setSidebarPanel('folders') : undefined}
               />
               <StatCard
                 icon={<Hash className="w-5 h-5" />}
                 label="Tags"
                 value={totalTags}
-                onClick={totalTags > 0 ? () => setSidebarPanel('tags') : undefined}
               />
             </div>
           </div>
