@@ -50,6 +50,39 @@ Developer Notes
   - pnpm electron-rebuild -f -w better-sqlite3
 - Maintain macOS aesthetic and composite components; avoid inline classes.
 
+## Keyboard Shortcuts
+
+Stone includes a comprehensive keyboard shortcut system with platform-aware detection (Cmd on macOS, Ctrl on Windows/Linux).
+
+### Available Shortcuts
+
+- **Cmd+S** (Ctrl+S on Windows/Linux) - Save current note
+- **Cmd+N** (Ctrl+N on Windows/Linux) - Create new note in current folder
+- **Cmd+,** (Ctrl+, on Windows/Linux) - Open settings
+
+### Implementation
+
+**Architecture:**
+- `useKeyboardShortcuts` hook (`src/renderer/hooks/useKeyboardShortcuts.ts`) - Platform-aware keyboard event handling
+- `NoteEditor` component exposes actions via `useImperativeHandle` for external triggers
+- `MainLayout` component integrates shortcuts and passes refs to editor
+- Shortcuts are disabled in input fields (except contenteditable editor)
+
+**Adding New Shortcuts:**
+1. Add action to the `shortcuts` array in `MainLayout.tsx`
+2. Use `formatShortcut()` helper to display shortcuts in UI tooltips
+3. Follow existing pattern with `isMacOS()` for platform detection
+
+**Helper Functions:**
+- `isMacOS()` - Platform detection
+- `getModifierLabel()` - Returns '⌘' or 'Ctrl'
+- `formatShortcut(key, meta, shift, alt)` - Format shortcuts for display (e.g., "⌘S" or "Ctrl+S")
+
+**UI Integration:**
+- Save button tooltip shows "Save changes (⌘S)"
+- Settings button tooltip shows "Settings (⌘,)"
+- All shortcuts use platform-appropriate symbols
+
 
 ## Node.js Version
 

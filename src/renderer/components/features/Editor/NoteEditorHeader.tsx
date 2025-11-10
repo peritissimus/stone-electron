@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@renderer/components/base/ui/dropdown-menu';
 import { cn } from '@renderer/lib/utils';
+import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
 
 export interface NoteEditorHeaderProps {
   title: string;
@@ -70,7 +71,7 @@ export function NoteEditorHeader({
           <IconButton
             size="normal"
             icon={<FloppyDisk size={16} />}
-            tooltip="Save changes"
+            tooltip={`Save changes (${formatShortcut('S', true)})`}
             onClick={onSave}
           />
         )}

@@ -443,4 +443,35 @@ export function registerNoteHandlers() {
       return { backlinks };
     }),
   );
+
+  // notes:move
+  ipcMain.handle(
+    NOTE_CHANNELS.MOVE,
+    createHandler(async (event, request: { id: string; folderPath: string | null }) => {
+      const oldNote = await repos.note.findById(request.id);
+      if (!oldNote) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      // Create a version before moving
+      const currentContent = await repos.note.getContentById(oldNote.id);
+      if (currentContent) {
+        await repos.version.createVersion(
+          oldNote.id,
+          oldNote.title || 'Untitled',
+          currentContent,
+        );
+      }
+
+      // Move the note by updating its folderPath (using type assertion like update handler does)
+      const updateData: any = {
+        folderPath: request.folderPath,
+      };
+      const note = await repos.note.update(request.id, updateData);
+
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+
+      return noteWithRelations;
+    }),
+  );
 }

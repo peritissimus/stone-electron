@@ -15,6 +15,7 @@ export const WORKSPACE_CHANNELS = {
   CREATE_FOLDER: 'workspaces:createFolder',
   RENAME_FOLDER: 'workspaces:renameFolder',
   DELETE_FOLDER: 'workspaces:deleteFolder',
+  MOVE_FOLDER: 'workspaces:moveFolder',
   VALIDATE_PATH: 'workspaces:validatePath',
   SELECT_FOLDER: 'workspaces:selectFolder',
 } as const;
@@ -33,6 +34,7 @@ export const NOTE_CHANNELS = {
   GET_VERSIONS: 'notes:getVersions',
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
+  MOVE: 'notes:move',
 } as const;
 
 // Notebook Operations
