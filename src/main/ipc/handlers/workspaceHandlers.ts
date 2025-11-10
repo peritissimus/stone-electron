@@ -186,8 +186,7 @@ export function registerWorkspaceHandlers() {
 
       await fsService.createFolder(resolveInsideRoot(workspace.folderPath, newRelative));
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -238,8 +237,7 @@ export function registerWorkspaceHandlers() {
         await fsService.renameFolder(currentAbsolute, newAbsolute);
       }
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -270,8 +268,7 @@ export function registerWorkspaceHandlers() {
 
       await fsService.deleteFolder(targetAbsolute, true);
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -337,9 +334,7 @@ export function registerWorkspaceHandlers() {
         // Move the folder
         await fsService.renameFolder(sourceAbsolute, finalAbsolute);
 
-        // Sync notebooks and notes
-        await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-        await repos.note.syncWithFileSystem(workspace.id);
+        // FileWatcher will handle sync automatically - no manual sync needed
 
         BrowserWindow.getAllWindows().forEach((win) => {
           win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
