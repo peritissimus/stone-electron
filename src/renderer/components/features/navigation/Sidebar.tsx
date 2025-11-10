@@ -43,17 +43,17 @@ import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
 
 export function Sidebar() {
-  const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
   const { loadFileTree } = useFileTreeAPI();
   const { syncWorkspace, loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
   const { loadNotes, createNote } = useNoteAPI();
-  const { setActiveNote } = useNoteStore();
+  const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const [isCreating, setIsCreating] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'folders' | 'tags'>('folders');
 
   useEffect(() => {
     loadWorkspaces();
@@ -305,15 +305,15 @@ export function Sidebar() {
         <QuickLink
           icon={<House size={14} />}
           label="Home"
-          onClick={() => setSidebarPanel('home')}
-          isActive={sidebarPanel === 'home'}
+          onClick={() => setActiveNote(null)}
+          isActive={!activeNoteId}
         />
       </div>
 
       {/* Main Navigation Tabs - Always visible */}
       <Tabs
-        value={sidebarPanel === 'home' ? 'folders' : sidebarPanel}
-        onValueChange={(value) => setSidebarPanel(value as 'home' | 'folders' | 'tags' | 'search')}
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'folders' | 'tags')}
         className="flex flex-col flex-1 overflow-hidden"
       >
         {/* Tab Triggers - Compact */}
@@ -346,7 +346,7 @@ export function Sidebar() {
       </Tabs>
 
       {/* New Button - Compact footer */}
-      {sidebarPanel === 'tags' && (
+      {activeTab === 'tags' && (
         <PanelFooter>
           <Button
             onClick={() => setTagModalOpen(true)}

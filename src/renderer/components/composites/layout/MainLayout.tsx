@@ -10,6 +10,7 @@ import { HomePage } from '@renderer/components/features/HomePage';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
 import { SettingsModal } from '@renderer/components/features/Settings';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -27,11 +28,12 @@ export function MainLayout() {
     noteListWidth,
     editorFullscreen,
     searchOpen,
-    sidebarPanel,
     setSidebarWidth,
     setNoteListWidth,
     openSettings,
   } = useUIStore();
+
+  const { activeNoteId } = useNoteStore();
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
@@ -107,7 +109,7 @@ export function MainLayout() {
       mainContent={
         <MainContentArea>
           {searchOpen && <SearchPanel />}
-          {sidebarPanel === 'home' ? <HomePage /> : <NoteEditor ref={editorRef} />}
+          {activeNoteId ? <NoteEditor ref={editorRef} /> : <HomePage />}
         </MainContentArea>
       }
       overlayContent={<SettingsModal />}
