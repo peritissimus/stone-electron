@@ -6,7 +6,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 type ViewMode = 'list' | 'grid' | 'card'
-type SidebarPanel = 'folders' | 'tags' | 'search'
+type SidebarPanel = 'home' | 'folders' | 'tags' | 'search'
 type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
 
@@ -69,7 +69,7 @@ export const useUIStore = create<UIState>()(
       // Sidebar
       sidebarOpen: true,
       sidebarWidth: 240,
-      sidebarPanel: 'folders',
+      sidebarPanel: 'home',
 
       // Note list
       noteListWidth: 320,
