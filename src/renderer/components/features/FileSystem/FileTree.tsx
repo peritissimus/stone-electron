@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   FileText,
   FolderSimple,
@@ -25,6 +25,7 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { InputModal } from '@renderer/components/composites';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { cn } from '@renderer/lib/utils';
 
 const normalizePath = (path: string) =>
   path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
@@ -51,6 +52,7 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
   const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { setActiveNote, getNoteByFilePath } = useNoteStore();
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const normalizedPath = normalizePath(node.path);
   const isActive = selectedFile === normalizedPath;
@@ -76,63 +78,92 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
       filePath: normalizedPath,
       type: 'file'
     }));
+    // Add visual feedback
+    (e.target as HTMLElement).style.opacity = '0.4';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = '';
   };
 
   return (
     <div
       draggable={!!note}
       onDragStart={handleDragStart}
-      className={isDragOver ? 'opacity-50' : ''}
+      onDragEnd={handleDragEnd}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className={cn(
+        'relative group transition-all duration-150',
+        isDragOver && 'opacity-50'
+      )}
     >
-      <TreeItem
-        level={level}
-        isActive={isActive}
+      <div
+        className={cn(
+          'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
+          'hover:bg-accent/20'
+        )}
         onClick={handleOpen}
-        icon={<FileText size={14} className="text-muted-foreground" />}
-        label={note?.title?.trim() ? note.title : getDisplayName(node.name)}
-        rightSlotProps={{
-          className: 'flex items-center gap-1',
-          onClick: (event) => event.stopPropagation(),
-          onPointerDown: (event) => event.stopPropagation(),
-          onPointerUp: (event) => event.stopPropagation(),
-        }}
-        right={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <IconButton
-              size="compact"
-              icon={<DotsThreeVertical size={14} />}
-              label="File options"
-              tooltip="File options"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem
-              disabled={!note}
-              onSelect={() => {
-                if (note) {
-                  onRename(note.id, note.title || getDisplayName(node.name));
-                }
-              }}
-            >
-              <PencilSimple size={14} className="mr-2 text-muted-foreground" />
-              <Text size="xs">Rename</Text>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={!note}
-              onSelect={async () => {
-                if (note) {
-                  await onDelete(note.id);
-                }
-              }}
-            >
-              <Trash size={14} className="mr-2 text-muted-foreground" />
-              <Text size="xs">Delete</Text>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
-    />
+        style={{ paddingLeft: `${level * 20 + 8}px` }}
+      >
+        <FileText
+          size={14}
+          className={cn(
+            'mr-2 flex-shrink-0 transition-colors duration-150',
+            'text-muted-foreground',
+            isHovered && 'text-foreground/70'
+          )}
+        />
+        <span className={cn(
+          'flex-1 text-xs truncate transition-colors duration-150',
+          isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+        )}>
+          {note?.title?.trim() ? note.title : getDisplayName(node.name)}
+        </span>
+
+        {/* Context menu - only visible on hover */}
+        <div className={cn(
+          'ml-auto opacity-0 transition-opacity duration-150',
+          isHovered && 'opacity-100'
+        )}
+        onClick={(e) => e.stopPropagation()}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                size="compact"
+                icon={<DotsThreeVertical size={14} />}
+                label="File options"
+                className="h-5 w-5 hover:bg-accent"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                disabled={!note}
+                onSelect={() => {
+                  if (note) {
+                    onRename(note.id, note.title || getDisplayName(node.name));
+                  }
+                }}
+              >
+                <PencilSimple size={14} className="mr-2 text-muted-foreground" />
+                <Text size="xs">Rename</Text>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!note}
+                onSelect={async () => {
+                  if (note) {
+                    await onDelete(note.id);
+                  }
+                }}
+              >
+                <Trash size={14} className="mr-2 text-muted-foreground" />
+                <Text size="xs">Delete</Text>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
     </div>
   );
 };
@@ -163,6 +194,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
   const { activeFolder, expandedPaths, setActiveFolder, toggleExpanded, setSelectedFile, counts } =
     useFileTreeStore();
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const normalizedPath = normalizePath(node.path);
   const childFolders = node.children ?? [];
@@ -171,8 +203,6 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
   const isExpanded = expandedPaths.has(normalizedPath);
   const isActive = normalizePath(activeFolder || '') === normalizedPath;
   const isRootFolder = normalizedPath.length === 0;
-
-  const noteCount = counts[normalizedPath || '__root__'] || 0;
 
   const handleDragStart = (e: React.DragEvent) => {
     if (isRootFolder) {
@@ -184,6 +214,11 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
       folderPath: normalizedPath,
       type: 'folder'
     }));
+    (e.target as HTMLElement).style.opacity = '0.4';
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    (e.target as HTMLElement).style.opacity = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -232,57 +267,86 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
     }
   };
 
+  const handleClick = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    const willExpand = !isExpanded;
+    if (!willExpand) {
+      const parent = getParentPath(normalizedPath);
+      setActiveFolder(parent || null);
+    }
+    toggleExpanded(normalizedPath);
+    if (willExpand) {
+      setActiveFolder(normalizedPath || null);
+    }
+    setSelectedFile(null);
+  };
+
   return (
     <>
       <div
         draggable={!isRootFolder}
         onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        className={isDragOver ? 'bg-accent/50 rounded' : ''}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          'relative group transition-all duration-150',
+          isDragOver && 'ring-2 ring-primary/20 ring-offset-1 rounded'
+        )}
       >
-        <TreeItem
-          level={level}
-          isActive={isActive}
-          onClick={(event) => {
-            event.stopPropagation();
-            const willExpand = !isExpanded;
-            if (!willExpand) {
-              const parent = getParentPath(normalizedPath);
-              setActiveFolder(parent || null);
-            }
-            toggleExpanded(normalizedPath);
-            if (willExpand) {
-              setActiveFolder(normalizedPath || null);
-            }
-            setSelectedFile(null);
-          }}
-          icon={
-            isExpanded ? (
-              <FolderOpen size={14} className="text-muted-foreground" />
-            ) : (
-              <FolderSimple size={14} className="text-muted-foreground" />
-            )
-          }
-          label={node.name}
-          rightSlotProps={{
-            className: 'flex items-center gap-1',
-            onClick: (event) => event.stopPropagation(),
-            onPointerDown: (event) => event.stopPropagation(),
-            onPointerUp: (event) => event.stopPropagation(),
-          }}
-          right={
-            <>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    size="compact"
-                    icon={<DotsThreeVertical size={14} />}
-                    label="Folder options"
-                    tooltip="Folder options"
-                  />
-                </DropdownMenuTrigger>
+        <div
+          className={cn(
+            'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
+            'hover:bg-accent/20'
+          )}
+          onClick={handleClick}
+          style={{ paddingLeft: `${level * 20 + 8}px` }}
+        >
+          {isExpanded ? (
+            <FolderOpen
+              size={14}
+              className={cn(
+                'mr-2 flex-shrink-0 transition-colors duration-150',
+                'text-muted-foreground',
+                isHovered && 'text-foreground/70'
+              )}
+            />
+          ) : (
+            <FolderSimple
+              size={14}
+              className={cn(
+                'mr-2 flex-shrink-0 transition-colors duration-150',
+                'text-muted-foreground',
+                isHovered && 'text-foreground/70'
+              )}
+            />
+          )}
+          <span className={cn(
+            'flex-1 text-xs truncate transition-colors duration-150',
+            isActive ? 'text-foreground font-medium' : 'text-muted-foreground'
+          )}>
+            {node.name}
+          </span>
+
+          {/* Context menu - only visible on hover */}
+          <div className={cn(
+            'ml-auto opacity-0 transition-opacity duration-150',
+            isHovered && 'opacity-100'
+          )}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  size="compact"
+                  icon={<DotsThreeVertical size={14} />}
+                  label="Folder options"
+                  className="h-5 w-5 hover:bg-accent"
+                />
+              </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem
                     onSelect={() => {
@@ -325,10 +389,9 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </>
-          }
-        />
-      </div>
+            </div>
+          </div>
+        </div>
       {hasChildren && isExpanded && (
         <div>
           {(node.children ?? []).map((child) =>
