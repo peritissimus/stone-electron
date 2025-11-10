@@ -6,6 +6,7 @@ import { useEffect, useRef, useMemo } from 'react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import { NoteEditor, NoteEditorHandle } from '@renderer/components/features/Editor';
 import { SearchPanel } from '@renderer/components/features/search';
+import { HomePage } from '@renderer/components/features/HomePage';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
 import { SettingsModal } from '@renderer/components/features/Settings';
 import { useUIStore } from '@renderer/stores/uiStore';
@@ -26,6 +27,7 @@ export function MainLayout() {
     noteListWidth,
     editorFullscreen,
     searchOpen,
+    sidebarPanel,
     setSidebarWidth,
     setNoteListWidth,
     openSettings,
@@ -105,7 +107,7 @@ export function MainLayout() {
       mainContent={
         <MainContentArea>
           {searchOpen && <SearchPanel />}
-          <NoteEditor ref={editorRef} />
+          {sidebarPanel === 'home' ? <HomePage /> : <NoteEditor ref={editorRef} />}
         </MainContentArea>
       }
       overlayContent={<SettingsModal />}

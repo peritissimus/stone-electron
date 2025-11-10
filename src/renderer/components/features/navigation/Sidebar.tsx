@@ -21,7 +21,7 @@ import {
 import { Heading3, Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { TagWithCount, type Workspace, type Note } from '@shared/types';
-import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise } from 'phosphor-react';
+import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise, House } from 'phosphor-react';
 import {
   Header,
   IconButton,
@@ -262,6 +262,15 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-center gap-2 w-full">
+          <IconButton
+            icon={<House size={16} />}
+            onClick={() => setSidebarPanel('home')}
+            tooltip="Home"
+            className={cn(
+              'h-8 w-8',
+              sidebarPanel === 'home' && 'bg-accent text-accent-foreground'
+            )}
+          />
           <Select
             value={activeWorkspaceId ?? ''}
             onValueChange={async (value) => {
@@ -301,40 +310,76 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Panel Tabs - Flex layout */}
-      <Tabs
-        value={sidebarPanel}
-        onValueChange={(value) => setSidebarPanel(value as 'folders' | 'tags' | 'search')}
-        className="flex flex-col flex-1 overflow-hidden"
-      >
-        {/* Tab Triggers - Compact */}
-        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
-          <TabsTrigger
-            value="folders"
-            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-          >
-            <Folders size={12} />
-            <span className="hidden sm:inline">Folders</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="tags"
-            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-          >
-            <Tag size={12} />
-            <span className="hidden sm:inline">Tags</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Panel Tabs - Only show when not on home */}
+      {sidebarPanel !== 'home' && (
+        <Tabs
+          value={sidebarPanel}
+          onValueChange={(value) => setSidebarPanel(value as 'home' | 'folders' | 'tags' | 'search')}
+          className="flex flex-col flex-1 overflow-hidden"
+        >
+          {/* Tab Triggers - Compact */}
+          <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
+            <TabsTrigger
+              value="folders"
+              className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
+            >
+              <Folders size={12} />
+              <span className="hidden sm:inline">Folders</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="tags"
+              className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
+            >
+              <Tag size={12} />
+              <span className="hidden sm:inline">Tags</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Panel Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto">
-          <TabsContent value="folders" className="mt-0 px-1.5 py-1">
-            <FileTree />
-          </TabsContent>
-          <TabsContent value="tags" className="mt-0 px-1.5 py-1">
-            <TagList />
-          </TabsContent>
+          {/* Panel Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto">
+            <TabsContent value="folders" className="mt-0 px-1.5 py-1">
+              <FileTree />
+            </TabsContent>
+            <TabsContent value="tags" className="mt-0 px-1.5 py-1">
+              <TagList />
+            </TabsContent>
+          </div>
+        </Tabs>
+      )}
+
+      {/* Home view - minimal sidebar */}
+      {sidebarPanel === 'home' && (
+        <div className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="space-y-1">
+            <QuickLink
+              icon={<Folders size={14} />}
+              label="Files"
+              onClick={() => setSidebarPanel('folders')}
+            />
+            <QuickLink
+              icon={<Tag size={14} />}
+              label="Tags"
+              onClick={() => setSidebarPanel('tags')}
+            />
+            <QuickLink
+              icon={<Star size={14} />}
+              label="Favorites"
+              onClick={() => {
+                setSidebarPanel('folders');
+                // TODO: filter by favorites
+              }}
+            />
+            <QuickLink
+              icon={<Archive size={14} />}
+              label="Archive"
+              onClick={() => {
+                setSidebarPanel('folders');
+                // TODO: filter by archived
+              }}
+            />
+          </div>
         </div>
-      </Tabs>
+      )}
 
       {/* New Button - Compact footer */}
       {sidebarPanel === 'tags' && (
