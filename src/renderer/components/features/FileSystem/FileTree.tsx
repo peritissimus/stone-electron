@@ -26,6 +26,7 @@ import { InputModal } from '@renderer/components/composites';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { cn } from '@renderer/lib/utils';
+import { logger } from '@renderer/utils/logger';
 
 const normalizePath = (path: string) =>
   path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
@@ -60,11 +61,27 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
   const folderForSelection = parentPath || null;
 
   const handleOpen = () => {
+    logger.info('[FileTree] Opening file', {
+      normalizedPath,
+      folderForSelection,
+      fileName: node.name
+    });
+
     setActiveFolder(folderForSelection);
     setSelectedFile(normalizedPath);
     const note = getNoteByFilePath(normalizedPath);
+
+    logger.info('[FileTree] Found note for file', {
+      found: !!note,
+      noteId: note?.id,
+      noteTitle: note?.title,
+      noteFilePath: note?.filePath
+    });
+
     if (note) {
       setActiveNote(note.id);
+    } else {
+      logger.warn('[FileTree] No note found for file path', { normalizedPath });
     }
   };
 
@@ -239,14 +256,28 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
     e.stopPropagation();
     setIsDragOver(false);
 
+    logger.info('[FileTree] Drop event on folder', {
+      targetPath: normalizedPath,
+      folderName: node.name
+    });
+
     // Try to get note data
     const noteData = e.dataTransfer.getData('application/stone-note');
     if (noteData) {
       try {
-        const { noteId } = JSON.parse(noteData);
+        const { noteId, filePath } = JSON.parse(noteData);
+        logger.info('[FileTree] Moving note', {
+          noteId,
+          fromPath: filePath,
+          toPath: normalizedPath || 'root'
+        });
         await onMoveFile(noteId, normalizedPath || null);
       } catch (error) {
-        console.error('Failed to move note:', error);
+        logger.error('[FileTree] Failed to move note', {
+          error,
+          noteData,
+          targetPath: normalizedPath
+        });
       }
       return;
     }
@@ -437,6 +468,7 @@ export function FileTree() {
   } | null>(null);
 
   const handleCreateNoteInFolder = async (folderPath: string | null) => {
+    logger.info('[FileTree] Creating note in folder', { folderPath });
     try {
       // Generate a default title for the new note
       const now = new Date();
@@ -521,20 +553,24 @@ export function FileTree() {
   };
 
   const handleMoveNote = async (noteId: string, destinationPath: string | null) => {
+    logger.info('[FileTree] Moving note', { noteId, destinationPath });
     try {
       await moveNote(noteId, destinationPath);
+      logger.info('[FileTree] Note moved successfully, reloading tree');
       await loadFileTree();
     } catch (error) {
-      console.error('Failed to move note', error);
+      logger.error('[FileTree] Failed to move note', { error, noteId, destinationPath });
     }
   };
 
   const handleMoveFolder = async (sourcePath: string, destinationPath: string | null) => {
+    logger.info('[FileTree] Moving folder', { sourcePath, destinationPath });
     try {
       await moveFolder(sourcePath, destinationPath);
+      logger.info('[FileTree] Folder moved successfully, reloading tree');
       await loadFileTree();
     } catch (error) {
-      console.error('Failed to move folder', error);
+      logger.error('[FileTree] Failed to move folder', { error, sourcePath, destinationPath });
     }
   };
 
