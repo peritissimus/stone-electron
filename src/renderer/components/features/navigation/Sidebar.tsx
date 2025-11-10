@@ -254,6 +254,7 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
+      {/* Workspace Selector - Always visible at top */}
       <div
         className={cn(
           'flex w-full items-center border-b border-border',
@@ -261,125 +262,88 @@ export function Sidebar() {
           sizePaddingClasses['compact'],
         )}
       >
-        <div className="flex items-center gap-2 w-full">
-          <IconButton
-            icon={<House size={16} />}
-            onClick={() => setSidebarPanel('home')}
-            tooltip="Home"
-            className={cn(
-              'h-8 w-8',
-              sidebarPanel === 'home' && 'bg-accent text-accent-foreground'
+        <Select
+          value={activeWorkspaceId ?? ''}
+          onValueChange={async (value) => {
+            if (value === CREATE_WORKSPACE_OPTION) {
+              setWorkspaceModalOpen(true);
+              return;
+            }
+            if (!value) {
+              return;
+            }
+            await setActiveWorkspace(value);
+            await loadFileTree();
+            await loadNotes();
+          }}
+        >
+          <SelectTrigger className="h-8 text-xs w-full">
+            <SelectValue placeholder="Select workspace" />
+          </SelectTrigger>
+          <SelectContent>
+            {workspaces.length > 0 && (
+              <>
+                <SelectGroup>
+                  {workspaces.map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      <Text size="xs">{workspace.name}</Text>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+              </>
             )}
-          />
-          <Select
-            value={activeWorkspaceId ?? ''}
-            onValueChange={async (value) => {
-              if (value === CREATE_WORKSPACE_OPTION) {
-                setWorkspaceModalOpen(true);
-                return;
-              }
-              if (!value) {
-                return;
-              }
-              await setActiveWorkspace(value);
-              await loadFileTree();
-              await loadNotes();
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces.length > 0 && (
-                <>
-                  <SelectGroup>
-                    {workspaces.map((workspace) => (
-                      <SelectItem key={workspace.id} value={workspace.id}>
-                        <Text size="xs">{workspace.name}</Text>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectSeparator />
-                </>
-              )}
-              <SelectItem value={CREATE_WORKSPACE_OPTION}>
-                <Text size="xs">+ Create workspace…</Text>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+            <SelectItem value={CREATE_WORKSPACE_OPTION}>
+              <Text size="xs">+ Create workspace…</Text>
+            </SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Panel Tabs - Only show when not on home */}
-      {sidebarPanel !== 'home' && (
-        <Tabs
-          value={sidebarPanel}
-          onValueChange={(value) => setSidebarPanel(value as 'home' | 'folders' | 'tags' | 'search')}
-          className="flex flex-col flex-1 overflow-hidden"
-        >
-          {/* Tab Triggers - Compact */}
-          <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
-            <TabsTrigger
-              value="folders"
-              className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-            >
-              <Folders size={12} />
-              <span className="hidden sm:inline">Folders</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="tags"
-              className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-            >
-              <Tag size={12} />
-              <span className="hidden sm:inline">Tags</span>
-            </TabsTrigger>
-          </TabsList>
+      {/* Navigation Links - Always visible */}
+      <div className="px-2 py-2 border-b border-border">
+        <QuickLink
+          icon={<House size={14} />}
+          label="Home"
+          onClick={() => setSidebarPanel('home')}
+          isActive={sidebarPanel === 'home'}
+        />
+      </div>
 
-          {/* Panel Content - Scrollable */}
-          <div className="flex-1 overflow-y-auto">
-            <TabsContent value="folders" className="mt-0 px-1.5 py-1">
-              <FileTree />
-            </TabsContent>
-            <TabsContent value="tags" className="mt-0 px-1.5 py-1">
-              <TagList />
-            </TabsContent>
-          </div>
-        </Tabs>
-      )}
+      {/* Main Navigation Tabs - Always visible */}
+      <Tabs
+        value={sidebarPanel === 'home' ? 'folders' : sidebarPanel}
+        onValueChange={(value) => setSidebarPanel(value as 'home' | 'folders' | 'tags' | 'search')}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        {/* Tab Triggers - Compact */}
+        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
+          <TabsTrigger
+            value="folders"
+            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
+          >
+            <Folders size={12} />
+            <span>Folders</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="tags"
+            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
+          >
+            <Tag size={12} />
+            <span>Tags</span>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Home view - minimal sidebar */}
-      {sidebarPanel === 'home' && (
-        <div className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="space-y-1">
-            <QuickLink
-              icon={<Folders size={14} />}
-              label="Files"
-              onClick={() => setSidebarPanel('folders')}
-            />
-            <QuickLink
-              icon={<Tag size={14} />}
-              label="Tags"
-              onClick={() => setSidebarPanel('tags')}
-            />
-            <QuickLink
-              icon={<Star size={14} />}
-              label="Favorites"
-              onClick={() => {
-                setSidebarPanel('folders');
-                // TODO: filter by favorites
-              }}
-            />
-            <QuickLink
-              icon={<Archive size={14} />}
-              label="Archive"
-              onClick={() => {
-                setSidebarPanel('folders');
-                // TODO: filter by archived
-              }}
-            />
-          </div>
+        {/* Panel Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <TabsContent value="folders" className="mt-0 px-1.5 py-1">
+            <FileTree />
+          </TabsContent>
+          <TabsContent value="tags" className="mt-0 px-1.5 py-1">
+            <TagList />
+          </TabsContent>
         </div>
-      )}
+      </Tabs>
 
       {/* New Button - Compact footer */}
       {sidebarPanel === 'tags' && (
