@@ -56,16 +56,30 @@ async function buildNoteWithRelations(
   note: Note,
   repos: RepositoriesInstance,
 ): Promise<NoteWithRelations> {
-  const [tags, attachments] = await Promise.all([
+  const [tags, attachments, notebook] = await Promise.all([
     repos.tag.getTagsForNote(note.id),
     repos.attachment.getAttachmentsForNote(note.id),
+    note.notebookId ? repos.notebook.findById(note.notebookId) : Promise.resolve(null),
   ]);
+
+  // Get folderPath from notebook or derive from filePath
+  let folderPath: string | null = null;
+  if (notebook) {
+    folderPath = notebook.folderPath;
+  } else if (note.filePath) {
+    // Extract folder from file path (e.g., "Personal/Note.md" -> "Personal")
+    const pathParts = note.filePath.split('/');
+    if (pathParts.length > 1) {
+      folderPath = pathParts.slice(0, -1).join('/');
+    }
+  }
 
   return {
     ...note,
+    folderPath,
     tags,
     attachments,
-  };
+  } as any;
 }
 
 function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {

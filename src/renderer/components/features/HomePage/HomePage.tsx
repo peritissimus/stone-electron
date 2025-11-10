@@ -4,7 +4,9 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useTagStore } from '@renderer/stores/tagStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { cn } from '@renderer/lib/utils';
+import { logger } from '@renderer/utils/logger';
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -36,16 +38,15 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, onClick, classN
 interface RecentNoteProps {
   note: {
     id: string;
-    title: string;
-    updatedAt: string;
-    folderPath?: string;
+    title: string | null;
+    updatedAt: Date;
+    filePath: string | null;
   };
   onClick: (id: string) => void;
 }
 
 const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (date: Date) => {
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -64,6 +65,16 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
     return date.toLocaleDateString();
   };
 
+  // Extract folder path from file path
+  const getFolderPath = (filePath: string | null) => {
+    if (!filePath) return null;
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const lastSlash = normalizedPath.lastIndexOf('/');
+    return lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : null;
+  };
+
+  const folderPath = getFolderPath(note.filePath);
+
   return (
     <div
       className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 cursor-pointer transition-colors group"
@@ -73,10 +84,10 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
         <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="font-medium truncate group-hover:text-primary transition-colors">
-            {note.title}
+            {note.title || 'Untitled'}
           </p>
-          {note.folderPath && (
-            <p className="text-xs text-muted-foreground truncate">{note.folderPath}</p>
+          {folderPath && (
+            <p className="text-xs text-muted-foreground truncate">{folderPath}</p>
           )}
         </div>
       </div>
@@ -89,9 +100,13 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
 
 export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
-  const { activeWorkspace } = useWorkspaceStore();
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { tags } = useTagStore();
-  const { tree } = useFileTreeStore();
+  const { tree, setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { setSidebarPanel } = useUIStore();
+
+  // Get the active workspace
+  const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
 
   // Calculate statistics
   const totalNotes = notes.length;
@@ -132,7 +147,47 @@ export function HomePage() {
   });
 
   const handleNoteClick = (noteId: string) => {
+    logger.info('[HomePage] Note clicked', { noteId });
+
+    // Find the note to get its file path and folder
+    const note = notes.find(n => n.id === noteId);
+    logger.info('[HomePage] Found note', {
+      note: note ? {
+        id: note.id,
+        title: note.title,
+        filePath: note.filePath,
+        workspaceId: note.workspaceId
+      } : null
+    });
+
+    if (note) {
+      // Set the selected file first - this will auto-expand parent folders
+      if (note.filePath) {
+        // Normalize the path to match FileTree's normalization
+        const normalizedPath = note.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+        logger.info('[HomePage] Setting selected file (will auto-expand folders)', {
+          originalPath: note.filePath,
+          normalizedPath
+        });
+        setSelectedFile(normalizedPath);
+
+        // Extract folder path from the file path (everything before the last /)
+        const lastSlash = normalizedPath.lastIndexOf('/');
+        if (lastSlash > 0) {
+          const folderPath = normalizedPath.substring(0, lastSlash);
+          logger.info('[HomePage] Setting active folder', { folderPath });
+          setActiveFolder(folderPath);
+        }
+      }
+    }
+
+    // Set the active note
+    logger.info('[HomePage] Setting active note', { noteId });
     setActiveNote(noteId);
+
+    // Switch to folders view to show the editor
+    logger.info('[HomePage] Switching to folders view');
+    setSidebarPanel('folders');
   };
 
   return (
@@ -162,34 +217,46 @@ export function HomePage() {
                 icon={<FileText className="w-5 h-5" />}
                 label="Total Notes"
                 value={totalNotes}
+                onClick={totalNotes > 0 ? () => setSidebarPanel('folders') : undefined}
               />
               <StatCard
                 icon={<Star className="w-5 h-5" />}
                 label="Favorites"
                 value={favoriteNotes}
-                className={favoriteNotes > 0 ? 'cursor-pointer' : ''}
+                onClick={favoriteNotes > 0 ? () => {
+                  // TODO: Add filter for favorites
+                  setSidebarPanel('folders');
+                } : undefined}
               />
               <StatCard
                 icon={<Pin className="w-5 h-5" />}
                 label="Pinned"
                 value={pinnedNotes}
-                className={pinnedNotes > 0 ? 'cursor-pointer' : ''}
+                onClick={pinnedNotes > 0 ? () => {
+                  // TODO: Add filter for pinned
+                  setSidebarPanel('folders');
+                } : undefined}
               />
               <StatCard
                 icon={<Archive className="w-5 h-5" />}
                 label="Archived"
                 value={archivedNotes}
-                className={archivedNotes > 0 ? 'cursor-pointer' : ''}
+                onClick={archivedNotes > 0 ? () => {
+                  // TODO: Add filter for archived
+                  setSidebarPanel('folders');
+                } : undefined}
               />
               <StatCard
                 icon={<FolderOpen className="w-5 h-5" />}
                 label="Folders"
                 value={totalFolders}
+                onClick={totalFolders > 0 ? () => setSidebarPanel('folders') : undefined}
               />
               <StatCard
                 icon={<Hash className="w-5 h-5" />}
                 label="Tags"
                 value={totalTags}
+                onClick={totalTags > 0 ? () => setSidebarPanel('tags') : undefined}
               />
             </div>
           </div>
@@ -205,7 +272,12 @@ export function HomePage() {
                 {recentNotes.map(note => (
                   <RecentNote
                     key={note.id}
-                    note={note}
+                    note={{
+                      id: note.id,
+                      title: note.title,
+                      updatedAt: note.updatedAt,
+                      filePath: note.filePath
+                    }}
                     onClick={handleNoteClick}
                   />
                 ))}
