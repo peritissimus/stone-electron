@@ -44,11 +44,13 @@ interface FileTreeFileProps {
   level: number;
   onRename: (noteId: string, currentTitle: string) => void;
   onDelete: (noteId: string) => Promise<void>;
+  onMove: (noteId: string, destinationPath: string | null) => Promise<void>;
 }
 
-const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete }) => {
+const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete, onMove }) => {
   const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { setActiveNote, getNoteByFilePath } = useNoteStore();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const normalizedPath = normalizePath(node.path);
   const isActive = selectedFile === normalizedPath;
@@ -66,20 +68,35 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
 
   const note = getNoteByFilePath(normalizedPath);
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (!note) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/stone-note', JSON.stringify({
+      noteId: note.id,
+      filePath: normalizedPath,
+      type: 'file'
+    }));
+  };
+
   return (
-    <TreeItem
-      level={level}
-      isActive={isActive}
-      onClick={handleOpen}
-      icon={<FileText size={14} className="text-muted-foreground" />}
-      label={note?.title?.trim() ? note.title : getDisplayName(node.name)}
-      rightSlotProps={{
-        className: 'flex items-center gap-1',
-        onClick: (event) => event.stopPropagation(),
-        onPointerDown: (event) => event.stopPropagation(),
-        onPointerUp: (event) => event.stopPropagation(),
-      }}
-      right={
+    <div
+      draggable={!!note}
+      onDragStart={handleDragStart}
+      className={isDragOver ? 'opacity-50' : ''}
+    >
+      <TreeItem
+        level={level}
+        isActive={isActive}
+        onClick={handleOpen}
+        icon={<FileText size={14} className="text-muted-foreground" />}
+        label={note?.title?.trim() ? note.title : getDisplayName(node.name)}
+        rightSlotProps={{
+          className: 'flex items-center gap-1',
+          onClick: (event) => event.stopPropagation(),
+          onPointerDown: (event) => event.stopPropagation(),
+          onPointerUp: (event) => event.stopPropagation(),
+        }}
+        right={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
@@ -116,6 +133,7 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
         </DropdownMenu>
       }
     />
+    </div>
   );
 };
 
@@ -125,8 +143,10 @@ interface FolderNodeProps {
   onCreateNote: (folderPath: string | null) => Promise<void>;
   onRenameFile: (noteId: string, currentTitle: string) => void;
   onDeleteFile: (noteId: string) => Promise<void>;
+  onMoveFile: (noteId: string, destinationPath: string | null) => Promise<void>;
   onRenameFolder: (folderPath: string, currentName: string) => void;
   onDeleteFolder: (folderPath: string) => Promise<void>;
+  onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
 }
 
 const FolderChildren: React.FC<FolderNodeProps> = ({
@@ -135,11 +155,14 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
   onCreateNote,
   onRenameFile,
   onDeleteFile,
+  onMoveFile,
   onRenameFolder,
   onDeleteFolder,
+  onMoveFolder,
 }) => {
   const { activeFolder, expandedPaths, setActiveFolder, toggleExpanded, setSelectedFile, counts } =
     useFileTreeStore();
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const normalizedPath = normalizePath(node.path);
   const childFolders = node.children ?? [];
@@ -151,97 +174,161 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
 
   const noteCount = counts[normalizedPath || '__root__'] || 0;
 
+  const handleDragStart = (e: React.DragEvent) => {
+    if (isRootFolder) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('application/stone-folder', JSON.stringify({
+      folderPath: normalizedPath,
+      type: 'folder'
+    }));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    // Try to get note data
+    const noteData = e.dataTransfer.getData('application/stone-note');
+    if (noteData) {
+      try {
+        const { noteId } = JSON.parse(noteData);
+        await onMoveFile(noteId, normalizedPath || null);
+      } catch (error) {
+        console.error('Failed to move note:', error);
+      }
+      return;
+    }
+
+    // Try to get folder data
+    const folderData = e.dataTransfer.getData('application/stone-folder');
+    if (folderData) {
+      try {
+        const { folderPath } = JSON.parse(folderData);
+        // Prevent dropping a folder into itself or its children
+        if (folderPath === normalizedPath || normalizedPath.startsWith(folderPath + '/')) {
+          return;
+        }
+        await onMoveFolder(folderPath, normalizedPath || null);
+      } catch (error) {
+        console.error('Failed to move folder:', error);
+      }
+    }
+  };
+
   return (
     <>
-      <TreeItem
-        level={level}
-        isActive={isActive}
-        onClick={(event) => {
-          event.stopPropagation();
-          const willExpand = !isExpanded;
-          if (!willExpand) {
-            const parent = getParentPath(normalizedPath);
-            setActiveFolder(parent || null);
+      <div
+        draggable={!isRootFolder}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={isDragOver ? 'bg-accent/50 rounded' : ''}
+      >
+        <TreeItem
+          level={level}
+          isActive={isActive}
+          onClick={(event) => {
+            event.stopPropagation();
+            const willExpand = !isExpanded;
+            if (!willExpand) {
+              const parent = getParentPath(normalizedPath);
+              setActiveFolder(parent || null);
+            }
+            toggleExpanded(normalizedPath);
+            if (willExpand) {
+              setActiveFolder(normalizedPath || null);
+            }
+            setSelectedFile(null);
+          }}
+          icon={
+            isExpanded ? (
+              <FolderOpen size={14} className="text-muted-foreground" />
+            ) : (
+              <FolderSimple size={14} className="text-muted-foreground" />
+            )
           }
-          toggleExpanded(normalizedPath);
-          if (willExpand) {
-            setActiveFolder(normalizedPath || null);
+          label={node.name}
+          rightSlotProps={{
+            className: 'flex items-center gap-1',
+            onClick: (event) => event.stopPropagation(),
+            onPointerDown: (event) => event.stopPropagation(),
+            onPointerUp: (event) => event.stopPropagation(),
+          }}
+          right={
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    size="compact"
+                    icon={<DotsThreeVertical size={14} />}
+                    label="Folder options"
+                    tooltip="Folder options"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActiveFolder(null);
+                      setSelectedFile(null);
+                    }}
+                  >
+                    <Files size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Show All Notes</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      await onCreateNote(normalizedPath);
+                    }}
+                  >
+                    <Plus size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">New Note Here</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isRootFolder}
+                    onSelect={() => {
+                      if (!isRootFolder) {
+                        onRenameFolder(normalizedPath, node.name);
+                      }
+                    }}
+                  >
+                    <PencilSimple size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Rename Folder</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isRootFolder}
+                    onSelect={async () => {
+                      if (!isRootFolder) {
+                        await onDeleteFolder(normalizedPath);
+                      }
+                    }}
+                  >
+                    <Trash size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Delete Folder</Text>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           }
-          setSelectedFile(null);
-        }}
-        icon={
-          isExpanded ? (
-            <FolderOpen size={14} className="text-muted-foreground" />
-          ) : (
-            <FolderSimple size={14} className="text-muted-foreground" />
-          )
-        }
-        label={node.name}
-        rightSlotProps={{
-          className: 'flex items-center gap-1',
-          onClick: (event) => event.stopPropagation(),
-          onPointerDown: (event) => event.stopPropagation(),
-          onPointerUp: (event) => event.stopPropagation(),
-        }}
-        right={
-          <>
-            <Text size="xs" variant="muted">
-              {noteCount}
-            </Text>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  size="compact"
-                  icon={<DotsThreeVertical size={14} />}
-                  label="Folder options"
-                  tooltip="Folder options"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setActiveFolder(null);
-                    setSelectedFile(null);
-                  }}
-                >
-                  <Files size={14} className="mr-2 text-muted-foreground" />
-                  <Text size="xs">All Notes</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={async () => {
-                    await onCreateNote(normalizedPath);
-                  }}
-                >
-                  <Plus size={14} className="mr-2 text-muted-foreground" />
-                  <Text size="xs">New Note</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isRootFolder}
-                  onSelect={() => {
-                    if (!isRootFolder) {
-                      onRenameFolder(normalizedPath, node.name);
-                    }
-                  }}
-                >
-                  <PencilSimple size={14} className="mr-2 text-muted-foreground" />
-                  <Text size="xs">Rename Folder</Text>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={isRootFolder}
-                  onSelect={async () => {
-                    if (!isRootFolder) {
-                      await onDeleteFolder(normalizedPath);
-                    }
-                  }}
-                >
-                  <Trash size={14} className="mr-2 text-muted-foreground" />
-                  <Text size="xs">Delete Folder</Text>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </>
-        }
-      />
+        />
+      </div>
       {hasChildren && isExpanded && (
         <div>
           {(node.children ?? []).map((child) =>
@@ -253,8 +340,10 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
                 onCreateNote={onCreateNote}
                 onRenameFile={onRenameFile}
                 onDeleteFile={onDeleteFile}
+                onMoveFile={onMoveFile}
                 onRenameFolder={onRenameFolder}
                 onDeleteFolder={onDeleteFolder}
+                onMoveFolder={onMoveFolder}
               />
             ) : (
               <FileLeaf
@@ -263,6 +352,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
                 level={level + 1}
                 onRename={onRenameFile}
                 onDelete={onDeleteFile}
+                onMove={onMoveFile}
               />
             ),
           )}
@@ -275,8 +365,8 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
   const { setActiveNote } = useNoteStore();
-  const { createNote, updateNote, deleteNote } = useNoteAPI();
-  const { loadFileTree, createFolder, renameFolder, deleteFolder } = useFileTreeAPI();
+  const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
+  const { loadFileTree, createFolder, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
   const [renameFolderTarget, setRenameFolderTarget] = useState<{
     path: string;
@@ -367,6 +457,24 @@ export function FileTree() {
     }
   };
 
+  const handleMoveNote = async (noteId: string, destinationPath: string | null) => {
+    try {
+      await moveNote(noteId, destinationPath);
+      await loadFileTree();
+    } catch (error) {
+      console.error('Failed to move note', error);
+    }
+  };
+
+  const handleMoveFolder = async (sourcePath: string, destinationPath: string | null) => {
+    try {
+      await moveFolder(sourcePath, destinationPath);
+      await loadFileTree();
+    } catch (error) {
+      console.error('Failed to move folder', error);
+    }
+  };
+
   return (
     <div>
       {tree.map((node) =>
@@ -378,10 +486,12 @@ export function FileTree() {
             onCreateNote={handleCreateNoteInFolder}
             onRenameFile={(noteId, title) => setRenameTarget({ noteId, title })}
             onDeleteFile={handleDeleteNote}
+            onMoveFile={handleMoveNote}
             onRenameFolder={(path, name) =>
               setRenameFolderTarget({ path: normalizePath(path), name })
             }
             onDeleteFolder={handleDeleteFolder}
+            onMoveFolder={handleMoveFolder}
           />
         ) : (
           <FileLeaf
@@ -390,6 +500,7 @@ export function FileTree() {
             level={0}
             onRename={(noteId, title) => setRenameTarget({ noteId, title })}
             onDelete={handleDeleteNote}
+            onMove={handleMoveNote}
           />
         ),
       )}

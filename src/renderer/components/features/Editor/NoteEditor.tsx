@@ -2,7 +2,7 @@
  * Note Editor Component - TipTap Rich Text Editor
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
@@ -12,14 +12,22 @@ import {
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
-} from '@renderer/components/features/editor';
+} from '@renderer/components/features/Editor';
 import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 
+/**
+ * NoteEditor ref API - exposed actions for keyboard shortcuts
+ */
+export interface NoteEditorHandle {
+  save: () => Promise<void>;
+  createSiblingNote: () => Promise<void>;
+}
+
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 
-export function NoteEditor() {
+export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const selectActiveNote = useCallback((state: NoteStoreState) => {
     if (!state.activeNoteId) return null;
     return state.notes.find((note) => note.id === state.activeNoteId) || null;
@@ -117,6 +125,16 @@ export function NoteEditor() {
     }
   }, [activeNoteFilePath, createNote, editor, setActiveNote]);
 
+  // Expose actions via ref for keyboard shortcuts
+  useImperativeHandle(
+    ref,
+    () => ({
+      save: handleSave,
+      createSiblingNote: handleCreateSiblingNote,
+    }),
+    [handleSave, handleCreateSiblingNote],
+  );
+
   const handleTitleChangeWithSave = useCallback(
     async (newTitle: string) => {
       await handleTitleChange(newTitle, async (title: string) => {
@@ -170,4 +188,6 @@ export function NoteEditor() {
       </PanelFooter>
     </div>
   );
-}
+});
+
+NoteEditor.displayName = 'NoteEditor';

@@ -13,6 +13,7 @@ import { Header, IconButton, ControlGroup } from '@renderer/components/composite
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
 
 export interface LayoutContainerProps {
   sidebar?: React.ReactNode;
@@ -93,6 +94,7 @@ export function LayoutContainer({
               size="compact"
               icon={<Gear size={12} />}
               label="Settings"
+              tooltip={`Settings (${formatShortcut(',', true)})`}
               onClick={openSettings}
             />
           </ControlGroup>

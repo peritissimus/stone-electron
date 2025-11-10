@@ -261,6 +261,29 @@ export function useNoteAPI() {
     }
   }, []);
 
+  const moveNote = useCallback(
+    async (id: string, folderPath: string | null) => {
+      setError(null);
+      try {
+        const response = await window.electron.invoke<Note>(NOTE_CHANNELS.MOVE, {
+          id,
+          folderPath,
+        });
+        if (response.success && response.data) {
+          updateNote(response.data);
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to move note');
+          return null;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to move note');
+        return null;
+      }
+    },
+    [updateNote, setError],
+  );
+
   return {
     loadNotes,
     createNote,
@@ -273,5 +296,6 @@ export function useNoteAPI() {
     restoreVersion,
     loadNoteById,
     getBacklinks,
+    moveNote,
   };
 }
