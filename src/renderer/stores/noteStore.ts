@@ -84,26 +84,45 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   getNoteByFilePath: (filePath) => {
     if (!filePath) return null;
-    const normalized = filePath.replace(/\\/g, '/');
-    return get().notes.find((n) => n.filePath?.replace(/\\/g, '/') === normalized) || null;
+    // Normalize the input path: convert backslashes, remove leading/trailing slashes
+    const normalized = filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    return get().notes.find((n) => {
+      if (!n.filePath) return false;
+      // Normalize the note's file path the same way
+      const notePathNormalized = n.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+      return notePathNormalized === normalized;
+    }) || null;
   },
 
   updateNoteByPath: (filePath, updates) =>
     set((state) => {
-      const normalized = filePath.replace(/\\/g, '/');
+      // Normalize the input path: convert backslashes, remove leading/trailing slashes
+      const normalized = filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
       return {
-        notes: state.notes.map((n) =>
-          n.filePath?.replace(/\\/g, '/') === normalized ? { ...n, ...updates } : n,
-        ),
+        notes: state.notes.map((n) => {
+          if (!n.filePath) return n;
+          // Normalize the note's file path the same way
+          const notePathNormalized = n.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+          return notePathNormalized === normalized ? { ...n, ...updates } : n;
+        }),
       };
     }),
 
   removeNoteByPath: (filePath) =>
     set((state) => {
-      const normalized = filePath.replace(/\\/g, '/');
-      const removedNote = state.notes.find((n) => n.filePath?.replace(/\\/g, '/') === normalized);
+      // Normalize the input path: convert backslashes, remove leading/trailing slashes
+      const normalized = filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+      const removedNote = state.notes.find((n) => {
+        if (!n.filePath) return false;
+        const notePathNormalized = n.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+        return notePathNormalized === normalized;
+      });
       return {
-        notes: state.notes.filter((n) => n.filePath?.replace(/\\/g, '/') !== normalized),
+        notes: state.notes.filter((n) => {
+          if (!n.filePath) return true;
+          const notePathNormalized = n.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+          return notePathNormalized !== normalized;
+        }),
         activeNoteId:
           removedNote && state.activeNoteId === removedNote.id ? null : state.activeNoteId,
       };
