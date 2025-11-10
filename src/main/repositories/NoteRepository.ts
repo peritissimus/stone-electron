@@ -253,12 +253,23 @@ export class NoteRepository {
           relativeFolder || '.',
         );
 
-        // Generate unique filename
-        const filename = await this.fileSystemService.generateUniqueFilename(
-          targetFolderAbsolute,
-          title,
-          '.md',
-        );
+        // Generate unique filename (timestamp-based to be independent of title)
+        // Exception: Journal notes use date-based filenames (YYYY-MM-DD.md)
+        let filename: string;
+        if (relativeFolder === 'Journal' && title.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Journal note with date as title - use title as filename
+          filename = await this.fileSystemService.generateUniqueFilename(
+            targetFolderAbsolute,
+            title,
+            '.md',
+          );
+        } else {
+          // Regular note - use timestamp-based filename (independent of title)
+          filename = await this.fileSystemService.generateTimestampFilename(
+            targetFolderAbsolute,
+            '.md',
+          );
+        }
         const relativePath = relativeFolder ? path.posix.join(relativeFolder, filename) : filename;
 
         // Save content to file - ensure first line is the title
@@ -367,15 +378,8 @@ export class NoteRepository {
             targetFolderRelative && targetFolderRelative.length > 0 ? targetFolderRelative : '.',
           );
 
+          // Keep the existing filename (title changes don't rename the file)
           let filename = path.basename(currentRelativePath);
-
-          if (data.title && data.title !== existingNote.title) {
-            filename = await this.fileSystemService.generateUniqueFilename(
-              targetDirAbsolute,
-              data.title,
-              '.md',
-            );
-          }
 
           const newRelativePath =
             targetFolderRelative && targetFolderRelative.length > 0
@@ -392,19 +396,29 @@ export class NoteRepository {
           }
         }
 
-        // If content is being updated, write to file
+        // If content is being updated OR title is being changed, update the file
+        const shouldUpdateFile =
+          (contentUpdate !== undefined && contentUpdate !== null) ||
+          (data.title !== undefined && data.title !== existingNote.title);
+
         if (
-          contentUpdate !== undefined &&
-          contentUpdate !== null &&
+          shouldUpdateFile &&
           existingNote.workspaceId &&
           (updateData.filePath || existingNote.filePath)
         ) {
           const filePathToUse = updateData.filePath || existingNote.filePath!;
           const workspaceId = existingNote.workspaceId!;
+          const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
+
+          // Get existing content if only title is changing
+          let contentToSave = contentUpdate;
+          if (contentToSave === undefined || contentToSave === null) {
+            // Title-only update: read existing content and update H1
+            const existingContent = await this.getContentById(existingNote.id);
+            contentToSave = existingContent || '';
+          }
 
           // Ensure the first line of content matches the title
-          let contentToSave = contentUpdate;
-          const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
           if (!contentToSave.trim().startsWith('# ')) {
             // If content doesn't start with a heading, prepend the title as H1
             contentToSave = `# ${currentTitle}\n\n${contentToSave}`;
