@@ -1,8 +1,9 @@
 import React from 'react';
-import { Clock, FileText } from 'lucide-react';
+import { Clock, FileText, BookOpen, Briefcase, User } from 'lucide-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 
 interface RecentNoteProps {
@@ -72,6 +73,7 @@ export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { createNote } = useNoteAPI();
 
   // Get the active workspace
   const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
@@ -81,16 +83,24 @@ export function HomePage() {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
     .slice(0, 3);
 
-  // Get current date and greeting
+  // Get current date
   const now = new Date();
-  const hour = now.getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const dateString = now.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
   });
+
+  // Format today's date for journal title (e.g., "November 10, 2025")
+  const journalTitle = now.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Format today's date for journal filename (e.g., "2025-11-10")
+  const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const handleNoteClick = (noteId: string) => {
     logger.info('[HomePage] Note clicked', { noteId });
@@ -132,17 +142,118 @@ export function HomePage() {
     setActiveNote(noteId);
   };
 
+  // Handle creating or opening today's journal
+  const handleJournalClick = async () => {
+    logger.info('[HomePage] Journal clicked', { journalFilename, journalTitle });
+
+    // Check if today's journal already exists in Journal folder (by filename)
+    const expectedFilePath = `Journal/${journalFilename}.md`;
+    const existingJournal = notes.find(
+      note => note.filePath === expectedFilePath
+    );
+
+    if (existingJournal) {
+      // Open existing journal
+      logger.info('[HomePage] Opening existing journal', { id: existingJournal.id });
+      handleNoteClick(existingJournal.id);
+    } else {
+      // Create new journal entry with ISO date as title (filename will be YYYY-MM-DD.md)
+      logger.info('[HomePage] Creating new journal entry');
+      const newNote = await createNote({
+        title: journalFilename,
+        content: `# ${journalTitle}\n\n`,
+        folderPath: 'Journal'
+      });
+
+      if (newNote) {
+        logger.info('[HomePage] Journal created', { id: newNote.id });
+        handleNoteClick(newNote.id);
+      }
+    }
+  };
+
+  // Handle creating a work note
+  const handleWorkNoteClick = async () => {
+    logger.info('[HomePage] Work note clicked');
+    const newNote = await createNote({
+      title: 'Untitled',
+      content: '',
+      folderPath: 'Work'
+    });
+
+    if (newNote) {
+      logger.info('[HomePage] Work note created', { id: newNote.id });
+      handleNoteClick(newNote.id);
+    }
+  };
+
+  // Handle creating a personal note
+  const handlePersonalNoteClick = async () => {
+    logger.info('[HomePage] Personal note clicked');
+    const newNote = await createNote({
+      title: 'Untitled',
+      content: '',
+      folderPath: 'Personal'
+    });
+
+    if (newNote) {
+      logger.info('[HomePage] Personal note created', { id: newNote.id });
+      handleNoteClick(newNote.id);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="px-8 py-6 border-b border-border bg-background">
-        <h1 className="text-3xl font-bold mb-1">{greeting}!</h1>
-        <p className="text-muted-foreground">{dateString}</p>
+        <p className="text-muted-foreground mb-4">{dateString}</p>
         {activeWorkspace && (
-          <p className="text-sm text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mb-6">
             Workspace: <span className="font-medium">{activeWorkspace.name}</span>
           </p>
         )}
+
+        {/* Quick Action Shortcuts */}
+        <div className="grid grid-cols-3 gap-4 mt-6">
+          <button
+            onClick={handleJournalClick}
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+          >
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+              <BookOpen className="w-6 h-6 text-blue-500" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-semibold text-sm mb-1">Today's Journal</h3>
+              <p className="text-xs text-muted-foreground">{journalTitle}</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleWorkNoteClick}
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+          >
+            <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+              <Briefcase className="w-6 h-6 text-orange-500" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-semibold text-sm mb-1">Work Note</h3>
+              <p className="text-xs text-muted-foreground">Create new work note</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handlePersonalNoteClick}
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+          >
+            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
+              <User className="w-6 h-6 text-green-500" />
+            </div>
+            <div className="text-center">
+              <h3 className="font-semibold text-sm mb-1">Personal Note</h3>
+              <p className="text-xs text-muted-foreground">Create new personal note</p>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Scrollable Content */}

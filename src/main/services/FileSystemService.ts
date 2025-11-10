@@ -353,6 +353,38 @@ export class FileSystemService {
   }
 
   /**
+   * Generate a timestamp-based unique filename (title-independent)
+   * Format: YYYY-MM-DD-HHMMSS-RANDOM.md
+   * This ensures filenames are unique and immutable, separate from note titles
+   */
+  async generateTimestampFilename(
+    dirPath: string,
+    extension: string = '.md',
+  ): Promise<string> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+
+    // Add a random suffix to handle multiple notes created in the same second
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+
+    let filename = `${year}-${month}-${day}-${hours}${minutes}${seconds}-${random}${extension}`;
+    let counter = 1;
+
+    // Ensure uniqueness (very unlikely to need this, but just in case)
+    while (await this.fileExists(path.join(dirPath, filename))) {
+      filename = `${year}-${month}-${day}-${hours}${minutes}${seconds}-${random}-${counter}${extension}`;
+      counter++;
+    }
+
+    return filename;
+  }
+
+  /**
    * Generate a unique folder name within a directory
    */
   async generateUniqueFolderName(

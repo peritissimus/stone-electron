@@ -72,6 +72,27 @@ export function registerWorkspaceHandlers() {
         folderPath: request.folderPath,
       });
 
+      // Create default folders: Work, Journal, Personal
+      const defaultFolders = ['Work', 'Journal', 'Personal'];
+      for (const folderName of defaultFolders) {
+        try {
+          const folderPath = path.join(request.folderPath, folderName);
+          await fsService.createFolder(folderPath);
+          logger.info(`[Workspace] Created default folder: ${folderName}`);
+        } catch (error) {
+          // Log but don't fail workspace creation if folder already exists
+          logger.warn(`[Workspace] Could not create default folder ${folderName}:`, error);
+        }
+      }
+
+      // Sync notebooks and notes after creating default folders
+      try {
+        await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+        await repos.note.syncWithFileSystem(workspace.id);
+      } catch (error) {
+        logger.error('[Workspace] Error syncing after creating default folders:', error);
+      }
+
       // Start watching the new workspace
       try {
         await getFileWatcherService().watchWorkspace(workspace);
@@ -414,6 +435,21 @@ export function registerWorkspaceHandlers() {
       logger.info(
         `[IPC][workspaces:sync] Start sync for workspace ${active.id} at ${active.folderPath}`,
       );
+
+      // Ensure default folders exist (Work, Journal, Personal)
+      const defaultFolders = ['Work', 'Journal', 'Personal'];
+      for (const folderName of defaultFolders) {
+        try {
+          const folderPath = path.join(active.folderPath, folderName);
+          const exists = await fsService.fileExists(folderPath);
+          if (!exists) {
+            await fsService.createFolder(folderPath);
+            logger.info(`[IPC][workspaces:sync] Created missing default folder: ${folderName}`);
+          }
+        } catch (error) {
+          logger.warn(`[IPC][workspaces:sync] Could not ensure default folder ${folderName}:`, error);
+        }
+      }
 
       // Sync notebooks from folders
       const nbResult = await repos.notebook.syncWithWorkspaceFolders(active.id);
