@@ -497,7 +497,8 @@ export function FileTree() {
     if (!trimmed) return;
     try {
       await updateNote(noteId, { title: trimmed });
-      await loadFileTree();
+      // No need to reload file tree - filename doesn't change, only title
+      // updateNote already updates the note in the store
     } catch (error) {
       console.error('Failed to rename note', error);
     }
