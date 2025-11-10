@@ -18,60 +18,76 @@ import TableCell from '@tiptap/extension-table-cell';
 import { lowlight } from 'lowlight';
 import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid';
 
-// Import common languages for syntax highlighting
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import java from 'highlight.js/lib/languages/java';
-import cpp from 'highlight.js/lib/languages/cpp';
-import csharp from 'highlight.js/lib/languages/csharp';
-import go from 'highlight.js/lib/languages/go';
-import rust from 'highlight.js/lib/languages/rust';
-import ruby from 'highlight.js/lib/languages/ruby';
-import php from 'highlight.js/lib/languages/php';
-import swift from 'highlight.js/lib/languages/swift';
-import kotlin from 'highlight.js/lib/languages/kotlin';
-import sql from 'highlight.js/lib/languages/sql';
-import bash from 'highlight.js/lib/languages/bash';
-import json from 'highlight.js/lib/languages/json';
-import xml from 'highlight.js/lib/languages/xml';
-import css from 'highlight.js/lib/languages/css';
-import markdown from 'highlight.js/lib/languages/markdown';
-
 // Import slash command extension
 import { SlashCommand } from '@renderer/extensions/SlashCommand';
 
-// Register languages with lowlight
-lowlight.registerLanguage('javascript', javascript);
-lowlight.registerLanguage('js', javascript);
-lowlight.registerLanguage('typescript', typescript);
-lowlight.registerLanguage('ts', typescript);
-lowlight.registerLanguage('python', python);
-lowlight.registerLanguage('py', python);
-lowlight.registerLanguage('java', java);
-lowlight.registerLanguage('cpp', cpp);
-lowlight.registerLanguage('c++', cpp);
-lowlight.registerLanguage('csharp', csharp);
-lowlight.registerLanguage('cs', csharp);
-lowlight.registerLanguage('go', go);
-lowlight.registerLanguage('rust', rust);
-lowlight.registerLanguage('rs', rust);
-lowlight.registerLanguage('ruby', ruby);
-lowlight.registerLanguage('rb', ruby);
-lowlight.registerLanguage('php', php);
-lowlight.registerLanguage('swift', swift);
-lowlight.registerLanguage('kotlin', kotlin);
-lowlight.registerLanguage('kt', kotlin);
-lowlight.registerLanguage('sql', sql);
-lowlight.registerLanguage('bash', bash);
-lowlight.registerLanguage('sh', bash);
-lowlight.registerLanguage('shell', bash);
-lowlight.registerLanguage('json', json);
-lowlight.registerLanguage('xml', xml);
-lowlight.registerLanguage('html', xml);
-lowlight.registerLanguage('css', css);
-lowlight.registerLanguage('markdown', markdown);
-lowlight.registerLanguage('md', markdown);
+// Lazy load languages on demand (saves ~150KB from initial bundle!)
+// Language loader map for dynamic imports
+const languageLoaders: Record<string, () => Promise<any>> = {
+  javascript: () => import('highlight.js/lib/languages/javascript'),
+  js: () => import('highlight.js/lib/languages/javascript'),
+  typescript: () => import('highlight.js/lib/languages/typescript'),
+  ts: () => import('highlight.js/lib/languages/typescript'),
+  python: () => import('highlight.js/lib/languages/python'),
+  py: () => import('highlight.js/lib/languages/python'),
+  java: () => import('highlight.js/lib/languages/java'),
+  cpp: () => import('highlight.js/lib/languages/cpp'),
+  'c++': () => import('highlight.js/lib/languages/cpp'),
+  csharp: () => import('highlight.js/lib/languages/csharp'),
+  cs: () => import('highlight.js/lib/languages/csharp'),
+  go: () => import('highlight.js/lib/languages/go'),
+  rust: () => import('highlight.js/lib/languages/rust'),
+  rs: () => import('highlight.js/lib/languages/rust'),
+  ruby: () => import('highlight.js/lib/languages/ruby'),
+  rb: () => import('highlight.js/lib/languages/ruby'),
+  php: () => import('highlight.js/lib/languages/php'),
+  swift: () => import('highlight.js/lib/languages/swift'),
+  kotlin: () => import('highlight.js/lib/languages/kotlin'),
+  kt: () => import('highlight.js/lib/languages/kotlin'),
+  sql: () => import('highlight.js/lib/languages/sql'),
+  bash: () => import('highlight.js/lib/languages/bash'),
+  sh: () => import('highlight.js/lib/languages/bash'),
+  shell: () => import('highlight.js/lib/languages/bash'),
+  json: () => import('highlight.js/lib/languages/json'),
+  xml: () => import('highlight.js/lib/languages/xml'),
+  html: () => import('highlight.js/lib/languages/xml'),
+  css: () => import('highlight.js/lib/languages/css'),
+  markdown: () => import('highlight.js/lib/languages/markdown'),
+  md: () => import('highlight.js/lib/languages/markdown'),
+};
+
+// Track loaded languages to avoid redundant loads
+const loadedLanguages = new Set<string>();
+
+// Load language on demand
+export const loadLanguage = async (language: string) => {
+  if (!language || loadedLanguages.has(language)) {
+    return; // Already loaded
+  }
+
+  const loader = languageLoaders[language.toLowerCase()];
+  if (loader) {
+    try {
+      const languageModule = await loader();
+      lowlight.registerLanguage(language.toLowerCase(), languageModule.default);
+      loadedLanguages.add(language);
+    } catch (error) {
+      console.warn(`Failed to load language: ${language}`, error);
+    }
+  }
+};
+
+// Pre-load common languages (JavaScript, TypeScript, JSON) for better UX
+const preloadCommonLanguages = async () => {
+  await Promise.all([
+    loadLanguage('javascript'),
+    loadLanguage('typescript'),
+    loadLanguage('json'),
+  ]);
+};
+
+// Start preloading common languages immediately
+preloadCommonLanguages();
 
 // Note: 'mermaid' language is handled by CodeBlockWithMermaid extension
 // which auto-renders diagrams when language is set to 'mermaid'

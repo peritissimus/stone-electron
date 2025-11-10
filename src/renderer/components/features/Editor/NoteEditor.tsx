@@ -96,21 +96,39 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     return () => window.clearTimeout(timeout);
   }, [activeNoteId, content, editor]);
 
-  // Listen for editor updates to toggle dirty state
+  // Listen for editor updates to toggle dirty state (debounced for performance)
   useEffect(() => {
     if (!editor) return;
+
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const handler = () => {
-      try {
-        const current = editor.getJSON();
-        const baseline = lastSavedJsonRef.current;
-        const equal = JSON.stringify(current) === JSON.stringify(baseline);
-        setIsDirty(!equal);
-      } catch {
-        setIsDirty(true);
+      // Immediately set dirty to true for instant visual feedback
+      setIsDirty(true);
+
+      // Debounce the actual comparison check (expensive operation)
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
+
+      timeoutId = setTimeout(() => {
+        try {
+          const current = editor.getJSON();
+          const baseline = lastSavedJsonRef.current;
+          const equal = JSON.stringify(current) === JSON.stringify(baseline);
+          setIsDirty(!equal);
+        } catch {
+          setIsDirty(true);
+        }
+      }, 500); // Check after 500ms of inactivity
     };
+
     editor.on('update', handler);
+
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       editor.off('update', handler);
     };
   }, [editor]);

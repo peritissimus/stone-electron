@@ -5,8 +5,17 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
-import mermaid from 'mermaid';
 import { cn } from '@renderer/lib/utils';
+import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
+
+// Lazy load Mermaid - 800KB saved from initial bundle!
+let mermaidModule: typeof import('mermaid') | null = null;
+const loadMermaid = async () => {
+  if (!mermaidModule) {
+    mermaidModule = await import('mermaid');
+  }
+  return mermaidModule.default;
+};
 
 // Get initial theme
 const getTheme = () => {
@@ -88,7 +97,11 @@ const withAlpha = (color: string, alpha: number) => {
 // Initialize Mermaid with theme derived from design tokens (CSS variables)
 type MermaidOverrides = { fontFamily?: string };
 
-const initializeMermaid = (isDark = false, overrides: MermaidOverrides = {}) => {
+const initializeMermaid = (
+  mermaid: typeof import('mermaid').default,
+  isDark = false,
+  overrides: MermaidOverrides = {},
+) => {
   // Safe fallbacks if CSS variables are not yet available
   const F = isDark
     ? {
@@ -252,6 +265,13 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   const codeContent = getCodeContent();
   const isStateDiagram = /(^|\n)\s*stateDiagram(-v2)?/i.test(codeContent);
 
+  // Load language on demand (lazy loading)
+  useEffect(() => {
+    if (language && language !== 'mermaid' && language !== 'auto') {
+      loadLanguage(language);
+    }
+  }, [language]);
+
   // Render Mermaid diagram
   useEffect(() => {
     if (!isMermaid) {
@@ -272,9 +292,12 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
       try {
         setError(null);
 
+        // Dynamically load Mermaid (only when needed - saves 800KB from initial bundle!)
+        const mermaid = await loadMermaid();
+
         // Re-initialize Mermaid with current theme before rendering
         const isDark = document.documentElement.classList.contains('dark');
-        initializeMermaid(isDark, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
+        initializeMermaid(mermaid, isDark, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
 
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
         const { svg } = await mermaid.render(id, code);

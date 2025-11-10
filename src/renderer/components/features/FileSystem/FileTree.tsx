@@ -49,7 +49,7 @@ interface FileTreeFileProps {
   onMove: (noteId: string, destinationPath: string | null) => Promise<void>;
 }
 
-const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete, onMove }) => {
+const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelete, onMove }) => {
   const { selectedFile, setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { setActiveNote, getNoteByFilePath } = useNoteStore();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -183,7 +183,7 @@ const FileLeaf: React.FC<FileTreeFileProps> = ({ node, level, onRename, onDelete
       </div>
     </div>
   );
-};
+});
 
 interface FolderNodeProps {
   node: StoreFileTreeNode;
@@ -197,7 +197,7 @@ interface FolderNodeProps {
   onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
 }
 
-const FolderChildren: React.FC<FolderNodeProps> = ({
+const FolderChildren = React.memo<FolderNodeProps>(({
   node,
   level,
   onCreateNote,
@@ -454,7 +454,7 @@ const FolderChildren: React.FC<FolderNodeProps> = ({
       )}
     </>
   );
-};
+});
 
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();

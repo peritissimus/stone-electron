@@ -82,6 +82,28 @@ async function buildNoteWithRelations(
   } as any;
 }
 
+function deriveFolderPath(
+  note: Note,
+  notebooksMap: Map<string, any>,
+): string | null {
+  if (note.notebookId) {
+    const notebook = notebooksMap.get(note.notebookId);
+    if (notebook) {
+      return notebook.folderPath;
+    }
+  }
+
+  if (note.filePath) {
+    // Extract folder from file path (e.g., "Personal/Note.md" -> "Personal")
+    const pathParts = note.filePath.split('/');
+    if (pathParts.length > 1) {
+      return pathParts.slice(0, -1).join('/');
+    }
+  }
+
+  return null;
+}
+
 function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {
   BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send(eventName, { note });
@@ -184,7 +206,27 @@ async function enrichNotes(
   notes: Note[],
   repos: RepositoriesInstance,
 ): Promise<NoteWithRelations[]> {
-  return Promise.all(notes.map((note) => buildNoteWithRelations(note, repos)));
+  if (notes.length === 0) {
+    return [];
+  }
+
+  // Bulk load all relations in parallel (3-4 queries instead of N*3 queries)
+  const noteIds = notes.map(n => n.id);
+  const notebookIds = [...new Set(notes.map(n => n.notebookId).filter(Boolean) as string[])];
+
+  const [tagsMap, attachmentsMap, notebooksMap] = await Promise.all([
+    repos.tag.getTagsForNotes(noteIds),
+    repos.attachment.getAttachmentsForNotes(noteIds),
+    repos.notebook.findByIds(notebookIds),
+  ]);
+
+  // Map notes to enriched notes with O(1) lookups
+  return notes.map(note => ({
+    ...note,
+    tags: tagsMap.get(note.id) || [],
+    attachments: attachmentsMap.get(note.id) || [],
+    folderPath: deriveFolderPath(note, notebooksMap),
+  } as any));
 }
 
 /**

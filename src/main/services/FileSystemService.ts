@@ -205,6 +205,9 @@ export class FileSystemService {
       let markdownCount = 0;
       let skippedCount = 0;
 
+      // Collect subfolders for parallel scanning
+      const subfolderPaths: string[] = [];
+
       for (const entry of entries) {
         const fullPath = path.join(folderPath, entry.name);
         const relativePath = path
@@ -225,8 +228,7 @@ export class FileSystemService {
             logger.debug(`[FileSystem] Found subfolder: ${entry.name}`);
           }
           if (recursive) {
-            const subFiles = await this.scanFolder(fullPath, recursive, basePath);
-            files.push(...subFiles);
+            subfolderPaths.push(fullPath);
           }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
           markdownCount++;
@@ -245,6 +247,14 @@ export class FileSystemService {
             logger.warn(`[FileSystem] ⚠️  Skipping unreadable file ${fullPath}:`, error);
           }
         }
+      }
+
+      // Scan all subfolders in parallel (much faster than sequential)
+      if (subfolderPaths.length > 0 && recursive) {
+        const subResults = await Promise.all(
+          subfolderPaths.map(subPath => this.scanFolder(subPath, recursive, basePath))
+        );
+        subResults.forEach(subFiles => files.push(...subFiles));
       }
       logger.debug(`[FileSystem] Scan summary for ${folderPath}`, {
         folders: folderCount,

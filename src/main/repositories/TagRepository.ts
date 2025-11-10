@@ -144,6 +144,52 @@ export class TagRepository {
   }
 
   /**
+   * Get tags for multiple notes (bulk operation)
+   * Returns a Map with noteId as key and array of tags as value
+   */
+  async getTagsForNotes(noteIds: string[]): Promise<Map<string, Tag[]>> {
+    const db = getDatabaseManager().getDrizzle();
+
+    if (noteIds.length === 0) {
+      return new Map();
+    }
+
+    const result = await db
+      .select({
+        noteId: noteTags.noteId,
+        tagId: tags.id,
+        tagName: tags.name,
+        tagColor: tags.color,
+        tagCreatedAt: tags.createdAt,
+        tagUpdatedAt: tags.updatedAt,
+      })
+      .from(noteTags)
+      .innerJoin(tags, eq(noteTags.tagId, tags.id))
+      .where(sql`${noteTags.noteId} IN (${sql.join(noteIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(asc(tags.name));
+
+    // Group tags by noteId
+    const tagsByNote = new Map<string, Tag[]>();
+
+    for (const row of result) {
+      const tag: Tag = {
+        id: row.tagId,
+        name: row.tagName,
+        color: row.tagColor,
+        createdAt: row.tagCreatedAt,
+        updatedAt: row.tagUpdatedAt,
+      };
+
+      if (!tagsByNote.has(row.noteId)) {
+        tagsByNote.set(row.noteId, []);
+      }
+      tagsByNote.get(row.noteId)!.push(tag);
+    }
+
+    return tagsByNote;
+  }
+
+  /**
    * Add a tag to a note
    */
   async addToNote(noteId: string, tagId: string): Promise<void> {
