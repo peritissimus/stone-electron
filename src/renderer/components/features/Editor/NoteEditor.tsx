@@ -13,6 +13,7 @@ import {
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
+  EditorStats,
 } from '@renderer/components/features/Editor';
 import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
@@ -234,8 +235,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       {/* Editor Content */}
       <NoteEditorContent editor={editor} isLoading={isLoading} />
 
-      <PanelFooter size="compact" justify="start">
-        <EditorToolbar editor={editor} className="w-full" />
+      <PanelFooter size="compact" justify="between">
+        <EditorStats editor={editor} />
+        <EditorToolbar editor={editor} />
       </PanelFooter>
     </div>
   );
