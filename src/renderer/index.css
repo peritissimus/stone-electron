@@ -6,8 +6,8 @@
 
 @theme {
   --font-sans:
-    -apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text,
-    Helvetica Neue, Arial, sans-serif;
+    -apple-system, BlinkMacSystemFont, SF Pro Display, SF Pro Text, Helvetica Neue, Arial,
+    sans-serif;
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -240,7 +240,7 @@ body {
 .prose {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
   font-size: 16px;
-  line-height: 1.65;
+  line-height: 1.5;
   letter-spacing: -0.003em;
   color: hsl(var(--foreground));
 }
@@ -339,7 +339,7 @@ textarea:focus {
   padding: 3px 2px;
   margin-left: -2px;
   margin-right: -2px;
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 .ProseMirror p:hover,
@@ -406,7 +406,7 @@ textarea:focus {
 }
 
 .prose p {
-  @apply mb-2 text-foreground;
+  @apply text-foreground;
   line-height: 1.65;
   font-size: 16px;
   cursor: text;
@@ -449,8 +449,8 @@ textarea:focus {
 }
 
 .prose li {
-  @apply mb-1;
-  line-height: 1.65;
+  @apply mb-0.5;
+  line-height: 1.5;
   font-size: 16px;
 }
 
