@@ -13,6 +13,8 @@ import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';
 import { Message } from './Message';
+import { FontSettings } from './FontSettings';
+import { FontPreview } from './FontPreview';
 import {
   Select,
   SelectContent,
@@ -211,18 +213,31 @@ function AppearanceSettings() {
 
   return (
     <SettingsSection title="Appearance">
-      <ContainerStack gap="sm">
-        <Label>Theme</Label>
-        <Select value={theme} onValueChange={setTheme}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select theme" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="light">Light</SelectItem>
-            <SelectItem value="dark">Dark</SelectItem>
-            <SelectItem value="system">System</SelectItem>
-          </SelectContent>
-        </Select>
+      <ContainerStack gap="lg">
+        {/* Theme */}
+        <ContainerStack gap="sm">
+          <Label>Theme</Label>
+          <Select value={theme} onValueChange={setTheme}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select theme" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="light">Light</SelectItem>
+              <SelectItem value="dark">Dark</SelectItem>
+              <SelectItem value="system">System</SelectItem>
+            </SelectContent>
+          </Select>
+        </ContainerStack>
+
+        <Separator />
+
+        {/* Font Settings */}
+        <FontSettings />
+
+        <Separator />
+
+        {/* Font Preview */}
+        <FontPreview />
       </ContainerStack>
     </SettingsSection>
   );
