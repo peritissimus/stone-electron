@@ -4,20 +4,12 @@
  */
 
 import { useUIStore } from '@renderer/stores/uiStore';
-import { SYSTEM_FONT_OPTIONS } from '@shared/types/settings';
-import { Input } from '@renderer/components/base/ui/input';
 import { Label, Body } from '@renderer/components/base/ui/text';
 import { Slider } from '@renderer/components/base/ui/slider';
 import { Button } from '@renderer/components/base/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@renderer/components/base/ui/select';
 import { ContainerStack } from '@renderer/components/base/ui';
 import { ArrowCounterClockwise } from 'phosphor-react';
+import { FontPicker } from './FontPicker';
 
 export function FontSettings() {
   const { fontSettings, setFontSettings, resetFontSettings } = useUIStore();
@@ -35,18 +27,11 @@ export function FontSettings() {
       {/* UI Font */}
       <ContainerStack gap="sm">
         <Label>Interface Font</Label>
-        <Select value={fontSettings.uiFont} onValueChange={(value) => setFontSettings({ uiFont: value })}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select interface font" />
-          </SelectTrigger>
-          <SelectContent>
-            {SYSTEM_FONT_OPTIONS.ui.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FontPicker
+          value={fontSettings.uiFont}
+          onValueChange={(value) => setFontSettings({ uiFont: value })}
+          placeholder="Select interface font"
+        />
         <Body variant="muted" size="sm">
           Used for sidebars, menus, and buttons
         </Body>
@@ -72,21 +57,11 @@ export function FontSettings() {
       {/* Editor Heading Font */}
       <ContainerStack gap="sm">
         <Label>Editor Heading Font</Label>
-        <Select
+        <FontPicker
           value={fontSettings.editorHeadingFont}
           onValueChange={(value) => setFontSettings({ editorHeadingFont: value })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select heading font" />
-          </SelectTrigger>
-          <SelectContent>
-            {SYSTEM_FONT_OPTIONS.heading.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select heading font"
+        />
         <Body variant="muted" size="sm">
           Used for h1-h6 headings in notes
         </Body>
@@ -95,21 +70,11 @@ export function FontSettings() {
       {/* Editor Body Font */}
       <ContainerStack gap="sm">
         <Label>Editor Body Font</Label>
-        <Select
+        <FontPicker
           value={fontSettings.editorBodyFont}
           onValueChange={(value) => setFontSettings({ editorBodyFont: value })}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select body font" />
-          </SelectTrigger>
-          <SelectContent>
-            {SYSTEM_FONT_OPTIONS.body.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select body font"
+        />
         <Body variant="muted" size="sm">
           Used for paragraphs and lists in notes
         </Body>
@@ -152,18 +117,11 @@ export function FontSettings() {
       {/* Monospace Font */}
       <ContainerStack gap="sm">
         <Label>Code Font</Label>
-        <Select value={fontSettings.monoFont} onValueChange={(value) => setFontSettings({ monoFont: value })}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select code font" />
-          </SelectTrigger>
-          <SelectContent>
-            {SYSTEM_FONT_OPTIONS.code.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FontPicker
+          value={fontSettings.monoFont}
+          onValueChange={(value) => setFontSettings({ monoFont: value })}
+          placeholder="Select code font"
+        />
         <Body variant="muted" size="sm">
           Used for code blocks and inline code
         </Body>
