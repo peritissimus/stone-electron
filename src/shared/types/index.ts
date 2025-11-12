@@ -154,3 +154,6 @@ export interface AppError {
   details?: unknown;
   timestamp: UnixTimestamp;
 }
+
+// Export settings types
+export * from './settings';
