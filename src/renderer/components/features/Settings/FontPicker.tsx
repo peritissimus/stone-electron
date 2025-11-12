@@ -63,17 +63,21 @@ export function FontPicker({ value, onValueChange, placeholder = 'Select font...
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-normal"
+          className="w-full justify-between font-normal h-10 px-3"
         >
-          <span className="truncate">{selectedFont || placeholder}</span>
+          <span className="truncate text-sm" style={{ fontFamily: value }}>
+            {selectedFont || placeholder}
+          </span>
           <CaretDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search fonts..." />
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command className="max-h-[400px]">
+          <CommandInput placeholder="Search fonts..." className="h-10" />
           <CommandList>
-            <CommandEmpty>{loading ? 'Loading fonts...' : 'No font found.'}</CommandEmpty>
+            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+              {loading ? 'Loading fonts...' : 'No font found.'}
+            </CommandEmpty>
             <CommandGroup>
               {fonts.map((font) => (
                 <CommandItem
@@ -83,14 +87,17 @@ export function FontPicker({ value, onValueChange, placeholder = 'Select font...
                     onValueChange(font);
                     setOpen(false);
                   }}
+                  className="cursor-pointer"
                 >
                   <Check
                     className={cn(
-                      'mr-2 h-4 w-4',
+                      'mr-2 h-4 w-4 flex-shrink-0',
                       value === font || selectedFont === font ? 'opacity-100' : 'opacity-0',
                     )}
                   />
-                  <span style={{ fontFamily: font }}>{font}</span>
+                  <span className="truncate text-sm" style={{ fontFamily: font }}>
+                    {font}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>
