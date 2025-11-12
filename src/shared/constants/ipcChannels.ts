@@ -91,6 +91,11 @@ export const SETTINGS_CHANNELS = {
   GET_ALL: 'settings:getAll',
 } as const;
 
+// System Operations
+export const SYSTEM_CHANNELS = {
+  GET_FONTS: 'system:getFonts',
+} as const;
+
 // Events
 export const EVENTS = {
   // Workspace events
@@ -149,6 +154,7 @@ export const ALL_CHANNELS = [
   ...Object.values(ATTACHMENT_CHANNELS),
   ...Object.values(DATABASE_CHANNELS),
   ...Object.values(SETTINGS_CHANNELS),
+  ...Object.values(SYSTEM_CHANNELS),
 ];
 
 // Get all events as an array

@@ -79,6 +79,7 @@
     "drizzle-orm": "^0.44.7",
     "electron-log": "^5.4.3",
     "electron-store": "^8.0.0",
+    "font-list": "^2.0.1",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "jsdom": "^27.1.0",
