@@ -158,6 +158,9 @@ importers:
       electron-store:
         specifier: ^8.0.0
         version: 8.2.0
+      font-list:
+        specifier: ^2.0.1
+        version: 2.0.1
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -3628,6 +3631,9 @@ packages:
     peerDependenciesMeta:
       debug:
         optional: true
+
+  font-list@2.0.1:
+    resolution: {integrity: sha512-vYOrRyJ6n+/v7lw/EhZXxt+jtd8++OgaaL+B3C8vi0XVw5awCX2WR1crcCtoWg5p+lbmI+hehFwqWo0BYNtofQ==}
 
   foreground-child@3.3.1:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
@@ -9237,6 +9243,8 @@ snapshots:
   flatted@3.3.3: {}
 
   follow-redirects@1.15.11: {}
+
+  font-list@2.0.1: {}
 
   foreground-child@3.3.1:
     dependencies:
