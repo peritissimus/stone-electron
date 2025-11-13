@@ -129,7 +129,10 @@ export class MarkdownService {
         breaks: true, // Convert \n to <br>
       });
 
-      const html = await marked.parse(markdown);
+      // Pre-process markdown to convert Logseq-style task items
+      const processedMarkdown = this.preprocessLogseqTasks(markdown);
+
+      const html = await marked.parse(processedMarkdown);
 
       // Cache result if key and mtime provided
       if (cacheKey && mtime !== undefined) {
@@ -144,6 +147,24 @@ export class MarkdownService {
   }
 
   /**
+   * Pre-process markdown to convert Logseq-style task items to HTML
+   * Converts: "- TODO Task text" to proper HTML with data-state attribute
+   */
+  private preprocessLogseqTasks(markdown: string): string {
+    const taskStates = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
+    const statePattern = taskStates.join('|');
+    const regex = new RegExp(`^(\\s*)[-*]\\s+(${statePattern})\\s+(.+)$`, 'gim');
+
+    return markdown.replace(regex, (match, indent, state, text) => {
+      const normalizedState = state.toLowerCase() === 'cancelled' ? 'canceled' : state.toLowerCase();
+      const isDone = normalizedState === 'done' || normalizedState === 'canceled';
+
+      // Return HTML that TipTap will recognize
+      return `${indent}<li data-type="taskItem" data-state="${normalizedState}" data-checked="${isDone}">${text}</li>`;
+    });
+  }
+
+  /**
    * Clear the markdown parse cache
    */
   clearCache(): void {
@@ -154,6 +175,27 @@ export class MarkdownService {
    * Add custom Turndown rules
    */
   private addCustomRules(): void {
+    // Handle Logseq-style task items with states
+    this.turndownService.addRule('logseqTaskItem', {
+      filter: (node) => {
+        return (
+          node.nodeName === 'LI' &&
+          node.getAttribute('data-type') === 'taskItem' &&
+          node.hasAttribute('data-state')
+        );
+      },
+      replacement: (content, node) => {
+        const state = node.getAttribute('data-state') || 'todo';
+        const stateLabel = state.toUpperCase();
+
+        // Extract the text content without the button
+        const contentDiv = node.querySelector('div');
+        const textContent = contentDiv ? contentDiv.textContent || '' : content;
+
+        return `- ${stateLabel} ${textContent.trim()}\n`;
+      },
+    });
+
     // Preserve highlight spans
     this.turndownService.addRule('highlight', {
       filter: (node) => {
@@ -336,6 +378,20 @@ function simpleHtmlToMarkdown(input: string): string {
 
   // Line breaks
   out = out.replace(/<br\s*\/?>(\s*)/gi, `\n`);
+
+  // Task lists with Logseq-style states
+  out = out.replace(
+    /<li[^>]*data-type=["']taskItem["'][^>]*data-state=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi,
+    (_, state: string, content: string) => {
+      const stateLabel = state.toUpperCase();
+      // Remove the button element and extract text from div
+      const textContent = content
+        .replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
+        .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1')
+        .trim();
+      return `- ${stateLabel} ${stripTags(textContent)}\n`;
+    },
+  );
 
   // Unordered lists
   out = out.replace(/<ul[^>]*>([\s\s\S]*?)<\/ul>/gi, (_, inner: string) => {
