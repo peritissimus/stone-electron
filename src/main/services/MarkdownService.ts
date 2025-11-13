@@ -149,6 +149,9 @@ export class MarkdownService {
   /**
    * Pre-process markdown to convert Logseq-style task items to custom HTML
    * This runs before marked.js parsing to inject task list structure
+   * ONLY converts lines WITHOUT dash prefix:
+   *   - "TODO Task text" → task item
+   *   - "- TODO Task text" → regular list item (NOT converted)
    */
   private preprocessLogseqTasksInMarkdown(markdown: string): string {
     const taskStates = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
@@ -158,9 +161,16 @@ export class MarkdownService {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const taskMatch = line.match(new RegExp(`^(\\s*)[-*]\\s+(${taskStates.join('|')})\\s+(.+)$`, 'i'));
 
-      if (taskMatch) {
+      // ONLY match lines WITHOUT list marker (no dash/asterisk)
+      // Lines starting with "- TODO" should be regular list items
+      const taskMatch = line.match(new RegExp(`^(\\s*)(${taskStates.join('|')})\\s+(.+)$`, 'i'));
+
+      // Make sure it's NOT a list item (doesn't start with - or *)
+      const isListItem = line.trim().match(/^[-*]\s/);
+
+      if (taskMatch && !isListItem) {
+        const indent = taskMatch[1];
         const state = taskMatch[2].toLowerCase();
         const normalizedState = state === 'cancelled' ? 'canceled' : state;
         const taskText = taskMatch[3];
@@ -220,7 +230,8 @@ export class MarkdownService {
         const contentDiv = node.querySelector('div') || node.querySelector('p');
         const textContent = contentDiv ? contentDiv.textContent || '' : content;
 
-        return `- ${stateLabel} ${textContent.trim()}\n`;
+        // Task items are saved WITHOUT dash (dash is for regular lists)
+        return `${stateLabel} ${textContent.trim()}\n`;
       },
     });
 
@@ -420,7 +431,7 @@ function simpleHtmlToMarkdown(input: string): string {
   // Line breaks
   out = out.replace(/<br\s*\/?>(\s*)/gi, `\n`);
 
-  // Task lists with Logseq-style states
+  // Task lists with Logseq-style states (WITHOUT dash prefix)
   out = out.replace(
     /<li[^>]*data-type=["']taskItem["'][^>]*data-state=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi,
     (_, state: string, content: string) => {
@@ -430,7 +441,8 @@ function simpleHtmlToMarkdown(input: string): string {
         .replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
         .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1')
         .trim();
-      return `- ${stateLabel} ${stripTags(textContent)}\n`;
+      // Task items are saved WITHOUT dash (dash is for regular lists)
+      return `${stateLabel} ${stripTags(textContent)}\n`;
     },
   );
 
