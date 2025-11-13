@@ -204,7 +204,8 @@ function processTaskItem(node: ProseMirrorNode): string {
     }
   }
 
-  return `- ${stateLabel} ${itemText.trim()}`;
+  // Task items are saved WITHOUT dash (dash is for regular lists)
+  return `${stateLabel} ${itemText.trim()}`;
 }
 
 function processTable(rows: ProseMirrorNode[]): string {
