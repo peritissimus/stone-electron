@@ -1,10 +1,11 @@
 import React from 'react';
-import { Clock, FileText, BookOpen, Briefcase, User } from 'lucide-react';
+import { Clock, FileText, BookOpen, Briefcase, User, CheckSquare } from 'lucide-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
+import { TodoList } from './TodoList';
 
 interface RecentNoteProps {
   note: {
@@ -258,7 +259,16 @@ export function HomePage() {
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-6">
+        <div className="px-8 py-6 space-y-8">
+          {/* Active Tasks */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <CheckSquare className="w-4 h-4" />
+              Active Tasks
+            </h2>
+            <TodoList onTodoClick={handleNoteClick} />
+          </div>
+
           {/* Recent Notes */}
           {recentNotes.length > 0 && (
             <div>

@@ -77,6 +77,19 @@ export interface IpcResponse<T> {
   };
 }
 
+// Todo Types
+export interface TodoItem {
+  id: string;
+  noteId: UUID;
+  noteTitle: string | null;
+  notePath: string | null;
+  text: string;
+  state: 'todo' | 'doing' | 'waiting' | 'hold' | 'done' | 'canceled' | 'idea';
+  checked: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 // Search Types
 export interface SearchResult {
   id: UUID;

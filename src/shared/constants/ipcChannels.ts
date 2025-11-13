@@ -28,6 +28,7 @@ export const NOTE_CHANNELS = {
   GET: 'notes:get',
   GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
+  GET_ALL_TODOS: 'notes:getAllTodos',
   FAVORITE: 'notes:favorite',
   PIN: 'notes:pin',
   ARCHIVE: 'notes:archive',

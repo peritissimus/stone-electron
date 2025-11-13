@@ -530,4 +530,57 @@ export function registerNoteHandlers() {
       return noteWithRelations;
     }),
   );
+
+  // notes:getAllTodos - Get all todo items from all notes
+  ipcMain.handle(
+    NOTE_CHANNELS.GET_ALL_TODOS,
+    createHandler(async () => {
+      const jsdom = await import('jsdom');
+      const { JSDOM } = jsdom;
+
+      const notes = await repos.note.findAll();
+      const todos: any[] = [];
+
+      for (const note of notes) {
+        try {
+          const content = await repos.note.getContentById(note.id);
+          if (!content) continue;
+
+          const dom = new JSDOM(content);
+          const document = dom.window.document;
+          const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
+
+          taskItems.forEach((taskItem, index) => {
+            const state = taskItem.getAttribute('data-state') || 'todo';
+            const checked = taskItem.getAttribute('data-checked') === 'true';
+
+            // Extract text content (exclude the button)
+            const contentDiv = taskItem.querySelector('div');
+            const text = contentDiv?.textContent?.trim() || '';
+
+            if (text) {
+              todos.push({
+                id: `${note.id}-${index}`,
+                noteId: note.id,
+                noteTitle: note.title,
+                notePath: note.filePath,
+                text,
+                state,
+                checked,
+                createdAt: note.createdAt,
+                updatedAt: note.updatedAt,
+              });
+            }
+          });
+        } catch (error) {
+          logger.warn('[NoteHandlers] Failed to extract todos from note', {
+            noteId: note.id,
+            error,
+          });
+        }
+      }
+
+      return todos;
+    }),
+  );
 }
