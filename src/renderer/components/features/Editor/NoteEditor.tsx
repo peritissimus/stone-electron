@@ -18,6 +18,7 @@ import {
 import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
+import { saveDraft, deleteDraft } from '@renderer/utils/draftStorage';
 
 /**
  * NoteEditor ref API - exposed actions for keyboard shortcuts
@@ -25,6 +26,7 @@ import { logger } from '@renderer/utils/logger';
 export interface NoteEditorHandle {
   save: () => Promise<void>;
   createSiblingNote: () => Promise<void>;
+  restoreDraft: (content: string) => void;
 }
 
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
@@ -98,10 +100,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   }, [activeNoteId, content, editor]);
 
   // Listen for editor updates to toggle dirty state (debounced for performance)
+  // Also autosave to localStorage for crash recovery
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !activeNoteId) return;
 
     let timeoutId: NodeJS.Timeout | null = null;
+    let autosaveTimeoutId: NodeJS.Timeout | null = null;
 
     const handler = () => {
       // Immediately set dirty to true for instant visual feedback
@@ -122,6 +126,22 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
           setIsDirty(true);
         }
       }, 500); // Check after 500ms of inactivity
+
+      // Autosave to localStorage for crash recovery (longer debounce)
+      if (autosaveTimeoutId) {
+        clearTimeout(autosaveTimeoutId);
+      }
+
+      autosaveTimeoutId = setTimeout(() => {
+        try {
+          const current = editor.getJSON();
+          const contentJson = JSON.stringify(current);
+          saveDraft(activeNoteId, contentJson, title);
+          logger.info('[NoteEditor] Draft autosaved to localStorage');
+        } catch (error) {
+          logger.error('[NoteEditor] Failed to autosave draft:', error);
+        }
+      }, 2000); // Autosave after 2 seconds of inactivity
     };
 
     editor.on('update', handler);
@@ -130,9 +150,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      if (autosaveTimeoutId) {
+        clearTimeout(autosaveTimeoutId);
+      }
       editor.off('update', handler);
     };
-  }, [editor]);
+  }, [editor, activeNoteId, title]);
 
   const handleSave = useCallback(async () => {
     if (!editor || !activeNoteId) return;
@@ -142,6 +165,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     if (result) {
       lastSavedJsonRef.current = json;
       setIsDirty(false);
+      // Delete draft from localStorage after successful save
+      deleteDraft(activeNoteId);
+      logger.info('[NoteEditor] Draft deleted after successful save');
     }
   }, [editor, activeNoteId, updateNote]);
 
@@ -177,14 +203,27 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     }
   }, [activeNoteFilePath, createNote, editor, setActiveNote]);
 
+  const handleRestoreDraft = useCallback((content: string) => {
+    if (!editor) return;
+    try {
+      const contentJson = JSON.parse(content);
+      editor.commands.setContent(contentJson);
+      setIsDirty(true);
+      logger.info('[NoteEditor] Draft content restored');
+    } catch (error) {
+      logger.error('[NoteEditor] Failed to restore draft:', error);
+    }
+  }, [editor]);
+
   // Expose actions via ref for keyboard shortcuts
   useImperativeHandle(
     ref,
     () => ({
       save: handleSave,
       createSiblingNote: handleCreateSiblingNote,
+      restoreDraft: handleRestoreDraft,
     }),
-    [handleSave, handleCreateSiblingNote],
+    [handleSave, handleCreateSiblingNote, handleRestoreDraft],
   );
 
   const handleTitleChangeWithSave = useCallback(
