@@ -123,14 +123,14 @@ export class MarkdownService {
     }
 
     try {
-      // Configure marked options
+      // Pre-process markdown to convert Logseq-style task items
+      const processedMarkdown = this.preprocessLogseqTasksInMarkdown(markdown);
+
+      // Configure marked
       marked.setOptions({
         gfm: true, // GitHub Flavored Markdown
         breaks: true, // Convert \n to <br>
       });
-
-      // Pre-process markdown to convert Logseq-style task items
-      const processedMarkdown = this.preprocessLogseqTasks(markdown);
 
       const html = await marked.parse(processedMarkdown);
 
@@ -147,21 +147,49 @@ export class MarkdownService {
   }
 
   /**
-   * Pre-process markdown to convert Logseq-style task items to HTML
-   * Converts: "- TODO Task text" to proper HTML with data-state attribute
+   * Pre-process markdown to convert Logseq-style task items to custom HTML
+   * This runs before marked.js parsing to inject task list structure
    */
-  private preprocessLogseqTasks(markdown: string): string {
+  private preprocessLogseqTasksInMarkdown(markdown: string): string {
     const taskStates = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
-    const statePattern = taskStates.join('|');
-    const regex = new RegExp(`^(\\s*)[-*]\\s+(${statePattern})\\s+(.+)$`, 'gim');
+    const lines = markdown.split('\n');
+    const result: string[] = [];
+    let inTaskList = false;
 
-    return markdown.replace(regex, (match, indent, state, text) => {
-      const normalizedState = state.toLowerCase() === 'cancelled' ? 'canceled' : state.toLowerCase();
-      const isDone = normalizedState === 'done' || normalizedState === 'canceled';
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const taskMatch = line.match(new RegExp(`^(\\s*)[-*]\\s+(${taskStates.join('|')})\\s+(.+)$`, 'i'));
 
-      // Return HTML that TipTap will recognize
-      return `${indent}<li data-type="taskItem" data-state="${normalizedState}" data-checked="${isDone}">${text}</li>`;
-    });
+      if (taskMatch) {
+        const state = taskMatch[2].toLowerCase();
+        const normalizedState = state === 'cancelled' ? 'canceled' : state;
+        const taskText = taskMatch[3];
+        const isDone = normalizedState === 'done' || normalizedState === 'canceled';
+
+        // Start task list if not already in one
+        if (!inTaskList) {
+          result.push('<ul data-type="taskList">');
+          inTaskList = true;
+        }
+
+        // Add task item
+        result.push(`<li data-type="taskItem" data-state="${normalizedState}" data-checked="${isDone}"><p>${taskText}</p></li>`);
+      } else {
+        // Close task list if we were in one
+        if (inTaskList) {
+          result.push('</ul>');
+          inTaskList = false;
+        }
+        result.push(line);
+      }
+    }
+
+    // Close task list if still open
+    if (inTaskList) {
+      result.push('</ul>');
+    }
+
+    return result.join('\n');
   }
 
   /**
@@ -189,10 +217,23 @@ export class MarkdownService {
         const stateLabel = state.toUpperCase();
 
         // Extract the text content without the button
-        const contentDiv = node.querySelector('div');
+        const contentDiv = node.querySelector('div') || node.querySelector('p');
         const textContent = contentDiv ? contentDiv.textContent || '' : content;
 
         return `- ${stateLabel} ${textContent.trim()}\n`;
+      },
+    });
+
+    // Handle task list wrapper
+    this.turndownService.addRule('logseqTaskList', {
+      filter: (node) => {
+        return (
+          node.nodeName === 'UL' &&
+          node.getAttribute('data-type') === 'taskList'
+        );
+      },
+      replacement: (content, node) => {
+        return content;
       },
     });
 
