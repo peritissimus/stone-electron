@@ -271,6 +271,68 @@ const content = await repos.note.getContentById(id);
 4. **Git-friendly** - Markdown files can be version controlled
 5. **No re-renders** - Autosave writes to file without updating store
 
+## Publishing & Distribution
+
+### Building for Distribution
+
+```bash
+pnpm build                 # Build all components
+pnpm package              # Package for current platform
+pnpm package:dir          # Package without installers (faster, for testing)
+pnpm package:all          # Package for all platforms (macOS, Windows, Linux)
+```
+
+### Icon Assets
+
+Icons are located in `build/` directory:
+- `icon.svg` - Source SVG logo
+- `icon.png` - Linux icon (1024x1024)
+- `icon.icns` - macOS icon
+- `icon.ico` - Windows icon
+
+To regenerate icons from the SVG:
+```bash
+./scripts/convert-icons.sh
+```
+
+### Code Signing
+
+**macOS:**
+- Set `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables
+- Update `electron-builder.yml` to remove `identity: null`
+- Requires Apple Developer ID certificate
+
+**Windows:**
+- Set `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables
+- Update `electron-builder.yml` with certificate path
+
+### GitHub Releases
+
+Two workflows are configured:
+
+1. **Build & Test** (`.github/workflows/build.yml`)
+   - Runs on every push and PR
+   - Tests builds on all platforms
+   - Validates code with typecheck and tests
+
+2. **Release** (`.github/workflows/release.yml`)
+   - Triggered by version tags (e.g., `v0.1.0`)
+   - Builds for macOS, Windows, and Linux
+   - Creates draft GitHub release with artifacts
+   - Upload binaries for distribution
+
+To create a release:
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+### Distribution Formats
+
+- **macOS**: DMG and ZIP
+- **Windows**: NSIS installer and portable EXE
+- **Linux**: AppImage and Deb package
+
 ## Important Notes
 
 1. **Always use pnpm**, not npm
