@@ -1,10 +1,11 @@
 import React from 'react';
-import { Clock, FileText, BookOpen, Briefcase, User } from 'lucide-react';
+import { Clock, FileText, BookOpen, Briefcase, User, CheckSquare } from 'lucide-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
+import { TodoList } from './TodoList';
 
 interface RecentNoteProps {
   note: {
@@ -217,10 +218,10 @@ export function HomePage() {
         <div className="grid grid-cols-3 gap-4 mt-6">
           <button
             onClick={handleJournalClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
           >
-            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-              <BookOpen className="w-6 h-6 text-blue-500" />
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
+              <BookOpen className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
             </div>
             <div className="text-center">
               <h3 className="font-semibold text-sm mb-1">Today's Journal</h3>
@@ -230,10 +231,10 @@ export function HomePage() {
 
           <button
             onClick={handleWorkNoteClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
           >
-            <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
-              <Briefcase className="w-6 h-6 text-orange-500" />
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
+              <Briefcase className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
             </div>
             <div className="text-center">
               <h3 className="font-semibold text-sm mb-1">Work Note</h3>
@@ -243,10 +244,10 @@ export function HomePage() {
 
           <button
             onClick={handlePersonalNoteClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border-2 border-border hover:border-primary hover:bg-accent/10 transition-colors group"
+            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
           >
-            <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center group-hover:bg-green-500/20 transition-colors">
-              <User className="w-6 h-6 text-green-500" />
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
+              <User className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
             </div>
             <div className="text-center">
               <h3 className="font-semibold text-sm mb-1">Personal Note</h3>
@@ -258,7 +259,16 @@ export function HomePage() {
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-6">
+        <div className="px-8 py-6 space-y-8">
+          {/* Active Tasks */}
+          <div>
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <CheckSquare className="w-4 h-4" />
+              Active Tasks
+            </h2>
+            <TodoList onTodoClick={handleNoteClick} />
+          </div>
+
           {/* Recent Notes */}
           {recentNotes.length > 0 && (
             <div>

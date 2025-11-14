@@ -446,11 +446,16 @@ The editor includes Notion-style block interactions:
 - Drag the `⋮⋮` handle to reorder blocks (Notion-style)
 - All blocks have hover states for easy interaction
 
-**To-do Lists:**
+**To-do Lists (Logseq-style Tasks):**
 - Create with `/todo` or the block menu
+- Supports both standalone and list-style TODO items:
+  - `TODO task text` → Renders as checkbox task
+  - `- TODO task text` → Also renders as checkbox task (in list)
+- Supported task states: TODO, DOING, DONE, WAITING, HOLD, CANCELED, IDEA
 - Click checkboxes to mark complete
 - Completed items show strikethrough
 - Notion-style checkbox design
+- All TODO items are saved with dash prefix (`- TODO`) for consistency
 
 ### Mermaid Diagram Support
 
