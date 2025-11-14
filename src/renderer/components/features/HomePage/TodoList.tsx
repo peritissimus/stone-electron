@@ -15,17 +15,16 @@ const StateIcon: React.FC<{ state: string }> = ({ state }) => {
     switch (state) {
       case 'done':
       case 'canceled':
-        return 'text-muted-foreground';
+        return 'text-muted-foreground/50';
       case 'doing':
-        return 'text-blue-500';
-      case 'waiting':
-        return 'text-orange-500';
-      case 'hold':
-        return 'text-yellow-500';
-      case 'idea':
-        return 'text-purple-500';
-      default:
         return 'text-foreground';
+      case 'waiting':
+      case 'hold':
+        return 'text-muted-foreground';
+      case 'idea':
+        return 'text-muted-foreground/70';
+      default:
+        return 'text-foreground/80';
     }
   };
 
@@ -64,17 +63,16 @@ const StateLabel: React.FC<{ state: string }> = ({ state }) => {
     switch (state) {
       case 'done':
       case 'canceled':
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted/50 text-muted-foreground border border-border/50';
       case 'doing':
-        return 'bg-blue-500/10 text-blue-500';
+        return 'bg-foreground/5 text-foreground border border-foreground/10';
       case 'waiting':
-        return 'bg-orange-500/10 text-orange-500';
       case 'hold':
-        return 'bg-yellow-500/10 text-yellow-500';
+        return 'bg-muted text-muted-foreground border border-border';
       case 'idea':
-        return 'bg-purple-500/10 text-purple-500';
+        return 'bg-muted/70 text-muted-foreground border border-border/70';
       default:
-        return 'bg-accent text-accent-foreground';
+        return 'bg-accent/50 text-accent-foreground border border-accent/20';
     }
   };
 
