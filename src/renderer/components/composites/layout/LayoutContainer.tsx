@@ -109,7 +109,7 @@ export function LayoutContainer({
             onWidthChange={onSidebarWidthChange}
             minWidth={200}
             maxWidth={400}
-            className="bg-sidebar border-r border-border"
+            className="bg-sidebar border-r border-border transition-all duration-300 ease-in-out"
           >
             {sidebar}
           </ResizablePanel>

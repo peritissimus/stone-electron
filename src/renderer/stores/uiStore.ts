@@ -14,6 +14,7 @@ type SortOrder = 'asc' | 'desc'
 interface UIState {
   // Sidebar
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   sidebarWidth: number
   sidebarPanel: SidebarPanel
 

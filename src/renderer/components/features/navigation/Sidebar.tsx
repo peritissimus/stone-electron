@@ -21,7 +21,7 @@ import {
 import { Heading3, Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { TagWithCount, type Workspace, type Note } from '@shared/types';
-import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise, House } from 'phosphor-react';
+import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise, House, CaretLeft } from 'phosphor-react';
 import {
   Header,
   IconButton,
@@ -49,6 +49,7 @@ export function Sidebar() {
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const { toggleSidebar } = useUIStore();
   const [isCreating, setIsCreating] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
@@ -254,10 +255,10 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
-      {/* Workspace Selector - Always visible at top */}
+      {/* Workspace Selector with Collapse Button */}
       <div
         className={cn(
-          'flex w-full items-center border-b border-border',
+          'flex w-full items-center gap-1 border-b border-border',
           sizeHeightClasses['spacious'],
           sizePaddingClasses['compact'],
         )}
@@ -277,7 +278,7 @@ export function Sidebar() {
             await loadNotes();
           }}
         >
-          <SelectTrigger className="h-8 text-xs w-full">
+          <SelectTrigger className="h-8 text-xs flex-1">
             <SelectValue placeholder="Select workspace" />
           </SelectTrigger>
           <SelectContent>
@@ -298,6 +299,13 @@ export function Sidebar() {
             </SelectItem>
           </SelectContent>
         </Select>
+        <button
+          onClick={toggleSidebar}
+          className="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-colors"
+          title="Collapse sidebar"
+        >
+          <CaretLeft size={14} weight="bold" />
+        </button>
       </div>
 
       {/* Navigation Links - Always visible */}

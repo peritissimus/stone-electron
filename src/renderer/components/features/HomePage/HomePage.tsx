@@ -1,11 +1,16 @@
 import React from 'react';
 import { Clock, FileText, BookOpen, Briefcase, User, CheckSquare } from 'lucide-react';
+import { CaretRight } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { TodoList } from './TodoList';
+import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { cn } from '@renderer/lib/utils';
+import { Heading3 } from '@renderer/components/base/ui/text';
 
 interface RecentNoteProps {
   note: {
@@ -58,9 +63,7 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
           <p className="font-medium truncate group-hover:text-primary transition-colors">
             {note.title || 'Untitled'}
           </p>
-          {folderPath && (
-            <p className="text-xs text-muted-foreground truncate">{folderPath}</p>
-          )}
+          {folderPath && <p className="text-xs text-muted-foreground truncate">{folderPath}</p>}
         </div>
       </div>
       <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
@@ -74,10 +77,11 @@ export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { toggleSidebar, sidebarOpen } = useUIStore();
   const { createNote } = useNoteAPI();
 
   // Get the active workspace
-  const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
   // Get recent notes (last 3, sorted by update time)
   const recentNotes = [...notes]
@@ -90,14 +94,14 @@ export function HomePage() {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 
   // Format today's date for journal title (e.g., "November 10, 2025")
   const journalTitle = now.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
   });
 
   // Format today's date for journal filename (e.g., "2025-11-10")
@@ -107,24 +111,29 @@ export function HomePage() {
     logger.info('[HomePage] Note clicked', { noteId });
 
     // Find the note to get its file path and folder
-    const note = notes.find(n => n.id === noteId);
+    const note = notes.find((n) => n.id === noteId);
     logger.info('[HomePage] Found note', {
-      note: note ? {
-        id: note.id,
-        title: note.title,
-        filePath: note.filePath,
-        workspaceId: note.workspaceId
-      } : null
+      note: note
+        ? {
+            id: note.id,
+            title: note.title,
+            filePath: note.filePath,
+            workspaceId: note.workspaceId,
+          }
+        : null,
     });
 
     if (note) {
       // Set the selected file first - this will auto-expand parent folders
       if (note.filePath) {
         // Normalize the path to match FileTree's normalization
-        const normalizedPath = note.filePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+        const normalizedPath = note.filePath
+          .replace(/\\/g, '/')
+          .replace(/^\/+/, '')
+          .replace(/\/+$/, '');
         logger.info('[HomePage] Setting selected file (will auto-expand folders)', {
           originalPath: note.filePath,
-          normalizedPath
+          normalizedPath,
         });
         setSelectedFile(normalizedPath);
 
@@ -149,9 +158,7 @@ export function HomePage() {
 
     // Check if today's journal already exists in Journal folder (by filename)
     const expectedFilePath = `Journal/${journalFilename}.md`;
-    const existingJournal = notes.find(
-      note => note.filePath === expectedFilePath
-    );
+    const existingJournal = notes.find((note) => note.filePath === expectedFilePath);
 
     if (existingJournal) {
       // Open existing journal
@@ -163,7 +170,7 @@ export function HomePage() {
       const newNote = await createNote({
         title: journalFilename,
         content: `# ${journalTitle}\n\n`,
-        folderPath: 'Journal'
+        folderPath: 'Journal',
       });
 
       if (newNote) {
@@ -179,7 +186,7 @@ export function HomePage() {
     const newNote = await createNote({
       title: 'Untitled',
       content: '',
-      folderPath: 'Work'
+      folderPath: 'Work',
     });
 
     if (newNote) {
@@ -194,7 +201,7 @@ export function HomePage() {
     const newNote = await createNote({
       title: 'Untitled',
       content: '',
-      folderPath: 'Personal'
+      folderPath: 'Personal',
     });
 
     if (newNote) {
@@ -205,17 +212,33 @@ export function HomePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="px-8 py-6 border-b border-border bg-background">
-        <p className="text-muted-foreground mb-4">{dateString}</p>
-        {activeWorkspace && (
-          <p className="text-sm text-muted-foreground mb-6">
-            Workspace: <span className="font-medium">{activeWorkspace.name}</span>
-          </p>
+      {/* Header with expand button, workspace name, and date */}
+      <div
+        className={cn(
+          'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+          sizeHeightClasses['spacious'],
         )}
+      >
+        {!sidebarOpen && (
+          <IconButton
+            size="normal"
+            icon={<CaretRight size={16} weight="bold" />}
+            tooltip="Expand sidebar"
+            onClick={toggleSidebar}
+          />
+        )}
+        <div className="flex-1 min-w-0 flex items-baseline gap-2">
+          {activeWorkspace && (
+            <span className="text-sm text-muted-foreground">{activeWorkspace.name}</span>
+          )}
+        </div>
+        <div className="text-sm text-muted-foreground flex-shrink-0">{dateString}</div>
+      </div>
 
+      {/* Content */}
+      <div className="px-8 py-6 border-b border-border bg-background">
         {/* Quick Action Shortcuts */}
-        <div className="grid grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-3 gap-4">
           <button
             onClick={handleJournalClick}
             className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
@@ -277,14 +300,14 @@ export function HomePage() {
                 Recent Notes
               </h2>
               <div className="space-y-2">
-                {recentNotes.map(note => (
+                {recentNotes.map((note) => (
                   <RecentNote
                     key={note.id}
                     note={{
                       id: note.id,
                       title: note.title,
                       updatedAt: note.updatedAt,
-                      filePath: note.filePath
+                      filePath: note.filePath,
                     }}
                     onClick={handleNoteClick}
                   />
@@ -301,7 +324,8 @@ export function HomePage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">No notes yet</h3>
               <p className="text-muted-foreground max-w-sm">
-                Create your first note to get started. Your notes will appear here once you create them.
+                Create your first note to get started. Your notes will appear here once you create
+                them.
               </p>
             </div>
           )}
@@ -310,3 +334,4 @@ export function HomePage() {
     </div>
   );
 }
+

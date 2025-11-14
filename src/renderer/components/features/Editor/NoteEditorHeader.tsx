@@ -9,6 +9,7 @@ import {
   Check,
   Trash,
   FloppyDisk,
+  CaretRight,
 } from 'phosphor-react';
 import { Input } from '@renderer/components/base/ui/input';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
@@ -21,6 +22,7 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { cn } from '@renderer/lib/utils';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
+import { useUIStore } from '@renderer/stores/uiStore';
 
 export interface NoteEditorHeaderProps {
   title: string;
@@ -49,6 +51,8 @@ export function NoteEditorHeader({
   showSave = false,
   onSave,
 }: NoteEditorHeaderProps) {
+  const { toggleSidebar, sidebarOpen } = useUIStore();
+
   return (
     <div
       className={cn(
@@ -56,6 +60,14 @@ export function NoteEditorHeader({
         sizeHeightClasses['spacious'],
       )}
     >
+      {!sidebarOpen && (
+        <IconButton
+          size="normal"
+          icon={<CaretRight size={16} weight="bold" />}
+          tooltip="Expand sidebar"
+          onClick={toggleSidebar}
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex-1 min-w-0 flex items-center">
           <Input
