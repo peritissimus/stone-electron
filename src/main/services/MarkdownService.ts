@@ -149,9 +149,9 @@ export class MarkdownService {
   /**
    * Pre-process markdown to convert Logseq-style task items to custom HTML
    * This runs before marked.js parsing to inject task list structure
-   * ONLY converts lines WITHOUT dash prefix:
-   *   - "TODO Task text" → task item
-   *   - "- TODO Task text" → regular list item (NOT converted)
+   * Converts both:
+   *   - "TODO Task text" → task item with checkbox
+   *   - "- TODO Task text" → task item with checkbox (in list)
    */
   private preprocessLogseqTasksInMarkdown(markdown: string): string {
     const taskStates = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
@@ -162,14 +162,17 @@ export class MarkdownService {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // ONLY match lines WITHOUT list marker (no dash/asterisk)
-      // Lines starting with "- TODO" should be regular list items
-      const taskMatch = line.match(new RegExp(`^(\\s*)(${taskStates.join('|')})\\s+(.+)$`, 'i'));
+      // Match TODO items with OR without list markers
+      // Pattern 1: "TODO Task text" (standalone)
+      const standaloneTaskMatch = line.match(new RegExp(`^(\\s*)(${taskStates.join('|')})\\s+(.+)$`, 'i'));
 
-      // Make sure it's NOT a list item (doesn't start with - or *)
-      const isListItem = line.trim().match(/^[-*]\s/);
+      // Pattern 2: "- TODO Task text" or "* TODO Task text" (in list)
+      const listTaskMatch = line.match(new RegExp(`^(\\s*)[-*]\\s+(${taskStates.join('|')})\\s+(.+)$`, 'i'));
 
-      if (taskMatch && !isListItem) {
+      const taskMatch = listTaskMatch || standaloneTaskMatch;
+      const isListTask = !!listTaskMatch;
+
+      if (taskMatch) {
         const indent = taskMatch[1];
         const state = taskMatch[2].toLowerCase();
         const normalizedState = state === 'cancelled' ? 'canceled' : state;
@@ -230,8 +233,8 @@ export class MarkdownService {
         const contentDiv = node.querySelector('div') || node.querySelector('p');
         const textContent = contentDiv ? contentDiv.textContent || '' : content;
 
-        // Task items are saved WITHOUT dash (dash is for regular lists)
-        return `${stateLabel} ${textContent.trim()}\n`;
+        // Save as list-style TODO item with dash prefix for consistency
+        return `- ${stateLabel} ${textContent.trim()}\n`;
       },
     });
 
@@ -431,18 +434,19 @@ function simpleHtmlToMarkdown(input: string): string {
   // Line breaks
   out = out.replace(/<br\s*\/?>(\s*)/gi, `\n`);
 
-  // Task lists with Logseq-style states (WITHOUT dash prefix)
+  // Task lists with Logseq-style states (WITH dash prefix for consistency)
   out = out.replace(
     /<li[^>]*data-type=["']taskItem["'][^>]*data-state=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi,
     (_, state: string, content: string) => {
       const stateLabel = state.toUpperCase();
-      // Remove the button element and extract text from div
+      // Remove the button element and extract text from div/p
       const textContent = content
         .replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
         .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1')
+        .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1')
         .trim();
-      // Task items are saved WITHOUT dash (dash is for regular lists)
-      return `${stateLabel} ${stripTags(textContent)}\n`;
+      // Save as list-style TODO item with dash prefix for consistency
+      return `- ${stateLabel} ${stripTags(textContent)}\n`;
     },
   );
 
