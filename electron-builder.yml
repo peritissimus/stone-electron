@@ -14,7 +14,6 @@ asarUnpack:
   - node_modules/@libsql/**/*
   - node_modules/libsql/**/*
   - node_modules/better-sqlite3/**/*
-  - node_modules/vectra/**/*
 electronVersion: 39.0.0
 nodeVersion: 20.16.0
 
