@@ -65,4 +65,34 @@ export class AttachmentRepository {
 
     return result as Attachment[];
   }
+
+  /**
+   * Get attachments for multiple notes (bulk operation)
+   * Returns a Map with noteId as key and array of attachments as value
+   */
+  async getAttachmentsForNotes(noteIds: string[]): Promise<Map<string, Attachment[]>> {
+    const db = getDatabaseManager().getDrizzle();
+
+    if (noteIds.length === 0) {
+      return new Map();
+    }
+
+    const result = await db
+      .select()
+      .from(attachments)
+      .where(sql`${attachments.noteId} IN (${sql.join(noteIds.map(id => sql`${id}`), sql`, `)})`)
+      .orderBy(desc(attachments.createdAt));
+
+    // Group attachments by noteId
+    const attachmentsByNote = new Map<string, Attachment[]>();
+
+    for (const attachment of result) {
+      if (!attachmentsByNote.has(attachment.noteId)) {
+        attachmentsByNote.set(attachment.noteId, []);
+      }
+      attachmentsByNote.get(attachment.noteId)!.push(attachment as Attachment);
+    }
+
+    return attachmentsByNote;
+  }
 }

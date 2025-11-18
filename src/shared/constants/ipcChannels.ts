@@ -15,6 +15,7 @@ export const WORKSPACE_CHANNELS = {
   CREATE_FOLDER: 'workspaces:createFolder',
   RENAME_FOLDER: 'workspaces:renameFolder',
   DELETE_FOLDER: 'workspaces:deleteFolder',
+  MOVE_FOLDER: 'workspaces:moveFolder',
   VALIDATE_PATH: 'workspaces:validatePath',
   SELECT_FOLDER: 'workspaces:selectFolder',
 } as const;
@@ -27,12 +28,14 @@ export const NOTE_CHANNELS = {
   GET: 'notes:get',
   GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
+  GET_ALL_TODOS: 'notes:getAllTodos',
   FAVORITE: 'notes:favorite',
   PIN: 'notes:pin',
   ARCHIVE: 'notes:archive',
   GET_VERSIONS: 'notes:getVersions',
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
+  MOVE: 'notes:move',
 } as const;
 
 // Notebook Operations
@@ -87,6 +90,11 @@ export const SETTINGS_CHANNELS = {
   GET: 'settings:get',
   SET: 'settings:set',
   GET_ALL: 'settings:getAll',
+} as const;
+
+// System Operations
+export const SYSTEM_CHANNELS = {
+  GET_FONTS: 'system:getFonts',
 } as const;
 
 // Events
@@ -147,6 +155,7 @@ export const ALL_CHANNELS = [
   ...Object.values(ATTACHMENT_CHANNELS),
   ...Object.values(DATABASE_CHANNELS),
   ...Object.values(SETTINGS_CHANNELS),
+  ...Object.values(SYSTEM_CHANNELS),
 ];
 
 // Get all events as an array

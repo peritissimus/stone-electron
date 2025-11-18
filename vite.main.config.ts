@@ -29,6 +29,7 @@ export default defineConfig({
         'electron-log',
         'nanoid',
         'jsdom',
+        'font-list',
         'path',
         'fs',
         'fs/promises',

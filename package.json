@@ -4,6 +4,16 @@
   "description": "Production-ready note-taking desktop application",
   "main": "./dist/main/index.cjs",
   "type": "module",
+  "author": "Stone Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/stone.git"
+  },
+  "homepage": "https://github.com/yourusername/stone#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/stone/issues"
+  },
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -79,6 +89,7 @@
     "drizzle-orm": "^0.44.7",
     "electron-log": "^5.4.3",
     "electron-store": "^8.0.0",
+    "font-list": "^2.0.1",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "jsdom": "^27.1.0",

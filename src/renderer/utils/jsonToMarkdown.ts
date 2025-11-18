@@ -60,6 +60,12 @@ function processNode(node: ProseMirrorNode): string {
     case 'orderedList':
       return '\n' + processOrderedListItems(content || []) + '\n';
 
+    case 'taskList':
+      return '\n' + processTaskListItems(content || []) + '\n';
+
+    case 'taskItem':
+      return processTaskItem(node);
+
     case 'listItem':
       return processListItems(content || [], '');
 
@@ -173,6 +179,33 @@ function processOrderedListItems(items: ProseMirrorNode[]): string {
       return [firstLine, ...restLines].join('\n');
     })
     .join('\n');
+}
+
+function processTaskListItems(items: ProseMirrorNode[]): string {
+  return items
+    .map((item) => {
+      return processTaskItem(item);
+    })
+    .filter((item) => item.length > 0)
+    .join('\n');
+}
+
+function processTaskItem(node: ProseMirrorNode): string {
+  const state = node.attrs?.state || 'todo';
+  const stateLabel = state.toUpperCase();
+  const content = node.content || [];
+
+  let itemText = '';
+  for (const child of content) {
+    if (child.type === 'paragraph') {
+      itemText += processNodes(child.content || []);
+    } else {
+      itemText += processNode(child);
+    }
+  }
+
+  // Task items are saved WITHOUT dash (dash is for regular lists)
+  return `${stateLabel} ${itemText.trim()}`;
 }
 
 function processTable(rows: ProseMirrorNode[]): string {

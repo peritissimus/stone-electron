@@ -3,7 +3,7 @@ productName: Stone
 nodeGypRebuild: false
 npmRebuild: false
 directories:
-  buildResources: assets
+  buildResources: build
   output: dist/build
 files:
   - dist/**/*
@@ -13,7 +13,7 @@ files:
 asarUnpack:
   - node_modules/better-sqlite3/**/*
   - node_modules/vectra/**/*
-electronVersion: 32.2.7
+electronVersion: 39.0.0
 nodeVersion: 20.16.0
 
 mac:

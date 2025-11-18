@@ -72,6 +72,27 @@ export function registerWorkspaceHandlers() {
         folderPath: request.folderPath,
       });
 
+      // Create default folders: Work, Journal, Personal
+      const defaultFolders = ['Work', 'Journal', 'Personal'];
+      for (const folderName of defaultFolders) {
+        try {
+          const folderPath = path.join(request.folderPath, folderName);
+          await fsService.createFolder(folderPath);
+          logger.info(`[Workspace] Created default folder: ${folderName}`);
+        } catch (error) {
+          // Log but don't fail workspace creation if folder already exists
+          logger.warn(`[Workspace] Could not create default folder ${folderName}:`, error);
+        }
+      }
+
+      // Sync notebooks and notes after creating default folders
+      try {
+        await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+        await repos.note.syncWithFileSystem(workspace.id);
+      } catch (error) {
+        logger.error('[Workspace] Error syncing after creating default folders:', error);
+      }
+
       // Start watching the new workspace
       try {
         await getFileWatcherService().watchWorkspace(workspace);
@@ -165,8 +186,7 @@ export function registerWorkspaceHandlers() {
 
       await fsService.createFolder(resolveInsideRoot(workspace.folderPath, newRelative));
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -217,8 +237,7 @@ export function registerWorkspaceHandlers() {
         await fsService.renameFolder(currentAbsolute, newAbsolute);
       }
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -249,8 +268,7 @@ export function registerWorkspaceHandlers() {
 
       await fsService.deleteFolder(targetAbsolute, true);
 
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      // FileWatcher will handle sync automatically - no manual sync needed
 
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
@@ -258,6 +276,73 @@ export function registerWorkspaceHandlers() {
 
       return { success: true };
     }),
+  );
+
+  ipcMain.handle(
+    WORKSPACE_CHANNELS.MOVE_FOLDER,
+    createHandler(
+      async (event, request: { sourcePath: string; destinationPath: string | null }) => {
+        const workspace = await repos.workspace.getActive();
+        if (!workspace) {
+          throw new IpcError('NOT_FOUND', 'Active workspace not found');
+        }
+
+        const sourceRelative = normalizeRelativePath(request.sourcePath);
+        if (!sourceRelative) {
+          throw new IpcError('INVALID_INPUT', 'Source folder path is required');
+        }
+
+        const sourceAbsolute = resolveInsideRoot(workspace.folderPath, sourceRelative);
+        const exists = await fsService.fileExists(sourceAbsolute);
+        if (!exists) {
+          throw new IpcError('NOT_FOUND', 'Source folder does not exist');
+        }
+
+        const destinationRelative = normalizeRelativePath(request.destinationPath || '');
+        const destinationAbsolute = resolveInsideRoot(
+          workspace.folderPath,
+          destinationRelative || '.',
+        );
+
+        // Check if destination exists and is a directory
+        const destExists = await fsService.fileExists(destinationAbsolute);
+        if (destinationRelative && !destExists) {
+          throw new IpcError('NOT_FOUND', 'Destination folder does not exist');
+        }
+
+        // Prevent moving a folder into itself or its subdirectory
+        if (destinationRelative.startsWith(sourceRelative + '/')) {
+          throw new IpcError('INVALID_INPUT', 'Cannot move a folder into itself or its subdirectory');
+        }
+
+        const folderName = path.basename(sourceRelative);
+        const newRelative = destinationRelative
+          ? path.posix.join(destinationRelative, folderName)
+          : folderName;
+        const newAbsolute = resolveInsideRoot(workspace.folderPath, newRelative);
+
+        // Generate unique name if there's a conflict
+        const uniqueName = await fsService.generateUniqueFolderName(
+          destinationAbsolute,
+          folderName,
+        );
+        const finalRelative = destinationRelative
+          ? path.posix.join(destinationRelative, uniqueName)
+          : uniqueName;
+        const finalAbsolute = resolveInsideRoot(workspace.folderPath, finalRelative);
+
+        // Move the folder
+        await fsService.renameFolder(sourceAbsolute, finalAbsolute);
+
+        // FileWatcher will handle sync automatically - no manual sync needed
+
+        BrowserWindow.getAllWindows().forEach((win) => {
+          win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+        });
+
+        return { folderPath: finalRelative };
+      },
+    ),
   );
 
   // workspaces:delete
@@ -345,6 +430,21 @@ export function registerWorkspaceHandlers() {
       logger.info(
         `[IPC][workspaces:sync] Start sync for workspace ${active.id} at ${active.folderPath}`,
       );
+
+      // Ensure default folders exist (Work, Journal, Personal)
+      const defaultFolders = ['Work', 'Journal', 'Personal'];
+      for (const folderName of defaultFolders) {
+        try {
+          const folderPath = path.join(active.folderPath, folderName);
+          const exists = await fsService.fileExists(folderPath);
+          if (!exists) {
+            await fsService.createFolder(folderPath);
+            logger.info(`[IPC][workspaces:sync] Created missing default folder: ${folderName}`);
+          }
+        } catch (error) {
+          logger.warn(`[IPC][workspaces:sync] Could not ensure default folder ${folderName}:`, error);
+        }
+      }
 
       // Sync notebooks from folders
       const nbResult = await repos.notebook.syncWithWorkspaceFolders(active.id);

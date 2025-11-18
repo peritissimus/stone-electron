@@ -184,6 +184,31 @@ export function useFileTreeAPI() {
     [setError],
   );
 
+  const moveFolder = useCallback(
+    async (sourcePath: string, destinationPath: string | null) => {
+      try {
+        const response = await window.electron.invoke<{ folderPath: string }>(
+          WORKSPACE_CHANNELS.MOVE_FOLDER,
+          {
+            sourcePath,
+            destinationPath,
+          },
+        );
+
+        if (response.success && response.data) {
+          return response.data.folderPath;
+        }
+
+        setError(response.error?.message || 'Failed to move folder');
+        return null;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to move folder');
+        return null;
+      }
+    },
+    [setError],
+  );
+
   return {
     loadFileTree,
     expandAll,
@@ -191,5 +216,6 @@ export function useFileTreeAPI() {
     createFolder,
     renameFolder,
     deleteFolder,
+    moveFolder,
   };
 }

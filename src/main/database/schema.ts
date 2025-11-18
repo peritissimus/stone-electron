@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 // Workspaces table
 export const workspaces = sqliteTable('workspaces', {
@@ -22,7 +22,11 @@ export const notebooks = sqliteTable('notebooks', {
   position: integer('position').default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  workspaceIdIdx: index('idx_notebooks_workspace_id').on(table.workspaceId),
+  folderPathIdx: index('idx_notebooks_folder_path').on(table.folderPath),
+  parentIdIdx: index('idx_notebooks_parent_id').on(table.parentId),
+}));
 
 // Notes table
 export const notes = sqliteTable('notes', {
@@ -38,7 +42,15 @@ export const notes = sqliteTable('notes', {
   deletedAt: integer('deleted_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  workspaceIdIdx: index('idx_notes_workspace_id').on(table.workspaceId),
+  notebookIdIdx: index('idx_notes_notebook_id').on(table.notebookId),
+  filePathIdx: index('idx_notes_file_path').on(table.filePath),
+  flagsIdx: index('idx_notes_flags').on(table.isFavorite, table.isPinned, table.isArchived, table.isDeleted),
+  updatedAtIdx: index('idx_notes_updated_at').on(table.updatedAt),
+  createdAtIdx: index('idx_notes_created_at').on(table.createdAt),
+  deletedIdx: index('idx_notes_deleted').on(table.isDeleted),
+}));
 
 // Tags table
 export const tags = sqliteTable('tags', {
@@ -58,7 +70,11 @@ export const noteTags = sqliteTable('note_tags', {
     .notNull()
     .references(() => tags.id, { onDelete: 'cascade' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  noteIdIdx: index('idx_note_tags_note_id').on(table.noteId),
+  tagIdIdx: index('idx_note_tags_tag_id').on(table.tagId),
+  compositeIdx: index('idx_note_tags_composite').on(table.tagId, table.noteId),
+}));
 
 // Note Links table
 export const noteLinks = sqliteTable('note_links', {
@@ -82,7 +98,9 @@ export const attachments = sqliteTable('attachments', {
   size: integer('size').notNull(),
   path: text('path').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
-});
+}, (table) => ({
+  noteIdIdx: index('idx_attachments_note_id').on(table.noteId),
+}));
 
 // Note Versions table
 export const noteVersions = sqliteTable('note_versions', {

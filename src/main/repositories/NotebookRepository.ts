@@ -106,6 +106,30 @@ export class NotebookRepository {
   }
 
   /**
+   * Find multiple notebooks by IDs (bulk operation)
+   * Returns a Map with notebookId as key and notebook as value
+   */
+  async findByIds(ids: string[]): Promise<Map<string, Notebook>> {
+    const db = getDatabaseManager().getDrizzle();
+
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const result = await db
+      .select()
+      .from(notebooks)
+      .where(inArray(notebooks.id, ids));
+
+    const notebooksMap = new Map<string, Notebook>();
+    for (const notebook of result) {
+      notebooksMap.set(notebook.id, notebook as Notebook);
+    }
+
+    return notebooksMap;
+  }
+
+  /**
    * Find all notebooks with optional filtering
    */
   async findAll(options?: {
