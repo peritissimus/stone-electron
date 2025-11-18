@@ -36,7 +36,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false # Skip code signing for now
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: stone-macos
           path: |
