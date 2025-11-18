@@ -4,7 +4,7 @@
   "description": "Production-ready note-taking desktop application",
   "main": "./dist/main/index.cjs",
   "type": "module",
-  "author": "Stone Contributors",
+  "author": "peritissimus",
   "license": "MIT",
   "repository": {
     "type": "git",
