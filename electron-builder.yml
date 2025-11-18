@@ -9,6 +9,7 @@ files:
   - dist/**/*
   - node_modules/**/*
   - package.json
+  - migrations/**/*
 asarUnpack:
   - node_modules/@libsql/**/*
   - node_modules/libsql/**/*

@@ -39,7 +39,8 @@ export class DatabaseManager {
   private dbPath: string;
 
   constructor() {
-    const dbUrl = process.env.DATABASE_URL;
+    // In packaged apps, always use userData directory, ignore DATABASE_URL
+    const dbUrl = !app.isPackaged ? process.env.DATABASE_URL : undefined;
 
     if (dbUrl) {
       this.dbPath = path.isAbsolute(dbUrl) ? dbUrl : path.join(process.cwd(), dbUrl);
@@ -65,7 +66,13 @@ export class DatabaseManager {
 
       this.db = drizzle(this.client, { schema });
 
-      await migrate(this.db, { migrationsFolder: path.join(process.cwd(), 'migrations') });
+      // In packaged app, migrations are in app.asar or app.asar.unpacked
+      const migrationsPath = app.isPackaged
+        ? path.join(process.resourcesPath, 'app.asar', 'migrations')
+        : path.join(process.cwd(), 'migrations');
+
+      logger.info(`Migrations path: ${migrationsPath}`);
+      await migrate(this.db, { migrationsFolder: migrationsPath });
 
       await this.seedDatabase();
       await this.syncWorkspaceFiles();
