@@ -333,6 +333,37 @@ git push origin v0.1.1
 - **Windows**: NSIS installer and portable EXE
 - **Linux**: AppImage and Deb package
 
+### Troubleshooting Packaged Builds
+
+**Common Issues:**
+
+1. **Native module errors (libsql, better-sqlite3)**
+   - Ensure `.npmrc` contains `node-linker=hoisted` and `shamefully-hoist=true`
+   - pnpm's nested node_modules structure is incompatible with electron-builder
+   - After adding .npmrc: `rm -rf node_modules && pnpm install`
+
+2. **Migration files not found**
+   - Migrations must be included in `electron-builder.yml` files list
+   - In packaged apps, migrations path uses `process.resourcesPath/app.asar/migrations`
+   - See `DatabaseManager.ts:69-71` for packaged vs dev path handling
+
+3. **DATABASE_URL causing path errors**
+   - `.env` file should not be used in packaged apps
+   - DatabaseManager ignores `DATABASE_URL` when `app.isPackaged` is true
+   - Packaged apps always use `app.getPath('userData')/stone-data/notes.db`
+
+4. **Testing packaged builds**
+   ```bash
+   pnpm build && pnpm package:dir
+   open dist/build/mac-arm64/Stone.app
+   tail -f ~/Library/Application\ Support/Stone/logs/stone.log
+   ```
+
+**Key Configuration Files:**
+- `.npmrc` - pnpm hoisting for native modules
+- `electron-builder.yml` - File inclusion and ASAR unpacking
+- `src/main/database/DatabaseManager.ts` - Path handling for dev vs packaged
+
 ## Important Notes
 
 1. **Always use pnpm**, not npm

@@ -11,42 +11,85 @@ import { registerAllIpcHandlers } from './ipc';
 import { logger } from './utils/logger';
 import { getFileWatcherService } from './services/FileWatcherService';
 
+// Log startup
+logger.info('='.repeat(60));
+logger.info('Stone Application Starting...');
+logger.info(`Platform: ${process.platform}`);
+logger.info(`Electron: ${process.versions.electron}`);
+logger.info(`Node: ${process.versions.node}`);
+logger.info(`Chrome: ${process.versions.chrome}`);
+logger.info(`isDev: ${isDev}`);
+logger.info(`__dirname: ${__dirname}`);
+logger.info('='.repeat(60));
+
 let mainWindow: BrowserWindow | null = null;
+
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception:', error);
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 /**
  * Create the main application window
  */
 async function createWindow() {
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
-    webPreferences: {
-      preload: path.join(__dirname, '../preload.cjs'),
-      nodeIntegration: false,
-      contextIsolation: true,
-    },
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-    backgroundColor: '#ffffff',
-    vibrancy: 'sidebar',
-    visualEffectState: 'active',
-    trafficLightPosition: { x: 12, y: 8 },
-  });
+  try {
+    logger.info('Creating BrowserWindow...');
+    const preloadPath = path.join(__dirname, '../preload.cjs');
+    logger.info(`Preload path: ${preloadPath}`);
 
-  // Load the app
-  if (isDev) {
-    // In development, load from Vite dev server
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    // In production, load from built files
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    mainWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      minWidth: 800,
+      minHeight: 600,
+      webPreferences: {
+        preload: preloadPath,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+      titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+      backgroundColor: '#ffffff',
+      vibrancy: 'sidebar',
+      visualEffectState: 'active',
+      trafficLightPosition: { x: 12, y: 8 },
+    });
+
+    logger.info('BrowserWindow created successfully');
+
+    // Load the app
+    if (isDev) {
+      logger.info('Loading dev server at http://localhost:5173');
+      // In development, load from Vite dev server
+      await mainWindow.loadURL('http://localhost:5173');
+      mainWindow.webContents.openDevTools();
+    } else {
+      const htmlPath = path.join(__dirname, '../renderer/index.html');
+      logger.info(`Loading production build from: ${htmlPath}`);
+      // In production, load from built files
+      await mainWindow.loadFile(htmlPath);
+    }
+
+    logger.info('Window loaded successfully');
+
+    mainWindow.on('closed', () => {
+      logger.info('Window closed');
+      mainWindow = null;
+    });
+
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      logger.error(`Failed to load: ${errorCode} - ${errorDescription}`);
+    });
+  } catch (error) {
+    logger.error('Error creating window:', error);
+    throw error;
   }
-
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-  });
 }
 
 /**
