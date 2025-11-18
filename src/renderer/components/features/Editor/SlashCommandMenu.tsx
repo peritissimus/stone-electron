@@ -14,6 +14,7 @@ import {
   Quotes,
   Minus,
   Check,
+  Clock,
 } from 'phosphor-react';
 
 export interface SlashCommandItem {
@@ -187,5 +188,20 @@ export const defaultSlashCommands = (editor: any): SlashCommandItem[] => [
       editor.chain().focus().deleteRange(range).setHorizontalRule().run();
     },
     searchTerms: ['hr', 'horizontal', 'rule', 'divider', 'separator'],
+  },
+  {
+    title: 'Current Time',
+    description: 'Insert the current time',
+    icon: <Clock size={18} />,
+    command: ({ editor, range }: any) => {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+      editor.chain().focus().deleteRange(range).insertContent(timeString).run();
+    },
+    searchTerms: ['time', 'clock', 'now'],
   },
 ];

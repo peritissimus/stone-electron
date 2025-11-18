@@ -50,6 +50,39 @@ Developer Notes
   - pnpm electron-rebuild -f -w better-sqlite3
 - Maintain macOS aesthetic and composite components; avoid inline classes.
 
+## Keyboard Shortcuts
+
+Stone includes a comprehensive keyboard shortcut system with platform-aware detection (Cmd on macOS, Ctrl on Windows/Linux).
+
+### Available Shortcuts
+
+- **Cmd+S** (Ctrl+S on Windows/Linux) - Save current note
+- **Cmd+N** (Ctrl+N on Windows/Linux) - Create new note in current folder
+- **Cmd+,** (Ctrl+, on Windows/Linux) - Open settings
+
+### Implementation
+
+**Architecture:**
+- `useKeyboardShortcuts` hook (`src/renderer/hooks/useKeyboardShortcuts.ts`) - Platform-aware keyboard event handling
+- `NoteEditor` component exposes actions via `useImperativeHandle` for external triggers
+- `MainLayout` component integrates shortcuts and passes refs to editor
+- Shortcuts are disabled in input fields (except contenteditable editor)
+
+**Adding New Shortcuts:**
+1. Add action to the `shortcuts` array in `MainLayout.tsx`
+2. Use `formatShortcut()` helper to display shortcuts in UI tooltips
+3. Follow existing pattern with `isMacOS()` for platform detection
+
+**Helper Functions:**
+- `isMacOS()` - Platform detection
+- `getModifierLabel()` - Returns '⌘' or 'Ctrl'
+- `formatShortcut(key, meta, shift, alt)` - Format shortcuts for display (e.g., "⌘S" or "Ctrl+S")
+
+**UI Integration:**
+- Save button tooltip shows "Save changes (⌘S)"
+- Settings button tooltip shows "Settings (⌘,)"
+- All shortcuts use platform-appropriate symbols
+
 
 ## Node.js Version
 
@@ -238,6 +271,68 @@ const content = await repos.note.getContentById(id);
 4. **Git-friendly** - Markdown files can be version controlled
 5. **No re-renders** - Autosave writes to file without updating store
 
+## Publishing & Distribution
+
+### Building for Distribution
+
+```bash
+pnpm build                 # Build all components
+pnpm package              # Package for current platform
+pnpm package:dir          # Package without installers (faster, for testing)
+pnpm package:all          # Package for all platforms (macOS, Windows, Linux)
+```
+
+### Icon Assets
+
+Icons are located in `build/` directory:
+- `icon.svg` - Source SVG logo
+- `icon.png` - Linux icon (1024x1024)
+- `icon.icns` - macOS icon
+- `icon.ico` - Windows icon
+
+To regenerate icons from the SVG:
+```bash
+./scripts/convert-icons.sh
+```
+
+### Code Signing
+
+**macOS:**
+- Set `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables
+- Update `electron-builder.yml` to remove `identity: null`
+- Requires Apple Developer ID certificate
+
+**Windows:**
+- Set `CSC_LINK` and `CSC_KEY_PASSWORD` environment variables
+- Update `electron-builder.yml` with certificate path
+
+### GitHub Releases
+
+Two workflows are configured:
+
+1. **Build & Test** (`.github/workflows/build.yml`)
+   - Runs on every push and PR
+   - Tests builds on all platforms
+   - Validates code with typecheck and tests
+
+2. **Release** (`.github/workflows/release.yml`)
+   - Triggered by version tags (e.g., `v0.1.0`)
+   - Builds for macOS, Windows, and Linux
+   - Creates draft GitHub release with artifacts
+   - Upload binaries for distribution
+
+To create a release:
+```bash
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+### Distribution Formats
+
+- **macOS**: DMG and ZIP
+- **Windows**: NSIS installer and portable EXE
+- **Linux**: AppImage and Deb package
+
 ## Important Notes
 
 1. **Always use pnpm**, not npm
@@ -413,11 +508,16 @@ The editor includes Notion-style block interactions:
 - Drag the `⋮⋮` handle to reorder blocks (Notion-style)
 - All blocks have hover states for easy interaction
 
-**To-do Lists:**
+**To-do Lists (Logseq-style Tasks):**
 - Create with `/todo` or the block menu
+- Supports both standalone and list-style TODO items:
+  - `TODO task text` → Renders as checkbox task
+  - `- TODO task text` → Also renders as checkbox task (in list)
+- Supported task states: TODO, DOING, DONE, WAITING, HOLD, CANCELED, IDEA
 - Click checkboxes to mark complete
 - Completed items show strikethrough
 - Notion-style checkbox design
+- All TODO items are saved with dash prefix (`- TODO`) for consistency
 
 ### Mermaid Diagram Support
 

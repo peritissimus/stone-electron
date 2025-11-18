@@ -4,15 +4,17 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings'
 
 type ViewMode = 'list' | 'grid' | 'card'
-type SidebarPanel = 'folders' | 'tags' | 'search'
+type SidebarPanel = 'home' | 'folders' | 'tags' | 'search'
 type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
 
 interface UIState {
   // Sidebar
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   sidebarWidth: number
   sidebarPanel: SidebarPanel
 
@@ -40,6 +42,9 @@ interface UIState {
   // Theme
   theme: 'light' | 'dark' | 'system'
 
+  // Font settings
+  fontSettings: FontSettings
+
   // Actions
   toggleSidebar: () => void
   setSidebarWidth: (width: number) => void
@@ -61,6 +66,8 @@ interface UIState {
   openImportModal: () => void
   closeImportModal: () => void
   setTheme: (theme: 'light' | 'dark' | 'system') => void
+  setFontSettings: (settings: Partial<FontSettings>) => void
+  resetFontSettings: () => void
 }
 
 export const useUIStore = create<UIState>()(
@@ -69,7 +76,7 @@ export const useUIStore = create<UIState>()(
       // Sidebar
       sidebarOpen: true,
       sidebarWidth: 240,
-      sidebarPanel: 'folders',
+      sidebarPanel: 'home',
 
       // Note list
       noteListWidth: 320,
@@ -94,6 +101,9 @@ export const useUIStore = create<UIState>()(
 
       // Theme
       theme: 'dark',
+
+      // Font settings
+      fontSettings: DEFAULT_FONT_SETTINGS,
 
       // Actions
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -135,6 +145,13 @@ export const useUIStore = create<UIState>()(
       closeImportModal: () => set({ importModalOpen: false }),
 
       setTheme: (theme) => set({ theme }),
+
+      setFontSettings: (settings) =>
+        set((state) => ({
+          fontSettings: { ...state.fontSettings, ...settings },
+        })),
+
+      resetFontSettings: () => set({ fontSettings: DEFAULT_FONT_SETTINGS }),
     }),
     {
       name: 'stone-ui-preferences',
@@ -148,6 +165,7 @@ export const useUIStore = create<UIState>()(
         showPreview: state.showPreview,
         showOutline: state.showOutline,
         theme: state.theme,
+        fontSettings: state.fontSettings,
       }),
     }
   )

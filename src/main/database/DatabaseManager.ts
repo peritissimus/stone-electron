@@ -89,43 +89,48 @@ export class DatabaseManager {
         return;
       }
 
-      for (const workspace of workspaces) {
-        logger.info(`Syncing workspace: ${workspace.name} (${workspace.folderPath})`);
-        try {
-          const { NotebookRepository } = await import('../repositories/NotebookRepository');
-          const { NoteRepository } = await import('../repositories/NoteRepository');
-          const notebookRepository = new NotebookRepository();
-          const noteRepository = new NoteRepository();
+      // Sync all workspaces in parallel (much faster than sequential)
+      await Promise.all(
+        workspaces.map(async (workspace) => {
+          logger.info(`Syncing workspace: ${workspace.name} (${workspace.folderPath})`);
+          try {
+            const { NotebookRepository } = await import('../repositories/NotebookRepository');
+            const { NoteRepository } = await import('../repositories/NoteRepository');
+            const notebookRepository = new NotebookRepository();
+            const noteRepository = new NoteRepository();
 
-          const notebookSyncResults = await notebookRepository.syncWithWorkspaceFolders(
-            workspace.id,
-          );
-          logger.info(`Workspace "${workspace.name}" notebook sync:`, {
-            created: notebookSyncResults.created,
-            updated: notebookSyncResults.updated,
-            errors: notebookSyncResults.errors.length,
-          });
-          if (notebookSyncResults.errors.length > 0) {
-            logger.warn(
-              `Notebook sync errors for workspace "${workspace.name}":`,
-              notebookSyncResults.errors,
-            );
-          }
+            // Sync notebooks and notes in parallel for this workspace
+            const [notebookSyncResults, syncResults] = await Promise.all([
+              notebookRepository.syncWithWorkspaceFolders(workspace.id),
+              noteRepository.syncWithFileSystem(workspace.id),
+            ]);
 
-          const syncResults = await noteRepository.syncWithFileSystem(workspace.id);
-          logger.info(`Workspace "${workspace.name}" sync completed:`, {
-            created: syncResults.created,
-            updated: syncResults.updated,
-            deleted: syncResults.deleted,
-            errors: syncResults.errors.length,
-          });
-          if (syncResults.errors.length > 0) {
-            logger.warn(`Sync errors for workspace "${workspace.name}":`, syncResults.errors);
+            logger.info(`Workspace "${workspace.name}" notebook sync:`, {
+              created: notebookSyncResults.created,
+              updated: notebookSyncResults.updated,
+              errors: notebookSyncResults.errors.length,
+            });
+            if (notebookSyncResults.errors.length > 0) {
+              logger.warn(
+                `Notebook sync errors for workspace "${workspace.name}":`,
+                notebookSyncResults.errors,
+              );
+            }
+
+            logger.info(`Workspace "${workspace.name}" sync completed:`, {
+              created: syncResults.created,
+              updated: syncResults.updated,
+              deleted: syncResults.deleted,
+              errors: syncResults.errors.length,
+            });
+            if (syncResults.errors.length > 0) {
+              logger.warn(`Sync errors for workspace "${workspace.name}":`, syncResults.errors);
+            }
+          } catch (error) {
+            logger.error(`Failed to sync workspace "${workspace.name}":`, error);
           }
-        } catch (error) {
-          logger.error(`Failed to sync workspace "${workspace.name}":`, error);
-        }
-      }
+        })
+      );
 
       logger.info('✅ All workspaces synced');
     } catch (error) {

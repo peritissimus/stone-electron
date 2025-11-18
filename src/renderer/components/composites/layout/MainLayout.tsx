@@ -2,17 +2,28 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { Sidebar } from '@renderer/components/features/navigation';
-import { NoteEditor } from '@renderer/components/features/editor';
+import { NoteEditor, NoteEditorHandle } from '@renderer/components/features/Editor';
 import { SearchPanel } from '@renderer/components/features/search';
+import { HomePage } from '@renderer/components/features/HomePage';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
-import { SettingsModal } from '@renderer/components/features/settings';
+import { SettingsModal } from '@renderer/components/features/Settings';
+import { DraftRecoveryDialog } from '@renderer/components/features/Recovery';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
+import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
+import {
+  useKeyboardShortcuts,
+  ShortcutConfig,
+  isMacOS,
+} from '@renderer/hooks/useKeyboardShortcuts';
+import { getAllDrafts } from '@renderer/utils/draftStorage';
+import { logger } from '@renderer/utils/logger';
 
 export function MainLayout() {
   const {
@@ -23,46 +34,127 @@ export function MainLayout() {
     searchOpen,
     setSidebarWidth,
     setNoteListWidth,
+    openSettings,
   } = useUIStore();
+
+  const { activeNoteId, setActiveNote } = useNoteStore();
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
   const { loadNotes } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
 
-  // Load initial data
+  // Ref to access editor actions
+  const editorRef = useRef<NoteEditorHandle>(null);
+
+  // Draft recovery state
+  const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
+  const recoveryEditorRef = useRef<any>(null);
+
+  // Load initial data and check for drafts
   useEffect(() => {
     const bootstrap = async () => {
       await loadWorkspaces();
       await loadFileTree();
       loadTags();
-      loadNotes();
+      await loadNotes();
+
+      // Check for unsaved drafts after notes are loaded
+      const drafts = getAllDrafts();
+      if (drafts.length > 0) {
+        logger.info('[MainLayout] Found unsaved drafts on startup:', drafts.length);
+        setShowRecoveryDialog(true);
+      }
     };
 
     void bootstrap();
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
+  // Keyboard shortcuts configuration
+  const shortcuts = useMemo<ShortcutConfig[]>(
+    () => [
+      {
+        key: 's',
+        metaKey: isMacOS(),
+        ctrlKey: !isMacOS(),
+        action: () => {
+          editorRef.current?.save();
+        },
+        description: 'Save current note',
+      },
+      {
+        key: 'n',
+        metaKey: isMacOS(),
+        ctrlKey: !isMacOS(),
+        action: () => {
+          editorRef.current?.createSiblingNote();
+        },
+        description: 'Create new note in current folder',
+      },
+      {
+        key: ',',
+        metaKey: isMacOS(),
+        ctrlKey: !isMacOS(),
+        action: () => {
+          openSettings();
+        },
+        description: 'Open settings',
+      },
+    ],
+    [],
+  );
+
+  // Attach keyboard shortcuts
+  useKeyboardShortcuts(shortcuts);
+
+  // Handle draft recovery
+  const handleRecoverDraft = (noteId: string, content: string) => {
+    try {
+      // Open the note in the editor
+      setActiveNote(noteId);
+
+      // Wait for editor to mount and load content, then restore draft
+      setTimeout(() => {
+        if (editorRef.current) {
+          editorRef.current.restoreDraft(content);
+          logger.info('[MainLayout] Recovered draft for note:', noteId);
+        }
+      }, 1000); // Wait longer to ensure editor is fully initialized
+    } catch (error) {
+      logger.error('[MainLayout] Failed to recover draft:', error);
+    }
+  };
+
   return (
-    <LayoutContainer
-      sidebar={
-        <SidebarPanel>
-          <Sidebar />
-        </SidebarPanel>
-      }
-      sidebarWidth={sidebarWidth}
-      onSidebarWidthChange={setSidebarWidth}
-      showSidebar={sidebarOpen && !editorFullscreen}
-      noteList={null}
-      noteListWidth={noteListWidth}
-      onNoteListWidthChange={setNoteListWidth}
-      showNoteList={false}
-      mainContent={
-        <MainContentArea>
-          {searchOpen && <SearchPanel />}
-          <NoteEditor />
-        </MainContentArea>
-      }
-      overlayContent={<SettingsModal />}
-    />
+    <>
+      <LayoutContainer
+        sidebar={
+          <SidebarPanel>
+            <Sidebar />
+          </SidebarPanel>
+        }
+        sidebarWidth={sidebarWidth}
+        onSidebarWidthChange={setSidebarWidth}
+        showSidebar={sidebarOpen && !editorFullscreen}
+        noteList={null}
+        noteListWidth={noteListWidth}
+        onNoteListWidthChange={setNoteListWidth}
+        showNoteList={false}
+        mainContent={
+          <MainContentArea>
+            {searchOpen && <SearchPanel />}
+            {activeNoteId ? <NoteEditor ref={editorRef} /> : <HomePage />}
+          </MainContentArea>
+        }
+        overlayContent={<SettingsModal />}
+      />
+
+      {/* Draft Recovery Dialog */}
+      <DraftRecoveryDialog
+        open={showRecoveryDialog}
+        onOpenChange={setShowRecoveryDialog}
+        onRecover={handleRecoverDraft}
+      />
+    </>
   );
 }

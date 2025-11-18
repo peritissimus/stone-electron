@@ -56,16 +56,52 @@ async function buildNoteWithRelations(
   note: Note,
   repos: RepositoriesInstance,
 ): Promise<NoteWithRelations> {
-  const [tags, attachments] = await Promise.all([
+  const [tags, attachments, notebook] = await Promise.all([
     repos.tag.getTagsForNote(note.id),
     repos.attachment.getAttachmentsForNote(note.id),
+    note.notebookId ? repos.notebook.findById(note.notebookId) : Promise.resolve(null),
   ]);
+
+  // Get folderPath from notebook or derive from filePath
+  let folderPath: string | null = null;
+  if (notebook) {
+    folderPath = notebook.folderPath;
+  } else if (note.filePath) {
+    // Extract folder from file path (e.g., "Personal/Note.md" -> "Personal")
+    const pathParts = note.filePath.split('/');
+    if (pathParts.length > 1) {
+      folderPath = pathParts.slice(0, -1).join('/');
+    }
+  }
 
   return {
     ...note,
+    folderPath,
     tags,
     attachments,
-  };
+  } as any;
+}
+
+function deriveFolderPath(
+  note: Note,
+  notebooksMap: Map<string, any>,
+): string | null {
+  if (note.notebookId) {
+    const notebook = notebooksMap.get(note.notebookId);
+    if (notebook) {
+      return notebook.folderPath;
+    }
+  }
+
+  if (note.filePath) {
+    // Extract folder from file path (e.g., "Personal/Note.md" -> "Personal")
+    const pathParts = note.filePath.split('/');
+    if (pathParts.length > 1) {
+      return pathParts.slice(0, -1).join('/');
+    }
+  }
+
+  return null;
 }
 
 function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {
@@ -170,7 +206,27 @@ async function enrichNotes(
   notes: Note[],
   repos: RepositoriesInstance,
 ): Promise<NoteWithRelations[]> {
-  return Promise.all(notes.map((note) => buildNoteWithRelations(note, repos)));
+  if (notes.length === 0) {
+    return [];
+  }
+
+  // Bulk load all relations in parallel (3-4 queries instead of N*3 queries)
+  const noteIds = notes.map(n => n.id);
+  const notebookIds = [...new Set(notes.map(n => n.notebookId).filter(Boolean) as string[])];
+
+  const [tagsMap, attachmentsMap, notebooksMap] = await Promise.all([
+    repos.tag.getTagsForNotes(noteIds),
+    repos.attachment.getAttachmentsForNotes(noteIds),
+    repos.notebook.findByIds(notebookIds),
+  ]);
+
+  // Map notes to enriched notes with O(1) lookups
+  return notes.map(note => ({
+    ...note,
+    tags: tagsMap.get(note.id) || [],
+    attachments: attachmentsMap.get(note.id) || [],
+    folderPath: deriveFolderPath(note, notebooksMap),
+  } as any));
 }
 
 /**
@@ -441,6 +497,90 @@ export function registerNoteHandlers() {
     createHandler(async (event, request: { noteId: string }) => {
       const backlinks = await repos.note.getBacklinks(request.noteId);
       return { backlinks };
+    }),
+  );
+
+  // notes:move
+  ipcMain.handle(
+    NOTE_CHANNELS.MOVE,
+    createHandler(async (event, request: { id: string; folderPath: string | null }) => {
+      const oldNote = await repos.note.findById(request.id);
+      if (!oldNote) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      // Create a version before moving
+      const currentContent = await repos.note.getContentById(oldNote.id);
+      if (currentContent) {
+        await repos.version.createVersion(
+          oldNote.id,
+          oldNote.title || 'Untitled',
+          currentContent,
+        );
+      }
+
+      // Move the note by updating its folderPath (using type assertion like update handler does)
+      const updateData: any = {
+        folderPath: request.folderPath,
+      };
+      const note = await repos.note.update(request.id, updateData);
+
+      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+
+      return noteWithRelations;
+    }),
+  );
+
+  // notes:getAllTodos - Get all todo items from all notes
+  ipcMain.handle(
+    NOTE_CHANNELS.GET_ALL_TODOS,
+    createHandler(async () => {
+      const jsdom = await import('jsdom');
+      const { JSDOM } = jsdom;
+
+      const notes = await repos.note.findAll();
+      const todos: any[] = [];
+
+      for (const note of notes) {
+        try {
+          const content = await repos.note.getContentById(note.id);
+          if (!content) continue;
+
+          const dom = new JSDOM(content);
+          const document = dom.window.document;
+          const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
+
+          taskItems.forEach((taskItem, index) => {
+            const state = taskItem.getAttribute('data-state') || 'todo';
+            const checked = taskItem.getAttribute('data-checked') === 'true';
+
+            // Extract text content (exclude the button)
+            const contentDiv = taskItem.querySelector('div');
+            const text = contentDiv?.textContent?.trim() || '';
+
+            if (text) {
+              todos.push({
+                id: `${note.id}-${index}`,
+                noteId: note.id,
+                noteTitle: note.title,
+                notePath: note.filePath,
+                text,
+                state,
+                checked,
+                createdAt: note.createdAt,
+                updatedAt: note.updatedAt,
+              });
+            }
+          });
+        } catch (error) {
+          logger.warn('[NoteHandlers] Failed to extract todos from note', {
+            noteId: note.id,
+            error,
+          });
+        }
+      }
+
+      return todos;
     }),
   );
 }

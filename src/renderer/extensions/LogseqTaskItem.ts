@@ -7,8 +7,10 @@ import {
   findParentNode,
   mergeAttributes,
   wrappingInputRule,
+  InputRule,
 } from '@tiptap/core';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { Fragment } from '@tiptap/pm/model';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -40,8 +42,10 @@ export interface LogseqTaskItemOptions {
 }
 
 const inputRegex = /^\s*(\[([( |x])?\])\s$/;
+// Input rule for task items WITHOUT list marker (dash/asterisk)
+// Lines starting with "- TODO" should remain as regular list items
 const logseqMarkerInputRegex =
-  /^\s*([-*])\s+(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s$/i;
+  /^\s*(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s$/i;
 
 const getStateOption = (options: LogseqTaskItemOptions, value?: string) => {
   if (!value) {
@@ -384,17 +388,46 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
           state: match[match.length - 1] === 'x' ? 'done' : this.options.defaultState,
         }),
       }),
-      wrappingInputRule({
+      // Custom input rule for Logseq-style task items
+      new InputRule({
         find: logseqMarkerInputRegex,
-        type: this.type,
-        getAttributes: (match) => {
-          const marker = normalizeStateValue(match[2]);
-          const option = getStateOption(this.options, marker ?? undefined);
+        handler: ({ state, range, match }) => {
+          const { tr } = state;
+          const start = range.from;
+          const end = range.to;
 
-          return {
-            state: option?.value ?? this.options.defaultState,
-            checked: isDoneState(this.options, option?.value),
-          };
+          // match[1] is the state keyword
+          const marker = normalizeStateValue(match[1]);
+          const option = getStateOption(this.options, marker ?? undefined);
+          const stateValue = option?.value ?? this.options.defaultState;
+          const isChecked = isDoneState(this.options, stateValue);
+
+          // Get the task list type
+          const taskListType = state.schema.nodes[this.options.taskListTypeName];
+
+          if (!taskListType) {
+            return null;
+          }
+
+          // Delete the matched text (e.g., "TODO ")
+          tr.delete(start, end);
+
+          // Create task list with task item
+          const taskItem = this.type.create(
+            {
+              state: stateValue,
+              checked: isChecked,
+            },
+            Fragment.from(state.schema.nodes.paragraph.create())
+          );
+
+          const taskList = taskListType.create(null, taskItem);
+
+          // Replace the current paragraph with the task list
+          tr.replaceWith(start, start, taskList);
+
+          // Set cursor inside the task item
+          tr.setSelection(state.selection.constructor.near(tr.doc.resolve(start + 2)));
         },
       }),
     ];

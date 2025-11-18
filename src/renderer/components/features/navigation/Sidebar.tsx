@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { TagList } from '@renderer/components/features/tag';
+import { TagList } from '@renderer/components/features/Tag';
 import { Button } from '@renderer/components/base/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/base/ui/tabs';
 import {
@@ -21,7 +21,7 @@ import {
 import { Heading3, Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { TagWithCount, type Workspace, type Note } from '@shared/types';
-import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise } from 'phosphor-react';
+import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise, House, CaretLeft } from 'phosphor-react';
 import {
   Header,
   IconButton,
@@ -37,23 +37,24 @@ import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { FileTree } from '@renderer/components/features/filesystem';
-import { CreateWorkspaceModal } from '@renderer/components/features/workspace';
+import { FileTree } from '@renderer/components/features/FileSystem';
+import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
 
 export function Sidebar() {
-  const { sidebarPanel, setSidebarPanel, openSettings } = useUIStore();
   const { loadFileTree } = useFileTreeAPI();
   const { syncWorkspace, loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
   const { loadNotes, createNote } = useNoteAPI();
-  const { setActiveNote } = useNoteStore();
+  const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const { toggleSidebar } = useUIStore();
   const [isCreating, setIsCreating] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'folders' | 'tags'>('folders');
 
   useEffect(() => {
     loadWorkspaces();
@@ -254,57 +255,73 @@ export function Sidebar() {
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
+      {/* Workspace Selector with Collapse Button */}
       <div
         className={cn(
-          'flex w-full items-center border-b border-border',
+          'flex w-full items-center gap-1 border-b border-border',
           sizeHeightClasses['spacious'],
           sizePaddingClasses['compact'],
         )}
       >
-        <div className="flex items-center gap-2 w-full">
-          <Select
-            value={activeWorkspaceId ?? ''}
-            onValueChange={async (value) => {
-              if (value === CREATE_WORKSPACE_OPTION) {
-                setWorkspaceModalOpen(true);
-                return;
-              }
-              if (!value) {
-                return;
-              }
-              await setActiveWorkspace(value);
-              await loadFileTree();
-              await loadNotes();
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs flex-1">
-              <SelectValue placeholder="Select workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces.length > 0 && (
-                <>
-                  <SelectGroup>
-                    {workspaces.map((workspace) => (
-                      <SelectItem key={workspace.id} value={workspace.id}>
-                        <Text size="xs">{workspace.name}</Text>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectSeparator />
-                </>
-              )}
-              <SelectItem value={CREATE_WORKSPACE_OPTION}>
-                <Text size="xs">+ Create workspace…</Text>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select
+          value={activeWorkspaceId ?? ''}
+          onValueChange={async (value) => {
+            if (value === CREATE_WORKSPACE_OPTION) {
+              setWorkspaceModalOpen(true);
+              return;
+            }
+            if (!value) {
+              return;
+            }
+            await setActiveWorkspace(value);
+            await loadFileTree();
+            await loadNotes();
+          }}
+        >
+          <SelectTrigger className="h-8 text-xs flex-1">
+            <SelectValue placeholder="Select workspace" />
+          </SelectTrigger>
+          <SelectContent>
+            {workspaces.length > 0 && (
+              <>
+                <SelectGroup>
+                  {workspaces.map((workspace) => (
+                    <SelectItem key={workspace.id} value={workspace.id}>
+                      <Text size="xs">{workspace.name}</Text>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+                <SelectSeparator />
+              </>
+            )}
+            <SelectItem value={CREATE_WORKSPACE_OPTION}>
+              <Text size="xs">+ Create workspace…</Text>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <button
+          onClick={toggleSidebar}
+          className="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-colors"
+          title="Collapse sidebar"
+        >
+          <CaretLeft size={14} weight="bold" />
+        </button>
       </div>
 
-      {/* Panel Tabs - Flex layout */}
+      {/* Navigation Links - Always visible */}
+      <div className="px-2 py-2 border-b border-border">
+        <QuickLink
+          icon={<House size={14} />}
+          label="Home"
+          onClick={() => setActiveNote(null)}
+          isActive={!activeNoteId}
+        />
+      </div>
+
+      {/* Main Navigation Tabs - Always visible */}
       <Tabs
-        value={sidebarPanel}
-        onValueChange={(value) => setSidebarPanel(value as 'folders' | 'tags' | 'search')}
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as 'folders' | 'tags')}
         className="flex flex-col flex-1 overflow-hidden"
       >
         {/* Tab Triggers - Compact */}
@@ -314,14 +331,14 @@ export function Sidebar() {
             className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
           >
             <Folders size={12} />
-            <span className="hidden sm:inline">Folders</span>
+            <span>Folders</span>
           </TabsTrigger>
           <TabsTrigger
             value="tags"
             className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
           >
             <Tag size={12} />
-            <span className="hidden sm:inline">Tags</span>
+            <span>Tags</span>
           </TabsTrigger>
         </TabsList>
 
@@ -337,7 +354,7 @@ export function Sidebar() {
       </Tabs>
 
       {/* New Button - Compact footer */}
-      {sidebarPanel === 'tags' && (
+      {activeTab === 'tags' && (
         <PanelFooter>
           <Button
             onClick={() => setTagModalOpen(true)}

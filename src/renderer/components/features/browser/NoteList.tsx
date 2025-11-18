@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { shallow } from 'zustand/shallow';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
@@ -53,7 +54,9 @@ const stripHtml = (html?: string | null) =>
     : '';
 
 export function NoteList() {
-  const { notes, setActiveNote, getNoteByFilePath } = useNoteStore();
+  const notes = useNoteStore((state) => state.notes, shallow);
+  const setActiveNote = useNoteStore((state) => state.setActiveNote);
+  const getNoteByFilePath = useNoteStore((state) => state.getNoteByFilePath);
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
     useUIStore();
   const {
@@ -113,18 +116,36 @@ export function NoteList() {
     return [];
   }, [tree, activeFolder]);
 
-  const noteCountForFolder = (folderPath: string) => {
+  // Pre-compute folder note counts in O(n) time instead of O(n×m)
+  const folderNoteCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    filteredNotes.forEach((note) => {
+      if (!note.filePath) return;
+
+      const normalized = normalizePath(note.filePath);
+      const segments = normalized.split('/');
+
+      // Count for root (files without folders)
+      if (segments.length === 1) {
+        counts.set('', (counts.get('') || 0) + 1);
+        return;
+      }
+
+      // Count for each parent folder
+      let currentPath = '';
+      segments.slice(0, -1).forEach((segment) => {
+        currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+        counts.set(currentPath, (counts.get(currentPath) || 0) + 1);
+      });
+    });
+
+    return counts;
+  }, [filteredNotes]);
+
+  const noteCountForFolder = (folderPath: string): number => {
     const normalized = normalizePath(folderPath);
-    if (!normalized) {
-      return filteredNotes.filter((note) => {
-        const fp = note.filePath ? normalizePath(note.filePath) : '';
-        return !fp.includes('/');
-      }).length;
-    }
-    return filteredNotes.filter((note) => {
-      const fp = note.filePath ? normalizePath(note.filePath) : '';
-      return fp.startsWith(`${normalized}/`);
-    }).length;
+    return folderNoteCounts.get(normalized) || 0;
   };
 
   const handleFolderClick = (path: string) => {

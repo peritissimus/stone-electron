@@ -1,0 +1,92 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v0.1.0, v1.0.0, etc.
+
+jobs:
+  release:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.16.0'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build application
+        run: pnpm build
+
+      - name: Package application (macOS)
+        if: matrix.os == 'macos-latest'
+        run: pnpm package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false # Skip code signing for now
+
+      - name: Package application (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package application (Windows)
+        if: matrix.os == 'windows-latest'
+        run: pnpm package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: stone-macos
+          path: |
+            dist/build/*.dmg
+            dist/build/*.zip
+            dist/build/*.dmg.blockmap
+
+      - name: Upload artifacts (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: stone-linux
+          path: |
+            dist/build/*.AppImage
+            dist/build/*.deb
+
+      - name: Upload artifacts (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: stone-windows
+          path: |
+            dist/build/*.exe
+            dist/build/*.nsis.7z
+
+      - name: Create GitHub Release
+        if: matrix.os == 'ubuntu-latest' # Only create release once
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/build/*
+          draft: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

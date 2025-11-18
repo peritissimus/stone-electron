@@ -2,7 +2,7 @@
  * Editor Toolbar Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
 import {
@@ -28,6 +28,7 @@ import {
   ArrowLineLeft,
   ArrowLineRight,
   Trash,
+  Table as TableIcon,
 } from 'phosphor-react';
 import { ToolbarButton, ToolbarDivider } from '@renderer/components/composites';
 import {
@@ -37,6 +38,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/base/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@renderer/components/base/ui/popover';
+import { Input } from '@renderer/components/base/ui/input';
+import { Button } from '@renderer/components/base/ui/button';
 
 export interface EditorToolbarProps {
   editor: Editor | null;
@@ -62,13 +70,43 @@ const LANGUAGES = [
   { value: 'html', label: 'HTML' },
   { value: 'css', label: 'CSS' },
   { value: 'markdown', label: 'Markdown' },
+  { value: 'mermaid', label: 'Mermaid (Diagram)' },
   { value: 'plaintext', label: 'Plain Text' },
 ];
 
 export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
 
   if (!editor) return null;
+
+  // Sync language selector with active code block
+  useEffect(() => {
+    if (!editor) return;
+
+    const updateLanguage = () => {
+      if (editor.isActive('codeBlock')) {
+        const attrs = editor.getAttributes('codeBlock');
+        const language = attrs.language || 'plaintext';
+        setSelectedLanguage(language);
+      }
+    };
+
+    // Update on selection change
+    editor.on('selectionUpdate', updateLanguage);
+    editor.on('update', updateLanguage);
+
+    // Initial update
+    updateLanguage();
+
+    return () => {
+      editor.off('selectionUpdate', updateLanguage);
+      editor.off('update', updateLanguage);
+    };
+  }, [editor]);
 
   const handleCodeBlockInsert = () => {
     editor.chain().focus().toggleCodeBlock().run();
@@ -320,28 +358,128 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         <ToolbarButton
           size="compact"
           onClick={() => {
-            const url = window.prompt('Enter URL');
-            if (url) {
-              editor.chain().focus().setLink({ href: url }).run();
-            }
+            editor
+              .chain()
+              .focus()
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run();
           }}
-          active={editor.isActive('link')}
-          tooltip="Insert Link"
+          tooltip="Insert Table (3x3)"
         >
-          <Link size={14} />
+          <TableIcon size={14} />
         </ToolbarButton>
-        <ToolbarButton
-          size="compact"
-          onClick={() => {
-            const url = window.prompt('Enter image URL');
-            if (url) {
-              editor.chain().focus().setImage({ src: url }).run();
-            }
-          }}
-          tooltip="Insert Image"
-        >
-          <Image size={14} />
-        </ToolbarButton>
+        <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
+          <PopoverTrigger asChild>
+            <div>
+              <ToolbarButton
+                size="compact"
+                active={editor.isActive('link')}
+                tooltip="Insert Link"
+              >
+                <Link size={14} />
+              </ToolbarButton>
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Insert Link</h4>
+                <Input
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && linkUrl) {
+                      editor.chain().focus().setLink({ href: linkUrl }).run();
+                      setLinkUrl('');
+                      setLinkPopoverOpen(false);
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setLinkUrl('');
+                    setLinkPopoverOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (linkUrl) {
+                      editor.chain().focus().setLink({ href: linkUrl }).run();
+                      setLinkUrl('');
+                      setLinkPopoverOpen(false);
+                    }
+                  }}
+                  disabled={!linkUrl}
+                >
+                  Insert
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+        <Popover open={imagePopoverOpen} onOpenChange={setImagePopoverOpen}>
+          <PopoverTrigger asChild>
+            <div>
+              <ToolbarButton size="compact" tooltip="Insert Image">
+                <Image size={14} />
+              </ToolbarButton>
+            </div>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-sm font-medium mb-2">Insert Image</h4>
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && imageUrl) {
+                      editor.chain().focus().setImage({ src: imageUrl }).run();
+                      setImageUrl('');
+                      setImagePopoverOpen(false);
+                    }
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setImageUrl('');
+                    setImagePopoverOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (imageUrl) {
+                      editor.chain().focus().setImage({ src: imageUrl }).run();
+                      setImageUrl('');
+                      setImagePopoverOpen(false);
+                    }
+                  }}
+                  disabled={!imageUrl}
+                >
+                  Insert
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

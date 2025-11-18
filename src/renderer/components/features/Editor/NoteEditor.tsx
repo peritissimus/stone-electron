@@ -2,8 +2,9 @@
  * Note Editor Component - TipTap Rich Text Editor
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useNoteContent } from '@renderer/hooks/useNoteContent';
@@ -12,14 +13,25 @@ import {
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
-} from '@renderer/components/features/editor';
+  EditorStats,
+} from '@renderer/components/features/Editor';
 import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
+import { saveDraft, deleteDraft } from '@renderer/utils/draftStorage';
+
+/**
+ * NoteEditor ref API - exposed actions for keyboard shortcuts
+ */
+export interface NoteEditorHandle {
+  save: () => Promise<void>;
+  createSiblingNote: () => Promise<void>;
+  restoreDraft: (content: string) => void;
+}
 
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 
-export function NoteEditor() {
+export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const selectActiveNote = useCallback((state: NoteStoreState) => {
     if (!state.activeNoteId) return null;
     return state.notes.find((note) => note.id === state.activeNoteId) || null;
@@ -42,6 +54,38 @@ export function NoteEditor() {
     editor,
   });
 
+  // Sync selectedFile with activeNote to highlight the file in the tree
+  useEffect(() => {
+    if (!activeNoteFilePath) {
+      logger.info('[NoteEditor] No active note file path, skipping sync');
+      return;
+    }
+
+    logger.info('[NoteEditor] Syncing selectedFile with activeNote', {
+      activeNoteId,
+      activeNoteFilePath,
+    });
+
+    const { setSelectedFile, setActiveFolder } = useFileTreeStore.getState();
+    const normalizedPath = activeNoteFilePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+
+    logger.info('[NoteEditor] Setting selectedFile in FileTree', {
+      originalPath: activeNoteFilePath,
+      normalizedPath,
+    });
+
+    // Set the selected file to highlight it in the tree
+    setSelectedFile(normalizedPath);
+
+    // Also set the active folder
+    const lastSlash = normalizedPath.lastIndexOf('/');
+    if (lastSlash > 0) {
+      const folderPath = normalizedPath.substring(0, lastSlash);
+      logger.info('[NoteEditor] Setting active folder', { folderPath });
+      setActiveFolder(folderPath);
+    }
+  }, [activeNoteFilePath, activeNoteId]);
+
   // After content loads into the editor, set baseline for dirty tracking
   useEffect(() => {
     if (!editor) return;
@@ -55,24 +99,63 @@ export function NoteEditor() {
     return () => window.clearTimeout(timeout);
   }, [activeNoteId, content, editor]);
 
-  // Listen for editor updates to toggle dirty state
+  // Listen for editor updates to toggle dirty state (debounced for performance)
+  // Also autosave to localStorage for crash recovery
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || !activeNoteId) return;
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    let autosaveTimeoutId: NodeJS.Timeout | null = null;
+
     const handler = () => {
-      try {
-        const current = editor.getJSON();
-        const baseline = lastSavedJsonRef.current;
-        const equal = JSON.stringify(current) === JSON.stringify(baseline);
-        setIsDirty(!equal);
-      } catch {
-        setIsDirty(true);
+      // Immediately set dirty to true for instant visual feedback
+      setIsDirty(true);
+
+      // Debounce the actual comparison check (expensive operation)
+      if (timeoutId) {
+        clearTimeout(timeoutId);
       }
+
+      timeoutId = setTimeout(() => {
+        try {
+          const current = editor.getJSON();
+          const baseline = lastSavedJsonRef.current;
+          const equal = JSON.stringify(current) === JSON.stringify(baseline);
+          setIsDirty(!equal);
+        } catch {
+          setIsDirty(true);
+        }
+      }, 500); // Check after 500ms of inactivity
+
+      // Autosave to localStorage for crash recovery (longer debounce)
+      if (autosaveTimeoutId) {
+        clearTimeout(autosaveTimeoutId);
+      }
+
+      autosaveTimeoutId = setTimeout(() => {
+        try {
+          const current = editor.getJSON();
+          const contentJson = JSON.stringify(current);
+          saveDraft(activeNoteId, contentJson, title);
+          logger.info('[NoteEditor] Draft autosaved to localStorage');
+        } catch (error) {
+          logger.error('[NoteEditor] Failed to autosave draft:', error);
+        }
+      }, 2000); // Autosave after 2 seconds of inactivity
     };
+
     editor.on('update', handler);
+
     return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (autosaveTimeoutId) {
+        clearTimeout(autosaveTimeoutId);
+      }
       editor.off('update', handler);
     };
-  }, [editor]);
+  }, [editor, activeNoteId, title]);
 
   const handleSave = useCallback(async () => {
     if (!editor || !activeNoteId) return;
@@ -82,6 +165,9 @@ export function NoteEditor() {
     if (result) {
       lastSavedJsonRef.current = json;
       setIsDirty(false);
+      // Delete draft from localStorage after successful save
+      deleteDraft(activeNoteId);
+      logger.info('[NoteEditor] Draft deleted after successful save');
     }
   }, [editor, activeNoteId, updateNote]);
 
@@ -116,6 +202,29 @@ export function NoteEditor() {
       creatingNoteRef.current = false;
     }
   }, [activeNoteFilePath, createNote, editor, setActiveNote]);
+
+  const handleRestoreDraft = useCallback((content: string) => {
+    if (!editor) return;
+    try {
+      const contentJson = JSON.parse(content);
+      editor.commands.setContent(contentJson);
+      setIsDirty(true);
+      logger.info('[NoteEditor] Draft content restored');
+    } catch (error) {
+      logger.error('[NoteEditor] Failed to restore draft:', error);
+    }
+  }, [editor]);
+
+  // Expose actions via ref for keyboard shortcuts
+  useImperativeHandle(
+    ref,
+    () => ({
+      save: handleSave,
+      createSiblingNote: handleCreateSiblingNote,
+      restoreDraft: handleRestoreDraft,
+    }),
+    [handleSave, handleCreateSiblingNote, handleRestoreDraft],
+  );
 
   const handleTitleChangeWithSave = useCallback(
     async (newTitle: string) => {
@@ -165,9 +274,12 @@ export function NoteEditor() {
       {/* Editor Content */}
       <NoteEditorContent editor={editor} isLoading={isLoading} />
 
-      <PanelFooter size="compact" justify="start">
-        <EditorToolbar editor={editor} className="w-full" />
+      <PanelFooter size="compact" justify="between">
+        <EditorStats editor={editor} />
+        <EditorToolbar editor={editor} />
       </PanelFooter>
     </div>
   );
-}
+});
+
+NoteEditor.displayName = 'NoteEditor';
