@@ -101,9 +101,9 @@ export function TodoList({ onTodoClick }: TodoListProps) {
         // Filter out completed todos and sort by state priority
         const activeTodos = response.data.filter((todo) => !todo.checked);
         const sortedTodos = activeTodos.sort((a, b) => {
-          const priority = { doing: 0, waiting: 1, todo: 2, hold: 3, idea: 4 };
-          const aPriority = priority[a.state] ?? 5;
-          const bPriority = priority[b.state] ?? 5;
+          const priority: Record<string, number> = { doing: 0, waiting: 1, todo: 2, hold: 3, idea: 4, done: 5, canceled: 6 };
+          const aPriority = priority[a.state] ?? 7;
+          const bPriority = priority[b.state] ?? 7;
           return aPriority - bPriority;
         });
         setTodos(sortedTodos.slice(0, 10)); // Show max 10 todos

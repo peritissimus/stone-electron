@@ -98,7 +98,7 @@ export class DatabaseManager {
 
       // Sync all workspaces in parallel (much faster than sequential)
       await Promise.all(
-        workspaces.map(async (workspace) => {
+        workspaces.map(async (workspace: any) => {
           logger.info(`Syncing workspace: ${workspace.name} (${workspace.folderPath})`);
           try {
             const { NotebookRepository } = await import('../repositories/NotebookRepository');

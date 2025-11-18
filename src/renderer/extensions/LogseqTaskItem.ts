@@ -11,6 +11,7 @@ import {
 } from '@tiptap/core';
 import { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { Fragment } from '@tiptap/pm/model';
+import { TextSelection } from '@tiptap/pm/state';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -427,7 +428,7 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
           tr.replaceWith(start, start, taskList);
 
           // Set cursor inside the task item
-          tr.setSelection(state.selection.constructor.near(tr.doc.resolve(start + 2)));
+          tr.setSelection(TextSelection.near(tr.doc.resolve(start + 2)));
         },
       }),
     ];

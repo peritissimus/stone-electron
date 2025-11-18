@@ -75,6 +75,7 @@ export const useUIStore = create<UIState>()(
     (set) => ({
       // Sidebar
       sidebarOpen: true,
+      sidebarCollapsed: false,
       sidebarWidth: 240,
       sidebarPanel: 'home',
 
