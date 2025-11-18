@@ -37,7 +37,9 @@
     "db:push": "drizzle-kit push",
     "fs:check": "tsx -r tsconfig-paths/register scripts/fs-sync-check.ts",
     "fs:scan": "tsx scripts/fs-scan-only.ts",
-    "semantic-release": "semantic-release"
+    "release": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
