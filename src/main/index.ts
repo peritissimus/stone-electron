@@ -44,11 +44,22 @@ async function createWindow() {
     const preloadPath = path.join(__dirname, '../preload.cjs');
     logger.info(`Preload path: ${preloadPath}`);
 
+    // Determine icon path based on platform and environment
+    let iconPath: string | undefined;
+    if (process.platform === 'linux') {
+      iconPath = path.join(__dirname, '../../build/icon.png');
+    } else if (process.platform === 'darwin') {
+      iconPath = path.join(__dirname, '../../build/icon.icns');
+    } else if (process.platform === 'win32') {
+      iconPath = path.join(__dirname, '../../build/icon.ico');
+    }
+
     mainWindow = new BrowserWindow({
       width: 1200,
       height: 800,
       minWidth: 800,
       minHeight: 600,
+      icon: iconPath,
       webPreferences: {
         preload: preloadPath,
         nodeIntegration: false,
