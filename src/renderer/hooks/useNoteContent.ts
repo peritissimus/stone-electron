@@ -16,13 +16,20 @@ export function useNoteContent({ activeNote, editor }: UseNoteContentOptions) {
   const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Sync title from activeNote when it changes externally
+  useEffect(() => {
+    if (activeNote?.title !== undefined) {
+      setTitle(activeNote.title || '');
+    }
+  }, [activeNote?.title]);
+
   // Load content when active note changes
   useEffect(() => {
     if (!activeNote || !editor) return;
 
     const loadContent = async () => {
       setIsLoading(true);
-      setTitle(activeNote.title || '');
+      // Title is handled by the other effect
 
       try {
         // Load content from file
