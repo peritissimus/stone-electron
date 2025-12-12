@@ -23,7 +23,8 @@ interface RecentNoteProps {
 }
 
 const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
-  const formatDate = (date: Date) => {
+  const formatDate = (dateInput: Date | string) => {
+    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     const now = new Date();
     const diff = now.getTime() - date.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -334,4 +335,3 @@ export function HomePage() {
     </div>
   );
 }
-
