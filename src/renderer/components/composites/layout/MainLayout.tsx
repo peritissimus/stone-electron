@@ -16,7 +16,7 @@ import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
+import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import {
   useKeyboardShortcuts,
   ShortcutConfig,
@@ -43,6 +43,7 @@ export function MainLayout() {
   const { loadTags } = useTagAPI();
   const { loadNotes } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
+  const { openOrCreateTodayJournal } = useJournalActions();
 
   // Ref to access editor actions
   const editorRef = useRef<NoteEditorHandle>(null);
@@ -50,6 +51,10 @@ export function MainLayout() {
   // Draft recovery state
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const recoveryEditorRef = useRef<any>(null);
+
+  // Track if bootstrap is complete and if we've opened the initial journal
+  const [bootstrapComplete, setBootstrapComplete] = useState(false);
+  const initialJournalOpenedRef = useRef(false);
 
   // Load initial data and check for drafts
   useEffect(() => {
@@ -65,10 +70,26 @@ export function MainLayout() {
         logger.info('[MainLayout] Found unsaved drafts on startup:', drafts.length);
         setShowRecoveryDialog(true);
       }
+
+      // Mark bootstrap as complete
+      setBootstrapComplete(true);
     };
 
     void bootstrap();
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
+
+  // Auto-open today's journal on startup (after bootstrap completes)
+  useEffect(() => {
+    if (bootstrapComplete && !initialJournalOpenedRef.current && !showRecoveryDialog) {
+      initialJournalOpenedRef.current = true;
+      // Small delay to ensure React has processed all state updates
+      const timeoutId = setTimeout(() => {
+        logger.info('[MainLayout] Auto-opening today\'s journal');
+        void openOrCreateTodayJournal();
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [bootstrapComplete, showRecoveryDialog, openOrCreateTodayJournal]);
 
   // Keyboard shortcuts configuration
   const shortcuts = useMemo<ShortcutConfig[]>(

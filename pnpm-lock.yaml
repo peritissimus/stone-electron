@@ -229,8 +229,8 @@ importers:
         specifier: ^0.31.6
         version: 0.31.6
       electron:
-        specifier: 39.0.0
-        version: 39.0.0
+        specifier: 33.4.11
+        version: 33.4.11
       electron-builder:
         specifier: ^24.6.4
         version: 24.13.3(electron-builder-squirrel-windows@24.13.3)
@@ -2501,9 +2501,6 @@ packages:
   '@types/node@20.19.24':
     resolution: {integrity: sha512-FE5u0ezmi6y9OZEzlJfg37mqqf6ZDSF2V/NLjUyGrR9uTZ7Sb9F7bLNZ03S4XVUNRWGA7Ck4c1kK+YnuWjl+DA==}
 
-  '@types/node@22.18.13':
-    resolution: {integrity: sha512-Bo45YKIjnmFtv6I1TuC8AaHBbqXtIo+Om5fE4QiU1Tj8QR/qt+8O3BAtOimG5IFmwaWiPmB3Mv3jtYzBA4Us2A==}
-
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
 
@@ -3754,8 +3751,8 @@ packages:
   electron-to-chromium@1.5.243:
     resolution: {integrity: sha512-ZCphxFW3Q1TVhcgS9blfut1PX8lusVi2SvXQgmEEnK4TCmE1JhH2JkjJN+DNt0pJJwfBri5AROBnz2b/C+YU9g==}
 
-  electron@39.0.0:
-    resolution: {integrity: sha512-UejnuOK4jpRZUq7MkEAnR/szsRWLKBJAdvn6j3xdQLT57fVv13VSNdaUHHjSheaqGzNhCGIdkPsPJnGJVh5kiA==}
+  electron@33.4.11:
+    resolution: {integrity: sha512-xmdAs5QWRkInC7TpXGNvzo/7exojubk+72jn1oJL7keNeIlw7xNglf8TGtJtkR4rWC5FJq0oXiIXPS9BcK2Irg==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
@@ -9103,10 +9100,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@22.18.13':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/normalize-package-data@2.4.4': {}
 
   '@types/plist@3.0.5':
@@ -10527,10 +10520,10 @@ snapshots:
 
   electron-to-chromium@1.5.243: {}
 
-  electron@39.0.0:
+  electron@33.4.11:
     dependencies:
       '@electron/get': 2.0.3
-      '@types/node': 22.18.13
+      '@types/node': 20.19.24
       extract-zip: 2.0.1(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color

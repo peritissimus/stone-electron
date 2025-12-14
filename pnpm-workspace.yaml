@@ -2,4 +2,5 @@ packages:
   - .
 
 onlyBuiltDependencies:
+  - cypress
   - electron

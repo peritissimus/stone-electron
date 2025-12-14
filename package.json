@@ -43,7 +43,7 @@
     "release": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-rebuild --ignore better-sqlite3"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
@@ -121,7 +121,7 @@
     "cypress": "^15.7.1",
     "date-fns": "^2.30.0",
     "drizzle-kit": "^0.31.6",
-    "electron": "39.0.0",
+    "electron": "33.4.11",
     "electron-builder": "^24.6.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
