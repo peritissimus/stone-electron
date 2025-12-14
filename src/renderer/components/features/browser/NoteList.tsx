@@ -21,6 +21,7 @@ import {
 } from '@renderer/components/base/ui/select';
 import { Toggle } from '@renderer/components/base/ui/toggle';
 import { logger } from '@renderer/utils/logger';
+import { normalizePath, getParentPath } from '@renderer/utils/path';
 import {
   Star,
   PushPin,
@@ -36,27 +37,12 @@ import {
 import { Header, ControlGroup, ListContainer, TreeItem } from '@renderer/components/composites';
 
 import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
-
-const normalizePath = (path: string) =>
-  path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
-const getParentPath = (path: string) => {
-  const normalized = normalizePath(path);
-  const idx = normalized.lastIndexOf('/');
-  if (idx === -1) return '';
-  return normalized.slice(0, idx);
-};
-const stripHtml = (html?: string | null) =>
-  html
-    ? html
-        .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-    : '';
+import type { Note } from '@shared/types';
 
 export function NoteList() {
   const notes = useNoteStore((state) => state.notes, shallow);
+  const notesByPath = useNoteStore((state) => state.notesByPath);
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
-  const getNoteByFilePath = useNoteStore((state) => state.getNoteByFilePath);
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
     useUIStore();
   const {
@@ -71,6 +57,11 @@ export function NoteList() {
   const { createNote, loadNotes, loadNoteById } = useNoteAPI();
   const [isCreating, setIsCreating] = useState(false);
 
+  // Helper to get note from Map (O(1) lookup)
+  const getNoteByPath = (path: string): Note | undefined => {
+    return notesByPath.get(normalizePath(path));
+  };
+
   useEffect(() => {
     if (activeFolder) {
       logger.info('[NoteList] loadNotes by folder', { folderPath: activeFolder });
@@ -83,11 +74,11 @@ export function NoteList() {
 
   useEffect(() => {
     if (!selectedFile) return;
-    const note = getNoteByFilePath(selectedFile);
+    const note = getNoteByPath(selectedFile);
     if (note) {
       setActiveNote(note.id);
     }
-  }, [selectedFile, notes, getNoteByFilePath, setActiveNote, loadNoteById]);
+  }, [selectedFile, notesByPath, setActiveNote]);
 
   const filteredNotes = useMemo(
     () => (showArchived ? notes : notes.filter((note) => !note.isArchived)),
@@ -160,17 +151,17 @@ export function NoteList() {
       setActiveFolder(parent);
     }
     setSelectedFile(normalized);
-    const note = getNoteByFilePath(normalized);
+    const note = getNoteByPath(normalized);
     if (note) {
       setActiveNote(note.id);
     }
   };
 
-  const sortNodesForView = (nodes: FileTreeNode[]): FileTreeNode[] => {
-    const copy = [...nodes];
+  // Memoized sort function - only re-sorts when dependencies change
+  const sortNodes = useMemo(() => {
     const compareFiles = (a: FileTreeNode, b: FileTreeNode) => {
-      const noteA = getNoteByFilePath(normalizePath(a.path));
-      const noteB = getNoteByFilePath(normalizePath(b.path));
+      const noteA = notesByPath.get(normalizePath(a.path));
+      const noteB = notesByPath.get(normalizePath(b.path));
 
       switch (sortBy) {
         case 'updated': {
@@ -197,23 +188,25 @@ export function NoteList() {
       }
     };
 
-    copy.sort((a, b) => {
-      if (a.type === 'folder' && b.type !== 'folder') return -1;
-      if (a.type !== 'folder' && b.type === 'folder') return 1;
-      if (a.type === 'folder' && b.type === 'folder') {
-        return a.name.localeCompare(b.name);
-      }
-      const comparison = compareFiles(a, b);
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    return copy;
-  };
+    return (nodes: FileTreeNode[]): FileTreeNode[] => {
+      const copy = [...nodes];
+      copy.sort((a, b) => {
+        if (a.type === 'folder' && b.type !== 'folder') return -1;
+        if (a.type !== 'folder' && b.type === 'folder') return 1;
+        if (a.type === 'folder' && b.type === 'folder') {
+          return a.name.localeCompare(b.name);
+        }
+        const comparison = compareFiles(a, b);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+      return copy;
+    };
+  }, [notesByPath, sortBy, sortOrder]);
 
   const renderNodes = (nodes: FileTreeNode[], level = 0): JSX.Element[] => {
     if (!nodes || nodes.length === 0) return [];
 
-    return sortNodesForView(nodes).map((node) => {
+    return sortNodes(nodes).map((node) => {
       if (node.type === 'folder') {
         const normalizedPath = normalizePath(node.path);
         const hasChildren = (node.children?.length ?? 0) > 0;
@@ -259,13 +252,12 @@ export function NoteList() {
       }
 
       const normalizedPath = normalizePath(node.path);
-      const note = getNoteByFilePath(normalizedPath);
+      const note = notesByPath.get(normalizedPath);
       const isSelected = normalizePath(selectedFile || '') === normalizedPath;
       const title = note?.title?.trim() ? note.title : node.name.replace(/\.md$/i, '');
       const updatedAt = note
         ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
         : '';
-      const preview = '';
       const isPinned = note?.isPinned;
       const isFavorite = note?.isFavorite;
 
@@ -284,13 +276,7 @@ export function NoteList() {
               {updatedAt}
             </div>
           }
-        >
-          {preview && (
-            <Text size="xs" variant="muted" className="text-[10px] line-clamp-1">
-              {preview}
-            </Text>
-          )}
-        </TreeItem>
+        />
       );
     });
   };

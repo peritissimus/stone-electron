@@ -19,6 +19,8 @@ import { PanelFooter } from '@renderer/components/composites';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 import { saveDraft, deleteDraft } from '@renderer/utils/draftStorage';
+import { normalizePath } from '@renderer/utils/path';
+import { fastDeepEqual } from '@renderer/utils/fastEquals';
 
 /**
  * NoteEditor ref API - exposed actions for keyboard shortcuts
@@ -67,7 +69,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     });
 
     const { setSelectedFile, setActiveFolder } = useFileTreeStore.getState();
-    const normalizedPath = activeNoteFilePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    const normalizedPath = normalizePath(activeNoteFilePath);
 
     logger.info('[NoteEditor] Setting selectedFile in FileTree', {
       originalPath: activeNoteFilePath,
@@ -120,7 +122,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         try {
           const current = editor.getJSON();
           const baseline = lastSavedJsonRef.current;
-          const equal = JSON.stringify(current) === JSON.stringify(baseline);
+          // Use fast deep equality instead of JSON.stringify (much faster)
+          const equal = fastDeepEqual(current, baseline);
           setIsDirty(!equal);
         } catch {
           setIsDirty(true);
@@ -231,11 +234,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       await handleTitleChange(newTitle, async (title: string) => {
         if (!activeNoteId) return;
         // Immediate title save (shorter debounce)
+        // Use silent: false so store updates reflect any failures
         setTimeout(async () => {
           try {
-            await updateNote(activeNoteId, { title }, true);
+            await updateNote(activeNoteId, { title }, false);
           } catch (error) {
-            console.error('Title autosave failed:', error);
+            logger.error('Title autosave failed:', error);
           }
         }, 500);
       });

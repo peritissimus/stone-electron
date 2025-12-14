@@ -27,19 +27,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
-
-const normalizePath = (path: string) =>
-  path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
-
-const getParentPath = (path: string) => {
-  const normalized = normalizePath(path);
-  if (!normalized.includes('/')) return '';
-  return normalized.slice(0, normalized.lastIndexOf('/'));
-};
-
-const getDisplayName = (name: string) => {
-  return name.endsWith('.md') ? name.replace(/\.md$/i, '') : name;
-};
+import { normalizePath, getParentPath, getDisplayName } from '@renderer/utils/path';
 
 interface FileTreeFileProps {
   node: StoreFileTreeNode;
@@ -52,19 +40,15 @@ interface FileTreeFileProps {
 const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelete, onMove }) => {
   const normalizedPath = normalizePath(node.path);
 
-  const isActive = useFileTreeStore(
-    useCallback(
-      (state) => normalizePath(state.selectedFile || '') === normalizedPath,
-      [normalizedPath],
-    ),
-  );
+  // Simplified selectors - Zustand handles equality checks internally
+  const selectedFile = useFileTreeStore((state) => state.selectedFile);
+  const isActive = normalizePath(selectedFile || '') === normalizedPath;
   const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
   const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
 
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
-  const note = useNoteStore(
-    useCallback((state) => state.notesByPath.get(normalizedPath), [normalizedPath]),
-  );
+  const notesByPath = useNoteStore((state) => state.notesByPath);
+  const note = notesByPath.get(normalizedPath);
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -197,6 +181,8 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   );
 });
 
+FileLeaf.displayName = 'FileLeaf';
+
 interface FolderNodeProps {
   node: StoreFileTreeNode;
   level: number;
@@ -223,15 +209,11 @@ const FolderChildren = React.memo<FolderNodeProps>(
   }) => {
     const normalizedPath = normalizePath(node.path);
 
-    const isExpanded = useFileTreeStore(
-      useCallback((state) => state.expandedPaths.has(normalizedPath), [normalizedPath]),
-    );
-    const isActive = useFileTreeStore(
-      useCallback(
-        (state) => normalizePath(state.activeFolder || '') === normalizedPath,
-        [normalizedPath],
-      ),
-    );
+    // Simplified selectors - Zustand handles equality checks internally
+    const expandedPaths = useFileTreeStore((state) => state.expandedPaths);
+    const activeFolder = useFileTreeStore((state) => state.activeFolder);
+    const isExpanded = expandedPaths.has(normalizedPath);
+    const isActive = normalizePath(activeFolder || '') === normalizedPath;
     const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
     const toggleExpanded = useFileTreeStore((state) => state.toggleExpanded);
     const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
@@ -485,6 +467,8 @@ const FolderChildren = React.memo<FolderNodeProps>(
     );
   },
 );
+
+FolderChildren.displayName = 'FolderChildren';
 
 export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();

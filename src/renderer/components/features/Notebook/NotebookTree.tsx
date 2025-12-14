@@ -1,8 +1,8 @@
 /**
- * Notebook Tree Component - Placeholder
+ * Notebook Tree Component - Optimized with memoization
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { logger } from '@renderer/utils/logger';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { CaretRight, CaretDown } from 'phosphor-react';
@@ -12,8 +12,7 @@ import { Text } from '@renderer/components/base/ui/text';
 import { TreeItem } from '@renderer/components/composites';
 
 export function NotebookTree() {
-  const { notebooks, activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } =
-    useNotebookStore();
+  const notebooks = useNotebookStore((state) => state.notebooks);
 
   if (notebooks.length === 0) {
     return <div className="p-3 text-xs text-muted-foreground text-center">No notebooks yet</div>;
@@ -22,21 +21,7 @@ export function NotebookTree() {
   return (
     <div>
       {notebooks.map((notebook) => (
-        <NotebookTreeItem
-          key={notebook.id}
-          notebook={notebook}
-          isActive={notebook.id === activeNotebookId}
-          isExpanded={expandedIds.has(notebook.id)}
-          onSelect={() => {
-            logger.info('[NotebookTree] select', { id: notebook.id, name: notebook.name });
-            setActiveNotebook(notebook.id);
-          }}
-          onToggleExpand={() => toggleExpanded(notebook.id)}
-          activeNotebookId={activeNotebookId}
-          expandedIds={expandedIds}
-          setActiveNotebook={setActiveNotebook}
-          toggleExpanded={toggleExpanded}
-        />
+        <NotebookTreeItem key={notebook.id} notebook={notebook} level={0} />
       ))}
     </div>
   );
@@ -49,37 +34,40 @@ interface NotebookWithChildren extends Notebook {
 
 interface NotebookTreeItemProps {
   notebook: NotebookWithChildren;
-  isActive: boolean;
-  isExpanded: boolean;
-  onSelect: () => void;
-  onToggleExpand: () => void;
-  activeNotebookId: string | null;
-  expandedIds: Set<string>;
-  setActiveNotebook: (id: string | null) => void;
-  toggleExpanded: (id: string) => void;
-  level?: number;
+  level: number;
 }
 
-function NotebookTreeItem({
-  notebook,
-  isActive,
-  isExpanded,
-  onSelect,
-  onToggleExpand,
-  activeNotebookId,
-  expandedIds,
-  setActiveNotebook,
-  toggleExpanded,
-  level = 0,
-}: NotebookTreeItemProps) {
+// Memoized tree item - only re-renders when notebook or level changes
+const NotebookTreeItem = React.memo<NotebookTreeItemProps>(({ notebook, level }) => {
+  // Get state and actions directly from store (avoids prop drilling)
+  const activeNotebookId = useNotebookStore((state) => state.activeNotebookId);
+  const expandedIds = useNotebookStore((state) => state.expandedIds);
+  const setActiveNotebook = useNotebookStore((state) => state.setActiveNotebook);
+  const toggleExpanded = useNotebookStore((state) => state.toggleExpanded);
+
+  const isActive = notebook.id === activeNotebookId;
+  const isExpanded = expandedIds.has(notebook.id);
   const hasChildren = notebook.children && notebook.children.length > 0;
+
+  const handleSelect = useCallback(() => {
+    logger.info('[NotebookTree] select', { id: notebook.id, name: notebook.name });
+    setActiveNotebook(notebook.id);
+  }, [notebook.id, notebook.name, setActiveNotebook]);
+
+  const handleToggleExpand = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleExpanded(notebook.id);
+    },
+    [notebook.id, toggleExpanded]
+  );
 
   return (
     <>
       <TreeItem
         level={level}
         isActive={isActive}
-        onClick={onSelect}
+        onClick={handleSelect}
         icon={notebook.icon || '📁'}
         label={notebook.name}
         right={
@@ -89,10 +77,7 @@ function NotebookTreeItem({
                 variant="ghost"
                 size="sm"
                 className="h-5 w-5 p-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleExpand();
-                }}
+                onClick={handleToggleExpand}
                 aria-label={isExpanded ? 'Collapse' : 'Expand'}
               >
                 {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
@@ -109,23 +94,13 @@ function NotebookTreeItem({
         {hasChildren && isExpanded && (
           <div>
             {notebook.children?.map((child) => (
-              <NotebookTreeItem
-                key={child.id}
-                notebook={child}
-                isActive={child.id === activeNotebookId}
-                isExpanded={expandedIds.has(child.id)}
-                onSelect={() => setActiveNotebook(child.id)}
-                onToggleExpand={() => toggleExpanded(child.id)}
-                activeNotebookId={activeNotebookId}
-                expandedIds={expandedIds}
-                setActiveNotebook={setActiveNotebook}
-                toggleExpanded={toggleExpanded}
-                level={level + 1}
-              />
+              <NotebookTreeItem key={child.id} notebook={child} level={level + 1} />
             ))}
           </div>
         )}
       </TreeItem>
     </>
   );
-}
+});
+
+NotebookTreeItem.displayName = 'NotebookTreeItem';
