@@ -25,6 +25,21 @@ export default defineConfig({
     target: 'ES2020',
     outDir: 'dist/renderer',
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps for smaller bundle
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        // Better code splitting for lazy loading
+        manualChunks: {
+          // Core React
+          'react-vendor': ['react', 'react-dom'],
+          // Editor core
+          'tiptap-core': ['@tiptap/core', '@tiptap/react', '@tiptap/starter-kit'],
+          // Heavy features - loaded on demand
+          'mermaid': ['mermaid'],
+          'highlight': ['highlight.js'],
+        },
+      },
+    },
   },
 })

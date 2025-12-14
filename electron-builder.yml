@@ -2,20 +2,37 @@ appId: com.stone.app
 productName: Stone
 nodeGypRebuild: false
 npmRebuild: false
+
 directories:
   buildResources: build
   output: dist/build
+
+# Only include production files - electron-builder will handle node_modules
 files:
-  - dist/**/*
-  - node_modules/**/*
+  - dist/main/**/*
+  - dist/renderer/**/*
+  - dist/preload.cjs
   - package.json
   - migrations/**/*
+  # Exclude unnecessary files
+  - "!**/{CHANGELOG.md,README.md,README,readme.md,readme}"
+  - "!**/{test,__tests__,tests,powered-test,spec,specs}/**"
+  - "!**/*.{map,ts,tsx,md,markdown}"
+  - "!**/.{eslint,prettier,github,vscode}*"
+  - "!**/node_modules/**/{.bin,.cache,.github,.vscode}"
+  - "!**/node_modules/**/*.d.ts"
+  - "!**/node_modules/**/{tsconfig,jest,webpack,rollup,vite}*.json"
+  - "!**/node_modules/**/LICENSE*"
+  - "!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**"
+
+# Enable asar compression
+asar: true
+compression: maximum
+
+# Native modules that need to be unpacked
 asarUnpack:
   - node_modules/@libsql/**/*
   - node_modules/libsql/**/*
-  - node_modules/better-sqlite3/**/*
-electronVersion: 39.0.0
-nodeVersion: 20.16.0
 
 mac:
   target:
@@ -25,6 +42,8 @@ mac:
   identity: null
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  # Minimize app size
+  minimumSystemVersion: "10.15"
 
 win:
   target:
@@ -50,3 +69,6 @@ appImage:
 
 deb:
   artifactName: Stone-${version}.${ext}
+
+# Optimize packaging
+buildDependenciesFromSource: false
