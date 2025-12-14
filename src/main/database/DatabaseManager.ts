@@ -10,7 +10,14 @@ import os from 'os';
 // Conditionally import electron
 let app: any = null;
 try {
-  app = require('electron').app;
+  const electron = require('electron');
+  // Outside Electron, require('electron') returns a string path to the binary
+  // We need to check if we got the actual Electron module with the app API
+  if (typeof electron !== 'string' && electron.app) {
+    app = electron.app;
+  } else {
+    throw new Error('Not running in Electron context');
+  }
 } catch {
   // Electron not available, use fallback
   app = {
