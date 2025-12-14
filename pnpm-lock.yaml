@@ -8,6 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@fontsource/barlow':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/barlow-condensed':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/inter':
+        specifier: ^5.2.8
+        version: 5.2.8
       '@libsql/client':
         specifier: ^0.15.15
         version: 0.15.15
@@ -1042,6 +1051,15 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
+
+  '@fontsource/barlow-condensed@5.2.8':
+    resolution: {integrity: sha512-cmCWNfh7oCmfarGDlhiJRkl4HOgt9aOqki7IYtDOaI3qLCeEO/8VjiZeAx/2PEPf4K36YxXDjAlOWwW/anQUZA==}
+
+  '@fontsource/barlow@5.2.8':
+    resolution: {integrity: sha512-iuFOnY4OI2cd1STrJ3NdJNzWjhcwv6JarmqfdoZzAmz9g0jTVjES86MNbuBxqVR3ydbTEjo4opEl24GXScRM7w==}
+
+  '@fontsource/inter@5.2.8':
+    resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
 
   '@fontsource/patrick-hand@5.2.8':
     resolution: {integrity: sha512-FZx34VLuiF+Pjv/A/m1bTxjR6hAvmL6vdCp62uypVdgFvSrPrBOxX+vCXVy8lfNVFqvKfm/ghun+aaYVYqfBEg==}
@@ -7535,6 +7553,12 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@floating-ui/utils@0.2.10': {}
+
+  '@fontsource/barlow-condensed@5.2.8': {}
+
+  '@fontsource/barlow@5.2.8': {}
+
+  '@fontsource/inter@5.2.8': {}
 
   '@fontsource/patrick-hand@5.2.8': {}
 
