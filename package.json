@@ -46,6 +46,9 @@
     "postinstall": "electron-rebuild --ignore better-sqlite3"
   },
   "dependencies": {
+    "@fontsource/barlow": "^5.2.8",
+    "@fontsource/barlow-condensed": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@libsql/client": "^0.15.15",
     "chokidar": "^4.0.3",
     "dotenv": "^17.2.3",

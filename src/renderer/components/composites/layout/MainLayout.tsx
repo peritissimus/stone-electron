@@ -52,8 +52,9 @@ export function MainLayout() {
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const recoveryEditorRef = useRef<any>(null);
 
-  // Track if bootstrap is complete and if we've opened the initial journal
+  // Track if bootstrap is complete and if we've attempted to open the initial journal
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
+  const [initialJournalAttempted, setInitialJournalAttempted] = useState(false);
   const initialJournalOpenedRef = useRef(false);
 
   // Load initial data and check for drafts
@@ -80,14 +81,18 @@ export function MainLayout() {
 
   // Auto-open today's journal on startup (after bootstrap completes)
   useEffect(() => {
-    if (bootstrapComplete && !initialJournalOpenedRef.current && !showRecoveryDialog) {
-      initialJournalOpenedRef.current = true;
-      // Small delay to ensure React has processed all state updates
-      const timeoutId = setTimeout(() => {
+    if (bootstrapComplete && !initialJournalOpenedRef.current) {
+      if (showRecoveryDialog) {
+        // If recovery dialog is shown, mark as attempted so HomePage can render behind the dialog
+        setInitialJournalAttempted(true);
+      } else {
+        initialJournalOpenedRef.current = true;
+        // Open journal immediately - no delay needed
         logger.info('[MainLayout] Auto-opening today\'s journal');
-        void openOrCreateTodayJournal();
-      }, 100);
-      return () => clearTimeout(timeoutId);
+        openOrCreateTodayJournal().finally(() => {
+          setInitialJournalAttempted(true);
+        });
+      }
     }
   }, [bootstrapComplete, showRecoveryDialog, openOrCreateTodayJournal]);
 
@@ -164,7 +169,12 @@ export function MainLayout() {
         mainContent={
           <MainContentArea>
             {searchOpen && <SearchPanel />}
-            {activeNoteId ? <NoteEditor ref={editorRef} /> : <HomePage />}
+            {activeNoteId ? (
+              <NoteEditor ref={editorRef} />
+            ) : (
+              // Only show HomePage after initial bootstrap and journal open attempt
+              initialJournalAttempted && <HomePage />
+            )}
           </MainContentArea>
         }
         overlayContent={<SettingsModal />}
