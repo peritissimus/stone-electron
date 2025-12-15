@@ -40,12 +40,36 @@ echo "Using: $CONVERT"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/icons"
 
-# Generate PNGs at required sizes
-echo "Creating resized PNGs..."
+# Add macOS-style padding and rounded corners
+echo "Adding macOS-style padding and rounded corners..."
+TEMP_PADDED="$BUILD_DIR/icons/temp_padded.png"
+$CONVERT "$SOURCE_FILE" -gravity center -background none -extent 125%x125% "$TEMP_PADDED"
+
+# Generate PNGs at required sizes with rounded corners
+echo "Creating resized PNGs with rounded corners..."
 for size in 16 32 48 64 128 256 512 1024; do
     echo "  ${size}x${size}..."
-    $CONVERT "$SOURCE_FILE" -resize "${size}x${size}" "$BUILD_DIR/icons/icon_${size}.png"
+    # Calculate corner radius (22.37% of size for macOS Big Sur style rounding)
+    radius=$(echo "$size * 0.2237" | bc | cut -d. -f1)
+
+    # Create rounded rectangle mask (white on black)
+    $CONVERT -size ${size}x${size} xc:black -fill white \
+        -draw "roundrectangle 0,0,$((size-1)),$((size-1)),${radius},${radius}" \
+        "$BUILD_DIR/icons/mask_${size}.png"
+
+    # Resize icon and apply mask to create rounded corners
+    $CONVERT "$TEMP_PADDED" -resize "${size}x${size}" \
+        "$BUILD_DIR/icons/mask_${size}.png" \
+        -compose CopyOpacity -composite \
+        "$BUILD_DIR/icons/icon_${size}.png"
+
+    # Clean up mask
+    rm -f "$BUILD_DIR/icons/mask_${size}.png"
 done
+
+# Clean up temp padded file
+rm -f "$TEMP_PADDED"
+echo "✓ Added rounded corners"
 
 # Copy 1024px version as the main icon.png (Linux)
 cp "$BUILD_DIR/icons/icon_1024.png" "$BUILD_DIR/icon.png"

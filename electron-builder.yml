@@ -39,9 +39,13 @@ mac:
     - dmg
     - zip
   category: public.app-categories.productivity
+  # For development: identity: null (ad-hoc signing)
+  # For distribution: remove this line and set CSC_LINK/CSC_KEY_PASSWORD env vars
   identity: null
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  gatekeeperAssess: false
   # Minimize app size
   minimumSystemVersion: "10.15"
 
