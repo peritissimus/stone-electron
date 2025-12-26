@@ -526,10 +526,10 @@ export function FileTree() {
 
   const handleDeleteNote = useCallback(
     async (noteId: string) => {
-      const confirmed = window.confirm('Move this note to the trash?');
+      const confirmed = window.confirm('Are you sure you want to delete this note? This cannot be undone.');
       if (!confirmed) return;
       try {
-        const success = await deleteNote(noteId, false);
+        const success = await deleteNote(noteId, true);
         if (success) {
           await loadFileTree();
         }

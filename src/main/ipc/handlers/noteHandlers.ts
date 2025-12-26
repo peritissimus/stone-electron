@@ -308,20 +308,28 @@ export function registerNoteHandlers() {
   ipcMain.handle(
     NOTE_CHANNELS.DELETE,
     createHandler(async (event, request: { id: string; permanent?: boolean }) => {
+      logger.info('[IPC][notes:delete] Received request', { id: request.id, permanent: request.permanent });
+
       if (request.permanent) {
+        logger.info('[IPC][notes:delete] Calling permanentDelete...');
         const success = await repos.note.permanentDelete(request.id);
+        logger.info('[IPC][notes:delete] permanentDelete result:', success);
         if (!success) {
           throw new IpcError('NOT_FOUND', 'Note not found');
         }
       } else {
+        logger.info('[IPC][notes:delete] Calling softDelete...');
         await repos.note.softDelete(request.id);
+        logger.info('[IPC][notes:delete] softDelete complete');
       }
 
       // Broadcast event
+      logger.info('[IPC][notes:delete] Broadcasting NOTE_DELETED event');
       BrowserWindow.getAllWindows().forEach((win) => {
         win.webContents.send(EVENTS.NOTE_DELETED, { id: request.id });
       });
 
+      logger.info('[IPC][notes:delete] Done, returning success');
       return { success: true, id: request.id };
     }),
   );

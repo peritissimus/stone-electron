@@ -106,17 +106,24 @@ export function useNoteAPI() {
 
   const deleteNoteById = useCallback(
     async (id: string, permanent = false) => {
+      logger.info('[useNoteAPI.deleteNote] Starting delete', { id, permanent });
       setError(null);
       try {
+        logger.info('[useNoteAPI.deleteNote] Invoking IPC...');
         const response = await window.electron.invoke(NOTE_CHANNELS.DELETE, { id, permanent });
+        logger.info('[useNoteAPI.deleteNote] IPC response:', response);
         if (response.success) {
+          logger.info('[useNoteAPI.deleteNote] Removing from store...');
           deleteNote(id);
+          logger.info('[useNoteAPI.deleteNote] Done');
           return true;
         } else {
+          logger.error('[useNoteAPI.deleteNote] Failed:', response.error);
           setError(response.error?.message || 'Failed to delete note');
           return false;
         }
       } catch (error) {
+        logger.error('[useNoteAPI.deleteNote] Exception:', error);
         setError(error instanceof Error ? error.message : 'Failed to delete note');
         return false;
       }
