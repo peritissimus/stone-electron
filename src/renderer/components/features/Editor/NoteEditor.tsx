@@ -266,9 +266,25 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
           toggleArchive(activeNote.id);
           setActiveNote(null);
         }}
-        onDelete={() => {
-          if (window.confirm('Are you sure you want to delete this note?')) {
-            deleteNote(activeNote.id, true);
+        onDelete={async () => {
+          logger.info('[NoteEditor] Delete clicked for note:', activeNote.id);
+          const confirmed = window.confirm('Are you sure you want to delete this note?');
+          logger.info('[NoteEditor] Confirm result:', confirmed);
+          if (confirmed) {
+            try {
+              logger.info('[NoteEditor] Calling deleteNote...');
+              const success = await deleteNote(activeNote.id, true);
+              logger.info('[NoteEditor] deleteNote result:', success);
+              if (success) {
+                setActiveNote(null);
+                deleteDraft(activeNote.id);
+                logger.info('[NoteEditor] Note deleted successfully');
+              } else {
+                logger.error('[NoteEditor] Failed to delete note - returned false');
+              }
+            } catch (error) {
+              logger.error('[NoteEditor] Error deleting note:', error);
+            }
           }
         }}
         showSave={isDirty}

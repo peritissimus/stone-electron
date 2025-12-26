@@ -31,7 +31,7 @@ function getTodayJournalInfo() {
 }
 
 export function useJournalActions() {
-  const { setActiveNote } = useNoteStore();
+  const { setActiveNote, getNoteByFilePath } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { createNote } = useNoteAPI();
 
@@ -76,11 +76,8 @@ export function useJournalActions() {
       expectedFilePath,
     });
 
-    // Get fresh notes from store to avoid stale closure
-    const notes = useNoteStore.getState().notes;
-
-    // Check if today's journal already exists
-    const existingJournal = notes.find((note) => note.filePath === expectedFilePath);
+    // Check if today's journal already exists using normalized path lookup
+    const existingJournal = getNoteByFilePath(expectedFilePath);
 
     if (existingJournal) {
       logger.info('[useJournalActions] Opening existing journal', { id: existingJournal.id });
@@ -111,9 +108,8 @@ export function useJournalActions() {
    */
   const todayJournalExists = (): boolean => {
     const { expectedFilePath } = getTodayJournalInfo();
-    // Get fresh notes from store to avoid stale closure
-    const notes = useNoteStore.getState().notes;
-    return notes.some((note) => note.filePath === expectedFilePath);
+    // Use normalized path lookup for accurate check
+    return getNoteByFilePath(expectedFilePath) !== null;
   };
 
   /**

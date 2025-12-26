@@ -670,36 +670,21 @@ export class NoteRepository {
 
   /**
    * Permanently delete a note and all related data
+   * Related tables (attachments, versions, tags, links) use ON DELETE CASCADE
    */
   async permanentDelete(id: string): Promise<boolean> {
-    return await this.transaction(async () => {
-      // Get note to check if it has a file (before deleting from DB)
-      const note = await this.findById(id);
+    // Get note to check if it has a file (before deleting from DB)
+    const note = await this.findById(id);
 
-      // Delete attachments
-      await this.db.delete(attachments).where(eq(attachments.noteId, id));
+    // Delete from database - CASCADE will handle related tables
+    await this.db.delete(notes).where(eq(notes.id, id));
 
-      // Delete versions
-      await this.db.delete(noteVersions).where(eq(noteVersions.noteId, id));
+    // Delete markdown file if it exists
+    if (note?.filePath && note.workspaceId) {
+      await this.deleteMarkdownFile(note.filePath, note.workspaceId);
+    }
 
-      // Delete tags associations
-      await this.db.delete(noteTags).where(eq(noteTags.noteId, id));
-
-      // Delete links
-      await this.db
-        .delete(noteLinks)
-        .where(or(eq(noteLinks.sourceNoteId, id), eq(noteLinks.targetNoteId, id)));
-
-      // Delete from database
-      await this.db.delete(notes).where(eq(notes.id, id));
-
-      // Delete markdown file if it exists
-      if (note?.filePath && note.workspaceId) {
-        await this.deleteMarkdownFile(note.filePath, note.workspaceId);
-      }
-
-      return true;
-    });
+    return true;
   }
 
   /**
@@ -1056,22 +1041,29 @@ export class NoteRepository {
       const filesOnDisk = await this.fileSystemService.scanFolder(workspace.folderPath, true);
       logger.info(`[NoteRepository] ✅ Found ${filesOnDisk.length} markdown files on disk`);
 
-      // Get all notes in this workspace from database
+      // Get all notes in this workspace from database (both active and deleted)
       logger.info(`[NoteRepository] 🔍 Querying database for existing notes...`);
       const notesInDb = await this.findAll({
         where: { workspaceId, isDeleted: false },
       });
-      logger.info(`[NoteRepository] ✅ Found ${notesInDb.length} notes in database`);
+      // Also get deleted notes to avoid re-creating them
+      const deletedNotesInDb = await this.findAll({
+        where: { workspaceId, isDeleted: true },
+      });
+      logger.info(`[NoteRepository] ✅ Found ${notesInDb.length} active notes, ${deletedNotesInDb.length} deleted notes`);
 
       // Create maps for efficient lookup
       const filesMap = new Map(filesOnDisk.map((f) => [f.relativePath, f]));
       const notesMap = new Map(notesInDb.map((n) => [n.filePath || '', n]));
+      // Track deleted note file paths to avoid re-creating them
+      const deletedNotePaths = new Set(deletedNotesInDb.map((n) => n.filePath).filter(Boolean));
 
       logger.info(`[NoteRepository] 📊 Comparing files and notes...`);
 
       // Find files that exist on disk but not in database (CREATE)
+      // Skip files that belong to soft-deleted notes
       for (const file of filesOnDisk) {
-        if (!notesMap.has(file.relativePath)) {
+        if (!notesMap.has(file.relativePath) && !deletedNotePaths.has(file.relativePath)) {
           logger.info(`[NoteRepository] ➕ Creating note from file: ${file.relativePath}`);
           try {
             // Determine notebook by folder path
