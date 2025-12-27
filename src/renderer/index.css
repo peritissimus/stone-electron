@@ -236,6 +236,8 @@
 
 html {
   scroll-behavior: smooth;
+  overflow: hidden;
+  height: 100%;
 }
 
 /* Force dark mode by default */
@@ -250,6 +252,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   font-size: var(--font-ui-size);
   line-height: 1.5;
+  overflow: hidden;
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Better font for editor content - Notion style */
@@ -286,37 +295,46 @@ textarea:focus {
   outline: none;
 }
 
-/* Scrollbar Styling - macOS inspired */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+/* macOS-style overlay scrollbars - appear only when hovering */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
 }
 
-::-webkit-scrollbar-track {
+*:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.dark *:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* Webkit overlay scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
   background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: transparent;
   border-radius: 10px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 
-.dark ::-webkit-scrollbar-thumb {
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dark *:hover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
-  border: 2px solid transparent;
-  background-clip: padding-box;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-  background-clip: padding-box;
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-  background-clip: padding-box;
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 /* Hide scrollbar utility */
