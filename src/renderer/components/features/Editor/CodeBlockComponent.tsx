@@ -102,27 +102,29 @@ const initializeMermaid = (
   isDark = false,
   overrides: MermaidOverrides = {},
 ) => {
-  // Safe fallbacks if CSS variables are not yet available
+  // Safe fallbacks matching CSS variables in index.css (used only if CSS vars unavailable)
+  // Light: --background: 0 0% 100%, --foreground: 0 0% 12%, --border: 0 0% 90%, etc.
+  // Dark: --background: 0 0% 11%, --foreground: 0 0% 92%, --border: 0 0% 22%, etc.
   const F = isDark
     ? {
-        background: '#1c1c1e',
-        foreground: '#e5e7eb',
-        border: '#3a3a3c',
-        primary: '#60a5fa',
-        accent: '#1f2a44',
-        muted: '#222225',
-        mutedFg: '#9ca3af',
-        card: '#2c2c2e',
+        background: 'hsl(0 0% 11%)',
+        foreground: 'hsl(0 0% 92%)',
+        border: 'hsl(0 0% 22%)',
+        primary: 'hsl(211 100% 60%)',
+        accent: 'hsl(211 100% 20%)',
+        muted: 'hsl(0 0% 20%)',
+        mutedFg: 'hsl(0 0% 60%)',
+        card: 'hsl(0 0% 15%)',
       }
     : {
-        background: '#ffffff',
-        foreground: '#111827',
-        border: '#e5e7eb',
-        primary: '#3b82f6',
-        accent: '#eaf2ff',
-        muted: '#f5f5f5',
-        mutedFg: '#6b7280',
-        card: '#ffffff',
+        background: 'hsl(0 0% 100%)',
+        foreground: 'hsl(0 0% 12%)',
+        border: 'hsl(0 0% 90%)',
+        primary: 'hsl(211 100% 50%)',
+        accent: 'hsl(211 100% 97%)',
+        muted: 'hsl(0 0% 97%)',
+        mutedFg: 'hsl(0 0% 50%)',
+        card: 'hsl(0 0% 100%)',
       };
 
   const background = cssVarColor('--background', F.background);

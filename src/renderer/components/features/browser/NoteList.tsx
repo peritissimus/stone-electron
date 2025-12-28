@@ -272,7 +272,7 @@ export function NoteList() {
           right={
             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
               {isPinned && <PushPin size={10} className="text-primary" />}
-              {isFavorite && <Star size={10} className="text-yellow-500" />}
+              {isFavorite && <Star size={10} className="text-warning" />}
               {updatedAt}
             </div>
           }

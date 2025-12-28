@@ -42,7 +42,7 @@ export function TagList({ className }: TagListProps) {
             <div className="flex items-center gap-2">
               <div
                 className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: tag.color || '#6b7280' }}
+                style={{ backgroundColor: tag.color || 'hsl(var(--muted-foreground))' }}
               />
               <Text size="xs" as="span">
                 {tag.name}
