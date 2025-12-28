@@ -2,6 +2,9 @@
  * Stone - React Renderer Entry Point
  */
 
+// Must be first import for why-did-you-render to work
+import './wdyr'
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { App } from '@renderer/App'
