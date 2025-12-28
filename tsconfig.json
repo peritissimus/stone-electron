@@ -20,7 +20,7 @@
       "@renderer/*": ["src/renderer/*"],
       "@shared/*": ["src/shared/*"]
     },
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals", "vite/client"]
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

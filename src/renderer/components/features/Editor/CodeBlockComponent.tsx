@@ -1,12 +1,15 @@
 /**
- * Code Block Component - Enhanced code block with Mermaid diagram rendering
- * Automatically detects "mermaid" language and renders diagrams like Notion/GitHub
+ * Code Block Component - Enhanced code block with diagram rendering
+ * Supports:
+ * - Mermaid: Standard mermaid diagrams
+ * - FlowDSL: Custom simplified syntax that converts to Mermaid
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
 import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
+import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
 
 // Lazy load Mermaid - 800KB saved from initial bundle!
 let mermaidModule: typeof import('mermaid') | null = null;
@@ -157,6 +160,8 @@ const initializeMermaid = (
   mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
+    securityLevel: 'loose',
+    htmlLabels: false,
     themeVariables: {
       // Core palette mapped from tokens
       primaryColor: nodePrimary,
@@ -227,10 +232,12 @@ const initializeMermaid = (
     flowchart: {
       curve: 'basis',
       padding: 20,
-      nodeSpacing: 56,
-      rankSpacing: 56,
+      nodeSpacing: 50,
+      rankSpacing: 50,
       diagramPadding: 16,
-      htmlLabels: true,
+      htmlLabels: false,
+      useMaxWidth: false,
+      defaultRenderer: 'dagre-wrapper',
     },
     sequence: {
       diagramMarginX: 40,
@@ -248,28 +255,107 @@ const initializeMermaid = (
   });
 };
 
+// Post-process SVG to fix Mermaid's foreignObject text sizing issues
+const fixMermaidForeignObjects = (svg: string): string => {
+  // Create a temporary container to parse the SVG
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+
+  // Find all foreignObject elements in nodes
+  const foreignObjects = doc.querySelectorAll('.node foreignObject');
+
+  foreignObjects.forEach((fo) => {
+    const foElement = fo as SVGForeignObjectElement;
+    const div = foElement.querySelector('div');
+
+    if (div) {
+      // Get the parent node's rect to determine proper width
+      const nodeGroup = foElement.closest('.node');
+      const rect = nodeGroup?.querySelector('rect, ellipse, polygon, circle');
+
+      if (rect) {
+        // Get the rect's width
+        let nodeWidth = 0;
+        if (rect.tagName === 'rect') {
+          nodeWidth = parseFloat(rect.getAttribute('width') || '0');
+        } else if (rect.tagName === 'ellipse') {
+          nodeWidth = parseFloat(rect.getAttribute('rx') || '0') * 2;
+        } else if (rect.tagName === 'circle') {
+          nodeWidth = parseFloat(rect.getAttribute('r') || '0') * 2;
+        } else if (rect.tagName === 'polygon') {
+          // For diamonds/polygons, estimate from points
+          const points = rect.getAttribute('points')?.split(' ') || [];
+          const xs = points.map((p) => parseFloat(p.split(',')[0]) || 0);
+          nodeWidth = Math.max(...xs) - Math.min(...xs);
+        }
+
+        if (nodeWidth > 0) {
+          // Set foreignObject to match node width, centered
+          const padding = 10;
+          const newWidth = nodeWidth - padding * 2;
+          const currentX = parseFloat(foElement.getAttribute('x') || '0');
+          const currentWidth = parseFloat(foElement.getAttribute('width') || '0');
+          const centerX = currentX + currentWidth / 2;
+          const newX = centerX - newWidth / 2;
+
+          foElement.setAttribute('width', String(newWidth));
+          foElement.setAttribute('x', String(newX));
+
+          // Fix the inner div styling
+          div.setAttribute(
+            'style',
+            'display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; text-align: center; white-space: nowrap;'
+          );
+        }
+      }
+    }
+  });
+
+  // Serialize back to string
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(doc.documentElement);
+};
+
 // Delay initialization until we render (handled inside effect)
 
 interface CodeBlockComponentProps {
   node: any;
   updateAttributes: (attributes: Record<string, any>) => void;
   extension: any;
+  editor: any;
+  getPos: () => number;
   selected: boolean;
+}
+
+// Interface for inline editing state
+interface EditingState {
+  nodeId: string;
+  label: string;
+  x: number;
+  y: number;
+  width: number;
 }
 
 export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   node,
   updateAttributes,
   extension,
+  editor,
+  getPos,
   selected,
 }) => {
   const [renderedSvg, setRenderedSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [showCode, setShowCode] = useState(false);
+  const [editing, setEditing] = useState<EditingState | null>(null);
+  const [editingReady, setEditingReady] = useState(false);
   const diagramRef = useRef<HTMLDivElement>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
   const language = node.attrs.language || '';
   const isMermaid = language.toLowerCase() === 'mermaid';
+  const isFlowDSL = language.toLowerCase() === 'flowdsl';
+  const isDiagram = isMermaid || isFlowDSL;
 
   // Get the text content from the code block
   const getCodeContent = () => {
@@ -286,9 +372,9 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     }
   }, [language]);
 
-  // Render Mermaid diagram
+  // Render diagram (Mermaid or FlowDSL)
   useEffect(() => {
-    if (!isMermaid) {
+    if (!isDiagram) {
       setRenderedSvg('');
       setError(null);
       return;
@@ -306,19 +392,34 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
       try {
         setError(null);
 
+        // Convert FlowDSL to Mermaid if needed
+        let mermaidCode = code;
+        if (isFlowDSL) {
+          try {
+            mermaidCode = convertFlowDSLToMermaid(code);
+          } catch (parseErr: any) {
+            setError(parseErr.message || 'Failed to parse FlowDSL');
+            setIsRendering(false);
+            return;
+          }
+        }
+
         // Dynamically load Mermaid (only when needed - saves 800KB from initial bundle!)
         const mermaid = await loadMermaid();
 
         // Re-initialize Mermaid with current theme before rendering
-        const isDark = document.documentElement.classList.contains('dark');
-        initializeMermaid(mermaid, isDark, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        initializeMermaid(mermaid, isDarkMode, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
 
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-        const { svg } = await mermaid.render(id, code);
-        setRenderedSvg(svg);
+        const { svg } = await mermaid.render(id, mermaidCode);
+
+        // Post-process SVG to fix foreignObject text sizing issues
+        const fixedSvg = fixMermaidForeignObjects(svg);
+        setRenderedSvg(fixedSvg);
       } catch (err: any) {
         setError(err.message || 'Failed to render diagram');
-        console.error('Mermaid render error:', err);
+        console.error('Diagram render error:', err);
       } finally {
         setIsRendering(false);
       }
@@ -327,7 +428,170 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     // Debounce rendering
     const timeoutId = setTimeout(renderDiagram, 300);
     return () => clearTimeout(timeoutId);
-  }, [isMermaid, node.textContent]);
+  }, [isDiagram, isFlowDSL, node.textContent]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editing && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+      // Delay enabling blur handler to prevent immediate firing
+      const timeout = setTimeout(() => setEditingReady(true), 100);
+      return () => clearTimeout(timeout);
+    } else {
+      setEditingReady(false);
+    }
+  }, [editing]);
+
+  // Handle double-click on diagram to edit node labels
+  const handleDiagramDoubleClick = (e: React.MouseEvent) => {
+    console.log('[Diagram] Double-click detected');
+    if (!diagramRef.current) {
+      console.log('[Diagram] No diagramRef');
+      return;
+    }
+
+    // Find the clicked node
+    const target = e.target as Element;
+    console.log('[Diagram] Target element:', target.tagName, target.className);
+
+    const nodeGroup = target.closest('.node');
+    if (!nodeGroup) {
+      console.log('[Diagram] No .node parent found');
+      return;
+    }
+
+    // Get node ID from the group
+    const nodeId = nodeGroup.id || '';
+    console.log('[Diagram] Node ID:', nodeId);
+
+    const nodeIdMatch = nodeId.match(/flowchart-(\w+)-\d+/);
+    const extractedId = nodeIdMatch ? nodeIdMatch[1] : '';
+    console.log('[Diagram] Extracted ID:', extractedId);
+
+    // Find the label text - check multiple possible locations
+    let labelText = '';
+
+    // Try .nodeLabel first (htmlLabels: true)
+    const nodeLabelElement = nodeGroup.querySelector('.nodeLabel');
+    if (nodeLabelElement) {
+      labelText = nodeLabelElement.textContent?.trim() || '';
+    }
+
+    // Try SVG text/tspan (htmlLabels: false)
+    if (!labelText) {
+      const textElement = nodeGroup.querySelector('text');
+      if (textElement) {
+        labelText = textElement.textContent?.trim() || '';
+      }
+    }
+
+    // Try foreignObject div
+    if (!labelText) {
+      const foreignDiv = nodeGroup.querySelector('foreignObject div');
+      if (foreignDiv) {
+        labelText = foreignDiv.textContent?.trim() || '';
+      }
+    }
+
+    console.log('[Diagram] Label text:', labelText);
+
+    if (!labelText) {
+      console.log('[Diagram] No label text found');
+      return;
+    }
+
+    // Get position relative to diagram container
+    const containerRect = diagramRef.current.getBoundingClientRect();
+    const nodeRect = nodeGroup.getBoundingClientRect();
+
+    // Calculate position for the edit input (relative to the bg-background container)
+    const parentContainer = diagramRef.current.parentElement;
+    const parentRect = parentContainer?.getBoundingClientRect() || containerRect;
+
+    const x = nodeRect.left - parentRect.left + nodeRect.width / 2;
+    const y = nodeRect.top - parentRect.top + nodeRect.height / 2;
+    const width = Math.max(nodeRect.width - 10, 120);
+
+    console.log('[Diagram] Setting editing state:', { extractedId, labelText, x, y, width });
+
+    setEditing({
+      nodeId: extractedId || labelText.toLowerCase().replace(/\s+/g, '_'),
+      label: labelText,
+      x,
+      y,
+      width,
+    });
+  };
+
+  // Update the source code with the new label
+  const updateSourceLabel = (nodeId: string, oldLabel: string, newLabel: string) => {
+    if (oldLabel === newLabel || !newLabel.trim()) return;
+
+    const code = codeContent;
+    let updatedCode = code;
+
+    if (isFlowDSL) {
+      // For FlowDSL, replace the node definition line
+      // Pattern: "Old Label [props]" or just "Old Label"
+      const escapedOld = oldLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`^(\\s*)(${escapedOld})(\\s*\\[|\\s*$)`, 'gm');
+      updatedCode = code.replace(regex, `$1${newLabel}$3`);
+
+      // Also update relationships that reference this node
+      const oldInRelation = oldLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Update "OldLabel > " patterns
+      updatedCode = updatedCode.replace(
+        new RegExp(`(^|\\s)(${oldInRelation})(\\s*[><]\\s*)`, 'gm'),
+        `$1${newLabel}$3`
+      );
+      // Update " > OldLabel" patterns
+      updatedCode = updatedCode.replace(
+        new RegExp(`(\\s*[><]\\s*)(${oldInRelation})(\\s*:|\\s*$)`, 'gm'),
+        `$1${newLabel}$3`
+      );
+    } else {
+      // For Mermaid, replace the label in node definitions
+      // Pattern: nodeId["Old Label"] or nodeId("Old Label") etc.
+      const escapedOld = oldLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${nodeId}[\\[\\(\\{\\|<]+["']?)${escapedOld}(["']?[\\]\\)\\}>|]+)`, 'gi');
+      updatedCode = code.replace(regex, `$1${newLabel}$2`);
+    }
+
+    if (updatedCode !== code && editor) {
+      // Update the node content through TipTap
+      const { view, state } = editor;
+      const { tr } = state;
+
+      // Get the position of this code block
+      const pos = getPos();
+      if (pos !== undefined) {
+        const codeBlockNode = state.doc.nodeAt(pos);
+
+        if (codeBlockNode && codeBlockNode.type.name === 'codeBlock') {
+          // Replace the text content
+          const from = pos + 1;
+          const to = from + codeBlockNode.content.size;
+          tr.replaceWith(from, to, state.schema.text(updatedCode));
+          view.dispatch(tr);
+          console.log('[Diagram] Updated source code');
+        }
+      }
+    }
+  };
+
+  // Handle edit completion
+  const handleEditComplete = (newLabel: string) => {
+    if (editing) {
+      updateSourceLabel(editing.nodeId, editing.label, newLabel);
+      setEditing(null);
+    }
+  };
+
+  // Handle edit cancel
+  const handleEditCancel = () => {
+    setEditing(null);
+  };
 
   return (
     <NodeViewWrapper className="code-block-wrapper" data-language={language}>
@@ -338,25 +602,27 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
         )}
         data-language={language}
       >
-        {/* Mermaid: Show diagram or code based on toggle */}
-        {isMermaid ? (
+        {/* Diagram view: Show diagram or code based on toggle */}
+        {isDiagram ? (
           showCode ? (
-            // Code editor for Mermaid
+            // Code editor for diagrams
             <div className="p-4">
               <pre className="bg-code-bg rounded-md">
                 <NodeViewContent as="code" className="hljs" />
               </pre>
             </div>
           ) : (
-            // Diagram view for Mermaid
-            <div className="p-4 bg-background">
+            // Diagram preview
+            <div className="p-4 bg-background relative">
               {isRendering ? (
                 <div className="flex justify-center items-center min-h-[200px]">
                   <div className="text-sm text-muted-foreground">Rendering diagram...</div>
                 </div>
               ) : error ? (
                 <div className="p-4 rounded-md bg-destructive/10 border border-destructive/20">
-                  <p className="text-sm font-medium text-destructive">Mermaid Error</p>
+                  <p className="text-sm font-medium text-destructive">
+                    {isFlowDSL ? 'FlowDSL Error' : 'Mermaid Error'}
+                  </p>
                   <p className="text-xs text-destructive/80 mt-1 font-mono">{error}</p>
                   <button
                     type="button"
@@ -367,18 +633,76 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
                   </button>
                 </div>
               ) : renderedSvg ? (
-                <div
-                  ref={diagramRef}
-                  className={cn(
-                    'flex justify-center items-center min-h-[100px] mermaid-preview',
-                    isStateDiagram && 'mermaid-state-diagram',
+                <>
+                  <div
+                    ref={diagramRef}
+                    contentEditable={false}
+                    suppressContentEditableWarning
+                    className={cn(
+                      'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none',
+                      isStateDiagram && 'mermaid-state-diagram',
+                    )}
+                    onDoubleClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDiagramDoubleClick(e);
+                    }}
+                    dangerouslySetInnerHTML={{ __html: renderedSvg }}
+                  />
+                  {/* Inline edit overlay */}
+                  {editing && (
+                    <div
+                      className="absolute z-50 rounded-xl"
+                      style={{
+                        left: editing.x,
+                        top: editing.y,
+                        transform: 'translate(-50%, -50%)',
+                        boxShadow: '0 0 0 3px hsl(var(--primary)), 0 10px 40px rgba(0,0,0,0.5)',
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        ref={editInputRef}
+                        type="text"
+                        defaultValue={editing.label}
+                        className={cn(
+                          'px-4 py-2.5 text-sm rounded-xl border-0',
+                          'text-foreground bg-overlay',
+                          'focus:outline-none',
+                          'text-center font-medium',
+                        )}
+                        style={{
+                          width: editing.width,
+                          minWidth: 140,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleEditComplete((e.target as HTMLInputElement).value);
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            handleEditCancel();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (editingReady) {
+                            handleEditComplete(e.target.value);
+                          }
+                        }}
+                      />
+                    </div>
                   )}
-                  dangerouslySetInnerHTML={{ __html: renderedSvg }}
-                />
+                </>
               ) : (
                 <div className="flex justify-center items-center min-h-[100px]">
                   <div className="text-sm text-muted-foreground">
-                    Start typing Mermaid syntax to see the diagram...
+                    {isFlowDSL
+                      ? 'Start typing FlowDSL syntax to see the diagram...'
+                      : 'Start typing Mermaid syntax to see the diagram...'}
                   </div>
                 </div>
               )}
@@ -394,10 +718,10 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
         )}
       </div>
 
-      {/* Toolbar with language selector and Mermaid toggle */}
+      {/* Toolbar with language selector and diagram toggle */}
       <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
-        {/* Mermaid toggle button */}
-        {isMermaid && (
+        {/* Diagram toggle button (Mermaid or FlowDSL) */}
+        {isDiagram && (
           <button
             type="button"
             contentEditable={false}
@@ -446,6 +770,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           <option value="css">CSS</option>
           <option value="markdown">Markdown</option>
           <option value="mermaid">Mermaid</option>
+          <option value="flowdsl">FlowDSL</option>
         </select>
       </div>
     </NodeViewWrapper>

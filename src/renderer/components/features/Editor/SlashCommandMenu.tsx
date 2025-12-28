@@ -15,6 +15,7 @@ import {
   Minus,
   Check,
   Clock,
+  TreeStructure,
 } from 'phosphor-react';
 
 export interface SlashCommandItem {
@@ -170,6 +171,34 @@ export const defaultSlashCommands = (editor: any): SlashCommandItem[] => [
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run();
     },
     searchTerms: ['code', 'codeblock', 'snippet'],
+  },
+  {
+    title: 'Flow Diagram',
+    description: 'Create a flowchart with simple syntax',
+    icon: <TreeStructure size={18} />,
+    command: ({ editor, range }: any) => {
+      editor
+        .chain()
+        .focus()
+        .deleteRange(range)
+        .setCodeBlock({ language: 'flowdsl' })
+        .insertContent(`title My Flow Chart
+direction down
+
+// Define your nodes
+Start [shape: oval, color: lightgreen, icon: play]
+Process [color: lightblue]
+Decision [shape: diamond, color: yellow]
+End [shape: oval, color: gray]
+
+// Define relationships
+Start > Process
+Process > Decision
+Decision > End: Yes
+Decision > Process: No`)
+        .run();
+    },
+    searchTerms: ['flow', 'flowchart', 'diagram', 'flowdsl', 'chart', 'graph'],
   },
   {
     title: 'Quote',

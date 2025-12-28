@@ -58,6 +58,13 @@ Stone includes a comprehensive keyboard shortcut system with platform-aware dete
 
 - **Cmd+S** (Ctrl+S on Windows/Linux) - Save current note
 - **Cmd+N** (Ctrl+N on Windows/Linux) - Create new note in current folder
+- **Cmd+Shift+P** (Ctrl+Shift+P on Windows/Linux) - Create new personal note (in Personal folder)
+- **Cmd+Shift+W** (Ctrl+Shift+W on Windows/Linux) - Create new work note (in Work folder)
+- **Cmd+J** (Ctrl+J on Windows/Linux) - Open or create today's journal
+- **Cmd+K** (Ctrl+K on Windows/Linux) - Open search
+- **Cmd+\\** (Ctrl+\\ on Windows/Linux) - Toggle sidebar
+- **Cmd+Shift+H** (Ctrl+Shift+H on Windows/Linux) - Go home
+- **Cmd+W** (Ctrl+W on Windows/Linux) - Close current note
 - **Cmd+,** (Ctrl+, on Windows/Linux) - Open settings
 
 ### Implementation
@@ -69,9 +76,12 @@ Stone includes a comprehensive keyboard shortcut system with platform-aware dete
 - Shortcuts are disabled in input fields (except contenteditable editor)
 
 **Adding New Shortcuts:**
-1. Add action to the `shortcuts` array in `MainLayout.tsx`
-2. Use `formatShortcut()` helper to display shortcuts in UI tooltips
-3. Follow existing pattern with `isMacOS()` for platform detection
+1. Add action type to `ShortcutAction` union in `shortcutsStore.ts`
+2. Add default shortcut definition to `DEFAULT_SHORTCUTS` array in `shortcutsStore.ts`
+3. Add handler to `actionHandlers` in `useAppShortcuts.ts`
+4. Add action ID to `shortcutIds` array in `useAppShortcuts.ts`
+5. Add callback option to `UseAppShortcutsOptions` interface if needed
+6. Wire up the handler in `MainLayout.tsx`
 
 **Helper Functions:**
 - `isMacOS()` - Platform detection

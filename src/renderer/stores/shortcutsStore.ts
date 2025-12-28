@@ -11,6 +11,8 @@ import { persist } from 'zustand/middleware';
 export type ShortcutAction =
   | 'save'
   | 'newNote'
+  | 'newPersonalNote'
+  | 'newWorkNote'
   | 'settings'
   | 'search'
   | 'toggleSidebar'
@@ -106,6 +108,26 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     key: 'n',
     metaKey: true,
     shiftKey: false,
+    altKey: false,
+    category: 'editor',
+  },
+  {
+    id: 'newPersonalNote',
+    label: 'New Personal Note',
+    description: 'Create a new note in Personal folder',
+    key: 'p',
+    metaKey: true,
+    shiftKey: true,
+    altKey: false,
+    category: 'editor',
+  },
+  {
+    id: 'newWorkNote',
+    label: 'New Work Note',
+    description: 'Create a new note in Work folder',
+    key: 'w',
+    metaKey: true,
+    shiftKey: true,
     altKey: false,
     category: 'editor',
   },
