@@ -14,6 +14,9 @@ importers:
       '@fontsource/barlow-condensed':
         specifier: ^5.2.8
         version: 5.2.8
+      '@fontsource/fira-code':
+        specifier: ^5.2.7
+        version: 5.2.7
       '@fontsource/inter':
         specifier: ^5.2.8
         version: 5.2.8
@@ -1057,6 +1060,9 @@ packages:
 
   '@fontsource/barlow@5.2.8':
     resolution: {integrity: sha512-iuFOnY4OI2cd1STrJ3NdJNzWjhcwv6JarmqfdoZzAmz9g0jTVjES86MNbuBxqVR3ydbTEjo4opEl24GXScRM7w==}
+
+  '@fontsource/fira-code@5.2.7':
+    resolution: {integrity: sha512-tnB9NNund9TwIym8/7DMJe573nlPEQb+fKUV5GL8TBYXjIhDvL0D7mgmNVNQUPhXp+R7RylQeiBdkA4EbOHPGQ==}
 
   '@fontsource/inter@5.2.8':
     resolution: {integrity: sha512-P6r5WnJoKiNVV+zvW2xM13gNdFhAEpQ9dQJHt3naLvfg+LkF2ldgSLiF4T41lf1SQCM9QmkqPTn4TH568IRagg==}
@@ -7557,6 +7563,8 @@ snapshots:
   '@fontsource/barlow-condensed@5.2.8': {}
 
   '@fontsource/barlow@5.2.8': {}
+
+  '@fontsource/fira-code@5.2.7': {}
 
   '@fontsource/inter@5.2.8': {}
 

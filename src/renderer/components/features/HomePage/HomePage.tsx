@@ -1,6 +1,6 @@
 import React from 'react';
-import { Clock, FileText, BookOpen, Briefcase, User, CheckSquare } from 'lucide-react';
-import { CaretRight } from 'phosphor-react';
+import { FileText, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
+import { CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
@@ -10,7 +10,6 @@ import { logger } from '@renderer/utils/logger';
 import { TodoList } from './TodoList';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
-import { Heading3 } from '@renderer/components/base/ui/text';
 
 interface RecentNoteProps {
   note: {
@@ -74,6 +73,14 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
   );
 };
 
+// Get time-based greeting
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
@@ -84,19 +91,19 @@ export function HomePage() {
   // Get the active workspace
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
-  // Get recent notes (last 3, sorted by update time)
+  // Get recent notes (last 5, sorted by update time)
   const recentNotes = [...notes]
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 3);
+    .slice(0, 5);
 
-  // Get current date
+  // Get the most recent note for "Continue writing"
+  const continueNote = recentNotes[0];
+
+  // Check if we have today's journal
   const now = new Date();
-  const dateString = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const expectedJournalPath = `Journal/${journalFilename}.md`;
+  const todaysJournal = notes.find((note) => note.filePath === expectedJournalPath);
 
   // Format today's date for journal title (e.g., "November 10, 2025")
   const journalTitle = now.toLocaleDateString('en-US', {
@@ -105,8 +112,12 @@ export function HomePage() {
     day: 'numeric',
   });
 
-  // Format today's date for journal filename (e.g., "2025-11-10")
-  const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Stats
+  const totalNotes = notes.length;
+  const todayNotes = notes.filter((n) => {
+    const noteDate = new Date(n.updatedAt);
+    return noteDate.toDateString() === now.toDateString();
+  }).length;
 
   const handleNoteClick = (noteId: string) => {
     logger.info('[HomePage] Note clicked', { noteId });
@@ -196,24 +207,9 @@ export function HomePage() {
     }
   };
 
-  // Handle creating a personal note
-  const handlePersonalNoteClick = async () => {
-    logger.info('[HomePage] Personal note clicked');
-    const newNote = await createNote({
-      title: 'Untitled',
-      content: '',
-      folderPath: 'Personal',
-    });
-
-    if (newNote) {
-      logger.info('[HomePage] Personal note created', { id: newNote.id });
-      handleNoteClick(newNote.id);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header with expand button, workspace name, and date */}
+      {/* Header */}
       <div
         className={cn(
           'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
@@ -228,80 +224,94 @@ export function HomePage() {
             onClick={toggleSidebar}
           />
         )}
-        <div className="flex-1 min-w-0 flex items-baseline gap-2">
-          {activeWorkspace && (
-            <span className="text-sm text-muted-foreground">{activeWorkspace.name}</span>
-          )}
-        </div>
-        <div className="text-sm text-muted-foreground flex-shrink-0">{dateString}</div>
-      </div>
-
-      {/* Content */}
-      <div className="px-8 py-6 border-b border-border bg-background">
-        {/* Quick Action Shortcuts */}
-        <div className="grid grid-cols-3 gap-4">
-          <button
-            onClick={handleJournalClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
-          >
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
-              <BookOpen className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
-            <div className="text-center">
-              <h3 className="font-semibold text-sm mb-1">Today's Journal</h3>
-              <p className="text-xs text-muted-foreground">{journalTitle}</p>
-            </div>
-          </button>
-
-          <button
-            onClick={handleWorkNoteClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
-          >
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
-              <Briefcase className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
-            <div className="text-center">
-              <h3 className="font-semibold text-sm mb-1">Work Note</h3>
-              <p className="text-xs text-muted-foreground">Create new work note</p>
-            </div>
-          </button>
-
-          <button
-            onClick={handlePersonalNoteClick}
-            className="flex flex-col items-center gap-3 p-6 rounded-lg border border-border hover:border-foreground/20 hover:bg-muted/30 transition-all group"
-          >
-            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-muted-foreground/10 transition-colors">
-              <User className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors" />
-            </div>
-            <div className="text-center">
-              <h3 className="font-semibold text-sm mb-1">Personal Note</h3>
-              <p className="text-xs text-muted-foreground">Create new personal note</p>
-            </div>
-          </button>
+        <div className="flex-1" />
+        <div className="text-xs text-muted-foreground">
+          {totalNotes} notes · {todayNotes} today
         </div>
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="px-8 py-6 space-y-8">
+        <div className="max-w-2xl mx-auto px-8 py-10 space-y-8">
+          {/* Greeting */}
+          <div>
+            <h1 className="text-2xl font-semibold mb-1">{getGreeting()}</h1>
+            <p className="text-muted-foreground">{journalTitle}</p>
+          </div>
+
+          {/* Smart Actions */}
+          <div className="space-y-3">
+            {/* Continue Writing - only show if there's a recent note */}
+            {continueNote && (
+              <button
+                onClick={() => handleNoteClick(continueNote.id)}
+                className="w-full flex items-center gap-3 p-4 rounded-lg bg-accent/20 hover:bg-accent/30 transition-colors group text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <PencilSimple size={20} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium flex items-center gap-2">
+                    Continue writing
+                    <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {continueNote.title || 'Untitled'}
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {/* Today's Journal */}
+            <button
+              onClick={handleJournalClick}
+              className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <BookOpen size={20} className="text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium flex items-center gap-2">
+                  {todaysJournal ? "Open today's journal" : "Start today's journal"}
+                  <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="text-xs text-muted-foreground">{journalFilename}</div>
+              </div>
+              {!todaysJournal && (
+                <Sparkles size={16} className="text-primary" />
+              )}
+            </button>
+
+            {/* Quick Note */}
+            <button
+              onClick={handleWorkNoteClick}
+              className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <Plus size={20} className="text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium flex items-center gap-2">
+                  New note
+                  <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="text-xs text-muted-foreground">Create a quick note</div>
+              </div>
+            </button>
+          </div>
+
           {/* Active Tasks */}
           <div>
-            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <CheckSquare className="w-4 h-4" />
-              Active Tasks
-            </h2>
+            <h2 className="text-sm font-medium text-muted-foreground mb-3">Tasks</h2>
             <TodoList onTodoClick={handleNoteClick} />
           </div>
 
           {/* Recent Notes */}
-          {recentNotes.length > 0 && (
+          {recentNotes.length > 1 && (
             <div>
-              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                Recent Notes
-              </h2>
-              <div className="space-y-2">
-                {recentNotes.map((note) => (
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">Recent</h2>
+              <div className="space-y-1">
+                {recentNotes.slice(1).map((note) => (
                   <RecentNote
                     key={note.id}
                     note={{
@@ -319,14 +329,13 @@ export function HomePage() {
 
           {/* Empty State */}
           {notes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <FileText className="w-8 h-8 text-muted-foreground" />
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <FileText className="w-6 h-6 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No notes yet</h3>
-              <p className="text-muted-foreground max-w-sm">
-                Create your first note to get started. Your notes will appear here once you create
-                them.
+              <h3 className="font-medium mb-1">No notes yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Create your first note to get started
               </p>
             </div>
           )}

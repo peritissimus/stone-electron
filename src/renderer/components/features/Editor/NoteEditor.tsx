@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useNoteContent } from '@renderer/hooks/useNoteContent';
@@ -42,6 +43,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const activeNoteId = activeNote?.id;
   const activeNoteFilePath = activeNote?.filePath ? activeNote.filePath.replace(/\\/g, '/') : '';
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
+  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, createNote } =
     useNoteAPI();
 
@@ -296,20 +299,26 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       {/* Minimal Footer */}
       <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
         <EditorStats editor={editor} />
-        {activeNote?.filePath && (
-          <CopyPathButton filePath={activeNote.filePath} />
+        {activeNote?.filePath && activeWorkspace?.folderPath && (
+          <CopyPathButton
+            filePath={activeNote.filePath}
+            workspacePath={activeWorkspace.folderPath}
+          />
         )}
       </div>
     </div>
   );
 });
 
-function CopyPathButton({ filePath }: { filePath: string }) {
+function CopyPathButton({ filePath, workspacePath }: { filePath: string; workspacePath: string }) {
   const [copied, setCopied] = useState(false);
+
+  // Build full absolute path
+  const fullPath = `${workspacePath}/${filePath}`.replace(/\/+/g, '/');
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(filePath);
+      await navigator.clipboard.writeText(fullPath);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -321,7 +330,7 @@ function CopyPathButton({ filePath }: { filePath: string }) {
     <button
       onClick={handleCopy}
       className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent/20 transition-colors"
-      title={copied ? 'Copied!' : `Copy path: ${filePath}`}
+      title={copied ? 'Copied!' : `Copy path: ${fullPath}`}
     >
       {copied ? (
         <Check size={12} className="text-success" />
