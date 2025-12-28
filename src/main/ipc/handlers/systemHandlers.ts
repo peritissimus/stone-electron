@@ -3,10 +3,10 @@
  * Handle system-level operations like getting available fonts
  */
 
-import { ipcMain } from 'electron';
+
 import { getFonts } from 'font-list';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
-import { createHandler } from '../utils';
+import { registerHandler } from '../utils';
 import { logger } from '../../utils/logger';
 
 /**
@@ -36,12 +36,12 @@ async function getSystemFonts(): Promise<string[]> {
  */
 export function registerSystemHandlers() {
   // system:getFonts
-  ipcMain.handle(
+  registerHandler(
     SYSTEM_CHANNELS.GET_FONTS,
-    createHandler(async () => {
+    async () => {
       const fonts = await getSystemFonts();
       return fonts;
-    }),
+    }
   );
 
   logger.info('[IPC] System handlers registered');

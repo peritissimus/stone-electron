@@ -2,10 +2,10 @@
  * Database Management IPC Handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { DATABASE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getDatabaseManager } from '../../database';
-import { createHandler } from '../utils';
+import { registerHandler } from '../utils';
 
 /**
  * Register all database handlers
@@ -14,9 +14,9 @@ export function registerDatabaseHandlers() {
   const dbManager = getDatabaseManager();
 
   // db:getStatus
-  ipcMain.handle(
+  registerHandler(
     DATABASE_CHANNELS.GET_STATUS,
-    createHandler(async () => {
+    async () => {
       const status = await dbManager.getStatus();
 
       return {
@@ -26,13 +26,13 @@ export function registerDatabaseHandlers() {
         last_backup: undefined,
         last_defrag: undefined,
       };
-    }),
+    }
   );
 
   // db:vacuum
-  ipcMain.handle(
+  registerHandler(
     DATABASE_CHANNELS.VACUUM,
-    createHandler(async () => {
+    async () => {
       const sizeBefore = (await dbManager.getStatus()).databaseSize;
 
       // Emit progress
@@ -56,13 +56,13 @@ export function registerDatabaseHandlers() {
         size_after: sizeAfter,
         freed_bytes: Math.max(0, freedBytes),
       };
-    }),
+    }
   );
 
   // db:checkIntegrity
-  ipcMain.handle(
+  registerHandler(
     DATABASE_CHANNELS.CHECK_INTEGRITY,
-    createHandler(async (event, request: { detailed?: boolean }) => {
+    async (event, request: { detailed?: boolean }) => {
       const result = await dbManager.checkIntegrity();
 
       return {
@@ -71,6 +71,6 @@ export function registerDatabaseHandlers() {
         errors: result.errors,
         warnings: [],
       };
-    }),
+    }
   );
 }

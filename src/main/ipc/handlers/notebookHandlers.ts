@@ -2,10 +2,10 @@
  * Notebook IPC Handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 import { NOTEBOOK_CHANNELS, EVENTS } from '@shared/constants/ipcChannels'
 import { getRepositories } from '../../repositories'
-import { createHandler, IpcError } from '../utils'
+import { registerHandler, IpcError } from '../utils'
 
 /**
  * Register all notebook handlers
@@ -14,9 +14,9 @@ export function registerNotebookHandlers() {
   const repos = getRepositories()
 
   // notebooks:create
-  ipcMain.handle(
+  registerHandler(
     NOTEBOOK_CHANNELS.CREATE,
-    createHandler(
+    
       async (
         event,
         request: { name: string; parentId?: string; icon?: string; color?: string; position?: number }
@@ -38,12 +38,11 @@ export function registerNotebookHandlers() {
         return { ...notebook, note_count }
       }
     )
-  )
 
   // notebooks:update
-  ipcMain.handle(
+  registerHandler(
     NOTEBOOK_CHANNELS.UPDATE,
-    createHandler(
+    
       async (event, request: { id: string; name?: string; icon?: string; color?: string; position?: number }) => {
         const updateData: Record<string, unknown> = {}
         if (request.name !== undefined) updateData.name = request.name
@@ -61,12 +60,11 @@ export function registerNotebookHandlers() {
         return notebook
       }
     )
-  )
 
   // notebooks:delete
-  ipcMain.handle(
+  registerHandler(
     NOTEBOOK_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string; delete_notes?: boolean }) => {
+    async (event, request: { id: string; delete_notes?: boolean }) => {
       const action = request.delete_notes ? 'delete' : 'orphan'
       await repos.notebook.deleteWithNotes(request.id, action)
 
@@ -77,12 +75,11 @@ export function registerNotebookHandlers() {
 
       return { success: true, deleted_notebook_count: 1, orphaned_note_count: 0 }
     })
-  )
 
   // notebooks:getAll
-  ipcMain.handle(
+  registerHandler(
     NOTEBOOK_CHANNELS.GET_ALL,
-    createHandler(async (event, request: { include_counts?: boolean; flat?: boolean }) => {
+    async (event, request: { include_counts?: boolean; flat?: boolean }) => {
       if (request.flat) {
         const notebooks = await repos.notebook.getFlatList()
         return {
@@ -98,12 +95,11 @@ export function registerNotebookHandlers() {
       const tree = await repos.notebook.getTree()
       return { notebooks: tree }
     })
-  )
 
   // notebooks:move
-  ipcMain.handle(
+  registerHandler(
     NOTEBOOK_CHANNELS.MOVE,
-    createHandler(async (event, request: { id: string; parentId?: string; position?: number }) => {
+    async (event, request: { id: string; parentId?: string; position?: number }) => {
       try {
         const notebook = await repos.notebook.move(request.id, request.parentId || null, request.position)
 
@@ -124,5 +120,4 @@ export function registerNotebookHandlers() {
         throw error
       }
     })
-  )
 }

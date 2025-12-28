@@ -45,7 +45,7 @@ export function registerWorkspaceHandlers() {
         canceled: false,
         folderPath: result.filePaths[0],
       };
-    }),
+    }
   );
 
   // workspaces:validatePath
@@ -53,7 +53,7 @@ export function registerWorkspaceHandlers() {
     WORKSPACE_CHANNELS.VALIDATE_PATH,
     async (event, request: { folderPath: string }) => {
       return await fsService.validateFolderPath(request.folderPath);
-    }),
+    }
   );
 
   // workspaces:create
@@ -104,7 +104,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return workspace;
-    }),
+    }
   );
 
   // workspaces:getAll
@@ -113,7 +113,7 @@ export function registerWorkspaceHandlers() {
     async (event) => {
       const workspaces = await repos.workspace.findAll();
       return { workspaces };
-    }),
+    }
   );
 
   // workspaces:getActive
@@ -122,7 +122,7 @@ export function registerWorkspaceHandlers() {
     async (event) => {
       const workspace = await repos.workspace.getActive();
       return { workspace };
-    }),
+    }
   );
 
   // workspaces:setActive
@@ -137,7 +137,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return workspace;
-    }),
+    }
   );
 
   // workspaces:update
@@ -154,7 +154,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return workspace;
-    }),
+    }
   );
 
   registerHandler(
@@ -191,7 +191,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return { folderPath: newRelative };
-    }),
+    }
   );
 
   registerHandler(
@@ -242,7 +242,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return { folderPath: newRelative };
-    }),
+    }
   );
 
   registerHandler(
@@ -273,7 +273,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return { success: true };
-    }),
+    }
   );
 
   registerHandler(
@@ -357,7 +357,7 @@ export function registerWorkspaceHandlers() {
       });
 
       return { success: true, id: request.id };
-    }),
+    }
   );
 
   // workspaces:scan
@@ -408,7 +408,7 @@ export function registerWorkspaceHandlers() {
         total: files.length,
         counts,
       };
-    }),
+    }
   );
 
   // workspaces:sync - sync folders->notebooks and files->notes
@@ -451,6 +451,6 @@ export function registerWorkspaceHandlers() {
         notes: noteResult,
         durationMs: dur,
       };
-    }),
+    }
   );
 }

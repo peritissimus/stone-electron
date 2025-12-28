@@ -2,10 +2,10 @@
  * Attachment IPC Handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { ATTACHMENT_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
-import { createHandler, IpcError } from '../utils';
+import { registerHandler, IpcError } from '../utils';
 import path from 'path';
 import fs from 'fs';
 import { getDatabaseManager } from '../../database';
@@ -18,9 +18,9 @@ export function registerAttachmentHandlers() {
   const repos = getRepositories();
 
   // attachments:add
-  ipcMain.handle(
+  registerHandler(
     ATTACHMENT_CHANNELS.ADD,
-    createHandler(
+    
       async (event, request: { noteId: string; file_path: string; filename?: string }) => {
         const note = await repos.note.findById(request.noteId);
         if (!note) {
@@ -87,13 +87,12 @@ export function registerAttachmentHandlers() {
 
         return attachment;
       },
-    ),
   );
 
   // attachments:delete
-  ipcMain.handle(
+  registerHandler(
     ATTACHMENT_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string; noteId: string }) => {
+    async (event, request: { id: string; noteId: string }) => {
       const attachment = await repos.attachment.findById(request.id);
       if (!attachment) {
         throw new IpcError('NOT_FOUND', 'Attachment not found');
@@ -120,15 +119,15 @@ export function registerAttachmentHandlers() {
       });
 
       return { success: true };
-    }),
+    }
   );
 
   // attachments:getAll
-  ipcMain.handle(
+  registerHandler(
     ATTACHMENT_CHANNELS.GET_ALL,
-    createHandler(async (event, request: { noteId: string }) => {
+    async (event, request: { noteId: string }) => {
       const attachments = await repos.attachment.getAttachmentsForNote(request.noteId);
       return { attachments };
-    }),
+    }
   );
 }
