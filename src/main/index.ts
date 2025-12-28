@@ -66,8 +66,9 @@ async function createWindow() {
         contextIsolation: true,
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
-      backgroundColor: '#ffffff',
-      vibrancy: 'sidebar',
+      transparent: process.platform === 'darwin',
+      backgroundColor: process.platform === 'darwin' ? undefined : '#ffffff',
+      vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
       visualEffectState: 'active',
       trafficLightPosition: { x: 12, y: 8 },
     });

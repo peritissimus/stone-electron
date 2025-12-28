@@ -50,14 +50,23 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
           gap,
           'flex items-center justify-start',
           'rounded-md',
-          'transition-colors',
-          'hover:bg-muted',
-          isActive && 'bg-accent text-accent-foreground',
+          'transition-all duration-150',
+          isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
+          isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
           className
         )}
         {...props}
       >
-        {icon && <div className="flex-shrink-0 flex items-center">{icon}</div>}
+        {icon && (
+          <div
+            className={cn(
+              'flex-shrink-0 flex items-center transition-colors duration-150',
+              isActive ? 'text-foreground' : 'text-muted-foreground',
+            )}
+          >
+            {icon}
+          </div>
+        )}
         <span className="flex-1 text-left">{label}</span>
       </button>
     );

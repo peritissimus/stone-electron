@@ -6,9 +6,6 @@ import React, { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { TagList } from '@renderer/components/features/Tag';
-import { Button } from '@renderer/components/base/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@renderer/components/base/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -18,20 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/base/ui/select';
-import { Heading3, Text } from '@renderer/components/base/ui/text';
+import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
-import { TagWithCount, type Workspace, type Note } from '@shared/types';
-import { Folders, Tag, Gear, Star, Archive, Clock, Plus, ArrowsClockwise, House, CaretLeft } from 'phosphor-react';
+import { type Workspace, type Note } from '@shared/types';
+import { House, CaretLeft } from 'phosphor-react';
 import {
-  Header,
-  IconButton,
   QuickLink,
-  PanelFooter,
-  SectionHeader,
-  ControlGroup,
   sizeHeightClasses,
   sizePaddingClasses,
-  InputModal,
 } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -44,17 +35,14 @@ import { cn } from '@renderer/lib/utils';
 
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
-  const { syncWorkspace, loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
-  const { loadNotes, createNote } = useNoteAPI();
+  const { loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
+  const { loadNotes } = useNoteAPI();
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { toggleSidebar } = useUIStore();
-  const [isCreating, setIsCreating] = useState(false);
-  const [tagModalOpen, setTagModalOpen] = useState(false);
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'folders' | 'tags'>('folders');
 
   useEffect(() => {
     loadWorkspaces();
@@ -162,29 +150,6 @@ export function Sidebar() {
     };
   }, [activeFolder, loadFileTree, loadNotes]);
 
-  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId);
-
-  const handleNewTag = async (name: string) => {
-    setIsCreating(true);
-    try {
-      const response = await window.electron.invoke<TagWithCount>('tags:create', {
-        name,
-      });
-
-      if (response.success && response.data) {
-        logger.info('Tag created:', response.data.name);
-        setTagModalOpen(false);
-      } else {
-        throw new Error('Failed to create tag');
-      }
-    } catch (error) {
-      logger.error('Failed to create tag:', error);
-      alert('Failed to create tag. Please try again.');
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   const handleCreateWorkspace = async ({
     name,
     folderPath,
@@ -220,34 +185,6 @@ export function Sidebar() {
       );
     } finally {
       setIsWorkspaceModalProcessing(false);
-    }
-  };
-
-  const handleCreateNote = async () => {
-    if (isCreating) return;
-
-    setIsCreating(true);
-    try {
-      // Generate a default title for the new note
-      const now = new Date();
-      const defaultTitle = `Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-
-      const note = await createNote({
-        title: defaultTitle,
-        content: '',
-        folderPath: activeFolder || undefined,
-      });
-
-      if (note) {
-        setActiveNote(note.id);
-        await loadFileTree();
-        await loadNotes({ folderPath: activeFolder || undefined });
-      }
-    } catch (error) {
-      logger.error('Failed to create note:', error);
-      alert('Failed to create note. Please try again.');
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -318,64 +255,11 @@ export function Sidebar() {
         />
       </div>
 
-      {/* Main Navigation Tabs - Always visible */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as 'folders' | 'tags')}
-        className="flex flex-col flex-1 overflow-hidden"
-      >
-        {/* Tab Triggers - Compact */}
-        <TabsList className="grid w-full grid-cols-2 h-8 px-2 py-1 bg-transparent border-b border-border shrink-0">
-          <TabsTrigger
-            value="folders"
-            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-          >
-            <Folders size={12} />
-            <span>Folders</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="tags"
-            className="flex items-center justify-center gap-1.5 text-xs h-6 px-2 rounded"
-          >
-            <Tag size={12} />
-            <span>Tags</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* File Tree - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-1.5 py-1">
+        <FileTree />
+      </div>
 
-        {/* Panel Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto">
-          <TabsContent value="folders" className="mt-0 px-1.5 py-1">
-            <FileTree />
-          </TabsContent>
-          <TabsContent value="tags" className="mt-0 px-1.5 py-1">
-            <TagList />
-          </TabsContent>
-        </div>
-      </Tabs>
-
-      {/* New Button - Compact footer */}
-      {activeTab === 'tags' && (
-        <PanelFooter>
-          <Button
-            onClick={() => setTagModalOpen(true)}
-            disabled={isCreating}
-            className="w-full h-7 text-xs"
-            size="sm"
-          >
-            <Plus size={12} />
-            {isCreating ? 'Creating...' : 'New Tag'}
-          </Button>
-        </PanelFooter>
-      )}
-
-      <InputModal
-        isOpen={tagModalOpen}
-        onClose={() => setTagModalOpen(false)}
-        onSubmit={handleNewTag}
-        left={<Heading3>Create New Tag</Heading3>}
-        placeholder="Enter tag name"
-        submitLabel="Create"
-      />
       <CreateWorkspaceModal
         isOpen={workspaceModalOpen}
         isSubmitting={isWorkspaceModalProcessing}

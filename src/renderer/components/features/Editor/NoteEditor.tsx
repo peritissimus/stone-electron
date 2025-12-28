@@ -9,13 +9,12 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useNoteContent } from '@renderer/hooks/useNoteContent';
 import {
-  EditorToolbar,
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
   EditorStats,
 } from '@renderer/components/features/Editor';
-import { PanelFooter } from '@renderer/components/composites';
+import { Copy, Check } from 'phosphor-react';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 import { saveDraft, deleteDraft } from '@renderer/utils/draftStorage';
@@ -294,12 +293,44 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       {/* Editor Content */}
       <NoteEditorContent editor={editor} isLoading={isLoading} />
 
-      <PanelFooter size="compact" justify="between">
+      {/* Minimal Footer */}
+      <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
         <EditorStats editor={editor} />
-        <EditorToolbar editor={editor} />
-      </PanelFooter>
+        {activeNote?.filePath && (
+          <CopyPathButton filePath={activeNote.filePath} />
+        )}
+      </div>
     </div>
   );
 });
+
+function CopyPathButton({ filePath }: { filePath: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(filePath);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      logger.error('Failed to copy path:', err);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent/20 transition-colors"
+      title={copied ? 'Copied!' : `Copy path: ${filePath}`}
+    >
+      {copied ? (
+        <Check size={12} className="text-success" />
+      ) : (
+        <Copy size={12} />
+      )}
+      <span className="max-w-[200px] truncate">{filePath}</span>
+    </button>
+  );
+}
 
 NoteEditor.displayName = 'NoteEditor';
