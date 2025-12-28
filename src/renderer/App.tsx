@@ -4,10 +4,11 @@
 
 import React, { useEffect } from 'react';
 import { MainLayout } from '@renderer/components/composites';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
 
 export const App: React.FC = () => {
   const theme = useUIStore((state) => state.theme);
+  const accentColor = useUIStore((state) => state.accentColor);
   const fontSettings = useUIStore((state) => state.fontSettings);
 
   // Apply theme
@@ -28,6 +29,25 @@ export const App: React.FC = () => {
       }
     }
   }, [theme]);
+
+  // Apply accent color
+  useEffect(() => {
+    const root = document.documentElement;
+    const hue = ACCENT_COLORS[accentColor]?.hue ?? 211;
+    const isDark = root.classList.contains('dark');
+
+    if (isDark) {
+      root.style.setProperty('--primary', `${hue} 100% 60%`);
+      root.style.setProperty('--ring', `${hue} 100% 60%`);
+      root.style.setProperty('--accent', `${hue} 80% 40% / 0.6`);
+      root.style.setProperty('--accent-foreground', `${hue} 100% 75%`);
+    } else {
+      root.style.setProperty('--primary', `${hue} 100% 50%`);
+      root.style.setProperty('--ring', `${hue} 100% 50%`);
+      root.style.setProperty('--accent', `${hue} 100% 90% / 0.6`);
+      root.style.setProperty('--accent-foreground', `${hue} 100% 40%`);
+    }
+  }, [accentColor, theme]);
 
   // Apply font settings as CSS variables
   useEffect(() => {

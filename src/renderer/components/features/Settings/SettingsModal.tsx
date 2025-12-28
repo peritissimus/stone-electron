@@ -3,8 +3,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useUIStore } from '@renderer/stores/uiStore';
-import { Database, HardDrive, Download, CheckCircle } from 'phosphor-react';
+import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
+import { Database, HardDrive, Download, CheckCircle, Palette, Info } from 'phosphor-react';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
 import { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
 import { logger } from '@renderer/utils/logger';
@@ -33,8 +33,8 @@ export function SettingsModal() {
 
   const tabs = [
     { id: 'database', label: 'Database', icon: <Database size={16} /> },
-    { id: 'appearance', label: 'Appearance' },
-    { id: 'about', label: 'About' },
+    { id: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
+    { id: 'about', label: 'About', icon: <Info size={16} /> },
   ];
 
   return (
@@ -209,7 +209,7 @@ function DatabaseSettings() {
 }
 
 function AppearanceSettings() {
-  const { theme, setTheme } = useUIStore();
+  const { theme, setTheme, accentColor, setAccentColor } = useUIStore();
 
   return (
     <SettingsSection title="Appearance">
@@ -227,6 +227,12 @@ function AppearanceSettings() {
               <SelectItem value="system">System</SelectItem>
             </SelectContent>
           </Select>
+        </ContainerStack>
+
+        {/* Accent Color */}
+        <ContainerStack gap="sm">
+          <Label>Accent Color</Label>
+          <AccentColorPicker value={accentColor} onChange={setAccentColor} />
         </ContainerStack>
 
         <Separator />
@@ -289,5 +295,33 @@ function AboutSettings() {
         </ContainerStack>
       </ContainerStack>
     </SettingsSection>
+  );
+}
+
+interface AccentColorPickerProps {
+  value: AccentColor;
+  onChange: (color: AccentColor) => void;
+}
+
+function AccentColorPicker({ value, onChange }: AccentColorPickerProps) {
+  const colors = Object.entries(ACCENT_COLORS) as [AccentColor, { name: string; hue: number }][];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {colors.map(([key, { name, hue }]) => (
+        <button
+          key={key}
+          onClick={() => onChange(key)}
+          className={`w-8 h-8 rounded-full transition-all duration-150 ${
+            value === key
+              ? 'ring-2 ring-offset-2 ring-offset-popover ring-foreground scale-110'
+              : 'hover:scale-105'
+          }`}
+          style={{ backgroundColor: `hsl(${hue} 70% 50%)` }}
+          title={name}
+          aria-label={`Select ${name} accent color`}
+        />
+      ))}
+    </div>
   );
 }

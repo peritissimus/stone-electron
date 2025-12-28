@@ -21,21 +21,32 @@ export function ModalLayout({
   maxWidth = 'max-w-3xl',
 }: ModalLayoutProps) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div
-        className={`bg-background rounded-lg shadow-xl ${maxWidth} w-full max-h-[90vh] overflow-hidden border border-border ${className}`}
+        className={`rounded-xl shadow-2xl ${maxWidth} w-full max-h-[90vh] overflow-hidden border border-border bg-popover ${className}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <Heading3>{title}</Heading3>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close settings">
+        <div
+          className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50"
+        >
+          <span className="text-sm font-medium">{title}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="Close settings"
+          >
             <X size={18} />
           </Button>
         </div>
 
         <div className="flex h-[600px]">
           {/* Optional Sidebar */}
-          {sidebar && <div className="w-48 border-r border-border p-4">{sidebar}</div>}
+          {sidebar && (
+            <div className="w-48 border-r border-border p-4 bg-muted/30">
+              {sidebar}
+            </div>
+          )}
 
           {/* Content */}
           <div className={`flex-1 p-6 overflow-y-auto ${sidebar ? '' : 'max-w-none'}`}>

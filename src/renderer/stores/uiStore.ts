@@ -10,6 +10,19 @@ type ViewMode = 'list' | 'grid' | 'card'
 type SidebarPanel = 'home' | 'folders' | 'tags' | 'search'
 type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
+type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal'
+
+export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> = {
+  blue: { name: 'Blue', hue: 211 },
+  purple: { name: 'Purple', hue: 270 },
+  pink: { name: 'Pink', hue: 330 },
+  red: { name: 'Red', hue: 0 },
+  orange: { name: 'Orange', hue: 30 },
+  green: { name: 'Green', hue: 142 },
+  teal: { name: 'Teal', hue: 180 },
+}
+
+export type { AccentColor }
 
 interface UIState {
   // Sidebar
@@ -41,6 +54,7 @@ interface UIState {
 
   // Theme
   theme: 'light' | 'dark' | 'system'
+  accentColor: AccentColor
 
   // Font settings
   fontSettings: FontSettings
@@ -66,6 +80,7 @@ interface UIState {
   openImportModal: () => void
   closeImportModal: () => void
   setTheme: (theme: 'light' | 'dark' | 'system') => void
+  setAccentColor: (color: AccentColor) => void
   setFontSettings: (settings: Partial<FontSettings>) => void
   resetFontSettings: () => void
 }
@@ -102,6 +117,7 @@ export const useUIStore = create<UIState>()(
 
       // Theme
       theme: 'dark',
+      accentColor: 'blue',
 
       // Font settings
       fontSettings: DEFAULT_FONT_SETTINGS,
@@ -147,6 +163,8 @@ export const useUIStore = create<UIState>()(
 
       setTheme: (theme) => set({ theme }),
 
+      setAccentColor: (accentColor) => set({ accentColor }),
+
       setFontSettings: (settings) =>
         set((state) => ({
           fontSettings: { ...state.fontSettings, ...settings },
@@ -166,6 +184,7 @@ export const useUIStore = create<UIState>()(
         showPreview: state.showPreview,
         showOutline: state.showOutline,
         theme: state.theme,
+        accentColor: state.accentColor,
         fontSettings: state.fontSettings,
       }),
     }
