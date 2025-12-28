@@ -17,10 +17,13 @@ export const App: React.FC = () => {
 
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
     } else if (theme === 'light') {
       root.classList.remove('dark');
+      root.classList.add('light');
     } else {
       // System preference
+      root.classList.remove('light');
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       if (isDark) {
         root.classList.add('dark');
