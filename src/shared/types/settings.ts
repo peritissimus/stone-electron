@@ -29,24 +29,24 @@ export interface FontSettings {
  * Platform-aware fallback stacks for maximum compatibility
  */
 export const DEFAULT_FONT_SETTINGS: FontSettings = {
-  // UI - macOS native feel with cross-platform fallbacks
+  // UI - Inter with system fallbacks
   uiFont:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   uiFontSize: 13,
 
-  // Editor headings - can be serif or sans-serif
+  // Editor headings - Barlow Condensed
   editorHeadingFont:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    '"Barlow Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 
-  // Editor body - comfortable reading
+  // Editor body - Barlow
   editorBodyFont:
-    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    'Barlow, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   editorFontSize: 16,
   editorLineHeight: 1.65,
 
-  // Code - SF Mono first (macOS), then cross-platform monospace
+  // Code - Fira Code with fallbacks
   monoFont:
-    '"SF Mono", ui-monospace, Menlo, Monaco, "Cascadia Code", "Courier New", monospace',
+    '"Fira Code", "SF Mono", ui-monospace, Menlo, Monaco, monospace',
   monoFontSize: 14,
 };
 

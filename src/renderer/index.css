@@ -144,7 +144,7 @@
     Arial, sans-serif;
   --font-editor-size: 16px;
   --font-editor-line-height: 1.65;
-  --font-mono: 'SF Mono', ui-monospace, Menlo, Monaco, 'Courier New', monospace;
+  --font-mono: 'Fira Code', 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
   --font-mono-size: 14px;
 
   /* Code Syntax Colors - Light Theme */
