@@ -43,7 +43,8 @@
     "release": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
-    "postinstall": "electron-rebuild --ignore better-sqlite3"
+    "postinstall": "electron-rebuild --ignore better-sqlite3",
+    "react-devtools": "react-devtools"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.2.8",
@@ -116,6 +117,7 @@
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
+    "@welldone-software/why-did-you-render": "^10.0.1",
     "@xenova/transformers": "^2.6.5",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",

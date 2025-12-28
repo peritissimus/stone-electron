@@ -42,35 +42,47 @@ const withAlpha = (color: string, alpha: number) => {
   if (!color) return color;
   const clampAlpha = Math.min(Math.max(alpha, 0), 1);
 
+  // Convert any color to rgba for maximum compatibility with Mermaid
+  // First, handle colors that already have alpha (hsla, rgba, or modern syntax with /)
+  if (color.includes('/')) {
+    // Modern syntax like "hsl(220 40% 50% / 0.5)" - strip existing alpha
+    color = color.replace(/\s*\/\s*[\d.]+\s*\)$/, ')');
+  }
+
   if (color.startsWith('hsla(')) {
-    return color.replace(/hsla\(([^)]+)\)/, (_, inner) => {
-      const parts = inner.split(',').map((part: string) => part.trim());
-      return `hsla(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
-    });
+    // Old hsla syntax - replace the alpha
+    return color.replace(/,\s*[\d.]+\s*\)$/, `, ${clampAlpha})`);
   }
 
   if (color.startsWith('hsl(')) {
-    const inner = color.slice(4, -1);
-    const parts = inner.split(',').map((part) => part.trim());
-    if (parts.length === 1) {
-      // modern hsl syntax like "hsl(220 40% 50%)"
+    const inner = color.slice(4, -1).trim();
+    // Check if it's comma-separated (old) or space-separated (modern)
+    if (inner.includes(',')) {
+      // Old syntax: hsl(220, 40%, 50%)
       return `hsla(${inner}, ${clampAlpha})`;
+    } else {
+      // Modern syntax: hsl(220 40% 50%) - convert to old hsla for compatibility
+      const parts = inner.split(/\s+/);
+      if (parts.length >= 3) {
+        return `hsla(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
+      }
     }
-    return `hsla(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
   }
 
   if (color.startsWith('rgba(')) {
-    return color.replace(/rgba\(([^)]+)\)/, (_, inner) => {
-      const parts = inner.split(',').map((part: string) => part.trim());
-      return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
-    });
+    return color.replace(/,\s*[\d.]+\s*\)$/, `, ${clampAlpha})`);
   }
 
   if (color.startsWith('rgb(')) {
-    const inner = color.slice(4, -1);
-    const parts = inner.split(',').map((part) => part.trim());
-    if (parts.length === 3) {
-      return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
+    const inner = color.slice(4, -1).trim();
+    if (inner.includes(',')) {
+      return `rgba(${inner}, ${clampAlpha})`;
+    } else {
+      // Modern syntax: rgb(255 0 0)
+      const parts = inner.split(/\s+/);
+      if (parts.length >= 3) {
+        return `rgba(${parts[0]}, ${parts[1]}, ${parts[2]}, ${clampAlpha})`;
+      }
     }
   }
 
