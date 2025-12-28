@@ -40,6 +40,8 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  --color-overlay: hsl(var(--overlay));
+
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
   --color-warning: hsl(var(--warning));
@@ -129,6 +131,9 @@
   --card: 0 0% 100%;
   --card-foreground: 0 0% 12%;
 
+  /* Solid opaque overlay for inputs/popovers */
+  --overlay: 0 0% 100%;
+
   --radius: 6px;
 
   /* Font Variables */
@@ -197,6 +202,9 @@
   --card: 0 0% 0% / 0.01;
   --card-foreground: 0 0% 92%;
 
+  /* Solid opaque overlay for inputs/popovers */
+  --overlay: 0 0% 18%;
+
   /* Code Syntax Colors - Dark Theme */
   --code-bg: 0 0% 10% / 0.6;
   --code-text: 0 0% 90%;
@@ -246,6 +254,9 @@
     --popover-foreground: 0 0% 92%;
     --card: 0 0% 0% / 0.01;
     --card-foreground: 0 0% 92%;
+
+    /* Solid opaque overlay for inputs/popovers */
+    --overlay: 0 0% 18%;
 
     /* Code Syntax Colors - Dark Theme */
     --code-bg: 0 0% 10% / 0.6;
@@ -991,14 +1002,17 @@ textarea:focus {
 .mermaid-preview {
   background: hsl(var(--background));
   padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
 }
 
 .mermaid-preview svg {
-  max-width: 100%;
   height: auto;
-  display: block;
-  margin: 0 auto;
+  flex-shrink: 0;
   filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.08));
+  overflow: visible;
 }
 
 /* Excalidraw-style rounded shapes */
@@ -1036,6 +1050,23 @@ textarea:focus {
   letter-spacing: 0.01em;
 }
 
+/* Mermaid foreignObject text styling (dimensions fixed via JS post-processing) */
+.mermaid-preview .node foreignObject {
+  overflow: visible;
+}
+
+.mermaid-preview .nodeLabel {
+  white-space: nowrap;
+}
+
+.mermaid-preview .edgeLabel foreignObject {
+  overflow: visible;
+}
+
+.mermaid-preview .edgeLabel foreignObject > div {
+  white-space: nowrap;
+}
+
 /* Softer edge lines */
 .mermaid-preview svg .edgePath path {
   stroke-width: 2.5 !important;
@@ -1070,13 +1101,16 @@ textarea:focus {
   color: hsl(var(--foreground));
 }
 
-/* Excalidraw-style hover effects */
+/* Excalidraw-style hover effects - double-click to edit */
+.mermaid-preview svg .node {
+  cursor: pointer;
+}
+
 .mermaid-preview svg .node rect,
 .mermaid-preview svg .node circle,
 .mermaid-preview svg .node ellipse,
 .mermaid-preview svg .node polygon {
   transition: all 0.2s ease;
-  cursor: pointer;
 }
 
 .mermaid-preview svg .node:hover rect,
@@ -1084,7 +1118,11 @@ textarea:focus {
 .mermaid-preview svg .node:hover ellipse,
 .mermaid-preview svg .node:hover polygon {
   filter: drop-shadow(0 4px 8px hsl(var(--shadow-color) / 0.12)) brightness(1.02);
-  transform: translateY(-1px);
+  stroke-width: 3px !important;
+}
+
+.mermaid-preview svg .node:hover .nodeLabel {
+  font-weight: 600;
 }
 
 /* Add subtle background grid effect (optional, Excalidraw-like) */

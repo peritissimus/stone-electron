@@ -36,9 +36,26 @@ export function MainLayout() {
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
-  const { loadNotes } = useNoteAPI();
+  const { loadNotes, createNote } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
   const { openOrCreateTodayJournal } = useJournalActions();
+
+  // Helper to create a note in a specific folder
+  const createNoteInFolder = async (folderPath: string) => {
+    const now = new Date();
+    const defaultTitle = `Untitled Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+
+    const note = await createNote({
+      title: defaultTitle,
+      content: '',
+      folderPath,
+    });
+
+    if (note) {
+      logger.info(`[MainLayout] Created note in ${folderPath}:`, note.id);
+      setActiveNote(note.id);
+    }
+  };
 
   // Ref to access editor actions
   const editorRef = useRef<NoteEditorHandle>(null);
@@ -95,6 +112,8 @@ export function MainLayout() {
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
     onNewNote: () => editorRef.current?.createSiblingNote(),
+    onNewPersonalNote: () => createNoteInFolder('Personal'),
+    onNewWorkNote: () => createNoteInFolder('Work'),
     onTodayJournal: () => openOrCreateTodayJournal(),
   });
 

@@ -12,6 +12,8 @@ import { useKeyboardShortcuts, ShortcutConfig, isMacOS } from './useKeyboardShor
 interface UseAppShortcutsOptions {
   onSave?: () => void;
   onNewNote?: () => void;
+  onNewPersonalNote?: () => void;
+  onNewWorkNote?: () => void;
   onCloseNote?: () => void;
   onTodayJournal?: () => void;
 }
@@ -21,7 +23,7 @@ interface UseAppShortcutsOptions {
  * Uses the shortcuts store for keybindings and connects them to actual actions
  */
 export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
-  const { onSave, onNewNote, onCloseNote, onTodayJournal } = options;
+  const { onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal } = options;
 
   const { getShortcut } = useShortcutsStore();
   const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleSearch } = useUIStore();
@@ -32,6 +34,8 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     () => ({
       save: () => onSave?.(),
       newNote: () => onNewNote?.(),
+      newPersonalNote: () => onNewPersonalNote?.(),
+      newWorkNote: () => onNewWorkNote?.(),
       settings: () => {
         if (settingsOpen) {
           closeSettings();
@@ -48,7 +52,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       },
       todayJournal: () => onTodayJournal?.(),
     }),
-    [onSave, onNewNote, onCloseNote, onTodayJournal, openSettings, closeSettings, settingsOpen, toggleSearch, toggleSidebar, setActiveNote]
+    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, openSettings, closeSettings, settingsOpen, toggleSearch, toggleSidebar, setActiveNote]
   );
 
   // Build shortcuts config from store
@@ -56,6 +60,8 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     const shortcutIds: ShortcutAction[] = [
       'save',
       'newNote',
+      'newPersonalNote',
+      'newWorkNote',
       'settings',
       'search',
       'toggleSidebar',
