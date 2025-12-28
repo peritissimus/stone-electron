@@ -89,7 +89,7 @@ export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
       // Sidebar
-      sidebarOpen: true,
+      sidebarOpen: false,
       sidebarCollapsed: false,
       sidebarWidth: 240,
       sidebarPanel: 'home',

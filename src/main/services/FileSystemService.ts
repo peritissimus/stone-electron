@@ -188,24 +188,12 @@ export class FileSystemService {
     folderPath: string,
     recursive: boolean = true,
     basePath: string = folderPath,
+    isRoot: boolean = true,
   ): Promise<MarkdownFile[]> {
     const files: MarkdownFile[] = [];
 
-    if (process.env.NODE_ENV !== 'production') {
-      logger.debug(`[FileSystem] Scanning folder: ${folderPath} (recursive: ${recursive})`);
-    }
-
     try {
       const entries = await fs.readdir(folderPath, { withFileTypes: true });
-      if (process.env.NODE_ENV !== 'production') {
-        logger.debug(`[FileSystem] Found ${entries.length} entries in ${folderPath}`);
-      }
-
-      let folderCount = 0;
-      let markdownCount = 0;
-      let skippedCount = 0;
-
-      // Collect subfolders for parallel scanning
       const subfolderPaths: string[] = [];
 
       for (const entry of entries) {
@@ -218,52 +206,38 @@ export class FileSystemService {
 
         // Skip hidden files and folders
         if (entry.name.startsWith('.')) {
-          skippedCount++;
           continue;
         }
 
         if (entry.isDirectory()) {
-          folderCount++;
-          if (process.env.NODE_ENV !== 'production') {
-            logger.debug(`[FileSystem] Found subfolder: ${entry.name}`);
-          }
           if (recursive) {
             subfolderPaths.push(fullPath);
           }
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
-          markdownCount++;
-          if (process.env.NODE_ENV !== 'production') {
-            logger.debug(`[FileSystem] Found markdown file: ${entry.name}`);
-          }
           try {
-            // Fast scan - don't read full content
             const file = await this.readMarkdownFile(fullPath, false);
             file.relativePath = relativePath;
             files.push(file);
-            if (process.env.NODE_ENV !== 'production') {
-              logger.debug(`[FileSystem] Read: ${entry.name} (title: "${file.title}")`);
-            }
           } catch (error) {
-            logger.warn(`[FileSystem] ⚠️  Skipping unreadable file ${fullPath}:`, error);
+            logger.warn(`[FileSystem] Skipping unreadable file: ${entry.name}`);
           }
         }
       }
 
-      // Scan all subfolders in parallel (much faster than sequential)
+      // Scan all subfolders in parallel
       if (subfolderPaths.length > 0 && recursive) {
         const subResults = await Promise.all(
-          subfolderPaths.map(subPath => this.scanFolder(subPath, recursive, basePath))
+          subfolderPaths.map(subPath => this.scanFolder(subPath, recursive, basePath, false))
         );
         subResults.forEach(subFiles => files.push(...subFiles));
       }
-      logger.debug(`[FileSystem] Scan summary for ${folderPath}`, {
-        folders: folderCount,
-        markdownFiles: markdownCount,
-        skipped: skippedCount,
-        total: files.length,
-      });
+
+      // Only log summary at root level
+      if (isRoot) {
+        logger.info(`[FileSystem] Scanned ${path.basename(folderPath)}: ${files.length} notes`);
+      }
     } catch (error) {
-      logger.error(`[FileSystem] ❌ Error scanning folder ${folderPath}:`, error);
+      logger.error(`[FileSystem] Error scanning ${folderPath}:`, error);
       throw error;
     }
 
@@ -445,30 +419,23 @@ export class FileSystemService {
    * Validate folder path
    */
   async validateFolderPath(folderPath: string): Promise<{ valid: boolean; error?: string }> {
-    logger.info(`[FileSystem] 🔍 Validating folder path: ${folderPath}`);
-
     try {
       const stats = await fs.stat(folderPath);
 
       if (!stats.isDirectory()) {
-        logger.warn(`[FileSystem] ❌ Path is not a directory: ${folderPath}`);
         return { valid: false, error: 'Path is not a directory' };
       }
 
       // Try to read the directory to check permissions
       await fs.readdir(folderPath);
-
-      logger.info(`[FileSystem] ✅ Folder path is valid: ${folderPath}`);
       return { valid: true };
     } catch (error: any) {
       if (error.code === 'ENOENT') {
-        logger.warn(`[FileSystem] ❌ Folder does not exist: ${folderPath}`);
         return { valid: false, error: 'Folder does not exist' };
       } else if (error.code === 'EACCES') {
-        logger.warn(`[FileSystem] ❌ Permission denied: ${folderPath}`);
         return { valid: false, error: 'Permission denied' };
       } else {
-        logger.error(`[FileSystem] ❌ Validation error for ${folderPath}:`, error.message);
+        logger.error(`[FileSystem] Validation error:`, error.message);
         return { valid: false, error: error.message || 'Unknown error' };
       }
     }

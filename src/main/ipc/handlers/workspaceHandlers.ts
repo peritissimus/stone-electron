@@ -2,13 +2,13 @@
  * Workspace IPC Handlers
  */
 
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
 import path from 'path';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { getFileSystemService } from '../../services/FileSystemService';
 import { getFileWatcherService } from '../../services/FileWatcherService';
-import { createHandler, IpcError } from '../utils';
+import { registerHandler, IpcError } from '../utils';
 import { resolveInsideRoot, normalizeRelativePath as normalizeRelUtil } from '../../utils/path';
 import { logger } from '../../utils/logger';
 
@@ -28,9 +28,9 @@ export function registerWorkspaceHandlers() {
   };
 
   // workspaces:selectFolder
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.SELECT_FOLDER,
-    createHandler(async (event) => {
+    async (event) => {
       const result = await dialog.showOpenDialog({
         properties: ['openDirectory', 'createDirectory'],
         title: 'Select Workspace Folder',
@@ -49,17 +49,17 @@ export function registerWorkspaceHandlers() {
   );
 
   // workspaces:validatePath
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.VALIDATE_PATH,
-    createHandler(async (event, request: { folderPath: string }) => {
+    async (event, request: { folderPath: string }) => {
       return await fsService.validateFolderPath(request.folderPath);
     }),
   );
 
   // workspaces:create
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.CREATE,
-    createHandler(async (event, request: { name: string; folderPath: string }) => {
+    async (event, request: { name: string; folderPath: string }) => {
       // Validate folder path
       const validation = await fsService.validateFolderPath(request.folderPath);
       if (!validation.valid) {
@@ -78,10 +78,8 @@ export function registerWorkspaceHandlers() {
         try {
           const folderPath = path.join(request.folderPath, folderName);
           await fsService.createFolder(folderPath);
-          logger.info(`[Workspace] Created default folder: ${folderName}`);
         } catch (error) {
-          // Log but don't fail workspace creation if folder already exists
-          logger.warn(`[Workspace] Could not create default folder ${folderName}:`, error);
+          // Folder may already exist - that's fine
         }
       }
 
@@ -110,27 +108,27 @@ export function registerWorkspaceHandlers() {
   );
 
   // workspaces:getAll
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.GET_ALL,
-    createHandler(async (event) => {
+    async (event) => {
       const workspaces = await repos.workspace.findAll();
       return { workspaces };
     }),
   );
 
   // workspaces:getActive
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.GET_ACTIVE,
-    createHandler(async (event) => {
+    async (event) => {
       const workspace = await repos.workspace.getActive();
       return { workspace };
     }),
   );
 
   // workspaces:setActive
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.SET_ACTIVE,
-    createHandler(async (event, request: { id: string }) => {
+    async (event, request: { id: string }) => {
       const workspace = await repos.workspace.setActive(request.id);
 
       // Broadcast event
@@ -143,9 +141,9 @@ export function registerWorkspaceHandlers() {
   );
 
   // workspaces:update
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.UPDATE,
-    createHandler(async (event, request: { id: string; name?: string }) => {
+    async (event, request: { id: string; name?: string }) => {
       const workspace = await repos.workspace.update(request.id, {
         name: request.name,
       });
@@ -159,9 +157,9 @@ export function registerWorkspaceHandlers() {
     }),
   );
 
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.CREATE_FOLDER,
-    createHandler(async (event, request: { name: string; parentPath?: string }) => {
+    async (event, request: { name: string; parentPath?: string }) => {
       const workspace = await repos.workspace.getActive();
       if (!workspace) {
         throw new IpcError('NOT_FOUND', 'Active workspace not found');
@@ -196,9 +194,9 @@ export function registerWorkspaceHandlers() {
     }),
   );
 
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.RENAME_FOLDER,
-    createHandler(async (event, request: { path: string; name: string }) => {
+    async (event, request: { path: string; name: string }) => {
       const workspace = await repos.workspace.getActive();
       if (!workspace) {
         throw new IpcError('NOT_FOUND', 'Active workspace not found');
@@ -247,9 +245,9 @@ export function registerWorkspaceHandlers() {
     }),
   );
 
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.DELETE_FOLDER,
-    createHandler(async (event, request: { path: string }) => {
+    async (event, request: { path: string }) => {
       const workspace = await repos.workspace.getActive();
       if (!workspace) {
         throw new IpcError('NOT_FOUND', 'Active workspace not found');
@@ -278,77 +276,74 @@ export function registerWorkspaceHandlers() {
     }),
   );
 
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.MOVE_FOLDER,
-    createHandler(
-      async (event, request: { sourcePath: string; destinationPath: string | null }) => {
-        const workspace = await repos.workspace.getActive();
-        if (!workspace) {
-          throw new IpcError('NOT_FOUND', 'Active workspace not found');
-        }
+    async (event, request: { sourcePath: string; destinationPath: string | null }) => {
+      const workspace = await repos.workspace.getActive();
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Active workspace not found');
+      }
 
-        const sourceRelative = normalizeRelativePath(request.sourcePath);
-        if (!sourceRelative) {
-          throw new IpcError('INVALID_INPUT', 'Source folder path is required');
-        }
+      const sourceRelative = normalizeRelativePath(request.sourcePath);
+      if (!sourceRelative) {
+        throw new IpcError('INVALID_INPUT', 'Source folder path is required');
+      }
 
-        const sourceAbsolute = resolveInsideRoot(workspace.folderPath, sourceRelative);
-        const exists = await fsService.fileExists(sourceAbsolute);
-        if (!exists) {
-          throw new IpcError('NOT_FOUND', 'Source folder does not exist');
-        }
+      const sourceAbsolute = resolveInsideRoot(workspace.folderPath, sourceRelative);
+      const exists = await fsService.fileExists(sourceAbsolute);
+      if (!exists) {
+        throw new IpcError('NOT_FOUND', 'Source folder does not exist');
+      }
 
-        const destinationRelative = normalizeRelativePath(request.destinationPath || '');
-        const destinationAbsolute = resolveInsideRoot(
-          workspace.folderPath,
-          destinationRelative || '.',
-        );
+      const destinationRelative = normalizeRelativePath(request.destinationPath || '');
+      const destinationAbsolute = resolveInsideRoot(
+        workspace.folderPath,
+        destinationRelative || '.',
+      );
 
-        // Check if destination exists and is a directory
-        const destExists = await fsService.fileExists(destinationAbsolute);
-        if (destinationRelative && !destExists) {
-          throw new IpcError('NOT_FOUND', 'Destination folder does not exist');
-        }
+      // Check if destination exists and is a directory
+      const destExists = await fsService.fileExists(destinationAbsolute);
+      if (destinationRelative && !destExists) {
+        throw new IpcError('NOT_FOUND', 'Destination folder does not exist');
+      }
 
-        // Prevent moving a folder into itself or its subdirectory
-        if (destinationRelative.startsWith(sourceRelative + '/')) {
-          throw new IpcError('INVALID_INPUT', 'Cannot move a folder into itself or its subdirectory');
-        }
+      // Prevent moving a folder into itself or its subdirectory
+      if (destinationRelative.startsWith(sourceRelative + '/')) {
+        throw new IpcError('INVALID_INPUT', 'Cannot move a folder into itself or its subdirectory');
+      }
 
-        const folderName = path.basename(sourceRelative);
-        const newRelative = destinationRelative
-          ? path.posix.join(destinationRelative, folderName)
-          : folderName;
-        const newAbsolute = resolveInsideRoot(workspace.folderPath, newRelative);
+      const folderName = path.basename(sourceRelative);
+      const newRelative = destinationRelative
+        ? path.posix.join(destinationRelative, folderName)
+        : folderName;
 
-        // Generate unique name if there's a conflict
-        const uniqueName = await fsService.generateUniqueFolderName(
-          destinationAbsolute,
-          folderName,
-        );
-        const finalRelative = destinationRelative
-          ? path.posix.join(destinationRelative, uniqueName)
-          : uniqueName;
-        const finalAbsolute = resolveInsideRoot(workspace.folderPath, finalRelative);
+      // Generate unique name if there's a conflict
+      const uniqueName = await fsService.generateUniqueFolderName(
+        destinationAbsolute,
+        folderName,
+      );
+      const finalRelative = destinationRelative
+        ? path.posix.join(destinationRelative, uniqueName)
+        : uniqueName;
+      const finalAbsolute = resolveInsideRoot(workspace.folderPath, finalRelative);
 
-        // Move the folder
-        await fsService.renameFolder(sourceAbsolute, finalAbsolute);
+      // Move the folder
+      await fsService.renameFolder(sourceAbsolute, finalAbsolute);
 
-        // FileWatcher will handle sync automatically - no manual sync needed
+      // FileWatcher will handle sync automatically - no manual sync needed
 
-        BrowserWindow.getAllWindows().forEach((win) => {
-          win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
-        });
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace });
+      });
 
-        return { folderPath: finalRelative };
-      },
-    ),
+      return { folderPath: finalRelative };
+    },
   );
 
   // workspaces:delete
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string }) => {
+    async (event, request: { id: string }) => {
       await repos.workspace.delete(request.id);
 
       // Stop watching removed workspace
@@ -366,9 +361,9 @@ export function registerWorkspaceHandlers() {
   );
 
   // workspaces:scan
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.SCAN,
-    createHandler(async (event, request: { workspaceId: string }) => {
+    async (event, request: { workspaceId: string }) => {
       const workspace = await repos.workspace.findById(request.workspaceId);
       if (!workspace) {
         throw new IpcError('NOT_FOUND', 'Workspace not found');
@@ -417,19 +412,15 @@ export function registerWorkspaceHandlers() {
   );
 
   // workspaces:sync - sync folders->notebooks and files->notes
-  ipcMain.handle(
+  registerHandler(
     WORKSPACE_CHANNELS.SYNC,
-    createHandler(async (event, request: { workspaceId?: string }) => {
+    async (event, request: { workspaceId?: string }) => {
       const active = request?.workspaceId
         ? await repos.workspace.findById(request.workspaceId)
         : await repos.workspace.getActive();
       if (!active) throw new IpcError('NOT_FOUND', 'Active workspace not found');
 
       const start = Date.now();
-      // Log start
-      logger.info(
-        `[IPC][workspaces:sync] Start sync for workspace ${active.id} at ${active.folderPath}`,
-      );
 
       // Ensure default folders exist (Work, Journal, Personal)
       const defaultFolders = ['Work', 'Journal', 'Personal'];
@@ -439,27 +430,20 @@ export function registerWorkspaceHandlers() {
           const exists = await fsService.fileExists(folderPath);
           if (!exists) {
             await fsService.createFolder(folderPath);
-            logger.info(`[IPC][workspaces:sync] Created missing default folder: ${folderName}`);
           }
         } catch (error) {
-          logger.warn(`[IPC][workspaces:sync] Could not ensure default folder ${folderName}:`, error);
+          logger.warn(`[IPC] workspaces:sync - Could not create folder ${folderName}:`, error);
         }
       }
 
       // Sync notebooks from folders
       const nbResult = await repos.notebook.syncWithWorkspaceFolders(active.id);
-      logger.info(
-        `[IPC][workspaces:sync] Notebook sync: created=${nbResult.created}, updated=${nbResult.updated}, errors=${nbResult.errors.length}`,
-      );
 
       // Sync notes from files
       const noteResult = await repos.note.syncWithFileSystem(active.id);
-      logger.info(
-        `[IPC][workspaces:sync] Note sync: created=${noteResult.created}, updated=${noteResult.updated}, deleted=${noteResult.deleted}, errors=${noteResult.errors.length}`,
-      );
 
       const dur = Date.now() - start;
-      logger.info(`[IPC][workspaces:sync] Done in ${dur}ms`);
+      logger.info(`[IPC] workspaces:sync → ${noteResult.created + noteResult.updated} notes synced (${dur}ms)`);
 
       return {
         workspaceId: active.id,

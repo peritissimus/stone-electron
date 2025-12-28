@@ -2,7 +2,7 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect, useRef, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import { NoteEditor, NoteEditorHandle } from '@renderer/components/features/Editor';
 import { SearchPanel } from '@renderer/components/features/search';
@@ -17,11 +17,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
-import {
-  useKeyboardShortcuts,
-  ShortcutConfig,
-  isMacOS,
-} from '@renderer/hooks/useKeyboardShortcuts';
+import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
 import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
 
@@ -34,7 +30,6 @@ export function MainLayout() {
     searchOpen,
     setSidebarWidth,
     setNoteListWidth,
-    openSettings,
   } = useUIStore();
 
   const { activeNoteId, setActiveNote } = useNoteStore();
@@ -96,42 +91,12 @@ export function MainLayout() {
     }
   }, [bootstrapComplete, showRecoveryDialog, openOrCreateTodayJournal]);
 
-  // Keyboard shortcuts configuration
-  const shortcuts = useMemo<ShortcutConfig[]>(
-    () => [
-      {
-        key: 's',
-        metaKey: isMacOS(),
-        ctrlKey: !isMacOS(),
-        action: () => {
-          editorRef.current?.save();
-        },
-        description: 'Save current note',
-      },
-      {
-        key: 'n',
-        metaKey: isMacOS(),
-        ctrlKey: !isMacOS(),
-        action: () => {
-          editorRef.current?.createSiblingNote();
-        },
-        description: 'Create new note in current folder',
-      },
-      {
-        key: ',',
-        metaKey: isMacOS(),
-        ctrlKey: !isMacOS(),
-        action: () => {
-          openSettings();
-        },
-        description: 'Open settings',
-      },
-    ],
-    [],
-  );
-
-  // Attach keyboard shortcuts
-  useKeyboardShortcuts(shortcuts);
+  // Attach keyboard shortcuts using the store
+  useAppShortcuts({
+    onSave: () => editorRef.current?.save(),
+    onNewNote: () => editorRef.current?.createSiblingNote(),
+    onTodayJournal: () => openOrCreateTodayJournal(),
+  });
 
   // Handle draft recovery
   const handleRecoverDraft = (noteId: string, content: string) => {

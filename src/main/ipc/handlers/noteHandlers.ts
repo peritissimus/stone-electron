@@ -2,11 +2,11 @@
  * Note IPC Handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import type { Attachment, Note, Tag } from '@shared/types';
 import { getRepositories } from '../../repositories';
-import { createHandler, IpcError } from '../utils';
+import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
 
 type RepositoriesInstance = ReturnType<typeof getRepositories>;
@@ -236,226 +236,181 @@ export function registerNoteHandlers() {
   const repos = getRepositories();
 
   // notes:create
-  ipcMain.handle(
-    NOTE_CHANNELS.CREATE,
-    createHandler(async (event, request: CreateNoteRequest) => {
-      const createData: NoteCreateData = {
-        title: request.title || 'Untitled',
-        notebookId: null,
-        folderPath: request.folderPath ?? undefined,
-      };
+  registerHandler(NOTE_CHANNELS.CREATE, async (event, request: CreateNoteRequest) => {
+    logger.info(`[IPC] notes:create "${request.title || 'Untitled'}"`);
 
-      const note = await repos.note.create(createData);
+    const createData: NoteCreateData = {
+      title: request.title || 'Untitled',
+      notebookId: null,
+      folderPath: request.folderPath ?? undefined,
+    };
 
-      if (request.content && note.filePath && note.workspaceId) {
-        const contentUpdate: NoteUpdateData = { content: request.content };
-        await repos.note.update(note.id, contentUpdate);
-      }
+    const note = await repos.note.create(createData);
 
-      if (request.tags && request.tags.length > 0) {
-        await repos.tag.setTagsForNote(note.id, request.tags);
-      }
+    if (request.content && note.filePath && note.workspaceId) {
+      const contentUpdate: NoteUpdateData = { content: request.content };
+      await repos.note.update(note.id, contentUpdate);
+    }
 
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_CREATED);
+    if (request.tags && request.tags.length > 0) {
+      await repos.tag.setTagsForNote(note.id, request.tags);
+    }
 
-      return noteWithRelations;
-    }),
-  );
+    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_CREATED);
+
+    return noteWithRelations;
+  });
 
   // notes:update
-  ipcMain.handle(
-    NOTE_CHANNELS.UPDATE,
-    createHandler(async (event, request: UpdateNoteRequest) => {
-      const oldNote = await repos.note.findById(request.id);
-      if (!oldNote) {
+  registerHandler(NOTE_CHANNELS.UPDATE, async (event, request: UpdateNoteRequest) => {
+    logger.info(`[IPC] notes:update ${request.title ? `"${request.title}"` : request.id.slice(0, 8)}`);
+
+    const oldNote = await repos.note.findById(request.id);
+    if (!oldNote) {
+      throw new IpcError('NOT_FOUND', 'Note not found');
+    }
+
+    if (request.content) {
+      const currentContent = await repos.note.getContentById(oldNote.id);
+      if (currentContent && request.content !== currentContent) {
+        await repos.version.createVersion(
+          oldNote.id,
+          oldNote.title || 'Untitled',
+          currentContent,
+        );
+      }
+    }
+
+    const updateData: NoteUpdateData = {};
+    if (request.title !== undefined) updateData.title = request.title;
+    if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
+    if (request.folderPath !== undefined) updateData.folderPath = request.folderPath;
+    if (request.content !== undefined) updateData.content = request.content;
+    if (request.isFavorite !== undefined) updateData.isFavorite = request.isFavorite;
+    if (request.isPinned !== undefined) updateData.isPinned = request.isPinned;
+    if (request.isArchived !== undefined) updateData.isArchived = request.isArchived;
+
+    const note = await repos.note.update(request.id, updateData);
+
+    if (request.tags) {
+      await repos.tag.setTagsForNote(note.id, request.tags);
+    }
+
+    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+
+    return noteWithRelations;
+  });
+
+  // notes:delete
+  registerHandler(NOTE_CHANNELS.DELETE, async (event, request: { id: string; permanent?: boolean }) => {
+    logger.info(`[IPC] notes:delete ${request.permanent ? '(permanent)' : '(soft)'}`);
+
+    if (request.permanent) {
+      const deleted = await repos.note.permanentDelete(request.id);
+      if (!deleted) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+    } else {
+      await repos.note.softDelete(request.id);
+    }
+
+    // Broadcast event
+    BrowserWindow.getAllWindows().forEach((win) => {
+      win.webContents.send(EVENTS.NOTE_DELETED, { id: request.id });
+    });
+
+    return { success: true, id: request.id };
+  });
+
+  // notes:get - Get note metadata only (no content)
+  registerHandler(
+    NOTE_CHANNELS.GET,
+    async (
+      event,
+      request: { id: string; include_versions?: boolean; include_backlinks?: boolean },
+    ) => {
+      const note = await repos.note.findById(request.id);
+      if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
 
-      if (request.content) {
-        const currentContent = await repos.note.getContentById(oldNote.id);
-        if (currentContent && request.content !== currentContent) {
-          await repos.version.createVersion(
-            oldNote.id,
-            oldNote.title || 'Untitled',
-            currentContent,
-          );
-        }
+      const noteWithRelations = await buildNoteWithRelations(note, repos);
+
+      const result: Record<string, unknown> = {
+        ...noteWithRelations,
+      };
+
+      if (request.include_versions) {
+        result.versions = await repos.version.getVersionSummary(note.id);
       }
 
-      const updateData: NoteUpdateData = {};
-      if (request.title !== undefined) updateData.title = request.title;
-      if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
-      if (request.folderPath !== undefined) updateData.folderPath = request.folderPath;
-      if (request.content !== undefined) updateData.content = request.content;
-      if (request.isFavorite !== undefined) updateData.isFavorite = request.isFavorite;
-      if (request.isPinned !== undefined) updateData.isPinned = request.isPinned;
-      if (request.isArchived !== undefined) updateData.isArchived = request.isArchived;
-
-      const note = await repos.note.update(request.id, updateData);
-
-      if (request.tags) {
-        await repos.tag.setTagsForNote(note.id, request.tags);
+      if (request.include_backlinks) {
+        result.backlinks = await repos.note.getBacklinks(note.id);
       }
 
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
-      return noteWithRelations;
-    }),
-  );
-
-  // notes:delete
-
-  ipcMain.handle(
-    NOTE_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string; permanent?: boolean }) => {
-      logger.info('[IPC][notes:delete] Received request', { id: request.id, permanent: request.permanent });
-
-      if (request.permanent) {
-        logger.info('[IPC][notes:delete] Calling permanentDelete...');
-        const success = await repos.note.permanentDelete(request.id);
-        logger.info('[IPC][notes:delete] permanentDelete result:', success);
-        if (!success) {
-          throw new IpcError('NOT_FOUND', 'Note not found');
-        }
-      } else {
-        logger.info('[IPC][notes:delete] Calling softDelete...');
-        await repos.note.softDelete(request.id);
-        logger.info('[IPC][notes:delete] softDelete complete');
-      }
-
-      // Broadcast event
-      logger.info('[IPC][notes:delete] Broadcasting NOTE_DELETED event');
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_DELETED, { id: request.id });
-      });
-
-      logger.info('[IPC][notes:delete] Done, returning success');
-      return { success: true, id: request.id };
-    }),
-  );
-
-  // notes:get - Get note metadata only (no content)
-  ipcMain.handle(
-    NOTE_CHANNELS.GET,
-    createHandler(
-      async (
-        event,
-        request: { id: string; include_versions?: boolean; include_backlinks?: boolean },
-      ) => {
-        const note = await repos.note.findById(request.id);
-        if (!note) {
-          throw new IpcError('NOT_FOUND', 'Note not found');
-        }
-
-        const noteWithRelations = await buildNoteWithRelations(note, repos);
-
-        const result: Record<string, unknown> = {
-          ...noteWithRelations,
-        };
-
-        if (request.include_versions) {
-          result.versions = await repos.version.getVersionSummary(note.id);
-        }
-
-        if (request.include_backlinks) {
-          result.backlinks = await repos.note.getBacklinks(note.id);
-        }
-
-        return result;
-      },
-    ),
+      return result;
+    },
   );
 
   // notes:getContent - Get note content from file
-  ipcMain.handle(
-    NOTE_CHANNELS.GET_CONTENT,
-    createHandler(async (event, request: { id: string }) => {
-      const content = await repos.note.getContentById(request.id);
-      if (content === null) {
-        throw new IpcError('NOT_FOUND', 'Note content not found');
-      }
-      return { content };
-    }),
-  );
+  registerHandler(NOTE_CHANNELS.GET_CONTENT, async (event, request: { id: string }) => {
+    const content = await repos.note.getContentById(request.id);
+    if (content === null) {
+      throw new IpcError('NOT_FOUND', 'Note content not found');
+    }
+    return { content };
+  });
 
   // notes:getAll
-  ipcMain.handle(
-    NOTE_CHANNELS.GET_ALL,
-    createHandler(async (event, request: GetAllNotesRequest) => {
-      // Note: We no longer run a full sync here. The FileWatcherService
-      // maintains DB <-> filesystem alignment for add/unlink events.
-      // Running sync on every list fetch caused redundant scans and log spam.
-      logger.info('[IPC][notes:getAll] request', {
-        notebookId: request.notebookId,
-        tagId: request.tagId,
-        is_favorite: request.is_favorite,
-        is_pinned: request.is_pinned,
-        is_archived: request.is_archived,
-        is_deleted: request.is_deleted,
-      });
+  registerHandler(NOTE_CHANNELS.GET_ALL, async (event, request: GetAllNotesRequest) => {
+    // Note: We no longer run a full sync here. The FileWatcherService
+    // maintains DB <-> filesystem alignment for add/unlink events.
+    const notes = await resolveNotesList(request, repos);
+    const enrichedNotes = await enrichNotes(notes, repos);
 
-      const notes = await resolveNotesList(request, repos);
-      const enrichedNotes = await enrichNotes(notes, repos);
+    logger.info(`[IPC] notes:getAll → ${enrichedNotes.length} notes`);
 
-      const total = enrichedNotes.length;
-      logger.info('[IPC][notes:getAll] returning count', total);
-
-      return {
-        notes: enrichedNotes,
-        total,
-        hasMore: request.limit ? total > request.limit + (request.offset || 0) : false,
-      };
-    }),
-  );
+    return {
+      notes: enrichedNotes,
+      total: enrichedNotes.length,
+      hasMore: request.limit ? enrichedNotes.length > request.limit + (request.offset || 0) : false,
+    };
+  });
 
   // notes:favorite
-  ipcMain.handle(
-    NOTE_CHANNELS.FAVORITE,
-    createHandler(async (event, request: { id: string }) => {
-      const note = await repos.note.toggleFavorite(request.id);
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
-      return noteWithRelations;
-    }),
-  );
+  registerHandler(NOTE_CHANNELS.FAVORITE, async (event, request: { id: string }) => {
+    const note = await repos.note.toggleFavorite(request.id);
+    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    return noteWithRelations;
+  });
 
   // notes:pin
-  ipcMain.handle(
-    NOTE_CHANNELS.PIN,
-    createHandler(async (event, request: { id: string }) => {
-      const note = await repos.note.togglePin(request.id);
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
-      return noteWithRelations;
-    }),
-  );
+  registerHandler(NOTE_CHANNELS.PIN, async (event, request: { id: string }) => {
+    const note = await repos.note.togglePin(request.id);
+    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    return noteWithRelations;
+  });
 
   // notes:archive
-  ipcMain.handle(
-    NOTE_CHANNELS.ARCHIVE,
-    createHandler(async (event, request: { id: string }) => {
-      const note = await repos.note.toggleArchive(request.id);
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
-      return noteWithRelations;
-    }),
-  );
+  registerHandler(NOTE_CHANNELS.ARCHIVE, async (event, request: { id: string }) => {
+    const note = await repos.note.toggleArchive(request.id);
+    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    return noteWithRelations;
+  });
 
   // notes:getVersions
-  ipcMain.handle(
+  registerHandler(
     NOTE_CHANNELS.GET_VERSIONS,
-    createHandler(async (event, request: { noteId: string; limit?: number; offset?: number }) => {
+    async (event, request: { noteId: string; limit?: number; offset?: number }) => {
       const versions = await repos.version.getVersionSummary(request.noteId);
-      const total = versions.length;
-
-      return { versions, total };
-    }),
+      return { versions, total: versions.length };
+    },
   );
 
   // notes:restoreVersion
-  ipcMain.handle(
+  registerHandler(
     NOTE_CHANNELS.RESTORE_VERSION,
-    createHandler(async (event, request: { noteId: string; versionId: string }) => {
+    async (event, request: { noteId: string; versionId: string }) => {
       const version = await repos.version.findById(request.versionId);
       if (!version) {
         throw new IpcError('NOT_FOUND', 'Version not found');
@@ -464,7 +419,6 @@ export function registerNoteHandlers() {
       // Create a new version from current state before restoring
       const currentNote = await repos.note.findById(request.noteId);
       if (currentNote) {
-        // Create a version before restoring
         const currentContent = await repos.note.getContentById(currentNote.id);
         await repos.version.createVersion(
           currentNote.id,
@@ -473,7 +427,7 @@ export function registerNoteHandlers() {
         );
       }
 
-      // Restore the version (content is passed via the data parameter)
+      // Restore the version
       const restoreData: NoteUpdateData = {
         title: version.title,
         content: version.content,
@@ -486,7 +440,6 @@ export function registerNoteHandlers() {
         win.webContents.send(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
       });
 
-      // Get the restored content
       const restoredContent = await repos.note.getContentById(note.id);
 
       return {
@@ -496,22 +449,19 @@ export function registerNoteHandlers() {
         versionNumber: version.versionNumber,
         message: 'Version restored successfully',
       };
-    }),
+    },
   );
 
   // notes:getBacklinks
-  ipcMain.handle(
-    NOTE_CHANNELS.GET_BACKLINKS,
-    createHandler(async (event, request: { noteId: string }) => {
-      const backlinks = await repos.note.getBacklinks(request.noteId);
-      return { backlinks };
-    }),
-  );
+  registerHandler(NOTE_CHANNELS.GET_BACKLINKS, async (event, request: { noteId: string }) => {
+    const backlinks = await repos.note.getBacklinks(request.noteId);
+    return { backlinks };
+  });
 
   // notes:move
-  ipcMain.handle(
+  registerHandler(
     NOTE_CHANNELS.MOVE,
-    createHandler(async (event, request: { id: string; folderPath: string | null }) => {
+    async (event, request: { id: string; folderPath: string | null }) => {
       const oldNote = await repos.note.findById(request.id);
       if (!oldNote) {
         throw new IpcError('NOT_FOUND', 'Note not found');
@@ -527,68 +477,63 @@ export function registerNoteHandlers() {
         );
       }
 
-      // Move the note by updating its folderPath (using type assertion like update handler does)
+      // Move the note by updating its folderPath
       const updateData: any = {
         folderPath: request.folderPath,
       };
       const note = await repos.note.update(request.id, updateData);
 
       const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
       return noteWithRelations;
-    }),
+    },
   );
 
   // notes:getAllTodos - Get all todo items from all notes
-  ipcMain.handle(
-    NOTE_CHANNELS.GET_ALL_TODOS,
-    createHandler(async () => {
-      const jsdom = await import('jsdom');
-      const { JSDOM } = jsdom;
+  registerHandler(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
+    const jsdom = await import('jsdom');
+    const { JSDOM } = jsdom;
 
-      const notes = await repos.note.findAll();
-      const todos: any[] = [];
+    const notes = await repos.note.findAll();
+    const todos: any[] = [];
 
-      for (const note of notes) {
-        try {
-          const content = await repos.note.getContentById(note.id);
-          if (!content) continue;
+    for (const note of notes) {
+      try {
+        const content = await repos.note.getContentById(note.id);
+        if (!content) continue;
 
-          const dom = new JSDOM(content);
-          const document = dom.window.document;
-          const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
+        const dom = new JSDOM(content);
+        const document = dom.window.document;
+        const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
 
-          taskItems.forEach((taskItem, index) => {
-            const state = taskItem.getAttribute('data-state') || 'todo';
-            const checked = taskItem.getAttribute('data-checked') === 'true';
+        taskItems.forEach((taskItem, index) => {
+          const state = taskItem.getAttribute('data-state') || 'todo';
+          const checked = taskItem.getAttribute('data-checked') === 'true';
 
-            // Extract text content (exclude the button)
-            const contentDiv = taskItem.querySelector('div');
-            const text = contentDiv?.textContent?.trim() || '';
+          const contentDiv = taskItem.querySelector('div');
+          const text = contentDiv?.textContent?.trim() || '';
 
-            if (text) {
-              todos.push({
-                id: `${note.id}-${index}`,
-                noteId: note.id,
-                noteTitle: note.title,
-                notePath: note.filePath,
-                text,
-                state,
-                checked,
-                createdAt: note.createdAt,
-                updatedAt: note.updatedAt,
-              });
-            }
-          });
-        } catch (error) {
-          logger.warn('[NoteHandlers] Failed to extract todos from note', {
-            noteId: note.id,
-            error,
-          });
-        }
+          if (text) {
+            todos.push({
+              id: `${note.id}-${index}`,
+              noteId: note.id,
+              noteTitle: note.title,
+              notePath: note.filePath,
+              text,
+              state,
+              checked,
+              createdAt: note.createdAt,
+              updatedAt: note.updatedAt,
+            });
+          }
+        });
+      } catch (error) {
+        logger.warn('[NoteHandlers] Failed to extract todos from note', {
+          noteId: note.id,
+          error,
+        });
       }
+    }
 
-      return todos;
-    }),
-  );
+    return todos;
+  });
 }
