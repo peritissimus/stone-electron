@@ -9,7 +9,7 @@
     'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
 
-  --color-gray-200: #e5e7eb;
+  --color-gray-200: hsl(var(--border));
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -39,15 +39,20 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.15);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.05);
+  --shadow: 0 2px 8px hsl(var(--shadow-color) / 0.1);
+  --shadow-md: 0 4px 12px hsl(var(--shadow-color) / 0.1);
+  --shadow-lg: 0 8px 24px hsl(var(--shadow-color) / 0.15);
+  --shadow-xl: 0 16px 48px hsl(var(--shadow-color) / 0.2);
 
   --spacing-titlebar: 51px;
 
@@ -146,6 +151,15 @@
   --code-attribute: 330 60% 50%;
   --code-tag: 211 80% 45%;
   --code-property: 262 50% 50%;
+
+  /* Semantic colors */
+  --success: 142 60% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 45 90% 50%;
+  --warning-foreground: 0 0% 10%;
+
+  /* Shadow color for light mode */
+  --shadow-color: 0 0% 0%;
 }
 
 /* Dark Mode Colors - Notion-like Dark Theme */
@@ -186,6 +200,15 @@
   --code-attribute: 330 60% 65%;
   --code-tag: 211 70% 65%;
   --code-property: 262 60% 70%;
+
+  /* Semantic colors */
+  --success: 142 50% 60%;
+  --success-foreground: 0 0% 10%;
+  --warning: 45 80% 60%;
+  --warning-foreground: 0 0% 10%;
+
+  /* Shadow color for dark mode */
+  --shadow-color: 0 0% 100%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -226,6 +249,15 @@
     --code-attribute: 330 60% 65%;
     --code-tag: 211 70% 65%;
     --code-property: 262 60% 70%;
+
+    /* Semantic colors */
+    --success: 142 50% 60%;
+    --success-foreground: 0 0% 10%;
+    --warning: 45 80% 60%;
+    --warning-foreground: 0 0% 10%;
+
+    /* Shadow color for dark mode */
+    --shadow-color: 0 0% 100%;
   }
 }
 
@@ -302,11 +334,7 @@ textarea:focus {
 }
 
 *:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-.dark *:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  scrollbar-color: hsl(var(--shadow-color) / 0.2) transparent;
 }
 
 /* Webkit overlay scrollbars */
@@ -322,19 +350,11 @@ textarea:focus {
 }
 
 *:hover::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.dark *:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: hsl(var(--shadow-color) / 0.2);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.35);
-}
-
-.dark *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: hsl(var(--shadow-color) / 0.35);
 }
 
 /* Hide scrollbar utility */
@@ -349,7 +369,7 @@ textarea:focus {
 
 /* TipTap Editor Styles */
 .tiptap-editor {
-  @apply text-gray-900 dark:text-gray-100;
+  @apply text-foreground;
 }
 
 .ProseMirror {
@@ -496,7 +516,7 @@ textarea:focus {
 }
 
 .prose blockquote {
-  @apply border-l-4 border-gray-300 dark:border-gray-700 pl-4 italic my-4;
+  @apply border-l-4 border-border pl-4 italic my-4;
   font-family: var(--font-editor-body);
   font-size: var(--font-editor-size);
   line-height: var(--font-editor-line-height);
@@ -667,7 +687,7 @@ textarea:focus {
 }
 
 .prose a {
-  @apply text-blue-600 dark:text-blue-400 no-underline hover:underline;
+  @apply text-primary no-underline hover:underline;
   transition:
     color 0.15s ease,
     text-decoration-color 0.15s ease;
@@ -682,14 +702,14 @@ textarea:focus {
     transform 0.2s ease,
     box-shadow 0.2s ease;
   box-shadow:
-    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
-    rgba(15, 15, 15, 0.1) 0px 2px 4px;
+    hsl(var(--shadow-color) / 0.1) 0px 0px 0px 1px,
+    hsl(var(--shadow-color) / 0.1) 0px 2px 4px;
 }
 
 .prose img:hover {
   box-shadow:
-    rgba(15, 15, 15, 0.1) 0px 0px 0px 1px,
-    rgba(15, 15, 15, 0.2) 0px 3px 9px;
+    hsl(var(--shadow-color) / 0.1) 0px 0px 0px 1px,
+    hsl(var(--shadow-color) / 0.2) 0px 3px 9px;
 }
 
 .prose hr {
@@ -957,7 +977,7 @@ textarea:focus {
   height: auto;
   display: block;
   margin: 0 auto;
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08));
+  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.08));
 }
 
 /* Excalidraw-style rounded shapes */
@@ -965,18 +985,18 @@ textarea:focus {
   rx: 8 !important;
   ry: 8 !important;
   stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
 }
 
 .mermaid-preview svg .node circle,
 .mermaid-preview svg .node ellipse {
   stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
 }
 
 .mermaid-preview svg .node polygon {
   stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.06));
+  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
 }
 
 /* Mermaid diagram text styling - Excalidraw feel */
@@ -1021,12 +1041,12 @@ textarea:focus {
 
 /* Dark mode adjustments for Mermaid */
 .dark .mermaid-preview svg {
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3)) brightness(0.95);
+  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.3)) brightness(0.95);
 }
 
 .dark .mermaid-preview .nodeLabel,
 .dark .mermaid-preview .edgeLabel {
-  color: #e2e8f0;
+  color: hsl(var(--foreground));
 }
 
 /* Excalidraw-style hover effects */
@@ -1042,7 +1062,7 @@ textarea:focus {
 .mermaid-preview svg .node:hover circle,
 .mermaid-preview svg .node:hover ellipse,
 .mermaid-preview svg .node:hover polygon {
-  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.12)) brightness(1.02);
+  filter: drop-shadow(0 4px 8px hsl(var(--shadow-color) / 0.12)) brightness(1.02);
   transform: translateY(-1px);
 }
 
@@ -1050,17 +1070,8 @@ textarea:focus {
 .mermaid-preview {
   background-color: hsl(var(--card) / 0.65);
   background-image:
-    linear-gradient(rgba(0, 0, 0, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 0, 0, 0.02) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: -1px -1px;
-}
-
-.dark .mermaid-preview {
-  background-color: hsl(var(--background) / 0.45);
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(hsl(var(--shadow-color) / 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--shadow-color) / 0.02) 1px, transparent 1px);
   background-size: 20px 20px;
   background-position: -1px -1px;
 }

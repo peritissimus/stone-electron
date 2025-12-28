@@ -115,7 +115,7 @@ export function NoteEditorHeader({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onDelete}
-                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400"
+                className="text-destructive focus:text-destructive"
               >
                 <Trash size={14} className="mr-2" />
                 Delete Note

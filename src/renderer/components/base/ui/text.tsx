@@ -31,8 +31,8 @@ const variantClasses: Record<TextVariant, string> = {
   accent: 'text-accent-foreground',
   destructive: 'text-destructive',
   secondary: 'text-secondary-foreground',
-  success: 'text-green-600 dark:text-green-400',
-  warning: 'text-yellow-600 dark:text-yellow-400',
+  success: 'text-success',
+  warning: 'text-warning',
 };
 
 const sizeClasses: Record<TextSize, string> = {
