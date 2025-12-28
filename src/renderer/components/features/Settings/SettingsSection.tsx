@@ -7,12 +7,16 @@ export interface SettingsSectionProps {
   title: string;
   children: React.ReactNode;
   className?: string;
+  action?: React.ReactNode;
 }
 
-export function SettingsSection({ title, children, className }: SettingsSectionProps) {
+export function SettingsSection({ title, children, className, action }: SettingsSectionProps) {
   return (
     <ContainerStack gap="md" className={className}>
-      <Heading3>{title}</Heading3>
+      <div className="flex items-center justify-between">
+        <Heading3>{title}</Heading3>
+        {action}
+      </div>
       {children}
     </ContainerStack>
   );
