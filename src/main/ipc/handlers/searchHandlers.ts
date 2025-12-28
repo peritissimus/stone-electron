@@ -2,10 +2,10 @@
  * Search IPC Handlers
  */
 
-import { ipcMain } from 'electron';
+
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
-import { createHandler } from '../utils';
+import { registerHandler } from '../utils';
 
 /**
  * Register all search handlers
@@ -14,9 +14,9 @@ export function registerSearchHandlers() {
   const repos = getRepositories();
 
   // search:fullText
-  ipcMain.handle(
+  registerHandler(
     SEARCH_CHANNELS.FULL_TEXT,
-    createHandler(
+    
       async (
         event,
         request: {
@@ -60,13 +60,12 @@ export function registerSearchHandlers() {
           query_time_ms: queryTime,
         };
       },
-    ),
   );
 
   // search:semantic (placeholder - will implement with vector DB)
-  ipcMain.handle(
+  registerHandler(
     SEARCH_CHANNELS.SEMANTIC,
-    createHandler(
+    
       async (
         event,
         request: { query: string; threshold?: number; limit?: number; notebookId?: string },
@@ -86,13 +85,12 @@ export function registerSearchHandlers() {
           query_time_ms: queryTime,
         };
       },
-    ),
   );
 
   // search:hybrid
-  ipcMain.handle(
+  registerHandler(
     SEARCH_CHANNELS.HYBRID,
-    createHandler(
+    
       async (
         event,
         request: {
@@ -120,13 +118,12 @@ export function registerSearchHandlers() {
           query_time_ms: queryTime,
         };
       },
-    ),
   );
 
   // search:byTag
-  ipcMain.handle(
+  registerHandler(
     SEARCH_CHANNELS.BY_TAG,
-    createHandler(
+    
       async (
         event,
         request: { tagIds: string[]; match_all?: boolean; limit?: number; offset?: number },
@@ -157,13 +154,12 @@ export function registerSearchHandlers() {
           total: notes.length,
         };
       },
-    ),
   );
 
   // search:byDateRange
-  ipcMain.handle(
+  registerHandler(
     SEARCH_CHANNELS.BY_DATE_RANGE,
-    createHandler(
+    
       async (
         event,
         request: {
@@ -185,6 +181,5 @@ export function registerSearchHandlers() {
           total: notes.length,
         };
       },
-    ),
   );
 }

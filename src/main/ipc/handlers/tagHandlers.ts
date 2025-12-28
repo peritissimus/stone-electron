@@ -2,10 +2,10 @@
  * Tag IPC Handlers
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { BrowserWindow } from 'electron';
 import { TAG_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
-import { createHandler, IpcError } from '../utils';
+import { registerHandler, IpcError } from '../utils';
 
 /**
  * Register all tag handlers
@@ -14,9 +14,9 @@ export function registerTagHandlers() {
   const repos = getRepositories();
 
   // tags:create
-  ipcMain.handle(
+  registerHandler(
     TAG_CHANNELS.CREATE,
-    createHandler(async (event, request: { name: string; color?: string }) => {
+    async (event, request: { name: string; color?: string }) => {
       // Check if tag already exists
       const existing = await repos.tag.findOne({ name: request.name });
       if (existing) {
@@ -34,13 +34,13 @@ export function registerTagHandlers() {
       });
 
       return { ...tag, note_count: 0 };
-    }),
+    }
   );
 
   // tags:delete
-  ipcMain.handle(
+  registerHandler(
     TAG_CHANNELS.DELETE,
-    createHandler(async (event, request: { id: string }) => {
+    async (event, request: { id: string }) => {
       const tag = await repos.tag.findById(request.id);
       if (!tag) {
         throw new IpcError('NOT_FOUND', 'Tag not found');
@@ -57,13 +57,13 @@ export function registerTagHandlers() {
       });
 
       return { success: true, affected_notes: noteCount };
-    }),
+    }
   );
 
   // tags:getAll
-  ipcMain.handle(
+  registerHandler(
     TAG_CHANNELS.GET_ALL,
-    createHandler(async (event, request: { sort?: 'name' | 'count' | 'recent' }) => {
+    async (event, request: { sort?: 'name' | 'count' | 'recent' }) => {
       const tags = await repos.tag.getAllWithCounts();
 
       // Sort based on request
@@ -80,13 +80,13 @@ export function registerTagHandlers() {
       }
 
       return { tags };
-    }),
+    }
   );
 
   // tags:addToNote
-  ipcMain.handle(
+  registerHandler(
     TAG_CHANNELS.ADD_TO_NOTE,
-    createHandler(async (event, request: { noteId: string; tagIds: string[] }) => {
+    async (event, request: { noteId: string; tagIds: string[] }) => {
       const note = await repos.note.findById(request.noteId);
       if (!note) {
         throw new IpcError('NOT_FOUND', 'Note not found');
@@ -104,19 +104,19 @@ export function registerTagHandlers() {
         noteId: request.noteId,
         tags,
       };
-    }),
+    }
   );
 
   // tags:removeFromNote
-  ipcMain.handle(
+  registerHandler(
     TAG_CHANNELS.REMOVE_FROM_NOTE,
-    createHandler(async (event, request: { noteId: string; tagId: string }) => {
+    async (event, request: { noteId: string; tagId: string }) => {
       await repos.tag.removeFromNote(request.noteId, request.tagId);
 
       return {
         success: true,
         noteId: request.noteId,
       };
-    }),
+    }
   );
 }
