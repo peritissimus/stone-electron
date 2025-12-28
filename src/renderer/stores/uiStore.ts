@@ -116,7 +116,7 @@ export const useUIStore = create<UIState>()(
       importModalOpen: false,
 
       // Theme
-      theme: 'dark',
+      theme: 'system',
       accentColor: 'blue',
 
       // Font settings
