@@ -41,14 +41,16 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   const normalizedPath = normalizePath(node.path);
 
   // Simplified selectors - Zustand handles equality checks internally
-  const selectedFile = useFileTreeStore((state) => state.selectedFile);
-  const isActive = normalizePath(selectedFile || '') === normalizedPath;
   const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
   const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
 
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
+  const activeNoteId = useNoteStore((state) => state.activeNoteId);
   const notesByPath = useNoteStore((state) => state.notesByPath);
   const note = notesByPath.get(normalizedPath);
+
+  // Active state based on whether this note is the currently active note
+  const isActive = note?.id === activeNoteId;
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -111,7 +113,7 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
       <div
         className={cn(
           'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
-          'hover:bg-accent/20',
+          isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
         )}
         onClick={handleOpen}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
@@ -120,8 +122,8 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
           size={14}
           className={cn(
             'mr-2 flex-shrink-0 transition-colors duration-150',
-            'text-muted-foreground',
-            isHovered && 'text-foreground/70',
+            isActive ? 'text-foreground' : 'text-muted-foreground',
+            isHovered && !isActive && 'text-foreground/70',
           )}
         />
         <span

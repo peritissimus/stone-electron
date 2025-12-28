@@ -17,6 +17,7 @@
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-vibrancy: hsl(var(--sidebar-vibrancy));
 
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
@@ -58,6 +59,7 @@
 
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
 
   @keyframes accordion-down {
     from {
@@ -73,6 +75,14 @@
     }
     to {
       height: 0;
+    }
+  }
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
     }
   }
 }
@@ -95,27 +105,28 @@
   }
 }
 
-/* Root CSS Variables - Notion-like Light Theme */
+/* Root CSS Variables - Frosted Glass Light Theme */
 :root {
-  --border: 0 0% 90%;
-  --input: 0 0% 96%;
+  --border: 0 0% 70% / 0.3;
+  --input: 0 0% 100% / 0.4;
   --ring: 211 100% 50%;
-  --background: 0 0% 100%;
+  --background: 0 0% 100% / 0.01;
   --foreground: 0 0% 12%;
-  --sidebar: 0 0% 98%;
+  --sidebar: 0 0% 100% / 0.01;
+  --sidebar-vibrancy: 0 0% 100% / 0.01;
   --primary: 211 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 97%;
+  --secondary: 0 0% 100% / 0.5;
   --secondary-foreground: 0 0% 12%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 97%;
-  --muted-foreground: 0 0% 50%;
-  --accent: 211 100% 97%;
-  --accent-foreground: 211 100% 50%;
-  --popover: 0 0% 100%;
+  --muted: 0 0% 90% / 0.5;
+  --muted-foreground: 0 0% 40%;
+  --accent: 211 100% 90% / 0.6;
+  --accent-foreground: 211 100% 40%;
+  --popover: 0 0% 100% / 0.8;
   --popover-foreground: 0 0% 12%;
-  --card: 0 0% 100%;
+  --card: 0 0% 100% / 0.01;
   --card-foreground: 0 0% 12%;
 
   --radius: 6px;
@@ -137,7 +148,7 @@
   --font-mono-size: 14px;
 
   /* Code Syntax Colors - Light Theme */
-  --code-bg: 0 0% 97%;
+  --code-bg: 0 0% 95% / 0.6;
   --code-text: 0 0% 18%;
   --code-comment: 0 0% 55%;
   --code-keyword: 262 60% 50%;
@@ -162,31 +173,32 @@
   --shadow-color: 0 0% 0%;
 }
 
-/* Dark Mode Colors - Notion-like Dark Theme */
+/* Dark Mode Colors - Frosted Glass Dark Theme */
 .dark {
-  --border: 0 0% 22%;
-  --input: 0 0% 24%;
+  --border: 0 0% 50% / 0.2;
+  --input: 0 0% 0% / 0.3;
   --ring: 211 100% 60%;
-  --background: 0 0% 11%;
+  --background: 0 0% 0% / 0.01;
   --foreground: 0 0% 92%;
-  --sidebar: 0 0% 15%;
+  --sidebar: 0 0% 0% / 0.01;
+  --sidebar-vibrancy: 0 0% 0% / 0.01;
   --primary: 211 100% 60%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 20%;
+  --secondary: 0 0% 100% / 0.15;
   --secondary-foreground: 0 0% 92%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --muted: 0 0% 20%;
-  --muted-foreground: 0 0% 60%;
-  --accent: 211 100% 20%;
-  --accent-foreground: 211 100% 60%;
-  --popover: 0 0% 15%;
+  --muted: 0 0% 30% / 0.5;
+  --muted-foreground: 0 0% 65%;
+  --accent: 211 80% 40% / 0.6;
+  --accent-foreground: 211 100% 75%;
+  --popover: 0 0% 10% / 0.85;
   --popover-foreground: 0 0% 92%;
-  --card: 0 0% 15%;
+  --card: 0 0% 0% / 0.01;
   --card-foreground: 0 0% 92%;
 
   /* Code Syntax Colors - Dark Theme */
-  --code-bg: 0 0% 14%;
+  --code-bg: 0 0% 10% / 0.6;
   --code-text: 0 0% 90%;
   --code-comment: 0 0% 50%;
   --code-keyword: 262 70% 70%;
@@ -213,29 +225,30 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
-    --border: 0 0% 22%;
-    --input: 0 0% 24%;
+    --border: 0 0% 50% / 0.2;
+    --input: 0 0% 0% / 0.3;
     --ring: 211 100% 60%;
-    --background: 0 0% 11%;
+    --background: 0 0% 0% / 0.01;
     --foreground: 0 0% 92%;
-    --sidebar: 0 0% 15%;
+    --sidebar: 0 0% 0% / 0.01;
+    --sidebar-vibrancy: 0 0% 0% / 0.01;
     --primary: 211 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 20%;
+    --secondary: 0 0% 100% / 0.15;
     --secondary-foreground: 0 0% 92%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 211 100% 20%;
-    --accent-foreground: 211 100% 60%;
-    --popover: 0 0% 15%;
+    --muted: 0 0% 30% / 0.5;
+    --muted-foreground: 0 0% 65%;
+    --accent: 211 80% 40% / 0.6;
+    --accent-foreground: 211 100% 75%;
+    --popover: 0 0% 10% / 0.85;
     --popover-foreground: 0 0% 92%;
-    --card: 0 0% 15%;
+    --card: 0 0% 0% / 0.01;
     --card-foreground: 0 0% 92%;
 
     /* Code Syntax Colors - Dark Theme */
-    --code-bg: 0 0% 14%;
+    --code-bg: 0 0% 10% / 0.6;
     --code-text: 0 0% 90%;
     --code-comment: 0 0% 50%;
     --code-keyword: 262 70% 70%;
@@ -286,11 +299,19 @@ body {
   line-height: 1.5;
   overflow: hidden;
   height: 100%;
+  /* Transparent for macOS vibrancy */
+  background-color: transparent;
 }
 
 #root {
   height: 100%;
   overflow: hidden;
+  background-color: transparent;
+}
+
+/* macOS vibrancy support - frosted glass effect */
+.vibrancy-sidebar {
+  background-color: hsl(var(--sidebar-vibrancy));
 }
 
 /* Better font for editor content - Notion style */
@@ -303,7 +324,7 @@ body {
 }
 
 .dark body {
-  background-color: hsl(var(--background));
+  background-color: transparent;
   color: hsl(var(--foreground));
 }
 

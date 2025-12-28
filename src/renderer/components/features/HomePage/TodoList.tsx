@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { CheckSquare, Square, Clock, ArrowRight } from 'lucide-react';
+import { CheckSquare, Square, ArrowRight } from 'lucide-react';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { TodoItem } from '@shared/types';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { logger } from '@renderer/utils/logger';
+import { Skeleton } from '@renderer/components/base/ui/skeleton';
 
 interface TodoListProps {
   onTodoClick?: (noteId: string) => void;
@@ -141,8 +142,16 @@ export function TodoList({ onTodoClick }: TodoListProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Clock className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-start gap-3 p-3 rounded-lg">
+            <Skeleton className="w-4 h-4 rounded mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/3" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }

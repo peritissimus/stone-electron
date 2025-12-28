@@ -1,6 +1,7 @@
 /**
  * Note Editor Header Component
  */
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Star,
   PushPin,
@@ -11,7 +12,6 @@ import {
   FloppyDisk,
   CaretRight,
 } from 'phosphor-react';
-import { Input } from '@renderer/components/base/ui/input';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
   DropdownMenu,
@@ -52,6 +52,55 @@ export function NoteEditorHeader({
   onSave,
 }: NoteEditorHeaderProps) {
   const { toggleSidebar, sidebarOpen } = useUIStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync editValue when title prop changes (e.g., switching notes)
+  useEffect(() => {
+    setEditValue(title);
+  }, [title]);
+
+  // Focus and select all when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleStartEditing = useCallback(() => {
+    setIsEditing(true);
+    setEditValue(title);
+  }, [title]);
+
+  const handleSaveAndExit = useCallback(() => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== title) {
+      onTitleChange(trimmed);
+    } else {
+      setEditValue(title); // Restore original if empty or unchanged
+    }
+    setIsEditing(false);
+  }, [editValue, title, onTitleChange]);
+
+  const handleCancel = useCallback(() => {
+    setEditValue(title);
+    setIsEditing(false);
+  }, [title]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSaveAndExit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleCancel();
+      }
+    },
+    [handleSaveAndExit, handleCancel],
+  );
 
   return (
     <div
@@ -69,14 +118,39 @@ export function NoteEditorHeader({
         />
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex-1 min-w-0 flex items-center">
-          <Input
-            value={title}
-            onChange={(e) => onTitleChange(e.target.value)}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={handleSaveAndExit}
+            onKeyDown={handleKeyDown}
             placeholder="Untitled Note"
-            className="w-full h-full px-0 border-0 bg-transparent text-2xl font-semibold leading-tight text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+            className={cn(
+              'w-full px-1.5 py-0.5 -mx-1.5',
+              'text-sm font-medium',
+              'bg-accent/20 rounded',
+              'text-foreground placeholder:text-muted-foreground/60',
+              'border border-accent/40',
+              'outline-none focus:border-primary/50 focus:bg-accent/30',
+              'transition-colors duration-150',
+            )}
           />
-        </div>
+        ) : (
+          <button
+            onClick={handleStartEditing}
+            className={cn(
+              'w-full text-left px-1.5 py-0.5 -mx-1.5',
+              'text-sm font-medium truncate',
+              'rounded transition-colors duration-150',
+              'hover:bg-accent/20',
+              title ? 'text-foreground' : 'text-muted-foreground/60',
+            )}
+          >
+            {title || 'Untitled Note'}
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-2">
         {showSave && (
