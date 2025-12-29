@@ -89,6 +89,11 @@ function processNode(node: ProseMirrorNode): string {
       const cellContent = content ? processNodes(content) : '';
       return '| ' + cellContent + ' ';
 
+    case 'noteLink':
+      // Convert note link node to [[note name]] syntax
+      const noteTitle = attrs?.title || 'Unknown';
+      return `[[${noteTitle}]]`;
+
     default:
       // For unknown node types, try to process content
       if (content) {
@@ -311,6 +316,11 @@ function processNodeForTable(node: ProseMirrorNode): string {
     case 'horizontalRule':
       // Skip horizontal rules in table cells
       return '';
+
+    case 'noteLink':
+      // Note links in table cells
+      const tableCellNoteTitle = node.attrs?.title || 'Unknown';
+      return `[[${tableCellNoteTitle}]]`;
 
     default:
       // For other node types, process content recursively

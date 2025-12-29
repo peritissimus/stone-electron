@@ -458,6 +458,12 @@ export function registerNoteHandlers() {
     return { backlinks };
   });
 
+  // notes:getForwardLinks
+  registerHandler(NOTE_CHANNELS.GET_FORWARD_LINKS, async (event, request: { noteId: string }) => {
+    const forwardLinks = await repos.note.getForwardLinks(request.noteId);
+    return { forwardLinks };
+  });
+
   // notes:move
   registerHandler(
     NOTE_CHANNELS.MOVE,

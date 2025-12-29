@@ -123,8 +123,8 @@ export class MarkdownService {
     }
 
     try {
-      // Pre-process markdown to convert Logseq-style task items
-      const processedMarkdown = this.preprocessLogseqTasksInMarkdown(markdown);
+      // Pre-process markdown to handle special syntax (tasks, note links)
+      const processedMarkdown = this.preprocessMarkdown(markdown);
 
       // Configure marked
       marked.setOptions({
@@ -144,6 +144,26 @@ export class MarkdownService {
       logger.error('Error converting Markdown to HTML:', error);
       return markdown; // Return original if conversion fails
     }
+  }
+
+  /**
+   * Pre-process markdown to handle special syntax before marked.js parsing
+   * - Logseq-style task items
+   * - [[note name]] wiki-style links
+   */
+  private preprocessMarkdown(markdown: string): string {
+    let result = markdown;
+
+    // Convert [[note name]] to custom HTML spans
+    // The note ID will be resolved in the frontend
+    result = result.replace(/\[\[([^\]]+)\]\]/g, (_, noteName) => {
+      return `<span data-type="note-link" data-title="${escapeHtml(noteName)}">${escapeHtml(noteName)}</span>`;
+    });
+
+    // Then process Logseq task items
+    result = this.preprocessLogseqTasksInMarkdown(result);
+
+    return result;
   }
 
   /**
@@ -295,6 +315,20 @@ export class MarkdownService {
         const fence = options.fence || '```';
 
         return `\n\n${fence}${language}\n${code}\n${fence}\n\n`;
+      },
+    });
+
+    // Handle [[note name]] wiki-style links
+    this.turndownService.addRule('noteLink', {
+      filter: (node) => {
+        return (
+          node.nodeName === 'SPAN' &&
+          node.getAttribute('data-type') === 'note-link'
+        );
+      },
+      replacement: (content, node) => {
+        const title = node.getAttribute('data-title') || content;
+        return `[[${title}]]`;
       },
     });
 
@@ -498,6 +532,12 @@ function simpleHtmlToMarkdown(input: string): string {
   out = out.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, (_, t: string) => `*${stripTags(t)}*`);
   out = out.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, (_, t: string) => `*${stripTags(t)}*`);
 
+  // Note links: <span data-type="note-link" data-title="Note Name">Note Name</span>
+  out = out.replace(
+    /<span[^>]*data-type=["']note-link["'][^>]*data-title=["']([^"']+)["'][^>]*>[^<]*<\/span>/gi,
+    (_, title: string) => `[[${decodeHtmlEntities(title)}]]`,
+  );
+
   // Finally strip any remaining tags
   out = stripTags(out);
 
@@ -518,4 +558,13 @@ function decodeHtmlEntities(s: string): string {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
