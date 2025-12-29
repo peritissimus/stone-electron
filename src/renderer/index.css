@@ -466,6 +466,18 @@ textarea:focus {
   transform: scale(1.2);
 }
 
+/* Hide block indicators when setting is disabled */
+.hide-block-indicators .ProseMirror > p::before,
+.hide-block-indicators .ProseMirror > h1::before,
+.hide-block-indicators .ProseMirror > h2::before,
+.hide-block-indicators .ProseMirror > h3::before,
+.hide-block-indicators .ProseMirror > h4::before,
+.hide-block-indicators .ProseMirror > h5::before,
+.hide-block-indicators .ProseMirror > h6::before,
+.hide-block-indicators .ProseMirror > blockquote::before {
+  display: none;
+}
+
 .ProseMirror > p:hover,
 .ProseMirror > h1:hover,
 .ProseMirror > h2:hover,

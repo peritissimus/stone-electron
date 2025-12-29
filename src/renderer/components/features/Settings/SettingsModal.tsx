@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/base/ui/select';
+import { Switch } from '@renderer/components/base/ui/switch';
 import { Label, Body, Heading4 } from '@renderer/components/base/ui/text';
 import { ContainerStack, ContainerCenter, Separator } from '@renderer/components/base/ui';
 
@@ -226,7 +227,7 @@ function DatabaseSettings() {
 }
 
 function AppearanceSettings() {
-  const { theme, setTheme, accentColor, setAccentColor } = useUIStore();
+  const { theme, setTheme, accentColor, setAccentColor, showBlockIndicators, toggleBlockIndicators } = useUIStore();
 
   return (
     <SettingsSection title="Appearance">
@@ -250,6 +251,23 @@ function AppearanceSettings() {
         <ContainerStack gap="sm">
           <Label>Accent Color</Label>
           <AccentColorPicker value={accentColor} onChange={setAccentColor} />
+        </ContainerStack>
+
+        <Separator />
+
+        {/* Editor Settings */}
+        <ContainerStack gap="sm">
+          <Label>Editor</Label>
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5">
+              <Body size="sm">Block Indicators</Body>
+              <Body size="xs" variant="muted">Show bullet markers on the left of blocks</Body>
+            </div>
+            <Switch
+              checked={showBlockIndicators}
+              onCheckedChange={toggleBlockIndicators}
+            />
+          </div>
         </ContainerStack>
 
         <Separator />
