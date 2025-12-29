@@ -368,6 +368,57 @@ export function useNoteAPI() {
     [updateNote, setError],
   );
 
+  const exportHtml = useCallback(async (id: string, content: string, title: string) => {
+    try {
+      const response = await window.electron.invoke<{ success: boolean; filePath?: string; canceled?: boolean }>(
+        NOTE_CHANNELS.EXPORT_HTML,
+        { id, content, title },
+      );
+      if (response.success && response.data?.success) {
+        logger.info('[useNoteAPI.exportHtml] Exported HTML', { filePath: response.data.filePath });
+        return response.data;
+      }
+      return response.data || { success: false };
+    } catch (error) {
+      logger.error('[useNoteAPI.exportHtml] Error:', error);
+      return { success: false };
+    }
+  }, []);
+
+  const exportPdf = useCallback(async (id: string, content: string, title: string) => {
+    try {
+      const response = await window.electron.invoke<{ success: boolean; filePath?: string; canceled?: boolean }>(
+        NOTE_CHANNELS.EXPORT_PDF,
+        { id, content, title },
+      );
+      if (response.success && response.data?.success) {
+        logger.info('[useNoteAPI.exportPdf] Exported PDF', { filePath: response.data.filePath });
+        return response.data;
+      }
+      return response.data || { success: false };
+    } catch (error) {
+      logger.error('[useNoteAPI.exportPdf] Error:', error);
+      return { success: false };
+    }
+  }, []);
+
+  const exportMarkdown = useCallback(async (id: string, title: string) => {
+    try {
+      const response = await window.electron.invoke<{ success: boolean; filePath?: string; canceled?: boolean }>(
+        NOTE_CHANNELS.EXPORT_MARKDOWN,
+        { id, title },
+      );
+      if (response.success && response.data?.success) {
+        logger.info('[useNoteAPI.exportMarkdown] Exported Markdown', { filePath: response.data.filePath });
+        return response.data;
+      }
+      return response.data || { success: false };
+    } catch (error) {
+      logger.error('[useNoteAPI.exportMarkdown] Error:', error);
+      return { success: false };
+    }
+  }, []);
+
   return {
     loadNotes,
     createNote,
@@ -383,5 +434,8 @@ export function useNoteAPI() {
     getForwardLinks,
     getGraphData,
     moveNote,
+    exportHtml,
+    exportPdf,
+    exportMarkdown,
   };
 }

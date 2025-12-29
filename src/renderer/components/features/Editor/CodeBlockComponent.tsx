@@ -13,6 +13,12 @@ import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
 
 // Lazy load Mermaid - 800KB saved from initial bundle!
 let mermaidModule: typeof import('mermaid') | null = null;
+let mermaidInitializedTheme: string | null = null;
+let mermaidRenderCounter = 0;
+
+// Cache for rendered SVGs to avoid re-rendering same content
+const svgCache = new Map<string, string>();
+
 const loadMermaid = async () => {
   if (!mermaidModule) {
     mermaidModule = await import('mermaid');
@@ -388,7 +394,6 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     }
 
     const renderDiagram = async () => {
-      setIsRendering(true);
       try {
         setError(null);
 
@@ -399,23 +404,47 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
             mermaidCode = convertFlowDSLToMermaid(code);
           } catch (parseErr: any) {
             setError(parseErr.message || 'Failed to parse FlowDSL');
-            setIsRendering(false);
             return;
           }
         }
 
+        // Check cache first - avoid re-rendering same content
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        const cacheKey = `${mermaidCode}:${isDarkMode}:${isStateDiagram}`;
+        const cachedSvg = svgCache.get(cacheKey);
+        if (cachedSvg) {
+          setRenderedSvg(cachedSvg);
+          return;
+        }
+
+        setIsRendering(true);
+
         // Dynamically load Mermaid (only when needed - saves 800KB from initial bundle!)
         const mermaid = await loadMermaid();
 
-        // Re-initialize Mermaid with current theme before rendering
-        const isDarkMode = document.documentElement.classList.contains('dark');
-        initializeMermaid(mermaid, isDarkMode, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
+        // Only re-initialize Mermaid when theme changes
+        const currentTheme = isDarkMode ? 'dark' : 'light';
+        if (mermaidInitializedTheme !== currentTheme) {
+          initializeMermaid(mermaid, isDarkMode, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
+          mermaidInitializedTheme = currentTheme;
+        }
 
-        const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+        // Use incrementing counter instead of random ID for stability
+        const id = `mermaid-${++mermaidRenderCounter}`;
         const { svg } = await mermaid.render(id, mermaidCode);
 
         // Post-process SVG to fix foreignObject text sizing issues
         const fixedSvg = fixMermaidForeignObjects(svg);
+
+        // Cache the result
+        svgCache.set(cacheKey, fixedSvg);
+
+        // Limit cache size to prevent memory issues
+        if (svgCache.size > 50) {
+          const firstKey = svgCache.keys().next().value;
+          if (firstKey) svgCache.delete(firstKey);
+        }
+
         setRenderedSvg(fixedSvg);
       } catch (err: any) {
         setError(err.message || 'Failed to render diagram');

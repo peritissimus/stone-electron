@@ -568,6 +568,37 @@ export class NoteRepository {
   }
 
   /**
+   * Get raw markdown content by ID (for export - no HTML conversion)
+   */
+  async getRawContentById(id: string): Promise<string | null> {
+    const note = await this.findById(id);
+
+    if (!note) return null;
+
+    // If note has a file path, read raw content from file system
+    if (note.filePath && note.workspaceId) {
+      try {
+        const workspace = await this.workspaceRepository.findById(note.workspaceId);
+        if (!workspace) {
+          logger.error(`Workspace not found: ${note.workspaceId}`);
+          return null;
+        }
+
+        const relativePath = note.filePath.replace(/\\/g, '/');
+        const absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
+
+        const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath, true);
+        return markdownFile.content;
+      } catch (error) {
+        logger.error(`Error reading raw content from file ${note.filePath}:`, error);
+        return null;
+      }
+    }
+
+    return '';
+  }
+
+  /**
    * Full-text search (placeholder - FTS not implemented in Drizzle yet)
    */
   async searchFullText(query: string, limit: number = 50): Promise<Note[]> {
@@ -1015,7 +1046,12 @@ export class NoteRepository {
       // Convert markdown to HTML for TipTap editor with caching
       const stats = await this.fileSystemService.getFileStats(absolutePath);
       const mtime = stats.mtimeMs;
-      return await this.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
+      let html = await this.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
+
+      // Resolve relative image paths (.assets/) to absolute file:// URLs
+      html = this.resolveImagePaths(html, workspace.folderPath);
+
+      return html;
     } catch (error) {
       logger.error(`Error reading content from file ${filePath}:`, error);
       return null;
@@ -1051,6 +1087,21 @@ export class NoteRepository {
       logger.error(`Error saving content to file ${filePath}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Helper: Resolve relative image paths to absolute file:// URLs
+   * Converts .assets/image.png to file:///path/to/workspace/.assets/image.png
+   */
+  private resolveImagePaths(html: string, workspacePath: string): string {
+    // Match img src attributes with relative .assets paths
+    return html.replace(
+      /(<img[^>]*\s+src=["'])\.assets\/([^"']+)(["'][^>]*>)/gi,
+      (match, prefix, imagePath, suffix) => {
+        const absolutePath = path.join(workspacePath, '.assets', imagePath);
+        return `${prefix}file://${absolutePath}${suffix}`;
+      }
+    );
   }
 
   /**

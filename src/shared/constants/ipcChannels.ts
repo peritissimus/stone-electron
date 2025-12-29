@@ -75,6 +75,7 @@ export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',
   DELETE: 'attachments:delete',
   GET_ALL: 'attachments:getAll',
+  UPLOAD_IMAGE: 'attachments:uploadImage',
 } as const;
 
 // Database Operations
