@@ -30,3 +30,4 @@ coverage
 *.swp
 *.swo
 *~
+bundle-stats.html
