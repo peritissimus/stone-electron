@@ -94,6 +94,25 @@ function processNode(node: ProseMirrorNode): string {
       const noteTitle = attrs?.title || 'Unknown';
       return `[[${noteTitle}]]`;
 
+    case 'image':
+      // Convert image node to markdown image syntax
+      const src = attrs?.src || '';
+      const alt = attrs?.alt || '';
+      const title = attrs?.title || '';
+      // Convert file:// URLs to relative .assets paths for portability
+      let imagePath = src;
+      if (src.startsWith('file://')) {
+        const assetsIndex = src.indexOf('.assets/');
+        if (assetsIndex !== -1) {
+          imagePath = src.substring(assetsIndex);
+        }
+      }
+      // Format: ![alt](src "title") or ![alt](src)
+      if (title) {
+        return `![${alt}](${imagePath} "${title}")\n\n`;
+      }
+      return `![${alt}](${imagePath})\n\n`;
+
     default:
       // For unknown node types, try to process content
       if (content) {

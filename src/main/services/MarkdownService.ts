@@ -148,11 +148,15 @@ export class MarkdownService {
 
   /**
    * Pre-process markdown to handle special syntax before marked.js parsing
+   * - Indented blocks (tabs → data-indent)
    * - Logseq-style task items
    * - [[note name]] wiki-style links
    */
   private preprocessMarkdown(markdown: string): string {
     let result = markdown;
+
+    // Convert leading tabs to indented paragraphs/headings
+    result = this.preprocessIndentedBlocks(result);
 
     // Convert [[note name]] to custom HTML spans
     // The note ID will be resolved in the frontend
@@ -164,6 +168,40 @@ export class MarkdownService {
     result = this.preprocessLogseqTasksInMarkdown(result);
 
     return result;
+  }
+
+  /**
+   * Pre-process indented blocks (tabs at start of line → data-indent attribute)
+   */
+  private preprocessIndentedBlocks(markdown: string): string {
+    const lines = markdown.split('\n');
+    const result: string[] = [];
+
+    for (const line of lines) {
+      // Count leading tabs
+      const tabMatch = line.match(/^(\t+)(.*)$/);
+      if (tabMatch) {
+        const indent = tabMatch[1].length;
+        const content = tabMatch[2];
+
+        // Check if it's a heading
+        const headingMatch = content.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+          const level = headingMatch[1].length;
+          const text = headingMatch[2];
+          result.push(`<h${level} data-indent="${indent}" style="margin-left: ${indent * 24}px">${escapeHtml(text)}</h${level}>`);
+        } else if (content.trim()) {
+          // Regular indented paragraph
+          result.push(`<p data-indent="${indent}" style="margin-left: ${indent * 24}px">${escapeHtml(content)}</p>`);
+        } else {
+          result.push(line);
+        }
+      } else {
+        result.push(line);
+      }
+    }
+
+    return result.join('\n');
   }
 
   /**
@@ -236,6 +274,39 @@ export class MarkdownService {
    * Add custom Turndown rules
    */
   private addCustomRules(): void {
+    // Handle indented paragraphs (Logseq-style blocks)
+    this.turndownService.addRule('indentedParagraph', {
+      filter: (node) => {
+        return (
+          node.nodeName === 'P' &&
+          node.hasAttribute('data-indent') &&
+          parseInt(node.getAttribute('data-indent') || '0', 10) > 0
+        );
+      },
+      replacement: (content, node) => {
+        const indent = parseInt(node.getAttribute('data-indent') || '0', 10);
+        const tabs = '\t'.repeat(indent);
+        return `\n\n${tabs}${content.trim()}\n\n`;
+      },
+    });
+
+    // Handle indented headings
+    this.turndownService.addRule('indentedHeading', {
+      filter: (node) => {
+        return (
+          /^H[1-6]$/.test(node.nodeName) &&
+          node.hasAttribute('data-indent') &&
+          parseInt(node.getAttribute('data-indent') || '0', 10) > 0
+        );
+      },
+      replacement: (content, node) => {
+        const indent = parseInt(node.getAttribute('data-indent') || '0', 10);
+        const level = parseInt(node.nodeName.charAt(1), 10);
+        const tabs = '\t'.repeat(indent);
+        return `\n\n${tabs}${'#'.repeat(level)} ${content.trim()}\n\n`;
+      },
+    });
+
     // Handle Logseq-style task items with states
     this.turndownService.addRule('logseqTaskItem', {
       filter: (node) => {
@@ -450,16 +521,37 @@ function simpleHtmlToMarkdown(input: string): string {
     },
   );
 
-  // Headings
+  // Indented headings (with data-indent attribute) - handle before regular headings
   for (let i = 6; i >= 1; i--) {
-    const re = new RegExp(`<h${i}[^>]*>([\n\s\S]*?)<\\/h${i}>`, 'gi');
+    const indentRe = new RegExp(`<h${i}[^>]*data-indent=["'](\\d+)["'][^>]*>([\\s\\S]*?)<\\/h${i}>`, 'gi');
+    out = out.replace(
+      indentRe,
+      (_, indent: string, text: string) => {
+        const tabs = '\t'.repeat(parseInt(indent, 10));
+        return `\n\n${tabs}${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`;
+      },
+    );
+  }
+
+  // Regular headings (without indent)
+  for (let i = 6; i >= 1; i--) {
+    const re = new RegExp(`<h${i}[^>]*>([\\s\\S]*?)<\\/h${i}>`, 'gi');
     out = out.replace(
       re,
       (_, text: string) => `\n\n${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`,
     );
   }
 
-  // Paragraphs
+  // Indented paragraphs (with data-indent attribute)
+  out = out.replace(
+    /<p[^>]*data-indent=["'](\d+)["'][^>]*>([\s\S]*?)<\/p>/gi,
+    (_, indent: string, text: string) => {
+      const tabs = '\t'.repeat(parseInt(indent, 10));
+      return `\n\n${tabs}${stripTags(text).trim()}\n\n`;
+    },
+  );
+
+  // Regular paragraphs
   out = out.replace(
     /<p[^>]*>([\s\S]*?)<\/p>/gi,
     (_, text: string) => `\n\n${stripTags(text).trim()}\n\n`,

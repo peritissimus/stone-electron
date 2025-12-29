@@ -2,7 +2,9 @@
  * Note IPC Handlers
  */
 
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, dialog } from 'electron';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import type { Attachment, Note, Tag } from '@shared/types';
 import { getRepositories } from '../../repositories';
@@ -548,4 +550,203 @@ export function registerNoteHandlers() {
 
     return todos;
   });
+
+  // notes:exportHtml - Export note as HTML file
+  registerHandler(
+    NOTE_CHANNELS.EXPORT_HTML,
+    async (event, request: { id: string; content: string; title: string }) => {
+      const note = await repos.note.findById(request.id);
+      if (!note) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      const window = BrowserWindow.getFocusedWindow();
+      if (!window) {
+        throw new IpcError('NO_WINDOW', 'No focused window');
+      }
+
+      const defaultName = `${request.title || 'Untitled'}.html`;
+      const result = await dialog.showSaveDialog(window, {
+        title: 'Export as HTML',
+        defaultPath: defaultName,
+        filters: [{ name: 'HTML Files', extensions: ['html'] }],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      // Create a styled HTML document
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${request.title || 'Untitled'}</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
+    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    h2 { font-size: 1.5em; }
+    h3 { font-size: 1.25em; }
+    p { margin: 1em 0; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'SF Mono', Monaco, monospace; }
+    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 4px solid #ddd; margin: 1em 0; padding-left: 1em; color: #666; }
+    ul, ol { margin: 1em 0; padding-left: 2em; }
+    li { margin: 0.25em 0; }
+    a { color: #0066cc; }
+    img { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
+    hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
+    .task-list-item { list-style: none; margin-left: -1.5em; }
+    .task-list-item input { margin-right: 0.5em; }
+  </style>
+</head>
+<body>
+  <h1>${request.title || 'Untitled'}</h1>
+  ${request.content}
+</body>
+</html>`;
+
+      await fs.writeFile(result.filePath, htmlContent, 'utf-8');
+      logger.info(`[NoteHandlers] Exported HTML to ${result.filePath}`);
+
+      return { success: true, filePath: result.filePath };
+    },
+  );
+
+  // notes:exportPdf - Export note as PDF file
+  registerHandler(
+    NOTE_CHANNELS.EXPORT_PDF,
+    async (event, request: { id: string; content: string; title: string }) => {
+      const note = await repos.note.findById(request.id);
+      if (!note) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      const window = BrowserWindow.getFocusedWindow();
+      if (!window) {
+        throw new IpcError('NO_WINDOW', 'No focused window');
+      }
+
+      const defaultName = `${request.title || 'Untitled'}.pdf`;
+      const result = await dialog.showSaveDialog(window, {
+        title: 'Export as PDF',
+        defaultPath: defaultName,
+        filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      // Create a hidden window for PDF generation
+      const printWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        show: false,
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+        },
+      });
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 100%;
+      padding: 20px 40px;
+      line-height: 1.6;
+      color: #333;
+      font-size: 12pt;
+    }
+    h1 { font-size: 24pt; margin-bottom: 20px; }
+    h2 { font-size: 18pt; }
+    h3 { font-size: 14pt; }
+    code { background: #f4f4f4; padding: 2px 4px; border-radius: 2px; font-family: monospace; font-size: 10pt; }
+    pre { background: #f4f4f4; padding: 12px; border-radius: 4px; font-size: 10pt; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 3px solid #ccc; margin: 1em 0; padding-left: 1em; color: #666; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px; }
+    th { background: #f4f4f4; }
+    img { max-width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>${request.title || 'Untitled'}</h1>
+  ${request.content}
+</body>
+</html>`;
+
+      try {
+        await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+
+        const pdfData = await printWindow.webContents.printToPDF({
+          printBackground: true,
+          margins: { top: 0.5, bottom: 0.5, left: 0.5, right: 0.5 },
+        });
+
+        await fs.writeFile(result.filePath, pdfData);
+        logger.info(`[NoteHandlers] Exported PDF to ${result.filePath}`);
+
+        return { success: true, filePath: result.filePath };
+      } finally {
+        printWindow.close();
+      }
+    },
+  );
+
+  // notes:exportMarkdown - Export note as Markdown file
+  registerHandler(
+    NOTE_CHANNELS.EXPORT_MARKDOWN,
+    async (event, request: { id: string; title: string }) => {
+      const note = await repos.note.findById(request.id);
+      if (!note) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      // Get markdown content directly from file
+      const markdownContent = await repos.note.getRawContentById(request.id);
+      if (!markdownContent) {
+        throw new IpcError('NOT_FOUND', 'Note content not found');
+      }
+
+      const window = BrowserWindow.getFocusedWindow();
+      if (!window) {
+        throw new IpcError('NO_WINDOW', 'No focused window');
+      }
+
+      const defaultName = `${request.title || 'Untitled'}.md`;
+      const result = await dialog.showSaveDialog(window, {
+        title: 'Export as Markdown',
+        defaultPath: defaultName,
+        filters: [{ name: 'Markdown Files', extensions: ['md'] }],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, canceled: true };
+      }
+
+      await fs.writeFile(result.filePath, markdownContent, 'utf-8');
+      logger.info(`[NoteHandlers] Exported Markdown to ${result.filePath}`);
+
+      return { success: true, filePath: result.filePath };
+    },
+  );
 }

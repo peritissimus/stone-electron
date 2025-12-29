@@ -11,6 +11,10 @@ import {
   Trash,
   FloppyDisk,
   CaretRight,
+  Export,
+  FilePdf,
+  FileHtml,
+  FileText,
 } from 'phosphor-react';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
@@ -19,6 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@renderer/components/base/ui/dropdown-menu';
 import { cn } from '@renderer/lib/utils';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
@@ -36,6 +43,9 @@ export interface NoteEditorHeaderProps {
   onDelete: () => void;
   showSave?: boolean;
   onSave?: () => void;
+  onExportHtml?: () => void;
+  onExportPdf?: () => void;
+  onExportMarkdown?: () => void;
 }
 
 export function NoteEditorHeader({
@@ -50,6 +60,9 @@ export function NoteEditorHeader({
   onDelete,
   showSave = false,
   onSave,
+  onExportHtml,
+  onExportPdf,
+  onExportMarkdown,
 }: NoteEditorHeaderProps) {
   const { toggleSidebar, sidebarOpen } = useUIStore();
   const [isEditing, setIsEditing] = useState(false);
@@ -186,6 +199,27 @@ export function NoteEditorHeader({
                 {isArchived ? 'Unarchive Note' : 'Archive Note'}
                 {isArchived && <Check size={14} className="ml-auto text-primary" />}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Export size={14} className="mr-2" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={onExportPdf}>
+                    <FilePdf size={14} className="mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onExportHtml}>
+                    <FileHtml size={14} className="mr-2" />
+                    Export as HTML
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onExportMarkdown}>
+                    <FileText size={14} className="mr-2" />
+                    Export as Markdown
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={onDelete}

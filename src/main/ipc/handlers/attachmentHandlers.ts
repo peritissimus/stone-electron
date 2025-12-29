@@ -130,4 +130,82 @@ export function registerAttachmentHandlers() {
       return { attachments };
     }
   );
+
+  // attachments:uploadImage - Upload image from paste/drop to workspace .assets folder
+  registerHandler(
+    ATTACHMENT_CHANNELS.UPLOAD_IMAGE,
+    async (
+      event,
+      request: {
+        noteId: string;
+        imageData: string; // base64 encoded image data
+        mimeType: string;
+        filename?: string;
+      }
+    ) => {
+      const note = await repos.note.findById(request.noteId);
+      if (!note) {
+        throw new IpcError('NOT_FOUND', 'Note not found');
+      }
+
+      if (!note.workspaceId) {
+        throw new IpcError('INVALID_INPUT', 'Note has no workspace');
+      }
+
+      // Get workspace to find folder path
+      const workspace = await repos.workspace.findById(note.workspaceId);
+      if (!workspace || !workspace.folderPath) {
+        throw new IpcError('NOT_FOUND', 'Workspace not found');
+      }
+
+      // Determine file extension from mime type
+      const extMap: Record<string, string> = {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/svg+xml': '.svg',
+      };
+      const ext = extMap[request.mimeType] || '.png';
+
+      // Generate unique filename with timestamp
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+      const random = Math.floor(Math.random() * 10000)
+        .toString()
+        .padStart(4, '0');
+      const filename = request.filename
+        ? getMarkdownService().sanitizeFilename(request.filename)
+        : `image-${timestamp}-${random}${ext}`;
+
+      // Create .assets folder in workspace root
+      const assetsDir = path.join(workspace.folderPath, '.assets');
+      if (!fs.existsSync(assetsDir)) {
+        fs.mkdirSync(assetsDir, { recursive: true });
+      }
+
+      // Resolve and validate destination path
+      const destPath = path.resolve(assetsDir, filename);
+      const rootAbs = path.resolve(assetsDir);
+      const withSep = rootAbs.endsWith(path.sep) ? rootAbs : rootAbs + path.sep;
+      if (!destPath.startsWith(withSep) && destPath !== rootAbs) {
+        throw new IpcError('INVALID_INPUT', 'Invalid image filename');
+      }
+
+      // Decode base64 and write file
+      const imageBuffer = Buffer.from(request.imageData, 'base64');
+      fs.writeFileSync(destPath, imageBuffer);
+
+      // Return the relative path for use in markdown/HTML
+      // Path is relative to workspace root
+      const relativePath = `.assets/${filename}`;
+
+      return {
+        success: true,
+        relativePath,
+        absolutePath: destPath,
+        filename,
+      };
+    }
+  );
 }

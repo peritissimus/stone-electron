@@ -416,17 +416,15 @@ textarea:focus {
   transition: opacity 0.15s ease;
 }
 
-/* Notion-like block hover states */
-.ProseMirror p,
-.ProseMirror h1,
-.ProseMirror h2,
-.ProseMirror h3,
-.ProseMirror h4,
-.ProseMirror h5,
-.ProseMirror h6,
-.ProseMirror ul,
-.ProseMirror ol,
-.ProseMirror blockquote {
+/* Notion-like block hover states - only direct children, not list items */
+.ProseMirror > p,
+.ProseMirror > h1,
+.ProseMirror > h2,
+.ProseMirror > h3,
+.ProseMirror > h4,
+.ProseMirror > h5,
+.ProseMirror > h6,
+.ProseMirror > blockquote {
   position: relative;
   transition: background-color 0.1s ease;
   padding: 3px 2px 3px 16px;
@@ -435,22 +433,19 @@ textarea:focus {
   border-radius: 6px;
 }
 
-/* Block bullet marker - persistent with hover state */
-.ProseMirror p::before,
-.ProseMirror h1::before,
-.ProseMirror h2::before,
-.ProseMirror h3::before,
-.ProseMirror h4::before,
-.ProseMirror h5::before,
-.ProseMirror h6::before,
-.ProseMirror ul::before,
-.ProseMirror ol::before,
-.ProseMirror blockquote::before {
+/* Block bullet marker - only for non-list blocks */
+.ProseMirror > p::before,
+.ProseMirror > h1::before,
+.ProseMirror > h2::before,
+.ProseMirror > h3::before,
+.ProseMirror > h4::before,
+.ProseMirror > h5::before,
+.ProseMirror > h6::before,
+.ProseMirror > blockquote::before {
   content: '';
   position: absolute;
   left: 1px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 0.85em;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -459,31 +454,104 @@ textarea:focus {
   pointer-events: none;
 }
 
-.ProseMirror p:hover::before,
-.ProseMirror h1:hover::before,
-.ProseMirror h2:hover::before,
-.ProseMirror h3:hover::before,
-.ProseMirror h4:hover::before,
-.ProseMirror h5:hover::before,
-.ProseMirror h6:hover::before,
-.ProseMirror ul:hover::before,
-.ProseMirror ol:hover::before,
-.ProseMirror blockquote:hover::before {
+.ProseMirror > p:hover::before,
+.ProseMirror > h1:hover::before,
+.ProseMirror > h2:hover::before,
+.ProseMirror > h3:hover::before,
+.ProseMirror > h4:hover::before,
+.ProseMirror > h5:hover::before,
+.ProseMirror > h6:hover::before,
+.ProseMirror > blockquote:hover::before {
   background-color: hsl(var(--primary) / 0.8);
-  transform: translateY(-50%) scale(1.2);
+  transform: scale(1.2);
 }
 
-.ProseMirror p:hover,
-.ProseMirror h1:hover,
-.ProseMirror h2:hover,
-.ProseMirror h3:hover,
-.ProseMirror h4:hover,
-.ProseMirror h5:hover,
-.ProseMirror h6:hover,
-.ProseMirror ul:hover,
-.ProseMirror ol:hover,
-.ProseMirror blockquote:hover {
+.ProseMirror > p:hover,
+.ProseMirror > h1:hover,
+.ProseMirror > h2:hover,
+.ProseMirror > h3:hover,
+.ProseMirror > h4:hover,
+.ProseMirror > h5:hover,
+.ProseMirror > h6:hover,
+.ProseMirror > blockquote:hover {
   background-color: hsl(var(--muted) / 0.3);
+}
+
+/* Lists - no automatic indent, custom markers align with block bullets */
+.ProseMirror ul,
+.ProseMirror ol {
+  list-style-type: none !important;
+  padding-left: 0;
+  margin-left: 0;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+.ProseMirror ul > li,
+.ProseMirror ol > li {
+  position: relative;
+  margin-bottom: 2px;
+  padding-left: 20px;
+  list-style: none !important;
+}
+
+/* Hide any native markers */
+.ProseMirror ul > li::marker,
+.ProseMirror ol > li::marker {
+  content: none;
+  display: none;
+}
+
+/* Bullet list marker - matches block bullet style, same position as block bullets */
+.ProseMirror ul > li::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: hsl(var(--muted-foreground) / 0.5);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.ProseMirror ul > li:hover::before {
+  background-color: hsl(var(--primary) / 0.8);
+  transform: scale(1.2);
+}
+
+/* Ordered list marker - number style */
+.ProseMirror ol {
+  counter-reset: list-counter;
+}
+
+.ProseMirror ol > li {
+  counter-increment: list-counter;
+}
+
+.ProseMirror ol > li::before {
+  content: counter(list-counter) '.';
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 0.9em;
+  color: hsl(var(--muted-foreground) / 0.7);
+  font-weight: 500;
+  min-width: 16px;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.ProseMirror ol > li:hover::before {
+  color: hsl(var(--primary));
+}
+
+/* Nested lists - indent for native list nesting (proper markdown parity) */
+.ProseMirror li > ul,
+.ProseMirror li > ol {
+  margin-top: 4px;
+  margin-bottom: 0;
+  margin-left: 20px;
 }
 
 /* Override marker for empty placeholder - must reset all block marker styles */
@@ -502,6 +570,28 @@ textarea:focus {
   pointer-events: none;
   font-size: 16px;
   font-weight: 400;
+}
+
+/* Indented blocks (Logseq-style) - visual hierarchy with connecting lines */
+.ProseMirror [data-indent] {
+  position: relative;
+}
+
+/* Vertical connecting line for indented blocks */
+.ProseMirror [data-indent]::after {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: hsl(var(--border) / 0.5);
+  pointer-events: none;
+}
+
+/* Hide connecting line for first indent level */
+.ProseMirror [data-indent="1"]::after {
+  display: none;
 }
 
 /* Prose Styling for Editor Content */
@@ -581,16 +671,16 @@ textarea:focus {
 
 .prose ul,
 .prose ol {
-  @apply mb-2 pl-6;
+  @apply mb-2 pl-0;
   line-height: 1.65;
 }
 
 .prose ul {
-  @apply list-disc;
+  list-style: none;
 }
 
 .prose ol {
-  @apply list-decimal;
+  list-style: none;
 }
 
 .prose li {
@@ -889,7 +979,7 @@ textarea:focus {
 .prose ul ol,
 .prose ol ul,
 .prose ol ol {
-  @apply mt-1 mb-1;
+  @apply mt-1 mb-1 pl-0;
 }
 
 /* Better text selection - Notion style */

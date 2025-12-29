@@ -52,6 +52,7 @@
     "@fontsource/fira-code": "^5.2.7",
     "@fontsource/inter": "^5.2.8",
     "@libsql/client": "^0.15.15",
+    "@radix-ui/react-context-menu": "^2.2.16",
     "chokidar": "^4.0.3",
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.44.7",

@@ -9,6 +9,7 @@ import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useNoteContent } from '@renderer/hooks/useNoteContent';
+import { useImageUpload } from '@renderer/hooks/useImageUpload';
 import {
   NoteEditorHeader,
   NoteEditorEmptyState,
@@ -46,7 +47,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
-  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, createNote } =
+  const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, createNote, exportHtml, exportPdf, exportMarkdown } =
     useNoteAPI();
 
   const editor = useTipTapEditor();
@@ -57,6 +58,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const { title, content, isLoading, handleTitleChange } = useNoteContent({
     activeNote,
     editor,
+  });
+
+  // Enable image paste/drag-drop upload
+  useImageUpload({
+    editor,
+    noteId: activeNoteId || null,
+    enabled: !!activeNoteId,
   });
 
   // Sync selectedFile with activeNote to highlight the file in the tree
@@ -310,6 +318,20 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         }}
         showSave={isDirty}
         onSave={handleSave}
+        onExportHtml={async () => {
+          if (!activeNote || !editor) return;
+          const htmlContent = editor.getHTML();
+          await exportHtml(activeNote.id, htmlContent, title);
+        }}
+        onExportPdf={async () => {
+          if (!activeNote || !editor) return;
+          const htmlContent = editor.getHTML();
+          await exportPdf(activeNote.id, htmlContent, title);
+        }}
+        onExportMarkdown={async () => {
+          if (!activeNote) return;
+          await exportMarkdown(activeNote.id, title);
+        }}
       />
 
       {/* Editor Content */}

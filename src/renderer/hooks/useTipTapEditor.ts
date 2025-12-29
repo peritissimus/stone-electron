@@ -5,8 +5,8 @@
 import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Highlight from '@tiptap/extension-highlight';
+import { ImageWithMenu } from '@renderer/extensions/ImageWithMenu';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import TaskList from '@tiptap/extension-task-list';
 import LogseqTaskItem from '@renderer/extensions/LogseqTaskItem';
@@ -23,6 +23,7 @@ import { SlashCommand } from '@renderer/extensions/SlashCommand';
 import { NoteLink } from '@renderer/extensions/NoteLink';
 import { Note } from '@shared/types';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
+import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
 // Language loader map for dynamic imports
@@ -162,7 +163,7 @@ export function useTipTapEditor() {
         openOnClick: false,
         HTMLAttributes: { class: 'text-primary underline hover:text-primary/80 cursor-pointer' },
       }),
-      Image.configure({
+      ImageWithMenu.configure({
         HTMLAttributes: { class: 'max-w-full h-auto rounded-lg shadow-sm' },
       }),
       Highlight.configure({
@@ -220,6 +221,10 @@ export function useTipTapEditor() {
         HTMLAttributes: {
           class: 'note-link',
         },
+      }),
+      IndentableBlock.configure({
+        types: ['paragraph', 'heading'],
+        maxIndent: 8,
       }),
     ],
     content: '',
