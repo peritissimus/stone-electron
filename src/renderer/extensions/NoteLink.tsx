@@ -11,7 +11,11 @@ import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion, { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
+
+// Unique plugin key for note link suggestion
+const noteLinkPluginKey = new PluginKey('noteLink');
 import { NoteLinkMenu, NoteLinkMenuRef, NoteLinkItem } from '../components/features/Editor/NoteLinkMenu';
 import { NodeViewWrapper } from '@tiptap/react';
 import { Link } from 'phosphor-react';
@@ -166,6 +170,7 @@ export const NoteLink = Node.create<NoteLinkOptions>({
 
     return [
       Suggestion({
+        pluginKey: noteLinkPluginKey,
         editor: this.editor,
         char: '[[',
         allowSpaces: true,

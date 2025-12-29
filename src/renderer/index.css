@@ -56,6 +56,7 @@
   --shadow-md: 0 4px 12px hsl(var(--shadow-color) / 0.1);
   --shadow-lg: 0 8px 24px hsl(var(--shadow-color) / 0.15);
   --shadow-xl: 0 16px 48px hsl(var(--shadow-color) / 0.2);
+  --shadow-popover: 0 4px 16px hsl(var(--shadow-color) / 0.12), 0 0 0 1px hsl(var(--border));
 
   --spacing-titlebar: 51px;
 
@@ -127,6 +128,7 @@
   --accent: 211 100% 95%;
   --accent-foreground: 211 100% 35%;
   --popover: 0 0% 100%;
+  --popover-base: 0 0% 100%;
   --popover-foreground: 0 0% 12%;
   --card: 0 0% 100%;
   --card-foreground: 0 0% 12%;
@@ -198,6 +200,7 @@
   --accent: 211 80% 40% / 0.6;
   --accent-foreground: 211 100% 75%;
   --popover: 0 0% 10% / 0.85;
+  --popover-base: 0 0% 10%;
   --popover-foreground: 0 0% 92%;
   --card: 0 0% 0% / 0.01;
   --card-foreground: 0 0% 92%;
@@ -229,6 +232,9 @@
 
   /* Shadow color for dark mode */
   --shadow-color: 0 0% 100%;
+
+  /* Popover shadow - darker for dark mode */
+  --shadow-popover: 0 8px 32px hsl(0 0% 0% / 0.5), 0 0 0 1px hsl(var(--border));
 }
 
 @media (prefers-color-scheme: dark) {
@@ -251,6 +257,7 @@
     --accent: 211 80% 40% / 0.6;
     --accent-foreground: 211 100% 75%;
     --popover: 0 0% 10% / 0.85;
+    --popover-base: 0 0% 10%;
     --popover-foreground: 0 0% 92%;
     --card: 0 0% 0% / 0.01;
     --card-foreground: 0 0% 92%;
