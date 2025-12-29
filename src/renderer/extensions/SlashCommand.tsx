@@ -5,7 +5,11 @@
 import { Extension } from '@tiptap/core';
 import { ReactRenderer } from '@tiptap/react';
 import Suggestion from '@tiptap/suggestion';
+import { PluginKey } from '@tiptap/pm/state';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
+
+// Unique plugin key for slash command suggestion
+const slashCommandPluginKey = new PluginKey('slashCommand');
 import {
   SlashCommandMenu,
   SlashCommandMenuRef,
@@ -30,6 +34,7 @@ export const SlashCommand = Extension.create({
   addProseMirrorPlugins() {
     return [
       Suggestion({
+        pluginKey: slashCommandPluginKey,
         editor: this.editor,
         ...this.options.suggestion,
         items: ({ query }: any) => {

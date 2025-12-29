@@ -76,7 +76,15 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenu
     }
 
     return (
-      <div className="z-50 min-w-[280px] max-h-[400px] overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
+      <div
+        className="z-50 min-w-[280px] max-h-[400px] overflow-y-auto rounded-xl border border-white/10"
+        style={{
+          boxShadow: 'var(--shadow-popover)',
+          backgroundColor: 'hsl(var(--popover-base) / 0.75)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        }}
+      >
         <div className="p-1">
           {items.map((item, index) => (
             <button
