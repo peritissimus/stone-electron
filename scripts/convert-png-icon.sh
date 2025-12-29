@@ -52,19 +52,24 @@ for size in 16 32 48 64 128 256 512 1024; do
     # Calculate corner radius (22.37% of size for macOS Big Sur style rounding)
     radius=$(echo "$size * 0.2237" | bc | cut -d. -f1)
 
-    # Create rounded rectangle mask (white on black)
-    $CONVERT -size ${size}x${size} xc:black -fill white \
-        -draw "roundrectangle 0,0,$((size-1)),$((size-1)),${radius},${radius}" \
-        "$BUILD_DIR/icons/mask_${size}.png"
-
-    # Resize icon and apply mask to create rounded corners
+    # Resize icon first
     $CONVERT "$TEMP_PADDED" -resize "${size}x${size}" \
-        "$BUILD_DIR/icons/mask_${size}.png" \
-        -compose CopyOpacity -composite \
+        "$BUILD_DIR/icons/resized_${size}.png"
+
+    # Create rounded corners by modifying alpha channel directly
+    # 1. Create grayscale mask (white = keep, black = transparent)
+    # 2. Use -write-mask or channel operations to apply to alpha only
+    $CONVERT "$BUILD_DIR/icons/resized_${size}.png" -colorspace sRGB \
+        \( +clone -alpha extract \
+           \( -size ${size}x${size} xc:black -fill white \
+              -draw "roundrectangle 0,0,$((size-1)),$((size-1)),${radius},${radius}" \) \
+           -compose multiply -composite \) \
+        -alpha off -compose CopyOpacity -composite \
+        -colorspace sRGB \
         "$BUILD_DIR/icons/icon_${size}.png"
 
-    # Clean up mask
-    rm -f "$BUILD_DIR/icons/mask_${size}.png"
+    # Clean up temp files
+    rm -f "$BUILD_DIR/icons/shape_${size}.png" "$BUILD_DIR/icons/resized_${size}.png"
 done
 
 # Clean up temp padded file
@@ -98,14 +103,13 @@ else
     echo "⊘ Skipping icon.icns (macOS only, requires iconutil)"
 fi
 
-# Create ICO for Windows (multi-resolution)
+# Create ICO for Windows (multi-resolution with PNG compression for large sizes)
 echo "Creating icon.ico for Windows..."
-$CONVERT "$BUILD_DIR/icons/icon_16.png" \
-         "$BUILD_DIR/icons/icon_32.png" \
-         "$BUILD_DIR/icons/icon_48.png" \
-         "$BUILD_DIR/icons/icon_64.png" \
-         "$BUILD_DIR/icons/icon_128.png" \
-         "$BUILD_DIR/icons/icon_256.png" \
+# Windows Vista+ supports PNG-compressed icons for 256px
+# Use -define icon:auto-resize for better quality and proper format selection
+$CONVERT "$BUILD_DIR/icons/icon_256.png" \
+         -define icon:auto-resize=256,128,64,48,32,16 \
+         -compress zip \
          "$BUILD_DIR/icon.ico"
 echo "✓ icon.ico (Windows)"
 
