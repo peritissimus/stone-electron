@@ -34,9 +34,9 @@ export const DEFAULT_FONT_SETTINGS: FontSettings = {
     'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   uiFontSize: 13,
 
-  // Editor headings - Barlow Condensed
+  // Editor headings - Barlow Semi Condensed
   editorHeadingFont:
-    '"Barlow Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    '"Barlow Semi Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
 
   // Editor body - Barlow
   editorBodyFont:
