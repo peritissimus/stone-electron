@@ -139,12 +139,12 @@ const initializeMermaid = (
       }
     : {
         background: 'hsl(0 0% 100%)',
-        foreground: 'hsl(0 0% 12%)',
-        border: 'hsl(0 0% 90%)',
-        primary: 'hsl(211 100% 50%)',
-        accent: 'hsl(211 100% 97%)',
-        muted: 'hsl(0 0% 97%)',
-        mutedFg: 'hsl(0 0% 50%)',
+        foreground: 'hsl(0 0% 15%)',
+        border: 'hsl(0 0% 70%)',
+        primary: 'hsl(211 100% 45%)',
+        accent: 'hsl(211 100% 95%)',
+        muted: 'hsl(0 0% 95%)',
+        mutedFg: 'hsl(0 0% 40%)',
         card: 'hsl(0 0% 100%)',
       };
 
@@ -157,11 +157,13 @@ const initializeMermaid = (
   const mutedFg = cssVarColor('--muted-foreground', F.mutedFg);
   const card = cssVarColor('--card', F.card);
 
-  const lineTone = foreground || border;
-  const nodePrimary = 'transparent';
-  const nodeSecondary = 'transparent';
-  const nodeTertiary = 'transparent';
-  const labelBackground = withAlpha(card || background, isDark ? 0.45 : 0.6);
+  // Dark mode: dark nodes with light text/borders. Light mode: light nodes with dark text/borders
+  const lineTone = isDark ? 'hsl(0 0% 70%)' : 'hsl(0 0% 45%)';
+  const nodePrimary = isDark ? 'hsl(0 0% 18%)' : 'hsl(0 0% 98%)';
+  const nodeSecondary = isDark ? 'hsl(0 0% 22%)' : 'hsl(0 0% 96%)';
+  const nodeTertiary = isDark ? 'hsl(0 0% 25%)' : 'hsl(0 0% 94%)';
+  const nodeText = isDark ? 'hsl(0 0% 90%)' : 'hsl(0 0% 15%)';
+  const labelBackground = withAlpha(card || background, isDark ? 0.8 : 0.9);
 
   mermaid.initialize({
     startOnLoad: false,
@@ -171,15 +173,15 @@ const initializeMermaid = (
     themeVariables: {
       // Core palette mapped from tokens
       primaryColor: nodePrimary,
-      primaryTextColor: foreground,
+      primaryTextColor: nodeText,
       primaryBorderColor: lineTone,
 
       secondaryColor: nodeSecondary,
-      secondaryTextColor: foreground,
+      secondaryTextColor: nodeText,
       secondaryBorderColor: lineTone,
 
       tertiaryColor: nodeTertiary,
-      tertiaryTextColor: foreground,
+      tertiaryTextColor: nodeText,
       tertiaryBorderColor: lineTone,
 
       // Node backgrounds
@@ -194,13 +196,13 @@ const initializeMermaid = (
       edgeLabelBackground: labelBackground,
 
       // Text
-      textColor: foreground,
-      labelColor: foreground,
+      textColor: nodeText,
+      labelColor: nodeText,
       fontSize: '15px',
       fontFamily: overrides.fontFamily || MERMAID_FONT_STACK,
 
       // Class/state diagram specifics
-      classText: foreground,
+      classText: nodeText,
       labelBoxBkgColor: nodeSecondary,
       labelBoxBorderColor: lineTone,
 
@@ -220,20 +222,24 @@ const initializeMermaid = (
       transitionColor: lineTone,
       compositeBackground: nodeSecondary,
       compositeTitleBackground: nodeSecondary,
-      // Some versions may look for stateTextColor; fall back to textColor
-      stateTextColor: foreground,
+      stateTextColor: nodeText,
       noteBkgColor: nodeSecondary,
       noteBorderColor: lineTone,
       actorBorderColor: lineTone,
       actorLineColor: lineTone,
       actorBkg: nodePrimary,
       signalColor: lineTone,
-      signalTextColor: foreground,
+      signalTextColor: nodeText,
       ganttTaskLineColor: lineTone,
       ganttTaskColor: nodeSecondary,
       ganttConnectorStrokeColor: lineTone,
       ganttOutsideLineColor: lineTone,
       sectionBorderColor: lineTone,
+
+      // Flowchart specific
+      nodeBkg: nodePrimary,
+      nodeTextColor: nodeText,
+      clusterBkg: nodeSecondary,
     },
     flowchart: {
       curve: 'basis',
@@ -356,8 +362,18 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   const [showCode, setShowCode] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [editingReady, setEditingReady] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
   const diagramRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+
+  // Listen for theme changes
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
   const language = node.attrs.language || '';
   const isMermaid = language.toLowerCase() === 'mermaid';
   const isFlowDSL = language.toLowerCase() === 'flowdsl';
@@ -409,7 +425,6 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
         }
 
         // Check cache first - avoid re-rendering same content
-        const isDarkMode = document.documentElement.classList.contains('dark');
         const cacheKey = `${mermaidCode}:${isDarkMode}:${isStateDiagram}`;
         const cachedSvg = svgCache.get(cacheKey);
         if (cachedSvg) {
@@ -457,7 +472,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     // Debounce rendering
     const timeoutId = setTimeout(renderDiagram, 300);
     return () => clearTimeout(timeoutId);
-  }, [isDiagram, isFlowDSL, node.textContent]);
+  }, [isDiagram, isFlowDSL, node.textContent, isDarkMode]);
 
   // Focus input when editing starts
   useEffect(() => {
@@ -626,7 +641,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     <NodeViewWrapper className="code-block-wrapper" data-language={language}>
       <div
         className={cn(
-          'relative my-4 rounded-lg border border-border bg-muted/30 overflow-hidden',
+          'group relative my-4 rounded-lg border border-border bg-muted/30 overflow-hidden',
           selected && 'ring-2 ring-primary ring-offset-2',
         )}
         data-language={language}
@@ -745,10 +760,9 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
             </pre>
           </div>
         )}
-      </div>
 
-      {/* Toolbar with language selector and diagram toggle */}
-      <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+        {/* Toolbar with language selector and diagram toggle - visible on hover */}
+        <div className="absolute top-2 right-2 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         {/* Diagram toggle button (Mermaid or FlowDSL) */}
         {isDiagram && (
           <button
@@ -801,6 +815,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           <option value="mermaid">Mermaid</option>
           <option value="flowdsl">FlowDSL</option>
         </select>
+        </div>
       </div>
     </NodeViewWrapper>
   );

@@ -20,6 +20,7 @@ import {
 import { Copy, Check } from 'phosphor-react';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
+import { getRenderedEditorContent, buildExportHTML } from '@renderer/utils/exportUtils';
 import { saveDraft, deleteDraft } from '@renderer/utils/draftStorage';
 import { normalizePath } from '@renderer/utils/path';
 import { fastDeepEqual } from '@renderer/utils/fastEquals';
@@ -325,8 +326,11 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         }}
         onExportPdf={async () => {
           if (!activeNote || !editor) return;
-          const htmlContent = editor.getHTML();
-          await exportPdf(activeNote.id, htmlContent, title);
+          // Get pre-rendered content from DOM (includes Mermaid SVGs, syntax highlighting)
+          const renderedContent = getRenderedEditorContent(editor);
+          // Build complete HTML with app's CSS
+          const fullHtml = buildExportHTML(title, renderedContent);
+          await exportPdf(activeNote.id, fullHtml, title);
         }}
         onExportMarkdown={async () => {
           if (!activeNote) return;
