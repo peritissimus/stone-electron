@@ -4,6 +4,7 @@
 import { Editor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
+import { useUIStore } from '@renderer/stores/uiStore';
 
 export interface NoteEditorContentProps {
   editor: Editor | null;
@@ -45,12 +46,14 @@ function EditorSkeleton() {
 }
 
 export function NoteEditorContent({ editor, isLoading }: NoteEditorContentProps) {
+  const { showBlockIndicators } = useUIStore();
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-background relative">
       {isLoading ? (
         <EditorSkeleton />
       ) : (
-        <div className="max-w-[900px] mx-auto px-16 py-12">
+        <div className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}>
           <EditorContent
             editor={editor}
             className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"

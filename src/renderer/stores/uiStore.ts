@@ -42,6 +42,7 @@ interface UIState {
   editorFullscreen: boolean
   showPreview: boolean
   showOutline: boolean
+  showBlockIndicators: boolean
 
   // Search
   searchQuery: string
@@ -71,6 +72,7 @@ interface UIState {
   toggleEditorFullscreen: () => void
   togglePreview: () => void
   toggleOutline: () => void
+  toggleBlockIndicators: () => void
   setSearchQuery: (query: string) => void
   toggleSearch: () => void
   openSettings: () => void
@@ -105,6 +107,7 @@ export const useUIStore = create<UIState>()(
       editorFullscreen: false,
       showPreview: false,
       showOutline: true,
+      showBlockIndicators: false,
 
       // Search
       searchQuery: '',
@@ -145,6 +148,8 @@ export const useUIStore = create<UIState>()(
 
       toggleOutline: () => set((state) => ({ showOutline: !state.showOutline })),
 
+      toggleBlockIndicators: () => set((state) => ({ showBlockIndicators: !state.showBlockIndicators })),
+
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
@@ -183,6 +188,7 @@ export const useUIStore = create<UIState>()(
         showArchived: state.showArchived,
         showPreview: state.showPreview,
         showOutline: state.showOutline,
+        showBlockIndicators: state.showBlockIndicators,
         theme: state.theme,
         accentColor: state.accentColor,
         fontSettings: state.fontSettings,
