@@ -112,12 +112,12 @@ Crafted with attention to detail:
 
 Download the latest release for your platform:
 
-| Platform | Download |
-|----------|----------|
+| Platform              | Download                                                                       |
+| --------------------- | ------------------------------------------------------------------------------ |
 | macOS (Apple Silicon) | [Stone-0.2.4-arm64.dmg](https://github.com/peritissimus/stone/releases/latest) |
-| macOS (Intel) | Coming soon |
-| Windows | Coming soon |
-| Linux | Coming soon |
+| macOS (Intel)         | Coming soon                                                                    |
+| Windows               | Coming soon                                                                    |
+| Linux                 | Coming soon                                                                    |
 
 ### Build from Source
 
@@ -142,16 +142,16 @@ Requires Node.js 20+ and pnpm.
 
 ## Keyboard Shortcuts
 
-| Action | macOS | Windows/Linux |
-|--------|-------|---------------|
-| Save note | `⌘S` | `Ctrl+S` |
-| New note | `⌘N` | `Ctrl+N` |
-| Open settings | `⌘,` | `Ctrl+,` |
-| Bold | `⌘B` | `Ctrl+B` |
-| Italic | `⌘I` | `Ctrl+I` |
-| Code | `⌘E` | `Ctrl+E` |
-| Link | `⌘K` | `Ctrl+K` |
-| Slash commands | `/` | `/` |
+| Action         | macOS | Windows/Linux |
+| -------------- | ----- | ------------- |
+| Save note      | `⌘S`  | `Ctrl+S`      |
+| New note       | `⌘N`  | `Ctrl+N`      |
+| Open settings  | `⌘,`  | `Ctrl+,`      |
+| Bold           | `⌘B`  | `Ctrl+B`      |
+| Italic         | `⌘I`  | `Ctrl+I`      |
+| Code           | `⌘E`  | `Ctrl+E`      |
+| Link           | `⌘K`  | `Ctrl+K`      |
+| Slash commands | `/`   | `/`           |
 
 ---
 
@@ -206,35 +206,17 @@ Stone uses a **file-first architecture**:
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | Electron 33 |
-| Frontend | React 18 + TypeScript |
-| Editor | TipTap (ProseMirror) |
-| Styling | Tailwind CSS 4 |
-| Components | shadcn/ui (Radix) |
-| State | Zustand |
-| Database | SQLite (libsql) |
-| Diagrams | Mermaid |
-| Build | Vite |
-
----
-
-## Roadmap
-
-### Completed
-- [x] Backlinks panel with bidirectional linking
-- [x] Graph view for visualizing note connections
-- [x] Export to PDF/HTML/Markdown
-- [x] Image paste and drag-drop
-- [x] Wiki-style `[[note links]]`
-
-### Upcoming
-- [ ] Global quick capture (menubar)
-- [ ] Templates
-- [ ] Sync (optional, encrypted)
-- [ ] Mobile companion app
-- [ ] Plugin system
+| Layer      | Technology            |
+| ---------- | --------------------- |
+| Framework  | Electron 33           |
+| Frontend   | React 18 + TypeScript |
+| Editor     | TipTap (ProseMirror)  |
+| Styling    | Tailwind CSS 4        |
+| Components | shadcn/ui (Radix)     |
+| State      | Zustand               |
+| Database   | SQLite (libsql)       |
+| Diagrams   | Mermaid               |
+| Build      | Vite                  |
 
 ---
 
