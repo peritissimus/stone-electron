@@ -35,6 +35,7 @@ export const NOTE_CHANNELS = {
   GET_VERSIONS: 'notes:getVersions',
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
+  GET_FORWARD_LINKS: 'notes:getForwardLinks',
   MOVE: 'notes:move',
 } as const;
 

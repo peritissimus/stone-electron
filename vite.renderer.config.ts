@@ -38,6 +38,18 @@ export default defineConfig({
           // Heavy features - loaded on demand
           'mermaid': ['mermaid'],
           'highlight': ['highlight.js'],
+          // UI libraries
+          'icons': ['phosphor-react', 'lucide-react'],
+          'radix-ui': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-alert-dialog',
+            '@radix-ui/react-toggle',
+            '@radix-ui/react-slot',
+          ],
+          // State management
+          'zustand': ['zustand'],
         },
       },
     },

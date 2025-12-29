@@ -436,6 +436,10 @@ export class NoteRepository {
             favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
             pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,
           });
+
+          // Update note links based on [[note name]] patterns in content
+          // contentToSave is the markdown content being saved
+          await this.updateLinksFromContent(id, contentToSave);
         }
       } catch (error) {
         logger.error('Error updating markdown file:', error);
@@ -774,6 +778,62 @@ export class NoteRepository {
     await this.db
       .delete(noteLinks)
       .where(and(eq(noteLinks.sourceNoteId, sourceId), eq(noteLinks.targetNoteId, targetId)));
+  }
+
+  /**
+   * Extract [[note name]] patterns from markdown content and update links
+   */
+  async updateLinksFromContent(sourceNoteId: string, markdownContent: string): Promise<void> {
+    try {
+      // Extract all [[note name]] patterns from the content
+      const linkPattern = /\[\[([^\]]+)\]\]/g;
+      const matches = markdownContent.matchAll(linkPattern);
+      const linkedTitles = new Set<string>();
+
+      for (const match of matches) {
+        linkedTitles.add(match[1].trim());
+      }
+
+      // Get current forward links
+      const currentLinks = await this.getForwardLinks(sourceNoteId);
+      const currentLinkIds = new Set(currentLinks.map((n) => n.id));
+
+      // Find notes by title (case-insensitive)
+      const allNotes = await this.findAll({ where: { isDeleted: false } });
+      const notesByTitle = new Map<string, Note>();
+      for (const note of allNotes) {
+        if (note.title) {
+          notesByTitle.set(note.title.toLowerCase(), note);
+        }
+      }
+
+      // Resolve titles to note IDs
+      const targetNoteIds = new Set<string>();
+      for (const title of linkedTitles) {
+        const targetNote = notesByTitle.get(title.toLowerCase());
+        if (targetNote && targetNote.id !== sourceNoteId) {
+          targetNoteIds.add(targetNote.id);
+        }
+      }
+
+      // Remove links that no longer exist
+      for (const currentId of currentLinkIds) {
+        if (!targetNoteIds.has(currentId)) {
+          await this.removeLink(sourceNoteId, currentId);
+        }
+      }
+
+      // Add new links
+      for (const targetId of targetNoteIds) {
+        if (!currentLinkIds.has(targetId)) {
+          await this.addLink(sourceNoteId, targetId);
+        }
+      }
+
+      logger.info(`[NoteRepository] Updated links for note ${sourceNoteId}: ${targetNoteIds.size} links`);
+    } catch (error) {
+      logger.error(`[NoteRepository] Failed to update links for note ${sourceNoteId}:`, error);
+    }
   }
 
   /**

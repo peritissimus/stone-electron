@@ -268,6 +268,24 @@ export function useNoteAPI() {
     }
   }, []);
 
+  const getForwardLinks = useCallback(async (noteId: string) => {
+    try {
+      const response = await window.electron.invoke<{ forwardLinks: Note[] }>(
+        NOTE_CHANNELS.GET_FORWARD_LINKS,
+        {
+          noteId: noteId,
+        },
+      );
+      if (response.success && response.data) {
+        return response.data.forwardLinks;
+      }
+      return [];
+    } catch (error) {
+      logger.error('Failed to get forward links:', error);
+      return [];
+    }
+  }, []);
+
   const moveNote = useCallback(
     async (id: string, folderPath: string | null) => {
       logger.info('[useNoteAPI.moveNote] Moving note', { id, folderPath });
@@ -315,6 +333,7 @@ export function useNoteAPI() {
     restoreVersion,
     loadNoteById,
     getBacklinks,
+    getForwardLinks,
     moveNote,
   };
 }

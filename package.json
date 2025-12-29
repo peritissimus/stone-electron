@@ -144,6 +144,7 @@
     "react-devtools": "^7.0.1",
     "react-dom": "^18.2.0",
     "react-query": "^3.39.3",
+    "rollup-plugin-visualizer": "^6.0.5",
     "semantic-release": "^24.2.9",
     "shadcn-ui": "^0.8.0",
     "start-server-and-test": "^2.1.3",

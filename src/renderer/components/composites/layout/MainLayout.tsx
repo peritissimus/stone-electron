@@ -2,14 +2,11 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import { NoteEditor, NoteEditorHandle } from '@renderer/components/features/Editor';
-import { SearchPanel } from '@renderer/components/features/search';
 import { HomePage } from '@renderer/components/features/HomePage';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
-import { SettingsModal } from '@renderer/components/features/Settings';
-import { DraftRecoveryDialog } from '@renderer/components/features/Recovery';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -20,6 +17,11 @@ import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
 import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
+
+// Lazy load components not needed on initial render
+const SearchPanel = lazy(() => import('@renderer/components/features/search/SearchPanel').then(m => ({ default: m.SearchPanel })));
+const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
 
 export function MainLayout() {
   const {
@@ -152,7 +154,11 @@ export function MainLayout() {
         showNoteList={false}
         mainContent={
           <MainContentArea>
-            {searchOpen && <SearchPanel />}
+            {searchOpen && (
+              <Suspense fallback={<div className="p-4 text-muted-foreground">Loading search...</div>}>
+                <SearchPanel />
+              </Suspense>
+            )}
             {activeNoteId ? (
               <NoteEditor ref={editorRef} />
             ) : (
@@ -161,15 +167,21 @@ export function MainLayout() {
             )}
           </MainContentArea>
         }
-        overlayContent={<SettingsModal />}
+        overlayContent={
+          <Suspense fallback={null}>
+            <SettingsModal />
+          </Suspense>
+        }
       />
 
-      {/* Draft Recovery Dialog */}
-      <DraftRecoveryDialog
-        open={showRecoveryDialog}
-        onOpenChange={setShowRecoveryDialog}
-        onRecover={handleRecoverDraft}
-      />
+      {/* Draft Recovery Dialog - lazy loaded */}
+      <Suspense fallback={null}>
+        <DraftRecoveryDialog
+          open={showRecoveryDialog}
+          onOpenChange={setShowRecoveryDialog}
+          onRecover={handleRecoverDraft}
+        />
+      </Suspense>
     </>
   );
 }

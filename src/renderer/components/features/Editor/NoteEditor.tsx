@@ -14,6 +14,7 @@ import {
   NoteEditorEmptyState,
   NoteEditorContent,
   EditorStats,
+  BacklinksPanel,
 } from '@renderer/components/features/Editor';
 import { Copy, Check } from 'phosphor-react';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
@@ -249,6 +250,24 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     [handleTitleChange, activeNoteId, updateNote],
   );
 
+  // Handle note link clicks to navigate to linked notes
+  useEffect(() => {
+    const handleNoteLinkClick = (event: CustomEvent<{ noteId: string; title: string }>) => {
+      const { noteId } = event.detail;
+      if (noteId && noteId !== activeNoteId) {
+        logger.info('[NoteEditor] Navigating to linked note:', noteId);
+        setActiveNote(noteId);
+      }
+    };
+
+    // Add event listener
+    document.addEventListener('note-link-click', handleNoteLinkClick as EventListener);
+
+    return () => {
+      document.removeEventListener('note-link-click', handleNoteLinkClick as EventListener);
+    };
+  }, [activeNoteId, setActiveNote]);
+
   if (!activeNote) {
     return <NoteEditorEmptyState />;
   }
@@ -295,6 +314,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
       {/* Editor Content */}
       <NoteEditorContent editor={editor} isLoading={isLoading} />
+
+      {/* Backlinks Panel */}
+      {activeNoteId && <BacklinksPanel noteId={activeNoteId} />}
 
       {/* Minimal Footer */}
       <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
