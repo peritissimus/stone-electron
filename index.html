@@ -5,17 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stone - Note Taking App</title>
-    <!-- React DevTools: run `pnpm react-devtools` first -->
-    <script src="http://localhost:8097"></script>
     <script>
       // Apply dark mode immediately to prevent flash
-      (function() {
+      (function () {
         const stored = localStorage.getItem('stone-ui-preferences');
         if (stored) {
           try {
             const parsed = JSON.parse(stored);
             const theme = parsed.state?.theme || 'dark';
-            if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            if (
+              theme === 'dark' ||
+              (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ) {
               document.documentElement.classList.add('dark');
             }
           } catch (e) {
@@ -29,7 +30,22 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static loading skeleton - shows before React loads, becomes LCP -->
+      <div id="app-skeleton" style="display: flex; height: 100vh; background: hsl(240 10% 4%); font-family: system-ui, -apple-system, sans-serif;">
+        <!-- Sidebar skeleton -->
+        <div style="width: 240px; border-right: 1px solid hsl(240 4% 16%); padding: 12px;">
+          <div style="height: 32px; background: hsl(240 4% 16%); border-radius: 6px; margin-bottom: 12px;"></div>
+          <div style="height: 24px; width: 60%; background: hsl(240 4% 16%); border-radius: 4px; margin-bottom: 8px;"></div>
+          <div style="height: 24px; width: 80%; background: hsl(240 4% 16%); border-radius: 4px; margin-bottom: 8px;"></div>
+          <div style="height: 24px; width: 70%; background: hsl(240 4% 16%); border-radius: 4px;"></div>
+        </div>
+        <!-- Main content with text for LCP -->
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+          <p style="color: hsl(240 5% 65%); font-size: 14px;">Loading Stone...</p>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/renderer/main.tsx"></script>
   </body>
 </html>

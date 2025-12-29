@@ -781,6 +781,50 @@ export class NoteRepository {
   }
 
   /**
+   * Get graph data for visualization (nodes and edges)
+   */
+  async getGraphData(): Promise<{
+    nodes: { id: string; name: string; val: number; color?: string }[];
+    links: { source: string; target: string }[];
+  }> {
+    try {
+      // Get all non-deleted notes
+      const allNotes = await this.findAll({ where: { isDeleted: false } });
+
+      // Get all links
+      const allLinks = await this.db.select().from(noteLinks);
+
+      // Create nodes with link counts for sizing
+      const linkCounts = new Map<string, number>();
+      for (const link of allLinks) {
+        linkCounts.set(link.sourceNoteId, (linkCounts.get(link.sourceNoteId) || 0) + 1);
+        linkCounts.set(link.targetNoteId, (linkCounts.get(link.targetNoteId) || 0) + 1);
+      }
+
+      const noteIdSet = new Set(allNotes.map((n) => n.id));
+      const nodes = allNotes.map((note) => ({
+        id: note.id,
+        name: note.title || 'Untitled',
+        val: 1 + (linkCounts.get(note.id) || 0), // Size based on connections
+      }));
+
+      // Filter links to only include existing notes
+      const links = allLinks
+        .filter((link: { sourceNoteId: string; targetNoteId: string }) => noteIdSet.has(link.sourceNoteId) && noteIdSet.has(link.targetNoteId))
+        .map((link: { sourceNoteId: string; targetNoteId: string }) => ({
+          source: link.sourceNoteId,
+          target: link.targetNoteId,
+        }));
+
+      logger.info(`[NoteRepository] Graph data: ${nodes.length} nodes, ${links.length} links`);
+      return { nodes, links };
+    } catch (error) {
+      logger.error('[NoteRepository] Failed to get graph data:', error);
+      return { nodes: [], links: [] };
+    }
+  }
+
+  /**
    * Extract [[note name]] patterns from markdown content and update links
    */
   async updateLinksFromContent(sourceNoteId: string, markdownContent: string): Promise<void> {

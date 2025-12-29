@@ -36,7 +36,11 @@ export const NOTE_CHANNELS = {
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
   GET_FORWARD_LINKS: 'notes:getForwardLinks',
+  GET_GRAPH_DATA: 'notes:getGraphData',
   MOVE: 'notes:move',
+  EXPORT_HTML: 'notes:exportHtml',
+  EXPORT_PDF: 'notes:exportPdf',
+  EXPORT_MARKDOWN: 'notes:exportMarkdown',
 } as const;
 
 // Notebook Operations

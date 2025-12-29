@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { FileText, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
 import { CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -87,6 +87,9 @@ export function HomePage() {
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { toggleSidebar, sidebarOpen } = useUIStore();
   const { createNote } = useNoteAPI();
+
+  // Prevent double-click creating duplicate notes
+  const isCreatingNote = useRef(false);
 
   // Get the active workspace
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -177,33 +180,55 @@ export function HomePage() {
       logger.info('[HomePage] Opening existing journal', { id: existingJournal.id });
       handleNoteClick(existingJournal.id);
     } else {
+      // Prevent double-click
+      if (isCreatingNote.current) {
+        logger.info('[HomePage] Already creating note, ignoring click');
+        return;
+      }
+      isCreatingNote.current = true;
+
       // Create new journal entry with ISO date as title (filename will be YYYY-MM-DD.md)
       logger.info('[HomePage] Creating new journal entry');
-      const newNote = await createNote({
-        title: journalFilename,
-        content: `# ${journalTitle}\n\n`,
-        folderPath: 'Journal',
-      });
+      try {
+        const newNote = await createNote({
+          title: journalFilename,
+          content: `# ${journalTitle}\n\n`,
+          folderPath: 'Journal',
+        });
 
-      if (newNote) {
-        logger.info('[HomePage] Journal created', { id: newNote.id });
-        handleNoteClick(newNote.id);
+        if (newNote) {
+          logger.info('[HomePage] Journal created', { id: newNote.id });
+          handleNoteClick(newNote.id);
+        }
+      } finally {
+        isCreatingNote.current = false;
       }
     }
   };
 
   // Handle creating a work note
   const handleWorkNoteClick = async () => {
-    logger.info('[HomePage] Work note clicked');
-    const newNote = await createNote({
-      title: 'Untitled',
-      content: '',
-      folderPath: 'Work',
-    });
+    // Prevent double-click
+    if (isCreatingNote.current) {
+      logger.info('[HomePage] Already creating note, ignoring click');
+      return;
+    }
+    isCreatingNote.current = true;
 
-    if (newNote) {
-      logger.info('[HomePage] Work note created', { id: newNote.id });
-      handleNoteClick(newNote.id);
+    logger.info('[HomePage] Work note clicked');
+    try {
+      const newNote = await createNote({
+        title: 'Untitled',
+        content: '',
+        folderPath: 'Work',
+      });
+
+      if (newNote) {
+        logger.info('[HomePage] Work note created', { id: newNote.id });
+        handleNoteClick(newNote.id);
+      }
+    } finally {
+      isCreatingNote.current = false;
     }
   };
 

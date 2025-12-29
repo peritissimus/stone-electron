@@ -2,11 +2,15 @@
  * Note API Hook - React hooks for note operations
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { Note, NoteVersion } from '@shared/types';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/utils/logger';
+
+// Module-level deduplication for loadNotes calls
+let pendingLoadNotes: Promise<void> | null = null;
+let lastLoadParams: string | null = null;
 
 export function useNoteAPI() {
   const setNotes = useNoteStore((state) => state.setNotes);
@@ -25,41 +29,67 @@ export function useNoteAPI() {
       isPinned?: boolean;
       isArchived?: boolean;
     }) => {
+      const params = filters || {};
+      const paramsKey = JSON.stringify(params);
+
+      // Deduplicate: if same request is already pending, reuse it
+      if (pendingLoadNotes && lastLoadParams === paramsKey) {
+        logger.info('[useNoteAPI.loadNotes] Deduplicating request, reusing pending call');
+        return pendingLoadNotes;
+      }
+
       setLoading(true);
       setError(null);
-      try {
-        const params = filters || {};
-        logger.info('[useNoteAPI.loadNotes] invoking with params', params);
-        const response = await window.electron.invoke<{ notes: Note[] }>(
-          NOTE_CHANNELS.GET_ALL,
-          params,
-        );
-        logger.info('[useNoteAPI.loadNotes] response', response);
-        if (response.success && response.data) {
-          const count = Array.isArray((response.data as any).notes)
-            ? (response.data as any).notes.length
-            : 0;
-          logger.info('[useNoteAPI.loadNotes] setting notes length', count);
-          setNotes(response.data.notes);
-        } else {
-          setError(response.error?.message || 'Failed to load notes');
+
+      const doLoad = async () => {
+        try {
+          logger.info('[useNoteAPI.loadNotes] invoking with params', params);
+          const response = await window.electron.invoke<{ notes: Note[] }>(
+            NOTE_CHANNELS.GET_ALL,
+            params,
+          );
+          if (response.success && response.data) {
+            const count = Array.isArray((response.data as any).notes)
+              ? (response.data as any).notes.length
+              : 0;
+            logger.info('[useNoteAPI.loadNotes] loaded', count, 'notes');
+            setNotes(response.data.notes);
+          } else {
+            setError(response.error?.message || 'Failed to load notes');
+          }
+        } catch (error) {
+          logger.error('[useNoteAPI.loadNotes] error', error);
+          setError(error instanceof Error ? error.message : 'Failed to load notes');
+        } finally {
+          setLoading(false);
+          pendingLoadNotes = null;
+          lastLoadParams = null;
         }
-      } catch (error) {
-        logger.error('[useNoteAPI.loadNotes] error', error);
-        setError(error instanceof Error ? error.message : 'Failed to load notes');
-      } finally {
-        setLoading(false);
-      }
+      };
+
+      lastLoadParams = paramsKey;
+      pendingLoadNotes = doLoad();
+      return pendingLoadNotes;
     },
     [setNotes, setLoading, setError],
   );
 
   const createNote = useCallback(
     async (data: { title: string; content: string; folderPath?: string }) => {
+      logger.info('[useNoteAPI.createNote] Called with:', {
+        title: data.title,
+        folderPath: data.folderPath,
+        contentLength: data.content?.length || 0,
+      });
       setLoading(true);
       setError(null);
       try {
         const response = await window.electron.invoke<Note>(NOTE_CHANNELS.CREATE, data);
+        logger.info('[useNoteAPI.createNote] Response:', {
+          success: response.success,
+          noteId: response.data?.id,
+          noteTitle: response.data?.title,
+        });
         if (response.success && response.data) {
           addNote(response.data);
           return response.data;
@@ -68,6 +98,7 @@ export function useNoteAPI() {
           return null;
         }
       } catch (error) {
+        logger.error('[useNoteAPI.createNote] Error:', error);
         setError(error instanceof Error ? error.message : 'Failed to create note');
         return null;
       } finally {
@@ -286,6 +317,22 @@ export function useNoteAPI() {
     }
   }, []);
 
+  const getGraphData = useCallback(async () => {
+    try {
+      const response = await window.electron.invoke<{
+        nodes: { id: string; name: string; val: number }[];
+        links: { source: string; target: string }[];
+      }>(NOTE_CHANNELS.GET_GRAPH_DATA);
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return { nodes: [], links: [] };
+    } catch (error) {
+      logger.error('Failed to get graph data:', error);
+      return { nodes: [], links: [] };
+    }
+  }, []);
+
   const moveNote = useCallback(
     async (id: string, folderPath: string | null) => {
       logger.info('[useNoteAPI.moveNote] Moving note', { id, folderPath });
@@ -334,6 +381,7 @@ export function useNoteAPI() {
     loadNoteById,
     getBacklinks,
     getForwardLinks,
+    getGraphData,
     moveNote,
   };
 }

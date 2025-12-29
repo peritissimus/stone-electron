@@ -464,6 +464,12 @@ export function registerNoteHandlers() {
     return { forwardLinks };
   });
 
+  // notes:getGraphData
+  registerHandler(NOTE_CHANNELS.GET_GRAPH_DATA, async () => {
+    const graphData = await repos.note.getGraphData();
+    return graphData;
+  });
+
   // notes:move
   registerHandler(
     NOTE_CHANNELS.MOVE,
