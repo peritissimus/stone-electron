@@ -54,6 +54,11 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   addNote: (note) =>
     set((state) => {
+      // Check if note already exists (prevent duplicates)
+      if (state.notes.some((n) => n.id === note.id)) {
+        return state;
+      }
+
       const notesByPath = new Map(state.notesByPath);
       if (note.filePath) {
         const normalized = normalizePath(note.filePath);

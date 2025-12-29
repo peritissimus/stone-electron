@@ -144,6 +144,9 @@ async function fetchNotesForAutocomplete(query: string) {
 
 export function useTipTapEditor() {
   const editor = useEditor({
+    // Prevent flushSync warning in React 18 Strict Mode
+    // This defers rendering until after the initial React render cycle
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3, 4, 5, 6] },

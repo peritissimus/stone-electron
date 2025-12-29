@@ -4,9 +4,12 @@
 
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Sidebar } from '@renderer/components/features/navigation';
-import { NoteEditor, NoteEditorHandle } from '@renderer/components/features/Editor';
-import { HomePage } from '@renderer/components/features/HomePage';
+import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
+
+// Lazy load heavy components - NoteEditor pulls in entire TipTap stack
+const NoteEditor = lazy(() => import('@renderer/components/features/Editor/NoteEditor').then(m => ({ default: m.NoteEditor })));
+const HomePage = lazy(() => import('@renderer/components/features/HomePage/HomePage').then(m => ({ default: m.HomePage })));
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -22,6 +25,31 @@ import { logger } from '@renderer/utils/logger';
 const SearchPanel = lazy(() => import('@renderer/components/features/search/SearchPanel').then(m => ({ default: m.SearchPanel })));
 const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
 const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
+
+// Minimal loading skeletons for fast LCP
+const EditorSkeleton = () => (
+  <div className="flex flex-col h-full animate-pulse">
+    <div className="h-12 border-b border-border flex items-center px-4">
+      <div className="h-6 w-48 bg-muted rounded" />
+    </div>
+    <div className="flex-1 p-8">
+      <div className="max-w-3xl mx-auto space-y-4">
+        <div className="h-4 w-3/4 bg-muted rounded" />
+        <div className="h-4 w-full bg-muted rounded" />
+        <div className="h-4 w-5/6 bg-muted rounded" />
+      </div>
+    </div>
+  </div>
+);
+
+const HomeSkeleton = () => (
+  <div className="flex items-center justify-center h-full animate-pulse">
+    <div className="text-center space-y-4">
+      <div className="h-8 w-32 bg-muted rounded mx-auto" />
+      <div className="h-4 w-48 bg-muted rounded mx-auto" />
+    </div>
+  </div>
+);
 
 export function MainLayout() {
   const {
@@ -74,10 +102,24 @@ export function MainLayout() {
   // Load initial data and check for drafts
   useEffect(() => {
     const bootstrap = async () => {
+      const startTime = performance.now();
+
+      // Load workspace first (required for other operations)
       await loadWorkspaces();
-      await loadFileTree();
-      loadTags();
-      await loadNotes();
+      logger.info(`[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+
+      // Then load everything else in PARALLEL
+      const [, , notesResult] = await Promise.all([
+        loadFileTree().then(() => {
+          logger.info(`[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+        }),
+        loadTags().then(() => {
+          logger.info(`[MainLayout] Tags loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+        }),
+        loadNotes().then(() => {
+          logger.info(`[MainLayout] Notes loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+        }),
+      ]);
 
       // Check for unsaved drafts after notes are loaded
       const drafts = getAllDrafts();
@@ -86,6 +128,7 @@ export function MainLayout() {
         setShowRecoveryDialog(true);
       }
 
+      logger.info(`[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`);
       // Mark bootstrap as complete
       setBootstrapComplete(true);
     };
@@ -160,10 +203,16 @@ export function MainLayout() {
               </Suspense>
             )}
             {activeNoteId ? (
-              <NoteEditor ref={editorRef} />
+              <Suspense fallback={<EditorSkeleton />}>
+                <NoteEditor ref={editorRef} />
+              </Suspense>
             ) : (
               // Only show HomePage after initial bootstrap and journal open attempt
-              initialJournalAttempted && <HomePage />
+              initialJournalAttempted && (
+                <Suspense fallback={<HomeSkeleton />}>
+                  <HomePage />
+                </Suspense>
+              )
             )}
           </MainContentArea>
         }

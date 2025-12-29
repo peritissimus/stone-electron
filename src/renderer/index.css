@@ -429,10 +429,48 @@ textarea:focus {
 .ProseMirror blockquote {
   position: relative;
   transition: background-color 0.1s ease;
-  padding: 3px 2px;
-  margin-left: -2px;
+  padding: 3px 2px 3px 16px;
+  margin-left: -16px;
   margin-right: -2px;
   border-radius: 6px;
+}
+
+/* Block bullet marker - persistent with hover state */
+.ProseMirror p::before,
+.ProseMirror h1::before,
+.ProseMirror h2::before,
+.ProseMirror h3::before,
+.ProseMirror h4::before,
+.ProseMirror h5::before,
+.ProseMirror h6::before,
+.ProseMirror ul::before,
+.ProseMirror ol::before,
+.ProseMirror blockquote::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: hsl(var(--muted-foreground) / 0.25);
+  transition: background-color 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+
+.ProseMirror p:hover::before,
+.ProseMirror h1:hover::before,
+.ProseMirror h2:hover::before,
+.ProseMirror h3:hover::before,
+.ProseMirror h4:hover::before,
+.ProseMirror h5:hover::before,
+.ProseMirror h6:hover::before,
+.ProseMirror ul:hover::before,
+.ProseMirror ol:hover::before,
+.ProseMirror blockquote:hover::before {
+  background-color: hsl(var(--primary) / 0.8);
+  transform: translateY(-50%) scale(1.2);
 }
 
 .ProseMirror p:hover,
@@ -448,11 +486,19 @@ textarea:focus {
   background-color: hsl(var(--muted) / 0.3);
 }
 
+/* Override marker for empty placeholder - must reset all block marker styles */
 .ProseMirror p.is-editor-empty:first-child::before {
   content: 'Type / for commands, or start writing...';
   color: hsl(var(--muted-foreground) / 0.5);
-  float: left;
-  height: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: none;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background-color: transparent;
+  white-space: nowrap;
   pointer-events: none;
   font-size: 16px;
   font-weight: 400;

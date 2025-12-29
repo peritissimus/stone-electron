@@ -4,4 +4,5 @@ export { NoteEditorEmptyState } from './NoteEditorEmptyState';
 export { NoteEditorContent, type NoteEditorContentProps } from './NoteEditorContent';
 export { EditorStats, type EditorStatsProps } from './EditorStats';
 export { BacklinksPanel, type BacklinksPanelProps } from './BacklinksPanel';
+export { GraphView } from './GraphView';
 export { NoteEditor, type NoteEditorHandle } from './NoteEditor';
