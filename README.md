@@ -222,10 +222,16 @@ Stone uses a **file-first architecture**:
 
 ## Roadmap
 
+### Completed
+- [x] Backlinks panel with bidirectional linking
+- [x] Graph view for visualizing note connections
+- [x] Export to PDF/HTML/Markdown
+- [x] Image paste and drag-drop
+- [x] Wiki-style `[[note links]]`
+
+### Upcoming
 - [ ] Global quick capture (menubar)
-- [ ] Backlinks and graph view
 - [ ] Templates
-- [ ] Export to PDF
 - [ ] Sync (optional, encrypted)
 - [ ] Mobile companion app
 - [ ] Plugin system
