@@ -354,6 +354,22 @@ export function registerNoteHandlers() {
     },
   );
 
+  // notes:getByPath - Get note by file path
+  registerHandler(
+    NOTE_CHANNELS.GET_BY_PATH,
+    async (event, request: { filePath: string }) => {
+      logger.info(`[IPC] notes:getByPath "${request.filePath}"`);
+
+      const note = await repos.note.findByFilePath(request.filePath);
+      if (!note) {
+        throw new IpcError('NOT_FOUND', 'Note not found for file path');
+      }
+
+      const noteWithRelations = await buildNoteWithRelations(note, repos);
+      return noteWithRelations;
+    },
+  );
+
   // notes:getContent - Get note content from file
   registerHandler(NOTE_CHANNELS.GET_CONTENT, async (event, request: { id: string }) => {
     const content = await repos.note.getContentById(request.id);

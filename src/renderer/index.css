@@ -566,9 +566,10 @@ textarea:focus {
   margin-left: 20px;
 }
 
-/* Override marker for empty placeholder - must reset all block marker styles */
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: 'Type / for commands, or start writing...';
+/* Placeholder for empty editor */
+.ProseMirror p.is-editor-empty:first-child::before,
+.ProseMirror p.is-empty:first-child::before {
+  content: attr(data-placeholder);
   color: hsl(var(--muted-foreground) / 0.5);
   position: absolute;
   left: 0;
@@ -582,6 +583,13 @@ textarea:focus {
   pointer-events: none;
   font-size: 16px;
   font-weight: 400;
+  float: left;
+}
+
+/* Fallback if data-placeholder not set */
+.ProseMirror p.is-editor-empty:first-child:not([data-placeholder])::before,
+.ProseMirror p.is-empty:first-child:not([data-placeholder])::before {
+  content: 'Type / for commands, or start writing...';
 }
 
 /* Indented blocks (Logseq-style) - visual hierarchy with connecting lines */

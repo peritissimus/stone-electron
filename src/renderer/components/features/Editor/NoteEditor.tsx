@@ -38,8 +38,18 @@ type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 
 export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const selectActiveNote = useCallback((state: NoteStoreState) => {
-    if (!state.activeNoteId) return null;
-    return state.notes.find((note) => note.id === state.activeNoteId) || null;
+    if (!state.activeNoteId) {
+      logger.debug('[NoteEditor] selectActiveNote: no activeNoteId');
+      return null;
+    }
+    const found = state.notes.find((note) => note.id === state.activeNoteId) || null;
+    logger.debug('[NoteEditor] selectActiveNote', {
+      activeNoteId: state.activeNoteId,
+      found: !!found,
+      notesCount: state.notes.length,
+      noteIds: state.notes.slice(0, 5).map(n => n.id) // First 5 note IDs for debugging
+    });
+    return found;
   }, []);
 
   const activeNote = useNoteStore(selectActiveNote);

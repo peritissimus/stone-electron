@@ -10,6 +10,7 @@ import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
 import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
 import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
+import { logger } from '@renderer/utils/logger';
 
 // Lazy load Mermaid - 800KB saved from initial bundle!
 let mermaidModule: typeof import('mermaid') | null = null;
@@ -463,7 +464,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
         setRenderedSvg(fixedSvg);
       } catch (err: any) {
         setError(err.message || 'Failed to render diagram');
-        console.error('Diagram render error:', err);
+        logger.error('Diagram render error:', err);
       } finally {
         setIsRendering(false);
       }
@@ -489,29 +490,29 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
 
   // Handle double-click on diagram to edit node labels
   const handleDiagramDoubleClick = (e: React.MouseEvent) => {
-    console.log('[Diagram] Double-click detected');
+    logger.debug('[Diagram] Double-click detected');
     if (!diagramRef.current) {
-      console.log('[Diagram] No diagramRef');
+      logger.debug('[Diagram] No diagramRef');
       return;
     }
 
     // Find the clicked node
     const target = e.target as Element;
-    console.log('[Diagram] Target element:', target.tagName, target.className);
+    logger.debug('[Diagram] Target element:', target.tagName, target.className);
 
     const nodeGroup = target.closest('.node');
     if (!nodeGroup) {
-      console.log('[Diagram] No .node parent found');
+      logger.debug('[Diagram] No .node parent found');
       return;
     }
 
     // Get node ID from the group
     const nodeId = nodeGroup.id || '';
-    console.log('[Diagram] Node ID:', nodeId);
+    logger.debug('[Diagram] Node ID:', nodeId);
 
     const nodeIdMatch = nodeId.match(/flowchart-(\w+)-\d+/);
     const extractedId = nodeIdMatch ? nodeIdMatch[1] : '';
-    console.log('[Diagram] Extracted ID:', extractedId);
+    logger.debug('[Diagram] Extracted ID:', extractedId);
 
     // Find the label text - check multiple possible locations
     let labelText = '';
@@ -538,10 +539,10 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
       }
     }
 
-    console.log('[Diagram] Label text:', labelText);
+    logger.debug('[Diagram] Label text:', labelText);
 
     if (!labelText) {
-      console.log('[Diagram] No label text found');
+      logger.debug('[Diagram] No label text found');
       return;
     }
 
@@ -557,7 +558,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     const y = nodeRect.top - parentRect.top + nodeRect.height / 2;
     const width = Math.max(nodeRect.width - 10, 120);
 
-    console.log('[Diagram] Setting editing state:', { extractedId, labelText, x, y, width });
+    logger.debug('[Diagram] Setting editing state:', { extractedId, labelText, x, y, width });
 
     setEditing({
       nodeId: extractedId || labelText.toLowerCase().replace(/\s+/g, '_'),
@@ -618,7 +619,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           const to = from + codeBlockNode.content.size;
           tr.replaceWith(from, to, state.schema.text(updatedCode));
           view.dispatch(tr);
-          console.log('[Diagram] Updated source code');
+          logger.debug('[Diagram] Updated source code');
         }
       }
     }

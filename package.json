@@ -37,6 +37,7 @@
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
     "fs:check": "tsx -r tsconfig-paths/register scripts/fs-sync-check.ts",
     "fs:scan": "tsx scripts/fs-scan-only.ts",

@@ -28,6 +28,7 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
 import { normalizePath, getParentPath, getDisplayName } from '@renderer/utils/path';
+import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 
 interface FileTreeFileProps {
   node: StoreFileTreeNode;
@@ -68,17 +69,37 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
     setActiveFolder(folderForSelection);
     setSelectedFile(normalizedPath);
 
-    logger.info('[FileTree] Found note for file', {
-      found: !!note,
-      noteId: note?.id,
-      noteTitle: note?.title,
-      noteFilePath: note?.filePath,
-    });
+    // Try to find note in store first (fast path)
+    const currentNotesByPath = useNoteStore.getState().notesByPath;
+    const cachedNote = currentNotesByPath.get(normalizedPath);
 
-    if (note) {
-      setActiveNote(note.id);
+    if (cachedNote) {
+      logger.info('[FileTree] Found note in cache', {
+        noteId: cachedNote.id,
+        noteTitle: cachedNote.title,
+      });
+      setActiveNote(cachedNote.id);
     } else {
-      logger.warn('[FileTree] No note found for file path', { normalizedPath });
+      // Note not in store - load it directly via IPC (Obsidian-style)
+      logger.info('[FileTree] Note not in cache, loading via IPC', { normalizedPath });
+      window.electron
+        .invoke(NOTE_CHANNELS.GET_BY_PATH, { filePath: normalizedPath })
+        .then((response: any) => {
+          if (response.success && response.data) {
+            logger.info('[FileTree] Loaded note via IPC', {
+              noteId: response.data.id,
+              noteTitle: response.data.title,
+            });
+            // Add to store and set as active
+            useNoteStore.getState().addNote(response.data);
+            setActiveNote(response.data.id);
+          } else {
+            logger.warn('[FileTree] No note found for file path', { normalizedPath });
+          }
+        })
+        .catch((error: any) => {
+          logger.error('[FileTree] Failed to load note by path', { normalizedPath, error });
+        });
     }
   };
 
@@ -303,7 +324,7 @@ const FolderChildren = React.memo<FolderNodeProps>(
           }
           await onMoveFolder(folderPath, normalizedPath || null);
         } catch (error) {
-          console.error('Failed to move folder:', error);
+          logger.error('Failed to move folder:', error);
         }
       }
     };
@@ -505,7 +526,7 @@ export function FileTree() {
           await loadFileTree();
         }
       } catch (error) {
-        console.error('Failed to create note in folder', error);
+        logger.error('Failed to create note in folder', error);
       }
     },
     [createNote, setActiveFolder, setSelectedFile, setActiveNote, loadFileTree],
@@ -520,7 +541,7 @@ export function FileTree() {
         // No need to reload file tree - filename doesn't change, only title
         // updateNote already updates the note in the store
       } catch (error) {
-        console.error('Failed to rename note', error);
+        logger.error('Failed to rename note', error);
       }
     },
     [updateNote],
@@ -536,7 +557,7 @@ export function FileTree() {
           await loadFileTree();
         }
       } catch (error) {
-        console.error('Failed to delete note', error);
+        logger.error('Failed to delete note', error);
       }
     },
     [deleteNote, loadFileTree],
@@ -553,7 +574,7 @@ export function FileTree() {
         setActiveFolder(nextPath || null);
         setSelectedFile(null);
       } catch (error) {
-        console.error('Failed to rename folder', error);
+        logger.error('Failed to rename folder', error);
       }
     },
     [renameFolder, loadFileTree, setActiveFolder, setSelectedFile],
@@ -578,7 +599,7 @@ export function FileTree() {
           }
         }
       } catch (error) {
-        console.error('Failed to delete folder', error);
+        logger.error('Failed to delete folder', error);
       }
     },
     [deleteFolder, loadFileTree, setActiveFolder, setSelectedFile, renameFolderTarget],

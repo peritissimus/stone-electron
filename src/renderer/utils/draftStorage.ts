@@ -3,6 +3,8 @@
  * Stores unsaved editor content to prevent data loss on crashes
  */
 
+import { logger } from '@renderer/utils/logger';
+
 interface Draft {
   noteId: string;
   content: string; // JSON string of TipTap document
@@ -35,7 +37,7 @@ export function saveDraft(noteId: string, content: string, title?: string): void
       localStorage.setItem(DRAFT_INDEX_KEY, JSON.stringify(index));
     }
   } catch (error) {
-    console.error('Failed to save draft:', error);
+    logger.error('Failed to save draft:', error);
   }
 }
 
@@ -50,7 +52,7 @@ export function getDraft(noteId: string): Draft | null {
     const draft = JSON.parse(item) as Draft;
     return draft;
   } catch (error) {
-    console.error('Failed to get draft:', error);
+    logger.error('Failed to get draft:', error);
     return null;
   }
 }
@@ -67,7 +69,7 @@ export function deleteDraft(noteId: string): void {
     const newIndex = index.filter((id) => id !== noteId);
     localStorage.setItem(DRAFT_INDEX_KEY, JSON.stringify(newIndex));
   } catch (error) {
-    console.error('Failed to delete draft:', error);
+    logger.error('Failed to delete draft:', error);
   }
 }
 
@@ -80,7 +82,7 @@ function getDraftIndex(): string[] {
     if (!item) return [];
     return JSON.parse(item) as string[];
   } catch (error) {
-    console.error('Failed to get draft index:', error);
+    logger.error('Failed to get draft index:', error);
     return [];
   }
 }
@@ -102,7 +104,7 @@ export function getAllDrafts(): Draft[] {
 
     return drafts;
   } catch (error) {
-    console.error('Failed to get all drafts:', error);
+    logger.error('Failed to get all drafts:', error);
     return [];
   }
 }
@@ -118,7 +120,7 @@ export function clearAllDrafts(): void {
     }
     localStorage.removeItem(DRAFT_INDEX_KEY);
   } catch (error) {
-    console.error('Failed to clear all drafts:', error);
+    logger.error('Failed to clear all drafts:', error);
   }
 }
 

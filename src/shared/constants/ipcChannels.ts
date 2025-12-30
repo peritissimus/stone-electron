@@ -26,6 +26,7 @@ export const NOTE_CHANNELS = {
   UPDATE: 'notes:update',
   DELETE: 'notes:delete',
   GET: 'notes:get',
+  GET_BY_PATH: 'notes:getByPath',
   GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
   GET_ALL_TODOS: 'notes:getAllTodos',

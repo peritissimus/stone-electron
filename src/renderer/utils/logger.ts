@@ -1,37 +1,44 @@
 /**
  * Logger Utility for Renderer Process
+ * Uses console with formatted output
  */
 
-// Simple console wrapper for renderer process
-// electron-log/renderer requires initialization in main process
-const createLogger = () => {
-  const format = (level: string, ...args: unknown[]) => {
-    const timestamp = new Date().toLocaleTimeString('en-US', {
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    console[level as 'log' | 'error' | 'warn' | 'info' | 'debug'](
-      `[${timestamp}] [RENDERER] [${level}]`,
-      ...args,
-    );
-  };
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-  return {
-    info: (...args: unknown[]) => format('info', ...args),
-    error: (...args: unknown[]) => format('error', ...args),
-    warn: (...args: unknown[]) => format('warn', ...args),
-    debug: (...args: unknown[]) => format('debug', ...args),
-    log: (...args: unknown[]) => format('log', ...args),
-  };
+const formatTimestamp = () => {
+  const now = new Date();
+  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 };
 
-// Export logger instance
-export const logger = createLogger();
+const createLogFn = (level: LogLevel) => (...args: unknown[]) => {
+  const timestamp = formatTimestamp();
+  const prefix = `${timestamp} ›`;
 
-// Export convenience functions
-export const logInfo = (...args: unknown[]) => logger.info(...args);
-export const logError = (...args: unknown[]) => logger.error(...args);
-export const logWarn = (...args: unknown[]) => logger.warn(...args);
-export const logDebug = (...args: unknown[]) => logger.debug(...args);
+  switch (level) {
+    case 'debug':
+      console.debug(prefix, ...args);
+      break;
+    case 'info':
+      console.info(prefix, ...args);
+      break;
+    case 'warn':
+      console.warn(prefix, ...args);
+      break;
+    case 'error':
+      console.error(prefix, ...args);
+      break;
+  }
+};
+
+export const logger = {
+  debug: createLogFn('debug'),
+  info: createLogFn('info'),
+  warn: createLogFn('warn'),
+  error: createLogFn('error'),
+  log: createLogFn('info'),
+};
+
+export const logInfo = logger.info;
+export const logError = logger.error;
+export const logWarn = logger.warn;
+export const logDebug = logger.debug;

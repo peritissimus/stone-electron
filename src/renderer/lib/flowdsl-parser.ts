@@ -371,7 +371,10 @@ export function convertFlowDSLToMermaid(content: string): string {
     const diagram = parseFlowDSL(content);
     return toMermaid(diagram);
   } catch (error) {
-    console.error('FlowDSL parse error:', error);
+    // Import logger lazily to avoid circular dependencies
+    import('@renderer/utils/logger').then(({ logger }) => {
+      logger.error('FlowDSL parse error:', error);
+    });
     throw new Error(`Failed to parse FlowDSL: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
