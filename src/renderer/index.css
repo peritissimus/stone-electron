@@ -450,7 +450,9 @@ textarea:focus {
   height: 6px;
   border-radius: 50%;
   background-color: hsl(var(--muted-foreground) / 0.25);
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
   pointer-events: none;
 }
 
@@ -466,8 +468,8 @@ textarea:focus {
   transform: scale(1.2);
 }
 
-/* Hide block indicators when setting is disabled */
-.hide-block-indicators .ProseMirror > p::before,
+/* Hide block indicators when setting is disabled (but keep placeholder visible) */
+.hide-block-indicators .ProseMirror > p:not(.is-empty):not(.is-editor-empty)::before,
 .hide-block-indicators .ProseMirror > h1::before,
 .hide-block-indicators .ProseMirror > h2::before,
 .hide-block-indicators .ProseMirror > h3::before,
@@ -499,7 +501,7 @@ textarea:focus {
   margin-bottom: 4px;
 }
 
-.ProseMirror ul > li,
+.ProseMirror ul > li:not(.task-item),
 .ProseMirror ol > li {
   position: relative;
   margin-bottom: 2px;
@@ -515,7 +517,8 @@ textarea:focus {
 }
 
 /* Bullet list marker - matches block bullet style, same position as block bullets */
-.ProseMirror ul > li::before {
+/* Exclude task lists - they have their own badge styling */
+.ProseMirror ul:not(.task-list) > li::before {
   content: '';
   position: absolute;
   left: 1px;
@@ -524,10 +527,12 @@ textarea:focus {
   height: 6px;
   border-radius: 50%;
   background-color: hsl(var(--muted-foreground) / 0.5);
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
 }
 
-.ProseMirror ul > li:hover::before {
+.ProseMirror ul:not(.task-list) > li:hover::before {
   background-color: hsl(var(--primary) / 0.8);
   transform: scale(1.2);
 }
@@ -566,30 +571,19 @@ textarea:focus {
   margin-left: 20px;
 }
 
-/* Placeholder for empty editor */
-.ProseMirror p.is-editor-empty:first-child::before,
-.ProseMirror p.is-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: hsl(var(--muted-foreground) / 0.5);
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: none;
-  width: auto;
-  height: auto;
-  border-radius: 0;
-  background-color: transparent;
-  white-space: nowrap;
-  pointer-events: none;
-  font-size: 16px;
-  font-weight: 400;
+/* Placeholder for empty editor - must override block bullet marker */
+.ProseMirror > p.is-editor-empty:first-child::before,
+.ProseMirror > p.is-empty:first-child::before {
+  content: attr(data-placeholder) !important;
+  color: hsl(var(--muted-foreground));
+  opacity: 0.6;
   float: left;
-}
-
-/* Fallback if data-placeholder not set */
-.ProseMirror p.is-editor-empty:first-child:not([data-placeholder])::before,
-.ProseMirror p.is-empty:first-child:not([data-placeholder])::before {
-  content: 'Type / for commands, or start writing...';
+  height: 0;
+  width: auto !important;
+  border-radius: 0 !important;
+  background-color: transparent !important;
+  transform: none !important;
+  pointer-events: none;
 }
 
 /* Indented blocks (Logseq-style) - visual hierarchy with connecting lines */
@@ -610,7 +604,7 @@ textarea:focus {
 }
 
 /* Hide connecting line for first indent level */
-.ProseMirror [data-indent="1"]::after {
+.ProseMirror [data-indent='1']::after {
   display: none;
 }
 
@@ -1059,10 +1053,10 @@ textarea:focus {
 .task-item {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(3.4rem, auto) 1fr;
+  grid-template-columns: 3.6rem 1fr;
   align-items: start;
   gap: 0.6rem;
-  padding: 0.22rem 0.65rem 0.22rem 0.55rem;
+  padding: 0.22rem 0;
   margin-bottom: 0.15rem;
   border-radius: 0.6rem;
   transition: background-color 0.18s ease;
@@ -1082,8 +1076,8 @@ textarea:focus {
   justify-content: center;
   grid-column: 1;
   align-self: start;
-  padding: 0.22rem 0.65rem;
-  min-width: 3.1rem;
+  padding: 0.22rem 0;
+  width: 3.5rem;
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -1095,7 +1089,6 @@ textarea:focus {
   cursor: pointer;
   transition: all 0.2s ease;
   margin: 0;
-  margin-top: 0.3rem;
 }
 
 .task-state-button:hover {

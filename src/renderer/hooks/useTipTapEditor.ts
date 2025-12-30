@@ -212,10 +212,6 @@ export function useTipTapEditor() {
       }),
       Placeholder.configure({
         placeholder: 'Type / for commands, or start writing...',
-        showOnlyWhenEditable: true,
-        showOnlyCurrent: false,
-        emptyEditorClass: 'is-editor-empty',
-        emptyNodeClass: 'is-empty',
       }),
       SlashCommand,
       NoteLink.configure({
