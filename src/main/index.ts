@@ -27,12 +27,10 @@ let mainWindow: BrowserWindow | null = null;
 // Global error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception:', error);
-  console.error('Uncaught Exception:', error);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
 /**

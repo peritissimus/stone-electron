@@ -15,13 +15,9 @@ try {
   };
 
   // Set log level based on environment
-  if (!app.isPackaged) {
-    log.transports.console.level = 'debug';
-    log.transports.file.level = 'debug';
-  } else {
-    log.transports.console.level = 'info';
-    log.transports.file.level = 'info';
-  }
+  // Enable debug in both dev and prod for better diagnostics
+  log.transports.console.level = 'debug';
+  log.transports.file.level = 'debug';
 } catch {
   // Electron not available (e.g., in scripts), use console-only logging
   log.transports.file.level = false;

@@ -544,6 +544,24 @@ export class NoteRepository {
   }
 
   /**
+   * Find a note by file path (metadata only, no content)
+   */
+  async findByFilePath(filePath: string): Promise<Note | null> {
+    // Normalize path for comparison
+    const normalizedPath = filePath.replace(/\\/g, '/');
+
+    const result = await this.db
+      .select()
+      .from(notes)
+      .where(and(eq(notes.filePath, normalizedPath), eq(notes.isDeleted, false)))
+      .limit(1);
+
+    if (result.length === 0) return null;
+
+    return result[0];
+  }
+
+  /**
    * Get note content by ID (loads from file system)
    */
   async getContentById(id: string): Promise<string | null> {

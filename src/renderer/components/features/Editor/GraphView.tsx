@@ -8,6 +8,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { ModalLayout } from '@renderer/components/composites/layout/ModalLayout';
 import { CircleNotch } from 'phosphor-react';
+import { logger } from '@renderer/utils/logger';
 
 interface GraphNode {
   id: string;
@@ -55,7 +56,7 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
         const data = await getGraphData();
         setGraphData(data);
       } catch (error) {
-        console.error('Failed to load graph data:', error);
+        logger.error('Failed to load graph data:', error);
       } finally {
         setLoading(false);
       }

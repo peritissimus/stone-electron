@@ -5,6 +5,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { jsonToMarkdown } from '../utils/jsonToMarkdown';
+import { logger } from '@renderer/utils/logger';
 
 export interface UseAutosaveOptions {
   updateNote: (
@@ -46,16 +47,16 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
         isSavingRef.current = true;
         const jsonContent = editor.getJSON();
         const markdownContent = jsonToMarkdown(jsonContent);
-        console.log('Blur autosave JSON->Markdown result:', markdownContent.substring(0, 500));
+        logger.debug('Blur autosave JSON->Markdown result:', markdownContent.substring(0, 500));
         // Use silent=true to save without triggering store update/re-render
         updateNote(noteId, { content: markdownContent }, true)
           .then((result) => {
             if (!result) {
-              console.error('Blur autosave failed: updateNote returned falsy result');
+              logger.error('Blur autosave failed: updateNote returned falsy result');
             }
           })
           .catch((error) => {
-            console.error('Blur autosave failed:', error);
+            logger.error('Blur autosave failed:', error);
           })
           .finally(() => {
             isSavingRef.current = false;
@@ -99,11 +100,11 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
         try {
           const jsonContent = editor.getJSON();
           const markdownContent = jsonToMarkdown(jsonContent);
-          console.log('Autosave JSON->Markdown result:', markdownContent.substring(0, 500));
+          logger.debug('Autosave JSON->Markdown result:', markdownContent.substring(0, 500));
           // Use silent=true to save without triggering store update/re-render
           await updateNote(noteId, { content: markdownContent }, true);
         } catch (error) {
-          console.error('Autosave failed:', error);
+          logger.error('Autosave failed:', error);
         } finally {
           isSavingRef.current = false;
         }
@@ -137,10 +138,10 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
           // Use silent=true to save without triggering store update/re-render
           const result = await updateNote(noteId, { content }, true);
           if (!result) {
-            console.error('Autosave failed: updateNote returned falsy result');
+            logger.error('Autosave failed: updateNote returned falsy result');
           }
         } catch (error) {
-          console.error('Autosave failed:', error);
+          logger.error('Autosave failed:', error);
         } finally {
           isSavingRef.current = false;
         }
@@ -170,10 +171,10 @@ export function useAutosave({ updateNote, activeNoteId, editor }: UseAutosaveOpt
           // Use silent=true to save without triggering store update/re-render
           const result = await updateNote(noteId, { title }, true);
           if (!result) {
-            console.error('Title autosave failed: updateNote returned falsy result');
+            logger.error('Title autosave failed: updateNote returned falsy result');
           }
         } catch (error) {
-          console.error('Title autosave failed:', error);
+          logger.error('Title autosave failed:', error);
         } finally {
           isSavingRef.current = false;
         }

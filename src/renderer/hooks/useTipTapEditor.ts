@@ -24,6 +24,7 @@ import { NoteLink } from '@renderer/extensions/NoteLink';
 import { Note } from '@shared/types';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
+import { logger } from '@renderer/utils/logger';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
 // Language loader map for dynamic imports
@@ -76,7 +77,7 @@ export const loadLanguage = async (language: string) => {
       lowlight.registerLanguage(language.toLowerCase(), languageModule.default);
       loadedLanguages.add(language);
     } catch (error) {
-      console.warn(`Failed to load language: ${language}`, error);
+      logger.warn(`Failed to load language: ${language}`, error);
     }
   }
 };
@@ -138,7 +139,7 @@ async function fetchNotesForAutocomplete(query: string) {
 
     return [];
   } catch (error) {
-    console.error('Failed to fetch notes for autocomplete:', error);
+    logger.error('Failed to fetch notes for autocomplete:', error);
     return [];
   }
 }
@@ -212,8 +213,9 @@ export function useTipTapEditor() {
       Placeholder.configure({
         placeholder: 'Type / for commands, or start writing...',
         showOnlyWhenEditable: true,
-        showOnlyCurrent: true,
-        includeChildren: true,
+        showOnlyCurrent: false,
+        emptyEditorClass: 'is-editor-empty',
+        emptyNodeClass: 'is-empty',
       }),
       SlashCommand,
       NoteLink.configure({

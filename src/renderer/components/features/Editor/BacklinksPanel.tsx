@@ -9,6 +9,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { cn } from '@renderer/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { logger } from '@renderer/utils/logger';
 
 export interface BacklinksPanelProps {
   noteId: string;
@@ -80,7 +81,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
       setBacklinks(fetchedBacklinks || []);
       setForwardLinks(fetchedForwardLinks || []);
     } catch (error) {
-      console.error('Failed to fetch links:', error);
+      logger.error('Failed to fetch links:', error);
       setBacklinks([]);
       setForwardLinks([]);
     } finally {

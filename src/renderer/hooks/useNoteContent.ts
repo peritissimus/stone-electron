@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
+import { logger } from '@renderer/utils/logger';
 
 export interface UseNoteContentOptions {
   activeNote: { id: string; title: string | null } | null;
@@ -25,9 +26,14 @@ export function useNoteContent({ activeNote, editor }: UseNoteContentOptions) {
 
   // Load content when active note changes
   useEffect(() => {
-    if (!activeNote || !editor) return;
+    logger.debug('[useNoteContent] Effect triggered', { activeNoteId: activeNote?.id, editorReady: !!editor });
+    if (!activeNote || !editor) {
+      logger.debug('[useNoteContent] Skipping - activeNote or editor missing', { activeNote: !!activeNote, editor: !!editor });
+      return;
+    }
 
     const loadContent = async () => {
+      logger.debug('[useNoteContent] Loading content for note:', activeNote.id);
       setIsLoading(true);
       // Title is handled by the other effect
 
@@ -44,7 +50,7 @@ export function useNoteContent({ activeNote, editor }: UseNoteContentOptions) {
           editor.commands.setContent(loadedContent);
         }
       } catch (error) {
-        console.error('Failed to load note content:', error);
+        logger.error('Failed to load note content:', error);
         setContent('');
         editor.commands.setContent('');
       } finally {

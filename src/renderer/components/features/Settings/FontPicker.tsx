@@ -8,6 +8,7 @@ import { Check, CaretDown } from 'phosphor-react';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
+import { logger } from '@renderer/utils/logger';
 import {
   Command,
   CommandEmpty,
@@ -41,7 +42,7 @@ export function FontPicker({ value, onValueChange, placeholder = 'Select font...
         setFonts(response.data);
       }
     } catch (error) {
-      console.error('Failed to load fonts:', error);
+      logger.error('Failed to load fonts:', error);
     } finally {
       setLoading(false);
     }
