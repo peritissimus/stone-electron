@@ -36,16 +36,15 @@ export function registerSearchHandlers() {
           results = results.filter((note) => note.notebookId === request.notebookId);
         }
 
-        // Filter by tags if specified
+        // Filter by tags if specified - use bulk loading instead of N+1
         if (request.tagIds && request.tagIds.length > 0) {
-          const filteredResults = [];
-          for (const note of results) {
-            const noteTags = await repos.tag.getTagsForNote(note.id);
-            if (request.tagIds!.some((tagId) => noteTags.some((t) => t.id === tagId))) {
-              filteredResults.push(note);
-            }
-          }
-          results = filteredResults;
+          const noteIds = results.map(note => note.id);
+          const tagsMap = await repos.tag.getTagsForNotes(noteIds);
+
+          results = results.filter(note => {
+            const noteTags = tagsMap.get(note.id) || [];
+            return request.tagIds!.some(tagId => noteTags.some(t => t.id === tagId));
+          });
         }
 
         const queryTime = Date.now() - startTime;
@@ -134,16 +133,8 @@ export function registerSearchHandlers() {
           // AND logic - notes must have all tags
           notes = await repos.note.findByTags(request.tagIds);
         } else {
-          // OR logic - notes with any of the tags
-          const noteSet = new Set<string>();
-          for (const tagId of request.tagIds) {
-            const tagNotes = await repos.note.findByTags([tagId]);
-            tagNotes.forEach((note: any) => noteSet.add(note.id));
-          }
-
-          const notePromises = Array.from(noteSet).map((id) => repos.note.findById(id));
-          const noteResults = await Promise.all(notePromises);
-          notes = noteResults.filter((note): note is NonNullable<typeof note> => note !== null);
+          // OR logic - notes with any of the tags (single query instead of N+1)
+          notes = await repos.note.findByTagsAny(request.tagIds);
         }
 
         return {

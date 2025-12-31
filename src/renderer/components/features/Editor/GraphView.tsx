@@ -86,9 +86,10 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
   // Center graph after data loads
   useEffect(() => {
     if (graphRef.current && graphData.nodes.length > 0 && !loading) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         graphRef.current?.zoomToFit(400, 50);
       }, 100);
+      return () => clearTimeout(timeoutId);
     }
   }, [graphData, loading]);
 

@@ -275,7 +275,9 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
       stateButton.type = 'button';
       stateButton.classList.add('task-state-button');
       stateButton.contentEditable = 'false';
-      stateButton.addEventListener('mousedown', (event) => event.preventDefault());
+
+      // Store handlers for cleanup
+      const handleMouseDown = (event: MouseEvent) => event.preventDefault();
 
       const applyAttributes = (currentNode: typeof node) => {
         const option = getStateOption(this.options, currentNode.attrs.state);
@@ -332,16 +334,20 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
           .run();
       };
 
-      stateButton.addEventListener('click', (event) => {
+      const handleClick = (event: MouseEvent) => {
         event.preventDefault();
         const direction = event.shiftKey ? -1 : 1;
         updateNodeState(direction);
-      });
+      };
 
-      stateButton.addEventListener('contextmenu', (event) => {
+      const handleContextMenu = (event: MouseEvent) => {
         event.preventDefault();
         updateNodeState(-1);
-      });
+      };
+
+      stateButton.addEventListener('mousedown', handleMouseDown);
+      stateButton.addEventListener('click', handleClick);
+      stateButton.addEventListener('contextmenu', handleContextMenu);
 
       Object.entries(this.options.HTMLAttributes).forEach(([key, value]) => {
         if (value == null) {
@@ -374,6 +380,11 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
           applyAttributes(updatedNode);
 
           return true;
+        },
+        destroy: () => {
+          stateButton.removeEventListener('mousedown', handleMouseDown);
+          stateButton.removeEventListener('click', handleClick);
+          stateButton.removeEventListener('contextmenu', handleContextMenu);
         },
       };
     };

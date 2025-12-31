@@ -13,6 +13,7 @@ interface FileTreeState {
   activeFolder: string | null;
   selectedFile: string | null;
   expandedPaths: Set<string>;
+  allFolderPaths: Set<string>; // Cached for O(1) expandAll
   loading: boolean;
   error: string | null;
   counts: Record<string, number>;
@@ -30,16 +31,34 @@ interface FileTreeState {
   removeFileFromTree: (relativePath: string) => void;
 }
 
+// Helper to collect all folder paths from tree (used once when tree is set)
+function collectFolderPaths(nodes: FileTreeNode[], acc: Set<string> = new Set()): Set<string> {
+  for (const node of nodes) {
+    if (node.type === 'folder') {
+      acc.add(node.path);
+      if (node.children && node.children.length > 0) {
+        collectFolderPaths(node.children, acc);
+      }
+    }
+  }
+  return acc;
+}
+
 export const useFileTreeStore = create<FileTreeState>((set, get) => ({
   tree: [],
   activeFolder: null,
   selectedFile: null,
   expandedPaths: new Set(),
+  allFolderPaths: new Set(),
   loading: false,
   error: null,
   counts: {},
 
-  setTree: (tree) => set({ tree }),
+  setTree: (tree) => {
+    // Pre-compute all folder paths for O(1) expandAll
+    const allFolderPaths = collectFolderPaths(tree);
+    set({ tree, allFolderPaths });
+  },
   setActiveFolder: (path) =>
     set((state) => {
       if (!path) {
@@ -130,18 +149,8 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
 
   expandAll: () =>
     set((state) => {
-      const collect = (nodes: FileTreeNode[], acc: Set<string>) => {
-        nodes.forEach((node) => {
-          if (node.type !== 'folder') return;
-          acc.add(node.path);
-          if (node.children && node.children.length > 0) {
-            collect(node.children, acc);
-          }
-        });
-      };
-      const paths = new Set<string>();
-      collect(state.tree, paths);
-      return { expandedPaths: paths };
+      // Use pre-computed folder paths for O(1) expandAll
+      return { expandedPaths: new Set(state.allFolderPaths) };
     }),
 
   collapseAll: () => set({ expandedPaths: new Set() }),
@@ -205,7 +214,16 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
         });
       };
 
-      return { tree: addNode(state.tree) };
+      const newTree = addNode(state.tree);
+
+      // Update allFolderPaths cache if adding a folder
+      if (newNode.type === 'folder') {
+        const newFolderPaths = new Set(state.allFolderPaths);
+        newFolderPaths.add(newNode.path);
+        return { tree: newTree, allFolderPaths: newFolderPaths };
+      }
+
+      return { tree: newTree };
     }),
 
   removeFileFromTree: (relativePath) =>
@@ -220,6 +238,16 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
             return node;
           });
       };
-      return { tree: removeNode(state.tree) };
+
+      const newTree = removeNode(state.tree);
+
+      // Update allFolderPaths cache - remove the path if it was a folder
+      if (state.allFolderPaths.has(relativePath)) {
+        const newFolderPaths = new Set(state.allFolderPaths);
+        newFolderPaths.delete(relativePath);
+        return { tree: newTree, allFolderPaths: newFolderPaths };
+      }
+
+      return { tree: newTree };
     }),
 }));

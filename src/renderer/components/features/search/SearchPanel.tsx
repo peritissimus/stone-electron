@@ -2,7 +2,7 @@
  * Search Panel Component
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useSearchAPI } from '@renderer/hooks/useSearchAPI';
@@ -19,7 +19,16 @@ export function SearchPanel() {
   const { fullTextSearch, loading } = useSearchAPI();
 
   const [results, setResults] = useState<any[]>([]);
-  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (searchQuery.length < 2) {
@@ -27,20 +36,20 @@ export function SearchPanel() {
       return;
     }
 
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     // Debounce search
-    if (searchTimeout) clearTimeout(searchTimeout);
-    const timeout = setTimeout(async () => {
+    searchTimeoutRef.current = setTimeout(async () => {
+      searchTimeoutRef.current = null;
       const searchResults = await fullTextSearch(searchQuery, { limit: 20 });
       if (searchResults) {
         setResults(searchResults.results);
       }
     }, 300);
-    setSearchTimeout(timeout);
-
-    return () => {
-      if (searchTimeout) clearTimeout(searchTimeout);
-    };
-  }, [searchQuery]);
+  }, [searchQuery, fullTextSearch]);
 
   const handleSelectNote = (noteId: string) => {
     setActiveNote(noteId);

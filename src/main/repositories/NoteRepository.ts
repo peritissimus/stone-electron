@@ -33,6 +33,45 @@ export class NoteRepository {
   private markdownService = getMarkdownService();
   private workspaceRepository = new WorkspaceRepository();
 
+  // Cache for graph data (TTL-based)
+  private graphCache: {
+    data: { nodes: { id: string; name: string; val: number }[]; links: { source: string; target: string }[] } | null;
+    timestamp: number;
+  } = { data: null, timestamp: 0 };
+  private static GRAPH_CACHE_TTL_MS = 30000; // 30 seconds
+
+  // Cache for note title -> note ID lookup (invalidated on create/delete/rename)
+  private noteTitleCache: Map<string, Note> | null = null;
+
+  /**
+   * Invalidate caches when notes are created/deleted/renamed
+   */
+  invalidateTitleCache(): void {
+    this.noteTitleCache = null;
+  }
+
+  invalidateGraphCache(): void {
+    this.graphCache = { data: null, timestamp: 0 };
+  }
+
+  /**
+   * Get or build the note title lookup map (cached)
+   */
+  private async getNoteTitleMap(): Promise<Map<string, Note>> {
+    if (this.noteTitleCache) {
+      return this.noteTitleCache;
+    }
+
+    const allNotes = await this.findAll({ where: { isDeleted: false } });
+    this.noteTitleCache = new Map();
+    for (const note of allNotes) {
+      if (note.title) {
+        this.noteTitleCache.set(note.title.toLowerCase(), note);
+      }
+    }
+    return this.noteTitleCache;
+  }
+
   /**
    * Find all notes with optional filtering
    */
@@ -300,6 +339,10 @@ export class NoteRepository {
 
     await this.db.insert(notes).values(noteData);
 
+    // Invalidate caches since a new note was created
+    this.invalidateTitleCache();
+    this.invalidateGraphCache();
+
     const result = await this.findById(id);
     if (!result) throw new Error('Failed to create note');
     return result;
@@ -449,6 +492,12 @@ export class NoteRepository {
 
     await this.db.update(notes).set(updateData).where(eq(notes.id, id));
 
+    // Invalidate caches if title changed (affects title lookup and graph display)
+    if (data.title && data.title !== existingNote.title) {
+      this.invalidateTitleCache();
+      this.invalidateGraphCache();
+    }
+
     const result = await this.findById(id);
     if (!result) throw new Error('Note not found after update');
     return result;
@@ -463,6 +512,10 @@ export class NoteRepository {
 
     // Delete from database
     await this.db.delete(notes).where(eq(notes.id, id));
+
+    // Invalidate caches since a note was deleted
+    this.invalidateTitleCache();
+    this.invalidateGraphCache();
 
     // Delete markdown file if it exists
     if (note?.filePath && note.workspaceId) {
@@ -831,11 +884,19 @@ export class NoteRepository {
 
   /**
    * Get graph data for visualization (nodes and edges)
+   * Uses TTL-based caching to avoid expensive queries on frequent calls
    */
   async getGraphData(): Promise<{
     nodes: { id: string; name: string; val: number; color?: string }[];
     links: { source: string; target: string }[];
   }> {
+    // Check cache first
+    const now = Date.now();
+    if (this.graphCache.data && (now - this.graphCache.timestamp) < NoteRepository.GRAPH_CACHE_TTL_MS) {
+      logger.debug('[NoteRepository] Graph data served from cache');
+      return this.graphCache.data;
+    }
+
     try {
       // Get all non-deleted notes
       const allNotes = await this.findAll({ where: { isDeleted: false } });
@@ -865,8 +926,12 @@ export class NoteRepository {
           target: link.targetNoteId,
         }));
 
+      // Update cache
+      const result = { nodes, links };
+      this.graphCache = { data: result, timestamp: now };
+
       logger.info(`[NoteRepository] Graph data: ${nodes.length} nodes, ${links.length} links`);
-      return { nodes, links };
+      return result;
     } catch (error) {
       logger.error('[NoteRepository] Failed to get graph data:', error);
       return { nodes: [], links: [] };
@@ -875,6 +940,7 @@ export class NoteRepository {
 
   /**
    * Extract [[note name]] patterns from markdown content and update links
+   * Uses cached title map for performance (called frequently during autosave)
    */
   async updateLinksFromContent(sourceNoteId: string, markdownContent: string): Promise<void> {
     try {
@@ -887,18 +953,22 @@ export class NoteRepository {
         linkedTitles.add(match[1].trim());
       }
 
+      // Skip expensive operations if no links in content
+      if (linkedTitles.size === 0) {
+        // Still need to remove any existing links
+        const currentLinks = await this.getForwardLinks(sourceNoteId);
+        for (const link of currentLinks) {
+          await this.removeLink(sourceNoteId, link.id);
+        }
+        return;
+      }
+
       // Get current forward links
       const currentLinks = await this.getForwardLinks(sourceNoteId);
       const currentLinkIds = new Set(currentLinks.map((n) => n.id));
 
-      // Find notes by title (case-insensitive)
-      const allNotes = await this.findAll({ where: { isDeleted: false } });
-      const notesByTitle = new Map<string, Note>();
-      for (const note of allNotes) {
-        if (note.title) {
-          notesByTitle.set(note.title.toLowerCase(), note);
-        }
-      }
+      // Use cached title map instead of loading all notes every time
+      const notesByTitle = await this.getNoteTitleMap();
 
       // Resolve titles to note IDs
       const targetNoteIds = new Set<string>();
@@ -943,6 +1013,24 @@ export class NoteRepository {
       .where(and(sql`${noteTags.tagId} IN ${tagIds}`, eq(notes.isDeleted, false)))
       .groupBy(notes.id)
       .having(sql`COUNT(DISTINCT ${noteTags.tagId}) = ${tagIds.length}`)
+      .orderBy(desc(notes.updatedAt));
+
+    return result.map((row: { notes: Note }) => row.notes);
+  }
+
+  /**
+   * Get notes with ANY of the specified tags (OR logic)
+   * Returns distinct notes that have at least one of the given tags
+   */
+  async findByTagsAny(tagIds: string[]): Promise<Note[]> {
+    if (tagIds.length === 0) return [];
+
+    const result = await this.db
+      .select()
+      .from(notes)
+      .innerJoin(noteTags, eq(notes.id, noteTags.noteId))
+      .where(and(sql`${noteTags.tagId} IN ${tagIds}`, eq(notes.isDeleted, false)))
+      .groupBy(notes.id)
       .orderBy(desc(notes.updatedAt));
 
     return result.map((row: { notes: Note }) => row.notes);

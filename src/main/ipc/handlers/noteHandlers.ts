@@ -519,21 +519,33 @@ export function registerNoteHandlers() {
   );
 
   // notes:getAllTodos - Get all todo items from all notes
+  // Cache JSDOM at module level to avoid repeated dynamic imports
+  let cachedJSDOM: typeof import('jsdom').JSDOM | null = null;
+
   registerHandler(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
-    const jsdom = await import('jsdom');
-    const { JSDOM } = jsdom;
+    // Load JSDOM once and cache it
+    if (!cachedJSDOM) {
+      const jsdom = await import('jsdom');
+      cachedJSDOM = jsdom.JSDOM;
+    }
+    const JSDOM = cachedJSDOM;
 
     const notes = await repos.note.findAll();
+
+    // Process notes in parallel with concurrency limit to avoid overwhelming the system
+    const CONCURRENCY_LIMIT = 10;
     const todos: any[] = [];
 
-    for (const note of notes) {
+    // Helper to process a single note
+    const processNote = async (note: typeof notes[0]) => {
       try {
         const content = await repos.note.getContentById(note.id);
-        if (!content) continue;
+        if (!content) return [];
 
         const dom = new JSDOM(content);
         const document = dom.window.document;
         const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
+        const noteTodos: any[] = [];
 
         taskItems.forEach((taskItem, index) => {
           const state = taskItem.getAttribute('data-state') || 'todo';
@@ -543,7 +555,7 @@ export function registerNoteHandlers() {
           const text = contentDiv?.textContent?.trim() || '';
 
           if (text) {
-            todos.push({
+            noteTodos.push({
               id: `${note.id}-${index}`,
               noteId: note.id,
               noteTitle: note.title,
@@ -556,12 +568,22 @@ export function registerNoteHandlers() {
             });
           }
         });
+
+        return noteTodos;
       } catch (error) {
         logger.warn('[NoteHandlers] Failed to extract todos from note', {
           noteId: note.id,
           error,
         });
+        return [];
       }
+    };
+
+    // Process in batches with concurrency limit
+    for (let i = 0; i < notes.length; i += CONCURRENCY_LIMIT) {
+      const batch = notes.slice(i, i + CONCURRENCY_LIMIT);
+      const batchResults = await Promise.all(batch.map(processNote));
+      batchResults.forEach(noteTodos => todos.push(...noteTodos));
     }
 
     return todos;
