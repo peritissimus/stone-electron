@@ -469,9 +469,9 @@ export class MarkdownService {
 
     const lines = markdown.split('\n');
 
-    // Look for first heading
+    // Look for first heading (limit quantifiers to prevent ReDoS)
     for (const line of lines) {
-      const headingMatch = /^#+\s+(.+)$/.exec(line);
+      const headingMatch = /^#{1,6}\s{1,10}(.{1,500})$/.exec(line);
       if (headingMatch) {
         return headingMatch[1].trim();
       }
