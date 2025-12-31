@@ -548,8 +548,9 @@ export function registerNoteHandlers() {
         const noteTodos: any[] = [];
 
         taskItems.forEach((taskItem, index) => {
-          const state = taskItem.getAttribute('data-state') || 'todo';
-          const checked = taskItem.getAttribute('data-checked') === 'true';
+          const el = taskItem as HTMLElement;
+          const state = el.dataset.state || 'todo';
+          const checked = el.dataset.checked === 'true';
 
           const contentDiv = taskItem.querySelector('div');
           const text = contentDiv?.textContent?.trim() || '';

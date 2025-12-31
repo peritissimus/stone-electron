@@ -83,7 +83,7 @@ export const DragHandle = Extension.create<DragHandleOptions>({
               event.dataTransfer!.effectAllowed = 'move';
               event.dataTransfer!.setData('text/html', target.innerHTML);
 
-              return false;
+              return true; // Event was handled
             },
           },
         },

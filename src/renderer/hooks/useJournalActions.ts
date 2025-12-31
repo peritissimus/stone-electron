@@ -9,25 +9,39 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 
 /**
- * Get today's date formatted for journal
+ * Get journal info for a specific date
  */
-function getTodayJournalInfo() {
-  const now = new Date();
-
+function getJournalInfoForDate(date: Date) {
   // Full title (e.g., "December 14, 2025")
-  const journalTitle = now.toLocaleDateString('en-US', {
+  const journalTitle = date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
 
   // Filename format (e.g., "2025-12-14")
-  const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const journalFilename = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
   // Expected file path
   const expectedFilePath = `Journal/${journalFilename}.md`;
 
   return { journalTitle, journalFilename, expectedFilePath };
+}
+
+/**
+ * Get today's date formatted for journal
+ */
+function getTodayJournalInfo() {
+  return getJournalInfoForDate(new Date());
+}
+
+/**
+ * Get yesterday's date formatted for journal
+ */
+function getYesterdayJournalInfo() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return getJournalInfoForDate(yesterday);
 }
 
 export function useJournalActions() {
@@ -104,6 +118,46 @@ export function useJournalActions() {
   };
 
   /**
+   * Open yesterday's journal entry, creating it if it doesn't exist
+   * Returns the note ID if successful, null otherwise
+   */
+  const openOrCreateYesterdayJournal = async (): Promise<string | null> => {
+    const { journalTitle, journalFilename, expectedFilePath } = getYesterdayJournalInfo();
+
+    logger.info('[useJournalActions] Opening/creating yesterday\'s journal', {
+      journalFilename,
+      journalTitle,
+      expectedFilePath,
+    });
+
+    // Check if yesterday's journal already exists using normalized path lookup
+    const existingJournal = getNoteByFilePath(expectedFilePath);
+
+    if (existingJournal) {
+      logger.info('[useJournalActions] Opening existing journal', { id: existingJournal.id });
+      navigateToNote(existingJournal.id);
+      return existingJournal.id;
+    }
+
+    // Create new journal entry
+    logger.info('[useJournalActions] Creating new journal entry for yesterday');
+    const newNote = await createNote({
+      title: journalFilename,
+      content: `# ${journalTitle}\n\n`,
+      folderPath: 'Journal',
+    });
+
+    if (newNote) {
+      logger.info('[useJournalActions] Yesterday\'s journal created', { id: newNote.id });
+      navigateToNote(newNote.id);
+      return newNote.id;
+    }
+
+    logger.error('[useJournalActions] Failed to create yesterday\'s journal');
+    return null;
+  };
+
+  /**
    * Check if today's journal exists
    */
   const todayJournalExists = (): boolean => {
@@ -117,10 +171,17 @@ export function useJournalActions() {
    */
   const getTodayInfo = () => getTodayJournalInfo();
 
+  /**
+   * Get yesterday's journal info for display purposes
+   */
+  const getYesterdayInfo = () => getYesterdayJournalInfo();
+
   return {
     openOrCreateTodayJournal,
+    openOrCreateYesterdayJournal,
     todayJournalExists,
     getTodayInfo,
+    getYesterdayInfo,
     navigateToNote,
   };
 }

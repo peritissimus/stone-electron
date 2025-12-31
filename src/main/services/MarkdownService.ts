@@ -277,14 +277,16 @@ export class MarkdownService {
     // Handle indented paragraphs (Logseq-style blocks)
     this.turndownService.addRule('indentedParagraph', {
       filter: (node) => {
+        const el = node as HTMLElement;
         return (
           node.nodeName === 'P' &&
-          node.hasAttribute('data-indent') &&
-          parseInt(node.getAttribute('data-indent') || '0', 10) > 0
+          el.dataset.indent !== undefined &&
+          parseInt(el.dataset.indent || '0', 10) > 0
         );
       },
       replacement: (content, node) => {
-        const indent = parseInt(node.getAttribute('data-indent') || '0', 10);
+        const el = node as HTMLElement;
+        const indent = parseInt(el.dataset.indent || '0', 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${content.trim()}\n\n`;
       },
@@ -293,14 +295,16 @@ export class MarkdownService {
     // Handle indented headings
     this.turndownService.addRule('indentedHeading', {
       filter: (node) => {
+        const el = node as HTMLElement;
         return (
           /^H[1-6]$/.test(node.nodeName) &&
-          node.hasAttribute('data-indent') &&
-          parseInt(node.getAttribute('data-indent') || '0', 10) > 0
+          el.dataset.indent !== undefined &&
+          parseInt(el.dataset.indent || '0', 10) > 0
         );
       },
       replacement: (content, node) => {
-        const indent = parseInt(node.getAttribute('data-indent') || '0', 10);
+        const el = node as HTMLElement;
+        const indent = parseInt(el.dataset.indent || '0', 10);
         const level = parseInt(node.nodeName.charAt(1), 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${'#'.repeat(level)} ${content.trim()}\n\n`;
@@ -310,14 +314,16 @@ export class MarkdownService {
     // Handle Logseq-style task items with states
     this.turndownService.addRule('logseqTaskItem', {
       filter: (node) => {
+        const el = node as HTMLElement;
         return (
           node.nodeName === 'LI' &&
-          node.getAttribute('data-type') === 'taskItem' &&
-          node.hasAttribute('data-state')
+          el.dataset.type === 'taskItem' &&
+          el.dataset.state !== undefined
         );
       },
       replacement: (content, node) => {
-        const state = node.getAttribute('data-state') || 'todo';
+        const el = node as HTMLElement;
+        const state = el.dataset.state || 'todo';
         const stateLabel = state.toUpperCase();
 
         // Extract the text content without the button
@@ -332,12 +338,13 @@ export class MarkdownService {
     // Handle task list wrapper
     this.turndownService.addRule('logseqTaskList', {
       filter: (node) => {
+        const el = node as HTMLElement;
         return (
           node.nodeName === 'UL' &&
-          node.getAttribute('data-type') === 'taskList'
+          el.dataset.type === 'taskList'
         );
       },
-      replacement: (content, node) => {
+      replacement: (content) => {
         return content;
       },
     });
@@ -371,14 +378,14 @@ export class MarkdownService {
 
         // If no language in class, check for data-language attribute on parent wrapper
         if (!language) {
-          let parent = node.parentElement;
+          let parent = node.parentElement as HTMLElement | null;
           while (parent) {
-            const dataLang = parent.getAttribute('data-language');
+            const dataLang = parent.dataset.language;
             if (dataLang) {
               language = dataLang;
               break;
             }
-            parent = parent.parentElement;
+            parent = parent.parentElement as HTMLElement | null;
           }
         }
 
@@ -392,13 +399,15 @@ export class MarkdownService {
     // Handle [[note name]] wiki-style links
     this.turndownService.addRule('noteLink', {
       filter: (node) => {
+        const el = node as HTMLElement;
         return (
           node.nodeName === 'SPAN' &&
-          node.getAttribute('data-type') === 'note-link'
+          el.dataset.type === 'note-link'
         );
       },
       replacement: (content, node) => {
-        const title = node.getAttribute('data-title') || content;
+        const el = node as HTMLElement;
+        const title = el.dataset.title || content;
         return `[[${title}]]`;
       },
     });

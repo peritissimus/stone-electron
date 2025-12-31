@@ -141,7 +141,7 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
         default: false,
         keepOnSplit: false,
         parseHTML: (element) => {
-          const dataChecked = element.getAttribute('data-checked');
+          const dataChecked = element.dataset.checked;
           return dataChecked === '' || dataChecked === 'true';
         },
         renderHTML: (attributes) => ({
@@ -152,7 +152,7 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
         default: this.options.defaultState,
         keepOnSplit: false,
         parseHTML: (element) =>
-          normalizeStateValue(element.getAttribute('data-state') ?? undefined) ??
+          normalizeStateValue(element.dataset.state) ??
           this.options.defaultState,
         renderHTML: (attributes) => ({
           'data-state': attributes.state ?? this.options.defaultState,

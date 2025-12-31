@@ -26,7 +26,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
   const { onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal } = options;
 
   const { getShortcut } = useShortcutsStore();
-  const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleCommandCenter } = useUIStore();
+  const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleCommandCenter, toggleFileSwitcher } = useUIStore();
   const { setActiveNote } = useNoteStore();
 
   // Action handlers mapped by shortcut ID
@@ -44,6 +44,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
         }
       },
       search: () => toggleCommandCenter(),
+      fileSwitcher: () => toggleFileSwitcher(),
       toggleSidebar: () => toggleSidebar(),
       goHome: () => setActiveNote(null),
       closeNote: () => {
@@ -52,7 +53,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       },
       todayJournal: () => onTodayJournal?.(),
     }),
-    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, openSettings, closeSettings, settingsOpen, toggleCommandCenter, toggleSidebar, setActiveNote]
+    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, openSettings, closeSettings, settingsOpen, toggleCommandCenter, toggleFileSwitcher, toggleSidebar, setActiveNote]
   );
 
   // Build shortcuts config from store
@@ -64,6 +65,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       'newWorkNote',
       'settings',
       'search',
+      'fileSwitcher',
       'toggleSidebar',
       'goHome',
       'closeNote',

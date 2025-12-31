@@ -113,14 +113,14 @@ export const NoteLink = Node.create<NoteLinkOptions>({
     return {
       noteId: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-note-id'),
+        parseHTML: (element) => element.dataset.noteId,
         renderHTML: (attributes) => ({
           'data-note-id': attributes.noteId,
         }),
       },
       title: {
         default: null,
-        parseHTML: (element) => element.getAttribute('data-title'),
+        parseHTML: (element) => element.dataset.title,
         renderHTML: (attributes) => ({
           'data-title': attributes.title,
         }),
