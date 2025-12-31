@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useSearchAPI } from '@renderer/hooks/useSearchAPI';
+import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import {
   MagnifyingGlass,
   FileText,
@@ -15,17 +16,14 @@ import {
   Keyboard,
   SidebarSimple,
   Calendar,
-  X,
+  CalendarBlank,
   ArrowRight,
   Command,
 } from 'phosphor-react';
 import {
   DEFAULT_SHORTCUTS,
   formatShortcutDisplay,
-  type ShortcutDefinition,
 } from '@renderer/stores/shortcutsStore';
-import { Input } from '@renderer/components/base/ui/input';
-import { Body, Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 
 interface CommandItem {
@@ -42,6 +40,7 @@ export function CommandCenter() {
   const { commandCenterOpen, closeCommandCenter, openSettings, toggleSidebar } = useUIStore();
   const { setActiveNote, notes } = useNoteStore();
   const { fullTextSearch } = useSearchAPI();
+  const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -111,7 +110,18 @@ export function CommandCenter() {
         shortcut: '⌘J',
         action: () => {
           closeCommandCenter();
-          // Will be handled by parent
+          openOrCreateTodayJournal();
+        },
+      },
+      {
+        id: 'yesterday-journal',
+        type: 'command',
+        title: "Yesterday's Journal",
+        subtitle: 'Open or create yesterday\'s journal entry',
+        icon: <CalendarBlank size={18} />,
+        action: () => {
+          closeCommandCenter();
+          openOrCreateYesterdayJournal();
         },
       },
     ];
@@ -130,7 +140,7 @@ export function CommandCenter() {
     }));
 
     return [...cmds, ...shortcutItems];
-  }, [closeCommandCenter, openSettings, toggleSidebar, setActiveNote]);
+  }, [closeCommandCenter, openSettings, toggleSidebar, setActiveNote, openOrCreateTodayJournal, openOrCreateYesterdayJournal]);
 
   // Recent notes (top 5)
   const recentNotes = useMemo<CommandItem[]>(() => {
@@ -290,51 +300,54 @@ export function CommandCenter() {
   if (!commandCenterOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
+        className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-md"
         onClick={closeCommandCenter}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-xl bg-popover border border-border rounded-lg shadow-lg overflow-hidden">
+      <div className="relative w-full max-w-2xl mx-4 bg-popover rounded-xl overflow-hidden border border-border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
         {/* Search Input */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-          <MagnifyingGlass size={18} className="text-muted-foreground flex-shrink-0" />
-          <Input
+        <div className="flex items-center gap-4 px-5 py-4">
+          <MagnifyingGlass size={22} weight="regular" className="text-muted-foreground flex-shrink-0" />
+          <input
             ref={inputRef}
+            type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search notes or type a command..."
-            className="flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 px-0 h-8 text-base text-foreground placeholder:text-muted-foreground"
+            placeholder="Search..."
+            className="flex-1 bg-transparent text-lg text-foreground placeholder:text-muted-foreground/50 outline-none"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
           />
-          <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-secondary px-1.5 font-mono text-[10px] text-muted-foreground">
-            esc
-          </kbd>
         </div>
 
+        <div className="h-px bg-border" />
+
         {/* Results List */}
-        <div ref={listRef} className="max-h-[400px] overflow-y-auto py-1">
+        <div ref={listRef} className="max-h-[420px] overflow-y-auto py-2">
           {items.length === 0 && query.length >= 2 && !isSearching && (
-            <div className="px-4 py-8 text-center">
-              <Body variant="muted">No results found for "{query}"</Body>
+            <div className="px-5 py-12 text-center">
+              <p className="text-muted-foreground text-sm">No results found for "{query}"</p>
             </div>
           )}
 
           {items.length === 0 && query.length < 2 && (
-            <div className="px-4 py-8 text-center">
-              <Body variant="muted">Start typing to search notes...</Body>
+            <div className="px-5 py-12 text-center">
+              <p className="text-muted-foreground text-sm">Start typing to search notes...</p>
             </div>
           )}
 
           {/* Group: Recent Notes */}
           {query.length < 2 && recentNotes.length > 0 && (
             <>
-              <div className="px-3 py-1.5">
-                <Text size="xs" variant="muted" weight="medium" className="uppercase tracking-wide">
+              <div className="px-5 py-2">
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                   Recent Notes
-                </Text>
+                </span>
               </div>
               {recentNotes.map((item, idx) => (
                 <CommandItem
@@ -352,10 +365,10 @@ export function CommandCenter() {
           {/* Group: Commands */}
           {query.length < 2 && (
             <>
-              <div className="px-3 py-1.5 mt-1">
-                <Text size="xs" variant="muted" weight="medium" className="uppercase tracking-wide">
+              <div className="px-5 py-2 mt-2">
+                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                   Commands
-                </Text>
+                </span>
               </div>
               {commands
                 .filter((cmd) => cmd.type === 'command')
@@ -379,10 +392,10 @@ export function CommandCenter() {
           {query.length >= 2 && items.length > 0 && (
             <>
               {searchResults.length > 0 && (
-                <div className="px-3 py-1.5">
-                  <Text size="xs" variant="muted" weight="medium" className="uppercase tracking-wide">
+                <div className="px-5 py-2">
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                     Notes
-                  </Text>
+                  </span>
                 </div>
               )}
               {items
@@ -399,10 +412,10 @@ export function CommandCenter() {
                 ))}
 
               {items.filter((item) => item.type !== 'note').length > 0 && (
-                <div className="px-3 py-1.5 mt-1">
-                  <Text size="xs" variant="muted" weight="medium" className="uppercase tracking-wide">
+                <div className="px-5 py-2 mt-2">
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                     Commands
-                  </Text>
+                  </span>
                 </div>
               )}
               {items
@@ -425,23 +438,23 @@ export function CommandCenter() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-3 py-2 border-t border-border bg-secondary/50">
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-popover border border-border font-mono text-[10px]">↑↓</kbd>
+        <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-secondary/50">
+          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">↑↓</kbd>
               navigate
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-popover border border-border font-mono text-[10px]">↵</kbd>
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">↵</kbd>
               select
             </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-popover border border-border font-mono text-[10px]">esc</kbd>
+            <span className="flex items-center gap-1.5">
+              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">esc</kbd>
               close
             </span>
           </div>
           <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Command size={11} />
+            <Command size={12} />
             <span>K</span>
           </div>
         </div>
@@ -464,30 +477,32 @@ function CommandItem({ item, index, isSelected, onClick, onMouseEnter }: Command
       data-index={index}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-        isSelected ? 'bg-secondary text-foreground' : 'hover:bg-muted/50'
+      className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors ${
+        isSelected ? 'bg-secondary' : 'hover:bg-secondary/50'
       }`}
     >
       <span className={`flex-shrink-0 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
         {item.icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{item.title}</div>
+        <div className={`font-medium truncate ${isSelected ? 'text-foreground' : 'text-foreground/80'}`}>
+          {item.title}
+        </div>
         {item.subtitle && (
-          <div className={`text-sm truncate ${isSelected ? 'text-foreground/70' : 'text-muted-foreground'}`}>
+          <div className={`text-sm truncate ${isSelected ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
             {item.subtitle}
           </div>
         )}
       </div>
       {item.shortcut && (
-        <kbd className={`ml-2 px-2 py-0.5 rounded text-xs font-mono ${
-          isSelected ? 'bg-muted text-foreground' : 'bg-muted text-muted-foreground'
+        <kbd className={`ml-2 px-2 py-1 rounded text-xs font-mono ${
+          isSelected ? 'bg-muted text-foreground/80' : 'bg-muted/50 text-muted-foreground'
         }`}>
           {item.shortcut}
         </kbd>
       )}
       {isSelected && (
-        <ArrowRight size={16} className="flex-shrink-0 text-foreground" />
+        <ArrowRight size={16} className="flex-shrink-0 text-muted-foreground" />
       )}
     </button>
   );

@@ -44,7 +44,7 @@ export const IndentableBlock = Extension.create<IndentableBlockOptions>({
           indent: {
             default: 0,
             parseHTML: (element) => {
-              const indent = element.getAttribute('data-indent');
+              const indent = element.dataset.indent;
               return indent ? parseInt(indent, 10) : 0;
             },
             renderHTML: (attributes) => {

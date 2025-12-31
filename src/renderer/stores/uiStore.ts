@@ -53,6 +53,7 @@ interface UIState {
   exportModalOpen: boolean
   importModalOpen: boolean
   commandCenterOpen: boolean
+  fileSwitcherOpen: boolean
 
   // Theme
   theme: 'light' | 'dark' | 'system'
@@ -85,6 +86,9 @@ interface UIState {
   openCommandCenter: () => void
   closeCommandCenter: () => void
   toggleCommandCenter: () => void
+  openFileSwitcher: () => void
+  closeFileSwitcher: () => void
+  toggleFileSwitcher: () => void
   setTheme: (theme: 'light' | 'dark' | 'system') => void
   setAccentColor: (color: AccentColor) => void
   setFontSettings: (settings: Partial<FontSettings>) => void
@@ -122,6 +126,7 @@ export const useUIStore = create<UIState>()(
       exportModalOpen: false,
       importModalOpen: false,
       commandCenterOpen: false,
+      fileSwitcherOpen: false,
 
       // Theme
       theme: 'system',
@@ -176,6 +181,12 @@ export const useUIStore = create<UIState>()(
       closeCommandCenter: () => set({ commandCenterOpen: false }),
 
       toggleCommandCenter: () => set((state) => ({ commandCenterOpen: !state.commandCenterOpen })),
+
+      openFileSwitcher: () => set({ fileSwitcherOpen: true }),
+
+      closeFileSwitcher: () => set({ fileSwitcherOpen: false }),
+
+      toggleFileSwitcher: () => set((state) => ({ fileSwitcherOpen: !state.fileSwitcherOpen })),
 
       setTheme: (theme) => set({ theme }),
 

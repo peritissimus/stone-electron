@@ -18,6 +18,7 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
+import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
 
@@ -25,6 +26,7 @@ import { logger } from '@renderer/utils/logger';
 const SearchPanel = lazy(() => import('@renderer/components/features/search/SearchPanel').then(m => ({ default: m.SearchPanel })));
 const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
 const CommandCenter = lazy(() => import('@renderer/components/features/CommandCenter/CommandCenter').then(m => ({ default: m.CommandCenter })));
+const FileSwitcher = lazy(() => import('@renderer/components/features/FileSwitcher/FileSwitcher').then(m => ({ default: m.FileSwitcher })));
 const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
 
 // Minimal loading skeletons for fast LCP
@@ -70,6 +72,9 @@ export function MainLayout() {
   const { loadNotes, createNote } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
   const { openOrCreateTodayJournal } = useJournalActions();
+
+  // Enable document autosave (saves dirty buffers on blur, timer, and before close)
+  useDocumentAutosave(30000); // Autosave every 30 seconds
 
   // Helper to create a note in a specific folder
   const createNoteInFolder = async (folderPath: string) => {
@@ -224,6 +229,9 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <CommandCenter />
+            </Suspense>
+            <Suspense fallback={null}>
+              <FileSwitcher />
             </Suspense>
           </>
         }

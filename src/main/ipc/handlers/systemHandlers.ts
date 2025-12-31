@@ -16,7 +16,7 @@ import { logger } from '../../utils/logger';
 async function getSystemFonts(): Promise<string[]> {
   try {
     const fonts = await getFonts();
-    return fonts.sort();
+    return fonts.sort((a, b) => a.localeCompare(b));
   } catch (error) {
     logger.error('[System] Failed to get system fonts:', error);
     // Return a fallback list of common fonts
