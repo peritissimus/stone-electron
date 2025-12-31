@@ -88,14 +88,14 @@ export class NoteRepository {
     let query = this.db.select().from(notes).orderBy(desc(notes.updatedAt));
 
     if (options?.limit) {
-      query = (query as any).limit(options.limit);
+      query = query.limit(options.limit);
     }
     if (options?.offset) {
-      query = (query as any).offset(options.offset);
+      query = query.offset(options.offset);
     }
 
     const result = await query;
-    return result as Note[];
+    return result;
   }
 
   /**
@@ -163,7 +163,7 @@ export class NoteRepository {
     if (options?.where) {
       const conditions = this.buildWhereConditions(options.where);
       if (conditions.length > 0) {
-        query = (query as any).where(and(...conditions));
+        query = query.where(and(...conditions));
       }
     }
 
@@ -171,18 +171,18 @@ export class NoteRepository {
     const orderByColumn = options?.sort
       ? this.getOrderByColumn(options.sort.field, options.sort.order)
       : desc(notes.updatedAt);
-    query = (query as any).orderBy(orderByColumn);
+    query = query.orderBy(orderByColumn);
 
     // Add LIMIT and OFFSET
     if (options?.limit) {
-      query = (query as any).limit(options.limit);
+      query = query.limit(options.limit);
     }
     if (options?.offset) {
-      query = (query as any).offset(options.offset);
+      query = query.offset(options.offset);
     }
 
-    const result = await (query as any);
-    return result as Note[];
+    const result = await query;
+    return result;
   }
 
   /**
@@ -454,9 +454,9 @@ export class NoteRepository {
     if (!existingNote) throw new Error('Note not found');
 
     const requestedFolder =
-      (data as any).folderPath !== undefined
-        ? this.normalizeFolderPath((data as any).folderPath)
-        : undefined;
+      (data as any).folderPath === undefined
+        ? undefined
+        : this.normalizeFolderPath((data as any).folderPath);
 
     const updateData: any = { ...data, updatedAt: new Date() };
     Object.keys(updateData).forEach((key) => {
@@ -542,28 +542,28 @@ export class NoteRepository {
     const wsId = activeWs?.id;
 
     if (!folderPath || folderPath === '.' || folderPath.trim() === '') {
-      const conditions: any[] = [eq(notes.isDeleted, false) as any];
-      if (wsId) conditions.push(eq(notes.workspaceId, wsId) as any);
-      const result = await (this.db as any)
+      const conditions: any[] = [eq(notes.isDeleted, false)];
+      if (wsId) conditions.push(eq(notes.workspaceId, wsId));
+      const result = await this.db
         .select()
         .from(notes)
-        .where((conditions.length > 1 ? and(...conditions) : conditions[0]) as any)
+        .where(conditions.length > 1 ? and(...conditions) : conditions[0])
         .orderBy(desc(notes.updatedAt));
-      return result as Note[];
+      return result;
     }
 
     const normalized = folderPath.replaceAll('\\', '/');
     const pattern = includeSubfolders ? `${normalized}/%` : `${normalized}`;
     const likeCondition = sql`${notes.filePath} LIKE ${pattern}`;
 
-    const conditions: any[] = [eq(notes.isDeleted, false) as any, likeCondition as any];
-    if (wsId) conditions.push(eq(notes.workspaceId, wsId) as any);
-    const result = await (this.db as any)
+    const conditions: any[] = [eq(notes.isDeleted, false), likeCondition];
+    if (wsId) conditions.push(eq(notes.workspaceId, wsId));
+    const result = await this.db
       .select()
       .from(notes)
-      .where(and(...conditions) as any)
+      .where(and(...conditions))
       .orderBy(desc(notes.updatedAt));
-    return result as Note[];
+    return result;
   }
 
   /**

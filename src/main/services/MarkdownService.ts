@@ -272,17 +272,13 @@ export class MarkdownService {
   private addCustomRules(): void {
     // Handle indented paragraphs (Logseq-style blocks)
     this.turndownService.addRule('indentedParagraph', {
-      filter: (node) => {
-        const el = node as HTMLElement;
-        return (
-          node.nodeName === 'P' &&
-          el.dataset.indent !== undefined &&
-          Number.parseInt(el.dataset.indent || '0', 10) > 0
-        );
+      filter: (node: Node): boolean => {
+        if (node.nodeName !== 'P') return false;
+        const dataset = (node as HTMLElement).dataset;
+        return dataset.indent !== undefined && Number.parseInt(dataset.indent || '0', 10) > 0;
       },
-      replacement: (content, node) => {
-        const el = node as HTMLElement;
-        const indent = Number.parseInt(el.dataset.indent || '0', 10);
+      replacement: (content: string, node: Node): string => {
+        const indent = Number.parseInt((node as HTMLElement).dataset.indent || '0', 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${content.trim()}\n\n`;
       },
@@ -290,17 +286,13 @@ export class MarkdownService {
 
     // Handle indented headings
     this.turndownService.addRule('indentedHeading', {
-      filter: (node) => {
-        const el = node as HTMLElement;
-        return (
-          /^H[1-6]$/.test(node.nodeName) &&
-          el.dataset.indent !== undefined &&
-          Number.parseInt(el.dataset.indent || '0', 10) > 0
-        );
+      filter: (node: Node): boolean => {
+        if (!/^H[1-6]$/.test(node.nodeName)) return false;
+        const dataset = (node as HTMLElement).dataset;
+        return dataset.indent !== undefined && Number.parseInt(dataset.indent || '0', 10) > 0;
       },
-      replacement: (content, node) => {
-        const el = node as HTMLElement;
-        const indent = Number.parseInt(el.dataset.indent || '0', 10);
+      replacement: (content: string, node: Node): string => {
+        const indent = Number.parseInt((node as HTMLElement).dataset.indent || '0', 10);
         const level = Number.parseInt(node.nodeName.charAt(1), 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${'#'.repeat(level)} ${content.trim()}\n\n`;
@@ -309,21 +301,17 @@ export class MarkdownService {
 
     // Handle Logseq-style task items with states
     this.turndownService.addRule('logseqTaskItem', {
-      filter: (node) => {
-        const el = node as HTMLElement;
-        return (
-          node.nodeName === 'LI' &&
-          el.dataset.type === 'taskItem' &&
-          el.dataset.state !== undefined
-        );
+      filter: (node: Node): boolean => {
+        if (node.nodeName !== 'LI') return false;
+        const dataset = (node as HTMLElement).dataset;
+        return dataset.type === 'taskItem' && dataset.state !== undefined;
       },
-      replacement: (content, node) => {
-        const el = node as HTMLElement;
-        const state = el.dataset.state || 'todo';
+      replacement: (content: string, node: Node): string => {
+        const state = (node as HTMLElement).dataset.state || 'todo';
         const stateLabel = state.toUpperCase();
 
         // Extract the text content without the button
-        const contentDiv = node.querySelector('div') || node.querySelector('p');
+        const contentDiv = (node as HTMLElement).querySelector('div') || (node as HTMLElement).querySelector('p');
         const textContent = contentDiv ? contentDiv.textContent || '' : content;
 
         // Save as list-style task item with dash prefix for consistency
@@ -333,14 +321,11 @@ export class MarkdownService {
 
     // Handle task list wrapper
     this.turndownService.addRule('logseqTaskList', {
-      filter: (node) => {
-        const el = node as HTMLElement;
-        return (
-          node.nodeName === 'UL' &&
-          el.dataset.type === 'taskList'
-        );
+      filter: (node: Node): boolean => {
+        if (node.nodeName !== 'UL') return false;
+        return (node as HTMLElement).dataset.type === 'taskList';
       },
-      replacement: (content) => {
+      replacement: (content: string): string => {
         return content;
       },
     });
@@ -360,12 +345,10 @@ export class MarkdownService {
 
     // Handle code blocks with language
     this.turndownService.addRule('fencedCodeBlock', {
-      filter: (node, options): boolean => {
-        return (
-          node.nodeName === 'PRE' && node.firstChild !== null && node.firstChild.nodeName === 'CODE'
-        );
+      filter: (node: Node): boolean => {
+        return node.nodeName === 'PRE' && node.firstChild !== null && node.firstChild.nodeName === 'CODE';
       },
-      replacement: (content, node, options) => {
+      replacement: (content: string, node: Node, options): string => {
         const codeElement = node.firstChild as HTMLElement;
         const className = codeElement.className || '';
 
@@ -374,14 +357,14 @@ export class MarkdownService {
 
         // If no language in class, check for data-language attribute on parent wrapper
         if (!language) {
-          let parent = node.parentElement as HTMLElement | null;
+          let parent = (node as HTMLElement).parentElement;
           while (parent) {
-            const dataLang = parent.dataset.language;
+            const dataLang = parent.dataset?.language;
             if (dataLang) {
               language = dataLang;
               break;
             }
-            parent = parent.parentElement as HTMLElement | null;
+            parent = parent.parentElement;
           }
         }
 
@@ -394,16 +377,12 @@ export class MarkdownService {
 
     // Handle [[note name]] wiki-style links
     this.turndownService.addRule('noteLink', {
-      filter: (node) => {
-        const el = node as HTMLElement;
-        return (
-          node.nodeName === 'SPAN' &&
-          el.dataset.type === 'note-link'
-        );
+      filter: (node: Node): boolean => {
+        if (node.nodeName !== 'SPAN') return false;
+        return (node as HTMLElement).dataset.type === 'note-link';
       },
-      replacement: (content, node) => {
-        const el = node as HTMLElement;
-        const title = el.dataset.title || content;
+      replacement: (content: string, node: Node): string => {
+        const title = (node as HTMLElement).dataset.title || content;
         return `[[${title}]]`;
       },
     });
