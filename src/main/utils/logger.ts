@@ -3,7 +3,7 @@
  */
 
 import log from 'electron-log';
-import path from 'path';
+import path from 'node:path';
 
 // Configure log file location - only if electron is available
 let app: any = null;

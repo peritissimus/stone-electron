@@ -21,24 +21,24 @@ import { getMarkdownService } from '../services/MarkdownService';
 import { WorkspaceRepository } from './WorkspaceRepository';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
-import path from 'path';
+import path from 'node:path';
 import { resolveInsideRoot } from '../utils/path';
 
 /**
  * Note Repository
  */
 export class NoteRepository {
-  private db = getDatabaseManager().getDrizzle();
-  private fileSystemService = getFileSystemService();
-  private markdownService = getMarkdownService();
-  private workspaceRepository = new WorkspaceRepository();
+  private readonly db = getDatabaseManager().getDrizzle();
+  private readonly fileSystemService = getFileSystemService();
+  private readonly markdownService = getMarkdownService();
+  private readonly workspaceRepository = new WorkspaceRepository();
 
   // Cache for graph data (TTL-based)
   private graphCache: {
     data: { nodes: { id: string; name: string; val: number }[]; links: { source: string; target: string }[] } | null;
     timestamp: number;
   } = { data: null, timestamp: 0 };
-  private static GRAPH_CACHE_TTL_MS = 30000; // 30 seconds
+  private static readonly GRAPH_CACHE_TTL_MS = 30000; // 30 seconds
 
   // Cache for note title -> note ID lookup (invalidated on create/delete/rename)
   private noteTitleCache: Map<string, Note> | null = null;
@@ -102,6 +102,56 @@ export class NoteRepository {
   }
 
   /**
+   * Build WHERE conditions for a query based on the where object
+   */
+  private buildWhereConditions(where: Partial<Note>): any[] {
+    const conditions: any[] = [];
+
+    // Simple equality fields (non-nullable)
+    const simpleFields = ['id', 'title', 'isFavorite', 'isPinned', 'isArchived', 'isDeleted', 'createdAt', 'updatedAt'] as const;
+    for (const field of simpleFields) {
+      if (where[field] !== undefined && where[field] !== null) {
+        conditions.push(eq((notes as any)[field], where[field]));
+      }
+    }
+
+    // Nullable fields (need isNull check)
+    const nullableFields = ['notebookId', 'workspaceId', 'deletedAt'] as const;
+    for (const field of nullableFields) {
+      if (where[field] !== undefined) {
+        if (where[field] === null) {
+          conditions.push(isNull((notes as any)[field]));
+        } else {
+          conditions.push(eq((notes as any)[field], where[field]));
+        }
+      }
+    }
+
+    return conditions;
+  }
+
+  /**
+   * Get ORDER BY column based on field and order
+   */
+  private getOrderByColumn(field: keyof Note, order: 'ASC' | 'DESC'): any {
+    const columnMap: Record<string, any> = {
+      id: notes.id,
+      title: notes.title,
+      notebookId: notes.notebookId,
+      isFavorite: notes.isFavorite,
+      isPinned: notes.isPinned,
+      isArchived: notes.isArchived,
+      isDeleted: notes.isDeleted,
+      deletedAt: notes.deletedAt,
+      createdAt: notes.createdAt,
+      updatedAt: notes.updatedAt,
+    };
+
+    const column = columnMap[field] || notes.updatedAt;
+    return order === 'DESC' ? desc(column) : asc(column);
+  }
+
+  /**
    * Find all notes with filtering - separate method to avoid complex types
    */
   private async findAllFiltered(options?: {
@@ -112,112 +162,19 @@ export class NoteRepository {
   }): Promise<Note[]> {
     let query = this.db.select().from(notes);
 
-    // Add WHERE clause - handle each field explicitly
+    // Add WHERE clause
     if (options?.where) {
-      const conditions = [];
-
-      if (options.where.id !== undefined) {
-        conditions.push(eq(notes.id, options.where.id));
-      }
-      if (options.where.title !== undefined && options.where.title !== null) {
-        conditions.push(eq(notes.title, options.where.title));
-      }
-
-      if (options.where.notebookId !== undefined) {
-        if (options.where.notebookId === null) {
-          conditions.push(isNull(notes.notebookId));
-        } else {
-          conditions.push(eq(notes.notebookId, options.where.notebookId));
-        }
-      }
-      if (options.where.workspaceId !== undefined) {
-        if (options.where.workspaceId === null) {
-          conditions.push(isNull(notes.workspaceId));
-        } else {
-          conditions.push(eq(notes.workspaceId, options.where.workspaceId));
-        }
-      }
-      if (options.where.isFavorite !== undefined && options.where.isFavorite !== null) {
-        conditions.push(eq(notes.isFavorite, options.where.isFavorite));
-      }
-      if (options.where.isPinned !== undefined && options.where.isPinned !== null) {
-        conditions.push(eq(notes.isPinned, options.where.isPinned));
-      }
-      if (options.where.isArchived !== undefined && options.where.isArchived !== null) {
-        conditions.push(eq(notes.isArchived, options.where.isArchived));
-      }
-      if (options.where.isDeleted !== undefined && options.where.isDeleted !== null) {
-        conditions.push(eq(notes.isDeleted, options.where.isDeleted));
-      }
-      if (options.where.deletedAt !== undefined) {
-        if (options.where.deletedAt === null) {
-          conditions.push(isNull(notes.deletedAt));
-        } else {
-          conditions.push(eq(notes.deletedAt, options.where.deletedAt));
-        }
-      }
-      if (options.where.createdAt !== undefined) {
-        conditions.push(eq(notes.createdAt, options.where.createdAt));
-      }
-      if (options.where.updatedAt !== undefined) {
-        conditions.push(eq(notes.updatedAt, options.where.updatedAt));
-      }
-
+      const conditions = this.buildWhereConditions(options.where);
       if (conditions.length > 0) {
         query = (query as any).where(and(...conditions));
       }
     }
 
-    // Add ORDER BY - handle each field explicitly
-    if (options?.sort) {
-      let orderByColumn;
-      switch (options.sort.field) {
-        case 'id':
-          orderByColumn = options.sort.order === 'DESC' ? desc(notes.id) : asc(notes.id);
-          break;
-        case 'title':
-          orderByColumn = options.sort.order === 'DESC' ? desc(notes.title) : asc(notes.title);
-          break;
-
-        case 'notebookId':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.notebookId) : asc(notes.notebookId);
-          break;
-        case 'isFavorite':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.isFavorite) : asc(notes.isFavorite);
-          break;
-        case 'isPinned':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.isPinned) : asc(notes.isPinned);
-          break;
-        case 'isArchived':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.isArchived) : asc(notes.isArchived);
-          break;
-        case 'isDeleted':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.isDeleted) : asc(notes.isDeleted);
-          break;
-        case 'deletedAt':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.deletedAt) : asc(notes.deletedAt);
-          break;
-        case 'createdAt':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.createdAt) : asc(notes.createdAt);
-          break;
-        case 'updatedAt':
-          orderByColumn =
-            options.sort.order === 'DESC' ? desc(notes.updatedAt) : asc(notes.updatedAt);
-          break;
-        default:
-          orderByColumn = desc(notes.updatedAt);
-      }
-      query = (query as any).orderBy(orderByColumn);
-    } else {
-      query = (query as any).orderBy(desc(notes.updatedAt));
-    }
+    // Add ORDER BY
+    const orderByColumn = options?.sort
+      ? this.getOrderByColumn(options.sort.field, options.sort.order)
+      : desc(notes.updatedAt);
+    query = (query as any).orderBy(orderByColumn);
 
     // Add LIMIT and OFFSET
     if (options?.limit) {
@@ -232,18 +189,64 @@ export class NoteRepository {
   }
 
   /**
+   * Determine target folder for new note, ensuring Personal folder exists
+   */
+  private async resolveTargetFolder(
+    workspace: { id: string; folderPath: string },
+    requestedFolder: string,
+    notebookId?: string | null,
+  ): Promise<string> {
+    // Ensure Personal folder exists as default
+    const personalFolderPath = path.join(workspace.folderPath, 'Personal');
+    if (!(await this.fileSystemService.fileExists(personalFolderPath))) {
+      await this.fileSystemService.createFolder(personalFolderPath);
+      logger.info(`Created Personal folder: ${personalFolderPath}`);
+    }
+
+    // Use requested folder if provided
+    if (requestedFolder) return requestedFolder;
+
+    // If notebook specified, use its folder
+    if (notebookId) {
+      const notebook = await this.getNotebookInfo(notebookId);
+      if (!notebook) throw new Error('Notebook not found');
+      if (notebook.workspaceId && notebook.workspaceId !== workspace.id) {
+        throw new Error('Notebook belongs to a different workspace');
+      }
+      return (notebook.folderPath || '').replaceAll('\\', '/') || 'Personal';
+    }
+
+    return 'Personal';
+  }
+
+  /**
+   * Generate filename for new note (journal vs regular)
+   */
+  private async generateNoteFilename(
+    targetFolderAbsolute: string,
+    relativeFolder: string,
+    title: string,
+  ): Promise<string> {
+    const isJournalNote = relativeFolder === 'Journal' && /^\d{4}-\d{2}-\d{2}$/.test(title);
+
+    if (isJournalNote) {
+      return this.fileSystemService.generateUniqueFilename(targetFolderAbsolute, title, '.md');
+    }
+    return this.fileSystemService.generateTimestampFilename(targetFolderAbsolute, '.md');
+  }
+
+  /**
    * Create a new note
    */
   async create(data: Partial<Note>): Promise<Note> {
     const id = generateId();
     const now = new Date();
-    const title = data.title && data.title.trim().length > 0 ? data.title : 'Untitled Note';
+    const title = data.title?.trim() || 'Untitled Note';
     const requestedFolder = this.normalizeFolderPath((data as any).folderPath);
 
-    // Check if we have an active workspace
     const activeWorkspace = await this.workspaceRepository.getActive();
 
-    let noteData: any = {
+    const noteData: any = {
       id,
       title,
       notebookId: null,
@@ -256,90 +259,51 @@ export class NoteRepository {
       updatedAt: now,
     };
 
-    // If creating from an existing file, just link it (no write)
+    // Case 1: Creating from an existing file - just link it
     if (data.filePath && data.workspaceId) {
-      noteData = {
-        ...noteData,
-        filePath: data.filePath,
-        workspaceId: data.workspaceId,
-      };
-    } else if (activeWorkspace) {
+      noteData.filePath = data.filePath;
+      noteData.workspaceId = data.workspaceId;
+    }
+    // Case 2: Creating new file in active workspace
+    else if (activeWorkspace) {
       noteData.workspaceId = activeWorkspace.id;
+
       try {
-        // Determine the target folder (default to Personal if not specified)
-        let relativeFolder = requestedFolder || 'Personal';
-
-        // Ensure Personal folder exists
-        const personalFolderPath = path.join(activeWorkspace.folderPath, 'Personal');
-        if (!(await this.fileSystemService.fileExists(personalFolderPath))) {
-          await this.fileSystemService.createFolder(personalFolderPath);
-          logger.info(`Created Personal folder: ${personalFolderPath}`);
-        }
-
-        if (!relativeFolder && data.notebookId) {
-          const notebook = await this.getNotebookInfo(data.notebookId);
-          if (!notebook) {
-            throw new Error('Notebook not found');
-          }
-          if (notebook.workspaceId && notebook.workspaceId !== activeWorkspace.id) {
-            throw new Error('Notebook belongs to a different workspace');
-          }
-          relativeFolder = (notebook.folderPath || '').replace(/\\/g, '/');
-        }
+        const relativeFolder = await this.resolveTargetFolder(
+          activeWorkspace,
+          requestedFolder,
+          data.notebookId,
+        );
 
         const targetFolderAbsolute = resolveInsideRoot(
           activeWorkspace.folderPath,
           relativeFolder || '.',
         );
 
-        // Generate unique filename (timestamp-based to be independent of title)
-        // Exception: Journal notes use date-based filenames (YYYY-MM-DD.md)
-        let filename: string;
-        if (relativeFolder === 'Journal' && title.match(/^\d{4}-\d{2}-\d{2}$/)) {
-          // Journal note with date as title - use title as filename
-          filename = await this.fileSystemService.generateUniqueFilename(
-            targetFolderAbsolute,
-            title,
-            '.md',
-          );
-        } else {
-          // Regular note - use timestamp-based filename (independent of title)
-          filename = await this.fileSystemService.generateTimestampFilename(
-            targetFolderAbsolute,
-            '.md',
-          );
-        }
+        const filename = await this.generateNoteFilename(targetFolderAbsolute, relativeFolder, title);
         const relativePath = relativeFolder ? path.posix.join(relativeFolder, filename) : filename;
 
-        // Save content to file - ensure first line is the title
-        let content = '';
-        if (!content.trim().startsWith('# ')) {
-          // If content doesn't start with a heading, prepend the title as H1
-          content = `# ${title}\n\n`;
-        }
+        // Save content with title as H1
+        const content = `# ${title}\n\n`;
         await this.saveContentToFile(relativePath, activeWorkspace.id, content, {
-          tags: [], // TODO: Get tags from note
+          tags: [],
           favorite: data.isFavorite ?? undefined,
           pinned: data.isPinned ?? undefined,
         });
 
-        // Store file path and workspace ID, but not content
-        noteData = {
-          ...noteData,
-          filePath: relativePath,
-          workspaceId: activeWorkspace.id,
-        };
+        noteData.filePath = relativePath;
       } catch (error) {
         logger.error('Error creating markdown file during note creation:', error);
         throw new Error('Failed to create note file on disk');
       }
-    } else {
+    }
+    // Case 3: No workspace available
+    else {
       throw new Error('Cannot create note without an active workspace');
     }
 
     await this.db.insert(notes).values(noteData);
 
-    // Invalidate caches since a new note was created
     this.invalidateTitleCache();
     this.invalidateGraphCache();
 
@@ -349,12 +313,146 @@ export class NoteRepository {
   }
 
   /**
+   * Determine target folder for note update based on folder path or notebook change
+   */
+  private async resolveUpdateTargetFolder(
+    currentFolder: string,
+    requestedFolder: string | undefined,
+    notebookId: string | null | undefined,
+    workspace: { id: string; folderPath: string },
+    updateData: any,
+  ): Promise<string> {
+    if (requestedFolder !== undefined) {
+      updateData.notebookId = null;
+      return requestedFolder;
+    }
+
+    if (notebookId !== undefined) {
+      const targetNotebook = notebookId ? await this.getNotebookInfo(notebookId) : null;
+      if (targetNotebook?.workspaceId && targetNotebook.workspaceId !== workspace.id) {
+        throw new Error('Target notebook belongs to a different workspace');
+      }
+      updateData.notebookId = notebookId ?? null;
+      return targetNotebook?.folderPath?.replaceAll('\\', '/') || '';
+    }
+
+    return currentFolder;
+  }
+
+  /**
+   * Handle file movement when folder changes during update
+   */
+  private async handleFileMoveOnUpdate(
+    currentRelativePath: string,
+    targetFolderRelative: string,
+    workspace: { id: string; folderPath: string },
+    workspaceId: string,
+  ): Promise<string | null> {
+    resolveInsideRoot(
+      workspace.folderPath,
+      targetFolderRelative || '.',
+    );
+
+    const filename = path.basename(currentRelativePath);
+    const newRelativePath = targetFolderRelative
+      ? path.posix.join(targetFolderRelative, filename)
+      : filename;
+
+    if (newRelativePath !== currentRelativePath) {
+      await this.renameMarkdownFile(currentRelativePath, newRelativePath, workspaceId);
+      return newRelativePath;
+    }
+
+    return null;
+  }
+
+  /**
+   * Sync content title with note title in markdown
+   */
+  private syncContentWithTitle(content: string, title: string): string {
+    if (!content.trim().startsWith('# ')) {
+      return `# ${title}\n\n${content}`;
+    }
+
+    const lines = content.split('\n');
+    if (lines[0].startsWith('# ')) {
+      lines[0] = `# ${title}`;
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * Update file content during note update
+   */
+  private async updateNoteFileContent(
+    noteId: string,
+    existingNote: Note,
+    updateData: any,
+    contentUpdate: string | null | undefined,
+  ): Promise<void> {
+    const filePathToUse = updateData.filePath || existingNote.filePath!;
+    const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
+
+    let contentToSave = contentUpdate ?? (await this.getContentById(existingNote.id)) ?? '';
+    contentToSave = this.syncContentWithTitle(contentToSave, currentTitle);
+
+    await this.saveContentToFile(filePathToUse, existingNote.workspaceId!, contentToSave, {
+      tags: [],
+      favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
+      pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,
+    });
+
+    await this.updateLinksFromContent(noteId, contentToSave);
+  }
+
+  /**
+   * Handle file-backed note updates (folder moves and content changes)
+   */
+  private async updateFileBackedNote(
+    existingNote: Note,
+    data: Partial<Note>,
+    updateData: any,
+    requestedFolder: string | undefined,
+  ): Promise<void> {
+    const workspace = await this.workspaceRepository.findById(existingNote.workspaceId!);
+    if (!workspace) throw new Error('Workspace not found');
+
+    const currentRelativePath = updateData.filePath || existingNote.filePath;
+    if (!currentRelativePath) throw new Error('Note has no file path');
+
+    const currentFolder = currentRelativePath.includes('/')
+      ? currentRelativePath.slice(0, currentRelativePath.lastIndexOf('/'))
+      : '';
+
+    const targetFolderRelative = await this.resolveUpdateTargetFolder(
+      currentFolder,
+      requestedFolder,
+      data.notebookId,
+      workspace,
+      updateData,
+    );
+
+    const newFilePath = await this.handleFileMoveOnUpdate(
+      currentRelativePath,
+      targetFolderRelative,
+      workspace,
+      existingNote.workspaceId!,
+    );
+    if (newFilePath) updateData.filePath = newFilePath;
+
+    const contentUpdate = (data as any).content;
+    const shouldUpdateFile =
+      contentUpdate != null || (data.title !== undefined && data.title !== existingNote.title);
+
+    if (shouldUpdateFile) {
+      await this.updateNoteFileContent(existingNote.id, existingNote, updateData, contentUpdate);
+    }
+  }
+
+  /**
    * Update a note
    */
   async update(id: string, data: Partial<Note>): Promise<Note> {
-    const now = new Date();
-
-    // Get the existing note to check if it has a file
     const existingNote = await this.findById(id);
     if (!existingNote) throw new Error('Note not found');
 
@@ -363,127 +461,16 @@ export class NoteRepository {
         ? this.normalizeFolderPath((data as any).folderPath)
         : undefined;
 
-    const updateData: any = {
-      ...data,
-      updatedAt: now,
-    };
-
-    // Remove undefined values
+    const updateData: any = { ...data, updatedAt: new Date() };
     Object.keys(updateData).forEach((key) => {
-      if (updateData[key as keyof typeof updateData] === undefined) {
-        delete updateData[key as keyof typeof updateData];
-      }
+      if (updateData[key] === undefined) delete updateData[key];
     });
 
     const hasFileBacking = Boolean(existingNote.filePath && existingNote.workspaceId);
-    const contentUpdate = (data as any).content;
 
-    // If note has a file path and workspace, update the file
     if (hasFileBacking) {
       try {
-        if (!existingNote.workspaceId) {
-          throw new Error('Note has no workspace ID');
-        }
-        const workspace = await this.workspaceRepository.findById(existingNote.workspaceId);
-        if (workspace) {
-          const currentRelativePath = updateData.filePath || existingNote.filePath;
-          if (!currentRelativePath) {
-            throw new Error('Note has no file path');
-          }
-          const currentFolder = currentRelativePath.includes('/')
-            ? currentRelativePath.slice(0, currentRelativePath.lastIndexOf('/'))
-            : '';
-
-          let targetFolderRelative = currentFolder;
-
-          if (requestedFolder !== undefined) {
-            targetFolderRelative = requestedFolder;
-            updateData.notebookId = null;
-          } else if (data.notebookId !== undefined) {
-            const targetNotebook = data.notebookId
-              ? await this.getNotebookInfo(data.notebookId)
-              : null;
-            if (
-              targetNotebook &&
-              targetNotebook.workspaceId &&
-              targetNotebook.workspaceId !== workspace.id
-            ) {
-              throw new Error('Target notebook belongs to a different workspace');
-            }
-            targetFolderRelative = targetNotebook?.folderPath
-              ? targetNotebook.folderPath.replace(/\\/g, '/')
-              : '';
-            updateData.notebookId = data.notebookId ?? null;
-          }
-
-          const targetDirAbsolute = resolveInsideRoot(
-            workspace.folderPath,
-            targetFolderRelative && targetFolderRelative.length > 0 ? targetFolderRelative : '.',
-          );
-
-          // Keep the existing filename (title changes don't rename the file)
-          let filename = path.basename(currentRelativePath);
-
-          const newRelativePath =
-            targetFolderRelative && targetFolderRelative.length > 0
-              ? path.posix.join(targetFolderRelative, filename)
-              : filename;
-
-          if (newRelativePath !== currentRelativePath) {
-            const workspaceId = existingNote.workspaceId;
-            if (!workspaceId) {
-              throw new Error('Note has no workspace ID');
-            }
-            await this.renameMarkdownFile(currentRelativePath, newRelativePath, workspaceId);
-            updateData.filePath = newRelativePath;
-          }
-        }
-
-        // If content is being updated OR title is being changed, update the file
-        const shouldUpdateFile =
-          (contentUpdate !== undefined && contentUpdate !== null) ||
-          (data.title !== undefined && data.title !== existingNote.title);
-
-        if (
-          shouldUpdateFile &&
-          existingNote.workspaceId &&
-          (updateData.filePath || existingNote.filePath)
-        ) {
-          const filePathToUse = updateData.filePath || existingNote.filePath!;
-          const workspaceId = existingNote.workspaceId!;
-          const currentTitle = updateData.title || existingNote.title || 'Untitled Note';
-
-          // Get existing content if only title is changing
-          let contentToSave = contentUpdate;
-          if (contentToSave === undefined || contentToSave === null) {
-            // Title-only update: read existing content and update H1
-            const existingContent = await this.getContentById(existingNote.id);
-            contentToSave = existingContent || '';
-          }
-
-          // Ensure the first line of content matches the title
-          if (!contentToSave.trim().startsWith('# ')) {
-            // If content doesn't start with a heading, prepend the title as H1
-            contentToSave = `# ${currentTitle}\n\n${contentToSave}`;
-          } else {
-            // Update the existing heading to match the current title
-            const lines = contentToSave.split('\n');
-            if (lines[0].startsWith('# ')) {
-              lines[0] = `# ${currentTitle}`;
-              contentToSave = lines.join('\n');
-            }
-          }
-
-          await this.saveContentToFile(filePathToUse, workspaceId, contentToSave, {
-            tags: [], // TODO: Get tags
-            favorite: (updateData.isFavorite ?? existingNote.isFavorite) || undefined,
-            pinned: (updateData.isPinned ?? existingNote.isPinned) || undefined,
-          });
-
-          // Update note links based on [[note name]] patterns in content
-          // contentToSave is the markdown content being saved
-          await this.updateLinksFromContent(id, contentToSave);
-        }
+        await this.updateFileBackedNote(existingNote, data, updateData, requestedFolder);
       } catch (error) {
         logger.error('Error updating markdown file:', error);
         throw new Error('Failed to update note file on disk');
@@ -492,7 +479,6 @@ export class NoteRepository {
 
     await this.db.update(notes).set(updateData).where(eq(notes.id, id));
 
-    // Invalidate caches if title changed (affects title lookup and graph display)
     if (data.title && data.title !== existingNote.title) {
       this.invalidateTitleCache();
       this.invalidateGraphCache();
@@ -569,11 +555,9 @@ export class NoteRepository {
       return result as Note[];
     }
 
-    const normalized = folderPath.replace(/\\/g, '/');
+    const normalized = folderPath.replaceAll('\\', '/');
     const pattern = includeSubfolders ? `${normalized}/%` : `${normalized}`;
-    const likeCondition = includeSubfolders
-      ? sql`${notes.filePath} LIKE ${pattern}`
-      : sql`${notes.filePath} LIKE ${pattern}`;
+    const likeCondition = sql`${notes.filePath} LIKE ${pattern}`;
 
     const conditions: any[] = [eq(notes.isDeleted, false) as any, likeCondition as any];
     if (wsId) conditions.push(eq(notes.workspaceId, wsId) as any);
@@ -601,7 +585,7 @@ export class NoteRepository {
    */
   async findByFilePath(filePath: string): Promise<Note | null> {
     // Normalize path for comparison
-    const normalizedPath = filePath.replace(/\\/g, '/');
+    const normalizedPath = filePath.replaceAll('\\', '/');
 
     const result = await this.db
       .select()
@@ -655,7 +639,7 @@ export class NoteRepository {
           return null;
         }
 
-        const relativePath = note.filePath.replace(/\\/g, '/');
+        const relativePath = note.filePath.replaceAll('\\', '/');
         const absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
 
         const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath, true);
@@ -1044,8 +1028,6 @@ export class NoteRepository {
     endDate: Date,
     field: 'createdAt' | 'updatedAt' = 'createdAt',
   ): Promise<Note[]> {
-    const column = field === 'createdAt' ? notes.createdAt : notes.updatedAt;
-
     return await this.findAll({
       where: { isDeleted: false },
       sort: { field, order: 'DESC' },
@@ -1060,7 +1042,7 @@ export class NoteRepository {
   private normalizeFolderPath(folderPath?: string | null): string {
     if (!folderPath) return '';
     return folderPath
-      .replace(/\\/g, '/')
+      .replaceAll('\\', '/')
       .replace(/^\.\//, '')
       .replace(/^\/+/, '')
       .replace(/\/+$/, '');
@@ -1104,7 +1086,7 @@ export class NoteRepository {
         return null;
       }
 
-      let relativePath = filePath.replace(/\\/g, '/');
+      let relativePath = filePath.replaceAll('\\', '/');
       let absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
 
       const fileExists = await this.fileSystemService.fileExists(absolutePath);
@@ -1112,17 +1094,16 @@ export class NoteRepository {
       if (!fileExists) {
         const scannedFiles = await this.fileSystemService.scanFolder(workspace.folderPath, true);
         const exactMatch = scannedFiles.find(
-          (file) => file.relativePath.replace(/\\/g, '/') === relativePath,
+          (file) => file.relativePath.replaceAll('\\', '/') === relativePath,
         );
 
-        const basenameMatch = exactMatch
-          ? exactMatch
-          : scannedFiles.find(
-              (file) => path.basename(file.relativePath) === path.basename(relativePath),
-            );
+        const basenameMatch = exactMatch ??
+          scannedFiles.find(
+            (file) => path.basename(file.relativePath) === path.basename(relativePath),
+          );
 
         if (basenameMatch) {
-          relativePath = basenameMatch.relativePath.replace(/\\/g, '/');
+          relativePath = basenameMatch.relativePath.replaceAll('\\', '/');
           absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
           await this.db
             .update(notes)
@@ -1143,7 +1124,7 @@ export class NoteRepository {
         .where(eq(notes.id, noteId))
         .limit(1);
       if (note.length > 0 && note[0].title) {
-        const escapedTitle = note[0].title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedTitle = note[0].title.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
         const titleHeading = `# ${escapedTitle}`;
         const titleHeadingRegex = new RegExp(`^${titleHeading}\\s*\\n*`);
         contentForEditor = contentForEditor.replace(titleHeadingRegex, '');
@@ -1201,9 +1182,9 @@ export class NoteRepository {
    */
   private resolveImagePaths(html: string, workspacePath: string): string {
     // Match img src attributes with relative .assets paths
-    return html.replace(
+    return html.replaceAll(
       /(<img[^>]*\s+src=["'])\.assets\/([^"']+)(["'][^>]*>)/gi,
-      (match, prefix, imagePath, suffix) => {
+      (_, prefix, imagePath, suffix) => {
         const absolutePath = path.join(workspacePath, '.assets', imagePath);
         return `${prefix}file://${absolutePath}${suffix}`;
       }
@@ -1271,6 +1252,181 @@ export class NoteRepository {
   }
 
   /**
+   * Find notebook ID by folder path
+   */
+  private async findNotebookIdByFolder(
+    workspaceId: string,
+    folderPath: string,
+  ): Promise<string | null> {
+    if (!folderPath || folderPath === '.' || folderPath === '/') return null;
+
+    try {
+      const nb = await this.db
+        .select({ id: notebooks.id })
+        .from(notebooks)
+        .where(and(eq(notebooks.workspaceId, workspaceId), eq(notebooks.folderPath, folderPath)))
+        .limit(1);
+      return nb[0]?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Create notes from new files discovered during sync
+   */
+  private async syncCreateNewNotes(
+    filesOnDisk: { relativePath: string; title: string; metadata?: any }[],
+    notesMap: Map<string, Note>,
+    deletedNotePaths: Set<string>,
+    workspaceId: string,
+    results: { created: number; errors: string[] },
+  ): Promise<void> {
+    for (const file of filesOnDisk) {
+      if (notesMap.has(file.relativePath) || deletedNotePaths.has(file.relativePath)) continue;
+
+      logger.info(`[NoteRepository] ➕ Creating note from file: ${file.relativePath}`);
+      try {
+        const folderRel = path.dirname(file.relativePath);
+        const notebookId = await this.findNotebookIdByFolder(workspaceId, folderRel);
+
+        await this.create({
+          title: file.title,
+          workspaceId,
+          notebookId: notebookId ?? undefined,
+          filePath: file.relativePath,
+          isFavorite: file.metadata?.favorite || false,
+          isPinned: file.metadata?.pinned || false,
+        });
+        results.created++;
+        logger.info(`[NoteRepository] ✅ Created note: ${file.title}`);
+      } catch (error) {
+        logger.error(`[NoteRepository] ❌ Failed to create note from ${file.relativePath}:`, error);
+        results.errors.push(`Failed to create note from ${file.relativePath}: ${error}`);
+      }
+    }
+  }
+
+  /**
+   * Try to relocate a note to a new file path
+   */
+  private async tryRelocateNote(
+    note: Note,
+    candidate: { relativePath: string },
+    workspaceId: string,
+    notesMap: Map<string, Note>,
+  ): Promise<boolean> {
+    const folderRel = path.dirname(candidate.relativePath);
+    const notebookId = await this.findNotebookIdByFolder(workspaceId, folderRel);
+
+    await this.db
+      .update(notes)
+      .set({ filePath: candidate.relativePath, notebookId, updatedAt: new Date() })
+      .where(eq(notes.id, note.id));
+
+    notesMap.set(candidate.relativePath, { ...note, filePath: candidate.relativePath, notebookId });
+    logger.info(`[NoteRepository] 🔁 Relocated note ${note.id} -> ${candidate.relativePath}`);
+    return true;
+  }
+
+  /**
+   * Try to relocate a note to one of the candidate files
+   * Returns true if successfully relocated
+   */
+  private async tryRelocateToCandidates(
+    note: Note,
+    candidates: { relativePath: string }[],
+    notesMap: Map<string, Note>,
+    workspaceId: string,
+    results: { updated: number; errors: string[] },
+  ): Promise<boolean> {
+    for (const cand of candidates) {
+      if (notesMap.has(cand.relativePath)) continue;
+
+      try {
+        const relocated = await this.tryRelocateNote(note, cand, workspaceId, notesMap);
+        if (relocated) {
+          results.updated++;
+          return true;
+        }
+      } catch (error) {
+        logger.error(`[NoteRepository] ❌ Failed to relocate note ${note.id}:`, error);
+        results.errors.push(`Failed to relocate note ${note.id}: ${error}`);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Handle notes whose files were moved or deleted
+   */
+  private async syncRelocateOrDeleteNotes(
+    notesInDb: Note[],
+    filesMap: Map<string, any>,
+    filesByBase: Map<string, any[]>,
+    notesMap: Map<string, Note>,
+    workspaceId: string,
+    results: { updated: number; deleted: number; errors: string[] },
+  ): Promise<void> {
+    for (const note of notesInDb) {
+      if (!note.filePath || filesMap.has(note.filePath)) continue;
+
+      const candidates = filesByBase.get(path.basename(note.filePath)) || [];
+      const relocated = await this.tryRelocateToCandidates(note, candidates, notesMap, workspaceId, results);
+
+      if (!relocated) {
+        await this.syncDeleteMissingNote(note, results);
+      }
+    }
+  }
+
+  /**
+   * Soft delete a note whose file no longer exists
+   */
+  private async syncDeleteMissingNote(
+    note: Note,
+    results: { deleted: number; errors: string[] },
+  ): Promise<void> {
+    logger.info(`[NoteRepository] 🗑️  Deleting note (file no longer exists): ${note.filePath}`);
+    try {
+      await this.softDelete(note.id);
+      results.deleted++;
+    } catch (error) {
+      logger.error(`[NoteRepository] ❌ Failed to delete note ${note.id}:`, error);
+      results.errors.push(`Failed to delete note ${note.id}: ${error}`);
+    }
+  }
+
+  /**
+   * Sync notebook assignments based on file paths
+   */
+  private async syncNotebookAssignments(
+    notesInDb: Note[],
+    workspaceId: string,
+    results: { updated: number },
+  ): Promise<void> {
+    for (const note of notesInDb) {
+      if (!note.filePath || !note.workspaceId) continue;
+
+      const folderRel = path.dirname(note.filePath);
+      const targetNbId = await this.findNotebookIdByFolder(workspaceId, folderRel);
+
+      if (note.notebookId !== targetNbId) {
+        try {
+          await this.db
+            .update(notes)
+            .set({ notebookId: targetNbId, updatedAt: new Date() })
+            .where(eq(notes.id, note.id));
+          results.updated++;
+          logger.info(`[NoteRepository] 🧭 Assigned notebook for ${note.id} -> ${folderRel}`);
+        } catch (e) {
+          logger.warn(`[NoteRepository] Failed to assign notebook for ${note.id}`, e);
+        }
+      }
+    }
+  }
+
+  /**
    * Sync notes with file system
    * Reconciles database entries with actual markdown files in workspace
    */
@@ -1280,97 +1436,33 @@ export class NoteRepository {
     deleted: number;
     errors: string[];
   }> {
-    const results = {
-      created: 0,
-      updated: 0,
-      deleted: 0,
-      errors: [] as string[],
-    };
+    const results = { created: 0, updated: 0, deleted: 0, errors: [] as string[] };
 
     try {
       logger.info(`[NoteRepository] 🔄 Starting file system sync for workspace: ${workspaceId}`);
 
       const workspace = await this.workspaceRepository.findById(workspaceId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${workspaceId}`);
-      }
+      if (!workspace) throw new Error(`Workspace not found: ${workspaceId}`);
 
       logger.info(`[NoteRepository] 📁 Workspace folder: ${workspace.folderPath}`);
 
-      // Scan workspace folder for all markdown files
-      logger.info(`[NoteRepository] 🔍 Scanning workspace folder for markdown files...`);
+      // Scan workspace and database
       const filesOnDisk = await this.fileSystemService.scanFolder(workspace.folderPath, true);
       logger.info(`[NoteRepository] ✅ Found ${filesOnDisk.length} markdown files on disk`);
 
-      // Get all notes in this workspace from database (both active and deleted)
-      logger.info(`[NoteRepository] 🔍 Querying database for existing notes...`);
-      const notesInDb = await this.findAll({
-        where: { workspaceId, isDeleted: false },
-      });
-      // Also get deleted notes to avoid re-creating them
-      const deletedNotesInDb = await this.findAll({
-        where: { workspaceId, isDeleted: true },
-      });
-      logger.info(`[NoteRepository] ✅ Found ${notesInDb.length} active notes, ${deletedNotesInDb.length} deleted notes`);
+      const notesInDb = await this.findAll({ where: { workspaceId, isDeleted: false } });
+      const deletedNotesInDb = await this.findAll({ where: { workspaceId, isDeleted: true } });
+      logger.info(`[NoteRepository] ✅ Found ${notesInDb.length} active, ${deletedNotesInDb.length} deleted notes`);
 
-      // Create maps for efficient lookup
+      // Create lookup maps
       const filesMap = new Map(filesOnDisk.map((f) => [f.relativePath, f]));
       const notesMap = new Map(notesInDb.map((n) => [n.filePath || '', n]));
-      // Track deleted note file paths to avoid re-creating them
-      const deletedNotePaths = new Set(deletedNotesInDb.map((n) => n.filePath).filter(Boolean));
+      const deletedNotePaths = new Set(
+        deletedNotesInDb.map((n) => n.filePath).filter(Boolean) as string[],
+      );
 
-      logger.info(`[NoteRepository] 📊 Comparing files and notes...`);
-
-      // Find files that exist on disk but not in database (CREATE)
-      // Skip files that belong to soft-deleted notes
-      for (const file of filesOnDisk) {
-        if (!notesMap.has(file.relativePath) && !deletedNotePaths.has(file.relativePath)) {
-          logger.info(`[NoteRepository] ➕ Creating note from file: ${file.relativePath}`);
-          try {
-            // Determine notebook by folder path
-            let notebookId: string | undefined = undefined;
-            try {
-              const folderRel = path.dirname(file.relativePath);
-              if (folderRel && folderRel !== '.' && folderRel !== '/') {
-                const nb = await this.db
-                  .select({ id: notebooks.id })
-                  .from(notebooks)
-                  .where(
-                    and(
-                      eq(notebooks.workspaceId, workspaceId),
-                      eq(notebooks.folderPath, folderRel),
-                    ),
-                  )
-                  .limit(1);
-                if (nb[0]?.id) notebookId = nb[0].id;
-              }
-            } catch (e) {
-              logger.warn('Could not resolve notebook for file', file.relativePath, e);
-            }
-
-            // Create new note from file
-            await this.create({
-              title: file.title,
-              workspaceId,
-              notebookId: notebookId,
-              filePath: file.relativePath,
-              isFavorite: file.metadata?.favorite || false,
-              isPinned: file.metadata?.pinned || false,
-            });
-            results.created++;
-            logger.info(`[NoteRepository] ✅ Created note: ${file.title}`);
-          } catch (error) {
-            logger.error(
-              `[NoteRepository] ❌ Failed to create note from ${file.relativePath}:`,
-              error,
-            );
-            results.errors.push(`Failed to create note from ${file.relativePath}: ${error}`);
-          }
-        }
-      }
-
-      // Build basename index for files on disk to help detect moves
-      const filesByBase = new Map<string, (typeof filesOnDisk)[0][]>();
+      // Build basename index for detecting file moves
+      const filesByBase = new Map<string, typeof filesOnDisk>();
       for (const f of filesOnDisk) {
         const base = path.basename(f.relativePath);
         const arr = filesByBase.get(base) || [];
@@ -1378,105 +1470,16 @@ export class NoteRepository {
         filesByBase.set(base, arr);
       }
 
-      // Handle notes whose files moved: try to relocate by basename match; else delete
-      for (const note of notesInDb) {
-        if (note.filePath && !filesMap.has(note.filePath)) {
-          const base = path.basename(note.filePath);
-          const candidates = filesByBase.get(base) || [];
-          let relocated = false;
-          for (const cand of candidates) {
-            if (!notesMap.has(cand.relativePath)) {
-              try {
-                // Determine notebook by folder path
-                let notebookId: string | undefined = undefined;
-                const folderRel = path.dirname(cand.relativePath);
-                if (folderRel && folderRel !== '.' && folderRel !== '/') {
-                  const nb = await this.db
-                    .select({ id: notebooks.id })
-                    .from(notebooks)
-                    .where(
-                      and(
-                        eq(notebooks.workspaceId, workspaceId),
-                        eq(notebooks.folderPath, folderRel),
-                      ),
-                    )
-                    .limit(1);
-                  if (nb[0]?.id) notebookId = nb[0].id;
-                }
+      logger.info(`[NoteRepository] 📊 Comparing files and notes...`);
 
-                await this.db
-                  .update(notes)
-                  .set({
-                    filePath: cand.relativePath,
-                    notebookId: notebookId ?? null,
-                    updatedAt: new Date(),
-                  })
-                  .where(eq(notes.id, note.id));
-                notesMap.set(cand.relativePath, {
-                  ...note,
-                  filePath: cand.relativePath,
-                  notebookId: notebookId ?? null,
-                });
-                results.updated++;
-                logger.info(
-                  `[NoteRepository] 🔁 Relocated note ${note.id} -> ${cand.relativePath}`,
-                );
-                relocated = true;
-                break;
-              } catch (error) {
-                logger.error(`[NoteRepository] ❌ Failed to relocate note ${note.id}:`, error);
-                results.errors.push(`Failed to relocate note ${note.id}: ${error}`);
-              }
-            }
-          }
+      // Step 1: Create notes for new files
+      await this.syncCreateNewNotes(filesOnDisk, notesMap, deletedNotePaths, workspaceId, results);
 
-          if (!relocated) {
-            logger.info(
-              `[NoteRepository] 🗑️  Deleting note (file no longer exists): ${note.filePath}`,
-            );
-            try {
-              await this.softDelete(note.id);
-              results.deleted++;
-            } catch (error) {
-              logger.error(`[NoteRepository] ❌ Failed to delete note ${note.id}:`, error);
-              results.errors.push(`Failed to delete note ${note.id}: ${error}`);
-            }
-          }
-        }
-      }
+      // Step 2: Handle moved or deleted files
+      await this.syncRelocateOrDeleteNotes(notesInDb, filesMap, filesByBase, notesMap, workspaceId, results);
 
-      // Check for files that were renamed/moved (UPDATE)
-      // This is more complex and may require content comparison or user input
-      // For now, we'll just detect and report them as errors
-
-      // Ensure notebookId matches folder for all notes
-      for (const note of notesInDb) {
-        if (note.filePath && note.workspaceId) {
-          const folderRel = path.dirname(note.filePath);
-          if (folderRel && folderRel !== '.' && folderRel !== '/') {
-            try {
-              const nb = await this.db
-                .select({ id: notebooks.id })
-                .from(notebooks)
-                .where(
-                  and(eq(notebooks.workspaceId, workspaceId), eq(notebooks.folderPath, folderRel)),
-                )
-                .limit(1);
-              const targetNbId = nb[0]?.id ?? null;
-              if (note.notebookId !== targetNbId) {
-                await this.db
-                  .update(notes)
-                  .set({ notebookId: targetNbId, updatedAt: new Date() })
-                  .where(eq(notes.id, note.id));
-                results.updated++;
-                logger.info(`[NoteRepository] 🧭 Assigned notebook for ${note.id} -> ${folderRel}`);
-              }
-            } catch (e) {
-              logger.warn(`[NoteRepository] Failed to assign notebook for ${note.id}`, e);
-            }
-          }
-        }
-      }
+      // Step 3: Ensure notebook assignments match folder paths
+      await this.syncNotebookAssignments(notesInDb, workspaceId, results);
 
       logger.info(`[NoteRepository] ✅ File system sync completed:`, results);
       return results;

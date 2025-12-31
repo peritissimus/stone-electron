@@ -2,8 +2,8 @@
  * FileSystemService - Handles file system operations for markdown files
  */
 
-import fs from 'fs/promises';
-import path from 'path';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import matter from 'gray-matter';
 import { getMarkdownService } from './MarkdownService';
 import { logger } from '../utils/logger';
@@ -36,7 +36,7 @@ export interface FolderStructure {
 }
 
 export class FileSystemService {
-  private markdownService = getMarkdownService();
+  private readonly markdownService = getMarkdownService();
 
   /**
    * Read a markdown file with frontmatter (fast - only reads head for title/metadata)
@@ -84,6 +84,33 @@ export class FileSystemService {
   }
 
   /**
+   * Normalize metadata by removing undefined values and sanitizing tags
+   */
+  private normalizeMetadata(metadata?: MarkdownFile['metadata']): Record<string, unknown> {
+    if (!metadata) return {};
+
+    const result: Record<string, unknown> = {};
+
+    // Sanitize tags array
+    if (Array.isArray(metadata.tags)) {
+      const sanitizedTags = metadata.tags.filter(
+        (tag): tag is string => typeof tag === 'string' && tag.length > 0
+      );
+      if (sanitizedTags.length > 0) {
+        result.tags = sanitizedTags;
+      }
+    }
+
+    // Copy defined boolean/string values
+    if (metadata.favorite !== undefined) result.favorite = metadata.favorite;
+    if (metadata.pinned !== undefined) result.pinned = metadata.pinned;
+    if (metadata.created) result.created = metadata.created;
+    if (metadata.modified) result.modified = metadata.modified;
+
+    return result;
+  }
+
+  /**
    * Write a markdown file with frontmatter
    */
   async writeMarkdownFile(
@@ -96,29 +123,7 @@ export class FileSystemService {
       const dir = path.dirname(filePath);
       await fs.mkdir(dir, { recursive: true });
 
-      // Prepare metadata without undefined values
-      const normalizedMetadata: Record<string, unknown> = {};
-      if (metadata) {
-        const sanitizedTags = Array.isArray(metadata.tags)
-          ? metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0)
-          : undefined;
-        if (sanitizedTags && sanitizedTags.length > 0) {
-          normalizedMetadata.tags = sanitizedTags;
-        }
-        if (metadata.favorite !== undefined) {
-          normalizedMetadata.favorite = metadata.favorite;
-        }
-        if (metadata.pinned !== undefined) {
-          normalizedMetadata.pinned = metadata.pinned;
-        }
-        if (metadata.created) {
-          normalizedMetadata.created = metadata.created;
-        }
-        if (metadata.modified) {
-          normalizedMetadata.modified = metadata.modified;
-        }
-      }
-
+      const normalizedMetadata = this.normalizeMetadata(metadata);
       const hasMetadata = Object.keys(normalizedMetadata).length > 0;
       const fileContent = hasMetadata ? matter.stringify(content, normalizedMetadata) : content;
 
@@ -182,6 +187,35 @@ export class FileSystemService {
   }
 
   /**
+   * Process a single markdown file entry during folder scan
+   */
+  private async processMarkdownEntry(
+    fullPath: string,
+    relativePath: string,
+    entryName: string,
+  ): Promise<MarkdownFile | null> {
+    try {
+      const file = await this.readMarkdownFile(fullPath, false);
+      file.relativePath = relativePath;
+      return file;
+    } catch {
+      logger.warn(`[FileSystem] Skipping unreadable file: ${entryName}`);
+      return null;
+    }
+  }
+
+  /**
+   * Compute relative path from base to full path (POSIX-style)
+   */
+  private computeRelativePath(basePath: string, fullPath: string): string {
+    return path
+      .relative(basePath, fullPath)
+      .split(path.sep)
+      .filter(Boolean)
+      .join('/');
+  }
+
+  /**
    * Scan a folder for markdown files
    */
   async scanFolder(
@@ -197,42 +231,28 @@ export class FileSystemService {
       const subfolderPaths: string[] = [];
 
       for (const entry of entries) {
-        const fullPath = path.join(folderPath, entry.name);
-        const relativePath = path
-          .relative(basePath, fullPath)
-          .split(path.sep)
-          .filter(Boolean)
-          .join('/');
-
         // Skip hidden files and folders
-        if (entry.name.startsWith('.')) {
-          continue;
-        }
+        if (entry.name.startsWith('.')) continue;
 
-        if (entry.isDirectory()) {
-          if (recursive) {
-            subfolderPaths.push(fullPath);
-          }
+        const fullPath = path.join(folderPath, entry.name);
+
+        if (entry.isDirectory() && recursive) {
+          subfolderPaths.push(fullPath);
         } else if (entry.isFile() && entry.name.endsWith('.md')) {
-          try {
-            const file = await this.readMarkdownFile(fullPath, false);
-            file.relativePath = relativePath;
-            files.push(file);
-          } catch (error) {
-            logger.warn(`[FileSystem] Skipping unreadable file: ${entry.name}`);
-          }
+          const relativePath = this.computeRelativePath(basePath, fullPath);
+          const file = await this.processMarkdownEntry(fullPath, relativePath, entry.name);
+          if (file) files.push(file);
         }
       }
 
       // Scan all subfolders in parallel
-      if (subfolderPaths.length > 0 && recursive) {
+      if (subfolderPaths.length > 0) {
         const subResults = await Promise.all(
           subfolderPaths.map(subPath => this.scanFolder(subPath, recursive, basePath, false))
         );
-        subResults.forEach(subFiles => files.push(...subFiles));
+        files.push(...subResults.flat());
       }
 
-      // Only log summary at root level
       if (isRoot) {
         logger.info(`[FileSystem] Scanned ${path.basename(folderPath)}: ${files.length} notes`);
       }
@@ -449,8 +469,6 @@ let instance: FileSystemService | null = null;
  * Get or create file system service instance
  */
 export function getFileSystemService(): FileSystemService {
-  if (!instance) {
-    instance = new FileSystemService();
-  }
+  instance ??= new FileSystemService();
   return instance;
 }

@@ -4,7 +4,7 @@
 
 import 'dotenv/config';
 import { app, BrowserWindow } from 'electron';
-import path from 'path';
+import path from 'node:path';
 import { isDev } from './utils/environment';
 import { getDatabaseManager } from './database';
 import { registerAllIpcHandlers } from './ipc';

@@ -3,7 +3,7 @@
  */
 
 import { BrowserWindow, dialog } from 'electron';
-import path from 'path';
+import path from 'node:path';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { getFileSystemService } from '../../services/FileSystemService';
@@ -313,9 +313,6 @@ export function registerWorkspaceHandlers() {
       }
 
       const folderName = path.basename(sourceRelative);
-      const newRelative = destinationRelative
-        ? path.posix.join(destinationRelative, folderName)
-        : folderName;
 
       // Generate unique name if there's a conflict
       const uniqueName = await fsService.generateUniqueFolderName(
@@ -374,7 +371,7 @@ export function registerWorkspaceHandlers() {
       const counts: Record<string, number> = {};
 
       files.forEach((file) => {
-        const normalized = file.relativePath.replace(/\\/g, '/');
+        const normalized = file.relativePath.replaceAll('\\', '/');
         const segments = normalized.split('/');
 
         const folderSegments = segments.length > 1 ? segments.slice(0, -1) : [];

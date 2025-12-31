@@ -146,6 +146,7 @@ export function FileSwitcher() {
   // Focus input when opened
   useEffect(() => {
     if (fileSwitcherOpen) {
+      logger.debug('[FileSwitcher] Opened (Cmd+P)');
       setQuery('');
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -170,6 +171,7 @@ export function FileSwitcher() {
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
+          logger.debug('[FileSwitcher] Closing via Escape key');
           closeFileSwitcher();
           break;
         case 'ArrowDown':
@@ -210,7 +212,10 @@ export function FileSwitcher() {
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-md"
-        onClick={closeFileSwitcher}
+        onClick={() => {
+          logger.debug('[FileSwitcher] Closing via backdrop click');
+          closeFileSwitcher();
+        }}
       />
 
       {/* Modal */}

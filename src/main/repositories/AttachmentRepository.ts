@@ -77,10 +77,12 @@ export class AttachmentRepository {
       return new Map();
     }
 
+    const idPlaceholders = noteIds.map(id => sql`${id}`);
+    const inClause = sql.join(idPlaceholders, sql`, `);
     const result = await db
       .select()
       .from(attachments)
-      .where(sql`${attachments.noteId} IN (${sql.join(noteIds.map(id => sql`${id}`), sql`, `)})`)
+      .where(sql`${attachments.noteId} IN (${inClause})`)
       .orderBy(desc(attachments.createdAt));
 
     // Group attachments by noteId

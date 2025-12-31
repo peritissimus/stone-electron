@@ -44,8 +44,6 @@ let instance: Repositories | null = null;
  * Get or create repositories instance
  */
 export function getRepositories(): Repositories {
-  if (!instance) {
-    instance = new Repositories();
-  }
+  instance ??= new Repositories();
   return instance;
 }

@@ -40,10 +40,12 @@ export function registerSearchHandlers() {
         if (request.tagIds && request.tagIds.length > 0) {
           const noteIds = results.map(note => note.id);
           const tagsMap = await repos.tag.getTagsForNotes(noteIds);
+          const requestedTagIds = new Set(request.tagIds);
 
           results = results.filter(note => {
             const noteTags = tagsMap.get(note.id) || [];
-            return request.tagIds!.some(tagId => noteTags.some(t => t.id === tagId));
+            const noteTagIds = noteTags.map(t => t.id);
+            return noteTagIds.some(id => requestedTagIds.has(id));
           });
         }
 

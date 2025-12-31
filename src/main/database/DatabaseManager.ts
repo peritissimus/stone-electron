@@ -3,9 +3,9 @@
  */
 
 import { createClient } from '@libsql/client/sqlite3';
-import path from 'path';
-import fs from 'fs';
-import os from 'os';
+import path from 'node:path';
+import fs from 'node:fs';
+import os from 'node:os';
 
 // Conditionally import electron
 let app: any = null;
@@ -42,8 +42,8 @@ import { getMarkdownService } from '../services/MarkdownService';
 export class DatabaseManager {
   private client: any | null = null;
   private db: any | null = null;
-  private dataPath: string;
-  private dbPath: string;
+  private readonly dataPath: string;
+  private readonly dbPath: string;
 
   constructor() {
     // In packaged apps, always use userData directory, ignore DATABASE_URL
@@ -398,6 +398,6 @@ export class DatabaseManager {
 
 let instance: DatabaseManager | null = null;
 export function getDatabaseManager(): DatabaseManager {
-  if (!instance) instance = new DatabaseManager();
+  instance ??= new DatabaseManager();
   return instance;
 }
