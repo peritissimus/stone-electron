@@ -20,6 +20,10 @@ scripts/*.js
 .env.local
 .env.*.local
 coverage
+.scannerwork
+sonar-project.properties
+sonar-report.txt
+sonar-issues.json
 .vite
 .turbo
 .cache
