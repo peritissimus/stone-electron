@@ -6,8 +6,8 @@ import { BrowserWindow } from 'electron';
 import { ATTACHMENT_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { registerHandler, IpcError } from '../utils';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 import { getDatabaseManager } from '../../database';
 import { getMarkdownService } from '../../services/MarkdownService';
 
@@ -71,7 +71,7 @@ export function registerAttachmentHandlers() {
         fs.copyFileSync(request.file_path, resolvedDest);
 
         // Create attachment record
-        const relativePath = path.join('attachments', request.noteId, filename).replace(/\\/g, '/');
+        const relativePath = path.join('attachments', request.noteId, filename).replaceAll('\\', '/');
         const attachment = await repos.attachment.create({
           noteId: request.noteId,
           filename,
@@ -154,7 +154,7 @@ export function registerAttachmentHandlers() {
 
       // Get workspace to find folder path
       const workspace = await repos.workspace.findById(note.workspaceId);
-      if (!workspace || !workspace.folderPath) {
+      if (!workspace?.folderPath) {
         throw new IpcError('NOT_FOUND', 'Workspace not found');
       }
 

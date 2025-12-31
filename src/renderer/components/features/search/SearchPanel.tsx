@@ -12,6 +12,7 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { Body, Text } from '@renderer/components/base/ui/text';
 import { ContainerFlex, ContainerStack } from '@renderer/components/base/ui';
+import { logger } from '@renderer/utils/logger';
 
 export function SearchPanel() {
   const { searchQuery, setSearchQuery, toggleSearch } = useUIStore();
@@ -21,6 +22,12 @@ export function SearchPanel() {
   const [results, setResults] = useState<any[]>([]);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Log mount/unmount
+  useEffect(() => {
+    logger.debug('[SearchPanel] Mounted (Cmd+K)');
+    return () => logger.debug('[SearchPanel] Unmounted');
+  }, []);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -29,6 +36,19 @@ export function SearchPanel() {
       }
     };
   }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        logger.debug('[SearchPanel] Closing via Escape key');
+        toggleSearch();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleSearch]);
 
   useEffect(() => {
     if (searchQuery.length < 2) {
@@ -52,7 +72,13 @@ export function SearchPanel() {
   }, [searchQuery, fullTextSearch]);
 
   const handleSelectNote = (noteId: string) => {
+    logger.debug('[SearchPanel] Selected note:', noteId);
     setActiveNote(noteId);
+    toggleSearch();
+  };
+
+  const handleClose = () => {
+    logger.debug('[SearchPanel] Closing via X button');
     toggleSearch();
   };
 
@@ -69,7 +95,7 @@ export function SearchPanel() {
           autoFocus
         />
         {loading && <Spinner size={18} className="text-muted-foreground animate-spin" />}
-        <Button variant="ghost" size="icon" onClick={toggleSearch} aria-label="Close search">
+        <Button variant="ghost" size="icon" onClick={handleClose} aria-label="Close search">
           <X size={18} />
         </Button>
       </ContainerFlex>

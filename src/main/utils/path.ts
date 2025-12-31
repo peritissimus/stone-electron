@@ -1,4 +1,4 @@
-import path from 'path'
+import path from 'node:path'
 
 /**
  * Normalize a user-provided relative path to POSIX-style, removing leading/trailing slashes.
@@ -6,7 +6,7 @@ import path from 'path'
 export function normalizeRelativePath(input?: string | null): string {
   if (!input) return ''
   return input
-    .replace(/\\/g, '/')
+    .replaceAll('\\', '/')
     .replace(/^\.\//, '')
     .replace(/^\/+/, '')
     .replace(/\/+$/, '')

@@ -3,8 +3,8 @@
  */
 
 import { BrowserWindow, dialog } from 'electron';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import type { Attachment, Note, Tag } from '@shared/types';
 import { getRepositories } from '../../repositories';
@@ -265,7 +265,8 @@ export function registerNoteHandlers() {
 
   // notes:update
   registerHandler(NOTE_CHANNELS.UPDATE, async (event, request: UpdateNoteRequest) => {
-    logger.info(`[IPC] notes:update ${request.title ? `"${request.title}"` : request.id.slice(0, 8)}`);
+    const logId = request.title ? `"${request.title}"` : request.id.slice(0, 8);
+    logger.info(`[IPC] notes:update ${logId}`);
 
     const oldNote = await repos.note.findById(request.id);
     if (!oldNote) {

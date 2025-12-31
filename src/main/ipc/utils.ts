@@ -6,7 +6,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { logger } from '../utils/logger'
 
 // Enable profiling via env var: STONE_PROFILE=50 means log calls > 50ms
-const PROFILE_THRESHOLD = process.env.STONE_PROFILE ? parseInt(process.env.STONE_PROFILE, 10) : null
+const PROFILE_THRESHOLD = process.env.STONE_PROFILE ? Number.parseInt(process.env.STONE_PROFILE, 10) : null
 
 /**
  * IPC Error class

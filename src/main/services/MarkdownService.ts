@@ -18,8 +18,8 @@ interface CacheEntry {
  * Simple LRU cache for markdown to HTML conversion
  */
 class MarkdownCache {
-  private cache = new Map<string, CacheEntry>();
-  private maxSize: number;
+  private readonly cache = new Map<string, CacheEntry>();
+  private readonly maxSize: number;
 
   constructor(maxSize = 100) {
     this.maxSize = maxSize;
@@ -57,8 +57,8 @@ class MarkdownCache {
 }
 
 export class MarkdownService {
-  private turndownService: TurndownService;
-  private parseCache = new MarkdownCache(100);
+  private readonly turndownService: TurndownService;
+  private readonly parseCache = new MarkdownCache(100);
 
   constructor() {
     // Initialize Turndown service for HTML -> Markdown conversion
@@ -160,7 +160,7 @@ export class MarkdownService {
 
     // Convert [[note name]] to custom HTML spans
     // The note ID will be resolved in the frontend
-    result = result.replace(/\[\[([^\]]+)\]\]/g, (_, noteName) => {
+    result = result.replaceAll(/\[\[([^\]]+)\]\]/g, (_: string, noteName: string) => {
       return `<span data-type="note-link" data-title="${escapeHtml(noteName)}">${escapeHtml(noteName)}</span>`;
     });
 
@@ -228,10 +228,8 @@ export class MarkdownService {
       const listTaskMatch = line.match(new RegExp(`^(\\s*)[-*]\\s+(${taskStates.join('|')})\\s+(.+)$`, 'i'));
 
       const taskMatch = listTaskMatch || standaloneTaskMatch;
-      const isListTask = !!listTaskMatch;
 
       if (taskMatch) {
-        const indent = taskMatch[1];
         const state = taskMatch[2].toLowerCase();
         const normalizedState = state === 'cancelled' ? 'canceled' : state;
         const taskText = taskMatch[3];
@@ -281,12 +279,12 @@ export class MarkdownService {
         return (
           node.nodeName === 'P' &&
           el.dataset.indent !== undefined &&
-          parseInt(el.dataset.indent || '0', 10) > 0
+          Number.parseInt(el.dataset.indent || '0', 10) > 0
         );
       },
       replacement: (content, node) => {
         const el = node as HTMLElement;
-        const indent = parseInt(el.dataset.indent || '0', 10);
+        const indent = Number.parseInt(el.dataset.indent || '0', 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${content.trim()}\n\n`;
       },
@@ -299,13 +297,13 @@ export class MarkdownService {
         return (
           /^H[1-6]$/.test(node.nodeName) &&
           el.dataset.indent !== undefined &&
-          parseInt(el.dataset.indent || '0', 10) > 0
+          Number.parseInt(el.dataset.indent || '0', 10) > 0
         );
       },
       replacement: (content, node) => {
         const el = node as HTMLElement;
-        const indent = parseInt(el.dataset.indent || '0', 10);
-        const level = parseInt(node.nodeName.charAt(1), 10);
+        const indent = Number.parseInt(el.dataset.indent || '0', 10);
+        const level = Number.parseInt(node.nodeName.charAt(1), 10);
         const tabs = '\t'.repeat(indent);
         return `\n\n${tabs}${'#'.repeat(level)} ${content.trim()}\n\n`;
       },
@@ -354,7 +352,7 @@ export class MarkdownService {
       filter: (node) => {
         return (
           node.nodeName === 'MARK' ||
-          (node.nodeName === 'SPAN' && node.classList && node.classList.contains('bg-accent'))
+          (node.nodeName === 'SPAN' && node.classList?.contains('bg-accent'))
         );
       },
       replacement: (content) => {
@@ -374,7 +372,7 @@ export class MarkdownService {
         const className = codeElement.className || '';
 
         // Try to extract language from class name
-        let language = className.replace('language-', '').replace('hljs', '').replace('code-block', '').trim();
+        let language = className.replaceAll('language-', '').replaceAll('hljs', '').replaceAll('code-block', '').trim();
 
         // If no language in class, check for data-language attribute on parent wrapper
         if (!language) {
@@ -417,8 +415,7 @@ export class MarkdownService {
       filter: (node): boolean => {
         return (
           node.nodeName === 'DIV' &&
-          node.classList &&
-          node.classList.contains('code-block-wrapper')
+          node.classList?.contains('code-block-wrapper')
         );
       },
       replacement: (content, node) => {
@@ -433,7 +430,7 @@ export class MarkdownService {
         // Try to get language from select element or data attribute
         let language = '';
         const selectElement = node.querySelector('select') as HTMLSelectElement;
-        if (selectElement && selectElement.value) {
+        if (selectElement?.value) {
           language = selectElement.value;
         }
 
@@ -450,8 +447,8 @@ export class MarkdownService {
    */
   sanitizeFilename(title: string): string {
     return title
-      .replace(/[/\\?%*:|"<>]/g, '-') // Replace invalid chars
-      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replaceAll(/[/\\?%*:|"<>]/g, '-') // Replace invalid chars
+      .replaceAll(/\s+/g, ' ') // Normalize whitespace
       .trim()
       .substring(0, 200); // Limit length
   }
@@ -501,9 +498,7 @@ let instance: MarkdownService | null = null;
  * Get or create markdown service instance
  */
 export function getMarkdownService(): MarkdownService {
-  if (!instance) {
-    instance = new MarkdownService();
-  }
+  instance ??= new MarkdownService();
   return instance;
 }
 
@@ -516,10 +511,10 @@ function simpleHtmlToMarkdown(input: string): string {
   let out = input;
 
   // Normalize whitespace around block tags
-  out = out.replace(/\r\n/g, '\n');
+  out = out.replaceAll('\r\n', '\n');
 
   // Code blocks: <pre><code class="language-xyz">...</code></pre>
-  out = out.replace(
+  out = out.replaceAll(
     /<pre>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi,
     (_, attrs: string, code: string) => {
       const langMatch = attrs.match(/class=["']?[^"']*language-([\w-]+)/i);
@@ -533,10 +528,10 @@ function simpleHtmlToMarkdown(input: string): string {
   // Indented headings (with data-indent attribute) - handle before regular headings
   for (let i = 6; i >= 1; i--) {
     const indentRe = new RegExp(`<h${i}[^>]*data-indent=["'](\\d+)["'][^>]*>([\\s\\S]*?)<\\/h${i}>`, 'gi');
-    out = out.replace(
+    out = out.replaceAll(
       indentRe,
       (_, indent: string, text: string) => {
-        const tabs = '\t'.repeat(parseInt(indent, 10));
+        const tabs = '\t'.repeat(Number.parseInt(indent, 10));
         return `\n\n${tabs}${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`;
       },
     );
@@ -545,40 +540,40 @@ function simpleHtmlToMarkdown(input: string): string {
   // Regular headings (without indent)
   for (let i = 6; i >= 1; i--) {
     const re = new RegExp(`<h${i}[^>]*>([\\s\\S]*?)<\\/h${i}>`, 'gi');
-    out = out.replace(
+    out = out.replaceAll(
       re,
       (_, text: string) => `\n\n${'#'.repeat(i)} ${stripTags(text).trim()}\n\n`,
     );
   }
 
   // Indented paragraphs (with data-indent attribute)
-  out = out.replace(
+  out = out.replaceAll(
     /<p[^>]*data-indent=["'](\d+)["'][^>]*>([\s\S]*?)<\/p>/gi,
     (_, indent: string, text: string) => {
-      const tabs = '\t'.repeat(parseInt(indent, 10));
+      const tabs = '\t'.repeat(Number.parseInt(indent, 10));
       return `\n\n${tabs}${stripTags(text).trim()}\n\n`;
     },
   );
 
   // Regular paragraphs
-  out = out.replace(
+  out = out.replaceAll(
     /<p[^>]*>([\s\S]*?)<\/p>/gi,
     (_, text: string) => `\n\n${stripTags(text).trim()}\n\n`,
   );
 
   // Line breaks
-  out = out.replace(/<br\s*\/?>(\s*)/gi, `\n`);
+  out = out.replaceAll(/<br\s*\/?>(\s*)/gi, '\n');
 
   // Task lists with Logseq-style states (WITH dash prefix for consistency)
-  out = out.replace(
+  out = out.replaceAll(
     /<li[^>]*data-type=["']taskItem["'][^>]*data-state=["']([^"']+)["'][^>]*>([\s\S]*?)<\/li>/gi,
     (_, state: string, content: string) => {
       const stateLabel = state.toUpperCase();
       // Remove the button element and extract text from div/p
       const textContent = content
-        .replace(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
-        .replace(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1')
-        .replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1')
+        .replaceAll(/<button[^>]*>[\s\S]*?<\/button>/gi, '')
+        .replaceAll(/<div[^>]*>([\s\S]*?)<\/div>/gi, '$1')
+        .replaceAll(/<p[^>]*>([\s\S]*?)<\/p>/gi, '$1')
         .trim();
       // Save as list-style TODO item with dash prefix for consistency
       return `- ${stateLabel} ${stripTags(textContent)}\n`;
@@ -586,55 +581,57 @@ function simpleHtmlToMarkdown(input: string): string {
   );
 
   // Unordered lists
-  out = out.replace(/<ul[^>]*>([\s\s\S]*?)<\/ul>/gi, (_, inner: string) => {
+  out = out.replaceAll(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, (_, inner: string) => {
     const items = inner
-      .replace(/\n/g, ' ')
+      .replaceAll('\n', ' ')
       .split(/<li[^>]*>/i)
-      .map((s) => s.replace(/<\/li>/gi, '').trim())
+      .map((s: string) => s.replaceAll('</li>', '').trim())
       .filter(Boolean);
-    return `\n\n${items.map((it) => `- ${stripTags(it)}`).join('\n')}\n\n`;
+    const formatted = items.map((it: string) => '- ' + stripTags(it));
+    return '\n\n' + formatted.join('\n') + '\n\n';
   });
 
   // Ordered lists
-  out = out.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, inner: string) => {
+  out = out.replaceAll(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, (_, inner: string) => {
     const items = inner
-      .replace(/\n/g, ' ')
+      .replaceAll('\n', ' ')
       .split(/<li[^>]*>/i)
-      .map((s) => s.replace(/<\/li>/gi, '').trim())
+      .map((s: string) => s.replaceAll('</li>', '').trim())
       .filter(Boolean);
-    return `\n\n${items.map((it, idx) => `${idx + 1}. ${stripTags(it)}`).join('\n')}\n\n`;
+    const formatted = items.map((it: string, idx: number) => (idx + 1) + '. ' + stripTags(it));
+    return '\n\n' + formatted.join('\n') + '\n\n';
   });
 
   // Images
-  out = out.replace(
+  out = out.replaceAll(
     /<img\s+[^>]*src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>(?:<\/img>)?/gi,
     (_, src: string, alt: string) => `![${alt}](${src})`,
   );
-  out = out.replace(
+  out = out.replaceAll(
     /<img\s+[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*\/?>(?:<\/img>)?/gi,
     (_, alt: string, src: string) => `![${alt}](${src})`,
   );
 
   // Links
-  out = out.replace(
+  out = out.replaceAll(
     /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
     (_, href: string, text: string) => `[${stripTags(text)}](${href})`,
   );
 
   // Inline code
-  out = out.replace(
+  out = out.replaceAll(
     /<code[^>]*>([\s\S]*?)<\/code>/gi,
     (_, code: string) => `\`${stripTags(decodeHtmlEntities(code))}\``,
   );
 
   // Emphasis and strong
-  out = out.replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, (_, t: string) => `**${stripTags(t)}**`);
-  out = out.replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, (_, t: string) => `**${stripTags(t)}**`);
-  out = out.replace(/<em[^>]*>([\s\S]*?)<\/em>/gi, (_, t: string) => `*${stripTags(t)}*`);
-  out = out.replace(/<i[^>]*>([\s\S]*?)<\/i>/gi, (_, t: string) => `*${stripTags(t)}*`);
+  out = out.replaceAll(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, (_, t: string) => `**${stripTags(t)}**`);
+  out = out.replaceAll(/<b[^>]*>([\s\S]*?)<\/b>/gi, (_, t: string) => `**${stripTags(t)}**`);
+  out = out.replaceAll(/<em[^>]*>([\s\S]*?)<\/em>/gi, (_, t: string) => `*${stripTags(t)}*`);
+  out = out.replaceAll(/<i[^>]*>([\s\S]*?)<\/i>/gi, (_, t: string) => `*${stripTags(t)}*`);
 
   // Note links: <span data-type="note-link" data-title="Note Name">Note Name</span>
-  out = out.replace(
+  out = out.replaceAll(
     /<span[^>]*data-type=["']note-link["'][^>]*data-title=["']([^"']+)["'][^>]*>[^<]*<\/span>/gi,
     (_, title: string) => `[[${decodeHtmlEntities(title)}]]`,
   );
@@ -643,29 +640,29 @@ function simpleHtmlToMarkdown(input: string): string {
   out = stripTags(out);
 
   // Collapse excess blank lines
-  out = out.replace(/\n{3,}/g, '\n\n').trim();
+  out = out.replaceAll(/\n{3,}/g, '\n\n').trim();
 
   return out;
 }
 
 function stripTags(s: string): string {
-  return s.replace(/<[^>]+>/g, '');
+  return s.replaceAll(/<[^>]+>/g, '');
 }
 
 function decodeHtmlEntities(s: string): string {
   return s
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'");
 }
 
 function escapeHtml(s: string): string {
   return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }

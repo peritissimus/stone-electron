@@ -12,7 +12,7 @@ import { generateId } from '@shared/utils/id';
  * Workspace Repository
  */
 export class WorkspaceRepository {
-  private db = getDatabaseManager().getDrizzle();
+  private readonly db = getDatabaseManager().getDrizzle();
 
   /**
    * Find all workspaces

@@ -154,6 +154,8 @@ export class TagRepository {
       return new Map();
     }
 
+    const idPlaceholders = noteIds.map(id => sql`${id}`);
+    const inClause = sql.join(idPlaceholders, sql`, `);
     const result = await db
       .select({
         noteId: noteTags.noteId,
@@ -165,7 +167,7 @@ export class TagRepository {
       })
       .from(noteTags)
       .innerJoin(tags, eq(noteTags.tagId, tags.id))
-      .where(sql`${noteTags.noteId} IN (${sql.join(noteIds.map(id => sql`${id}`), sql`, `)})`)
+      .where(sql`${noteTags.noteId} IN (${inClause})`)
       .orderBy(asc(tags.name));
 
     // Group tags by noteId

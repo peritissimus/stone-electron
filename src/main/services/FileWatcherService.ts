@@ -4,7 +4,7 @@
  */
 
 import chokidar, { FSWatcher } from 'chokidar';
-import path from 'path';
+import path from 'node:path';
 import { BrowserWindow } from 'electron';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
@@ -19,8 +19,8 @@ type WatchEntry = {
 };
 
 export class FileWatcherService {
-  private watchers = new Map<string, WatchEntry>();
-  private debounceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly watchers = new Map<string, WatchEntry>();
+  private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
   private started = false;
 
   async start(): Promise<void> {
@@ -55,7 +55,7 @@ export class FileWatcherService {
     const folder = workspace.folderPath;
     const watcher = chokidar.watch(folder, {
       ignoreInitial: true,
-      ignored: /(^|[\/\\])\./, // dotfiles and folders
+      ignored: /(^|[/\\])\./, // dotfiles and folders
       awaitWriteFinish: { stabilityThreshold: 250, pollInterval: 100 },
       persistent: true,
       depth: undefined,
@@ -157,6 +157,6 @@ export class FileWatcherService {
 // Singleton
 let watcherInstance: FileWatcherService | null = null;
 export function getFileWatcherService(): FileWatcherService {
-  if (!watcherInstance) watcherInstance = new FileWatcherService();
+  watcherInstance ??= new FileWatcherService();
   return watcherInstance;
 }

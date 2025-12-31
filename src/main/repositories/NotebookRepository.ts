@@ -7,7 +7,7 @@ import { getDatabaseManager } from '../database/DatabaseManager';
 import { notebooks, notes, workspaces } from '../database/schema';
 import type { Notebook, InsertNotebook } from '@shared/types';
 import { nanoid } from 'nanoid';
-import path from 'path';
+import path from 'node:path';
 import { getFileSystemService } from '../services/FileSystemService';
 import { WorkspaceRepository } from './WorkspaceRepository';
 import { logger } from '../utils/logger';
@@ -21,8 +21,8 @@ interface NotebookWithChildren extends Notebook {
  * Notebook Repository - Using Drizzle ORM
  */
 export class NotebookRepository {
-  private workspaceRepository = new WorkspaceRepository();
-  private fileSystemService = getFileSystemService();
+  private readonly workspaceRepository = new WorkspaceRepository();
+  private readonly fileSystemService = getFileSystemService();
 
   /**
    * Create a new notebook
@@ -71,7 +71,7 @@ export class NotebookRepository {
 
     const relativeFolderPath =
       parentFolderRelative && parentFolderRelative !== '.'
-        ? path.posix.join(parentFolderRelative.replace(/\\/g, '/'), folderName)
+        ? path.posix.join(parentFolderRelative.replaceAll('\\', '/'), folderName)
         : folderName;
 
     // Ensure folder exists on disk
@@ -130,6 +130,44 @@ export class NotebookRepository {
   }
 
   /**
+   * Build WHERE conditions from filter options
+   */
+  private buildWhereConditions(where: Partial<Notebook>): ReturnType<typeof eq>[] {
+    const conditions: ReturnType<typeof eq>[] = [];
+
+    if (where.parentId !== undefined) {
+      conditions.push(
+        where.parentId === null
+          ? isNull(notebooks.parentId)
+          : eq(notebooks.parentId, where.parentId),
+      );
+    }
+    if (where.id !== undefined) conditions.push(eq(notebooks.id, where.id));
+    if (where.name !== undefined) conditions.push(eq(notebooks.name, where.name));
+
+    return conditions;
+  }
+
+  /**
+   * Get sort column from field name
+   */
+  private getSortColumn(field: keyof Notebook) {
+    const columnMap = {
+      id: notebooks.id,
+      name: notebooks.name,
+      parentId: notebooks.parentId,
+      icon: notebooks.icon,
+      color: notebooks.color,
+      position: notebooks.position,
+      createdAt: notebooks.createdAt,
+      updatedAt: notebooks.updatedAt,
+      workspaceId: notebooks.workspaceId,
+      folderPath: notebooks.folderPath,
+    };
+    return columnMap[field];
+  }
+
+  /**
    * Find all notebooks with optional filtering
    */
   async findAll(options?: {
@@ -141,53 +179,71 @@ export class NotebookRepository {
     const db = getDatabaseManager().getDrizzle();
     let query = db.select().from(notebooks);
 
-    // Add WHERE clause
     if (options?.where) {
-      const conditions = [];
-      if (options.where.parentId !== undefined) {
-        if (options.where.parentId === null) {
-          conditions.push(isNull(notebooks.parentId));
-        } else {
-          conditions.push(eq(notebooks.parentId, options.where.parentId));
-        }
-      }
-      if (options.where.id !== undefined) conditions.push(eq(notebooks.id, options.where.id));
-      if (options.where.name !== undefined) conditions.push(eq(notebooks.name, options.where.name));
-
+      const conditions = this.buildWhereConditions(options.where);
       if (conditions.length > 0) {
         query = (query as any).where(conditions.length === 1 ? conditions[0] : and(...conditions));
       }
     }
 
-    // Add ORDER BY
     if (options?.sort) {
-      const columnMap = {
-        id: notebooks.id,
-        name: notebooks.name,
-        parentId: notebooks.parentId,
-        icon: notebooks.icon,
-        color: notebooks.color,
-        position: notebooks.position,
-        createdAt: notebooks.createdAt,
-        updatedAt: notebooks.updatedAt,
-      };
-
-      const column = columnMap[options.sort.field as keyof typeof columnMap];
+      const column = this.getSortColumn(options.sort.field);
       if (column) {
         query = (query as any).orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
       }
     }
 
-    // Add LIMIT and OFFSET
-    if (options?.limit) {
-      query = (query as any).limit(options.limit);
-    }
-    if (options?.offset) {
-      query = (query as any).offset(options.offset);
-    }
+    if (options?.limit) query = query.limit(options.limit);
+    if (options?.offset) query = query.offset(options.offset);
 
     const result = await (query as any);
     return result as Notebook[];
+  }
+
+  /**
+   * Handle folder rename on disk when notebook name changes
+   * Returns the new relative folder path if renamed, undefined otherwise
+   */
+  private async handleFolderRename(
+    existing: Notebook,
+    newName: string,
+  ): Promise<string | undefined> {
+    if (!existing.workspaceId || !existing.folderPath) {
+      return undefined;
+    }
+
+    const workspace = await this.workspaceRepository.findById(existing.workspaceId);
+    if (!workspace) {
+      return undefined;
+    }
+
+    const currentFolderRelative = existing.folderPath.replaceAll('\\', '/');
+    const parentRelative = path.posix.dirname(currentFolderRelative);
+    const normalizedParent = parentRelative === '.' ? '' : parentRelative;
+
+    const parentAbsolute = normalizedParent
+      ? path.join(workspace.folderPath, normalizedParent)
+      : workspace.folderPath;
+    const currentAbsolute = path.join(workspace.folderPath, currentFolderRelative);
+
+    const newFolderName = await this.fileSystemService.generateUniqueFolderName(
+      parentAbsolute,
+      newName,
+      currentAbsolute,
+    );
+
+    const currentName = path.posix.basename(currentFolderRelative);
+    if (newFolderName === currentName) {
+      return undefined;
+    }
+
+    const newRelative = normalizedParent
+      ? path.posix.join(normalizedParent, newFolderName)
+      : newFolderName;
+    const newAbsolute = path.join(workspace.folderPath, newRelative);
+
+    await this.fileSystemService.renameFolder(currentAbsolute, newAbsolute);
+    return newRelative;
   }
 
   /**
@@ -200,47 +256,16 @@ export class NotebookRepository {
       throw new Error('Notebook not found');
     }
 
-    const updateData = {
+    const updateData: Partial<Notebook> & { updatedAt: Date } = {
       ...data,
       updatedAt: new Date(),
     };
 
     // Handle rename on disk if name changes
-    if (
-      data.name &&
-      data.name !== existing.name &&
-      existing.workspaceId &&
-      existing.folderPath
-    ) {
-      const workspace = await this.workspaceRepository.findById(existing.workspaceId);
-      if (workspace) {
-        const currentFolderRelative = existing.folderPath.replace(/\\/g, '/');
-        const parentRelative = path.posix.dirname(currentFolderRelative);
-        const normalizedParent =
-          parentRelative && parentRelative !== '.'
-            ? parentRelative
-            : '';
-        const parentAbsolute = normalizedParent
-          ? path.join(workspace.folderPath, normalizedParent)
-          : workspace.folderPath;
-        const currentAbsolute = path.join(workspace.folderPath, currentFolderRelative);
-
-        const newFolderName = await this.fileSystemService.generateUniqueFolderName(
-          parentAbsolute,
-          data.name,
-          currentAbsolute,
-        );
-
-        const currentName = path.posix.basename(currentFolderRelative);
-        if (newFolderName !== currentName) {
-          const newRelative =
-            normalizedParent && normalizedParent !== ''
-              ? path.posix.join(normalizedParent, newFolderName)
-              : newFolderName;
-          const newAbsolute = path.join(workspace.folderPath, newRelative);
-          await this.fileSystemService.renameFolder(currentAbsolute, newAbsolute);
-          updateData.folderPath = newRelative;
-        }
+    if (data.name && data.name !== existing.name) {
+      const newFolderPath = await this.handleFolderRename(existing, data.name);
+      if (newFolderPath) {
+        updateData.folderPath = newFolderPath;
       }
     }
 
@@ -430,6 +455,129 @@ export class NotebookRepository {
   }
 
   /**
+   * Helper to upsert a notebook for a folder during sync
+   */
+  private async syncUpsertNotebook(
+    relPath: string,
+    name: string,
+    parentRelPath: string | null,
+    position: number,
+    workspaceId: string,
+    existingByPath: Map<string, Notebook>,
+    existingByName: Map<string, Notebook>,
+  ): Promise<{ notebook: Notebook; created: boolean; updated: boolean }> {
+    const db = getDatabaseManager().getDrizzle();
+    const parentRelKey = parentRelPath ? parentRelPath.replaceAll('\\', '/') : '';
+    const parent = parentRelKey ? existingByPath.get(parentRelKey) : null;
+    const relKey = relPath ? relPath.replaceAll('\\', '/') : '';
+
+    let existing = existingByPath.get(relKey);
+    if (!existing) {
+      const parentKey = parent ? parent.id : 'root';
+      const nameKey = `${parentKey}::${name.toLowerCase()}`;
+      existing = existingByName.get(nameKey);
+    }
+    const now = new Date();
+
+    if (existing) {
+      const needsUpdate =
+        existing.name !== name ||
+        (existing.parentId || null) !== (parent?.id || null) ||
+        existing.folderPath !== relKey ||
+        existing.workspaceId !== workspaceId;
+
+      if (needsUpdate) {
+        await db
+          .update(notebooks)
+          .set({
+            name,
+            parentId: parent?.id || null,
+            folderPath: relKey,
+            workspaceId,
+            updatedAt: now,
+          })
+          .where(eq(notebooks.id, existing.id));
+
+        const updatedNb = {
+          ...existing,
+          name,
+          parentId: parent?.id || null,
+          folderPath: relKey,
+          workspaceId,
+          updatedAt: now,
+        } as Notebook;
+        existingByPath.set(relKey, updatedNb);
+        const nameKey = `${parent?.id || 'root'}::${name.toLowerCase()}`;
+        existingByName.set(nameKey, updatedNb);
+        return { notebook: updatedNb, created: false, updated: true };
+      }
+      return { notebook: existing, created: false, updated: false };
+    }
+
+    const nb: InsertNotebook = {
+      id: nanoid(),
+      name,
+      parentId: parent?.id || null,
+      workspaceId,
+      folderPath: relKey,
+      icon: '📁',
+      color: '#3b82f6',
+      position,
+      createdAt: now,
+      updatedAt: now,
+    } as InsertNotebook;
+    await db.insert(notebooks).values(nb);
+    const createdNb = nb as unknown as Notebook;
+    existingByPath.set(relKey, createdNb);
+    const nameKey = `${parent?.id || 'root'}::${name.toLowerCase()}`;
+    existingByName.set(nameKey, createdNb);
+    return { notebook: createdNb, created: true, updated: false };
+  }
+
+  /**
+   * Traverse folder structure recursively and sync notebooks
+   */
+  private async syncTraverseFolders(
+    nodes: { type: string; relativePath: string; name: string; children?: any[] }[],
+    parentRelPath: string | null,
+    workspaceId: string,
+    existingByPath: Map<string, Notebook>,
+    existingByName: Map<string, Notebook>,
+  ): Promise<{ created: number; updated: number }> {
+    let created = 0;
+    let updated = 0;
+    const folders = nodes.filter((n) => n.type === 'folder');
+
+    for (let i = 0; i < folders.length; i++) {
+      const node = folders[i];
+      const result = await this.syncUpsertNotebook(
+        node.relativePath,
+        node.name,
+        parentRelPath,
+        i,
+        workspaceId,
+        existingByPath,
+        existingByName,
+      );
+      if (result.created) created++;
+      if (result.updated) updated++;
+
+      if (node.children && node.children.length > 0) {
+        const childResult = await this.syncTraverseFolders(
+          node.children,
+          node.relativePath,
+          workspaceId,
+          existingByPath,
+          existingByName,
+        );
+        created += childResult.created;
+        updated += childResult.updated;
+      }
+    }
+    return { created, updated };
+  }
+
+  /**
    * Sync notebooks with workspace folder structure
    * Creates/updates notebooks to mirror folders under the workspace root.
    */
@@ -438,12 +586,10 @@ export class NotebookRepository {
   ): Promise<{ created: number; updated: number; errors: string[] }> {
     const db = getDatabaseManager().getDrizzle();
     const errors: string[] = [];
-    let created = 0;
-    let updated = 0;
 
     // Get workspace info
     const ws = await db.select().from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1);
-    const workspace = ws[0] as any;
+    const workspace = ws[0] as { folderPath: string } | undefined;
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
@@ -453,117 +599,42 @@ export class NotebookRepository {
       .select()
       .from(notebooks)
       .where(eq(notebooks.workspaceId, workspaceId));
+
     const existingByPath = new Map<string, Notebook>();
     const existingByName = new Map<string, Notebook>();
 
-    (existingList as Notebook[]).forEach((notebook) => {
+    for (const notebook of existingList as Notebook[]) {
       const relKey =
-        notebook.folderPath && notebook.folderPath.trim().length > 0
-          ? notebook.folderPath.replace(/\\/g, '/')
+        notebook.folderPath?.trim()
+          ? notebook.folderPath.replaceAll('\\', '/')
           : '';
       existingByPath.set(relKey, notebook);
 
       const parentKey = notebook.parentId || 'root';
       const nameKey = `${parentKey}::${(notebook.name || '').toLowerCase()}`;
       existingByName.set(nameKey, notebook);
-    });
+    }
 
-    // Helper to upsert a notebook for a folder
-    const ensureNotebook = async (
-      relPath: string,
-      name: string,
-      parentRelPath: string | null,
-      position: number,
-    ): Promise<Notebook> => {
-      const parentRelKey = parentRelPath ? parentRelPath.replace(/\\/g, '/') : '';
-      const parent = parentRelKey ? existingByPath.get(parentRelKey) : null;
-      const relKey = relPath ? relPath.replace(/\\/g, '/') : '';
-
-      let existing = existingByPath.get(relKey);
-      if (!existing) {
-        const parentKey = parent ? parent.id : 'root';
-        const nameKey = `${parentKey}::${name.toLowerCase()}`;
-        existing = existingByName.get(nameKey);
-      }
-      const now = new Date();
-
-      if (existing) {
-        const needsUpdate =
-          existing.name !== name ||
-          (existing.parentId || null) !== (parent ? parent.id : null) ||
-          existing.folderPath !== relKey ||
-          existing.workspaceId !== workspaceId;
-        if (needsUpdate) {
-          await db
-            .update(notebooks)
-            .set({
-              name,
-              parentId: parent ? parent.id : null,
-              folderPath: relKey,
-              workspaceId,
-              updatedAt: now,
-            })
-            .where(eq(notebooks.id, existing.id));
-          const updatedNb = {
-            ...existing,
-            name,
-            parentId: parent ? parent.id : null,
-            folderPath: relKey,
-            workspaceId,
-            updatedAt: now,
-          } as Notebook;
-          existingByPath.set(relKey, updatedNb);
-          const nameKey = `${parent ? parent.id : 'root'}::${name.toLowerCase()}`;
-          existingByName.set(nameKey, updatedNb);
-          updated++;
-          return updatedNb;
-        }
-        return existing;
-      } else {
-        const nb: InsertNotebook = {
-          id: nanoid(),
-          name,
-          parentId: parent ? parent.id : null,
-          workspaceId,
-          folderPath: relKey,
-          icon: '📁',
-          color: '#3b82f6',
-          position,
-          createdAt: now,
-          updatedAt: now,
-        } as InsertNotebook;
-        await db.insert(notebooks).values(nb);
-        const createdNb = nb as unknown as Notebook;
-        existingByPath.set(relKey, createdNb);
-        const nameKey = `${parent ? parent.id : 'root'}::${name.toLowerCase()}`;
-        existingByName.set(nameKey, createdNb);
-        created++;
-        return createdNb;
-      }
-    };
-
-    // Traverse folder structure recursively
-    const traverse = async (nodes: any[], parentRelPath: string | null) => {
-      // Only folders
-      const folders = nodes.filter((n) => n.type === 'folder');
-      for (let i = 0; i < folders.length; i++) {
-        const node = folders[i];
-        const rel = node.relativePath;
-        const name = node.name;
-        const nb = await ensureNotebook(rel, name, parentRelPath, i);
-        if (node.children && node.children.length > 0) {
-          await traverse(node.children, rel);
-        }
-      }
-    };
+    let created = 0;
+    let updated = 0;
 
     try {
       const structure = await this.fileSystemService.getFolderStructure(workspace.folderPath);
       logger.info(`[NotebookRepository] Folder structure count: ${structure.length}`);
-      await traverse(structure, null);
-    } catch (e: any) {
+
+      const result = await this.syncTraverseFolders(
+        structure,
+        null,
+        workspaceId,
+        existingByPath,
+        existingByName,
+      );
+      created = result.created;
+      updated = result.updated;
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
       logger.error('[NotebookRepository] Folder sync error', e);
-      errors.push(String(e?.message || e));
+      errors.push(errorMessage);
     }
 
     logger.info(
