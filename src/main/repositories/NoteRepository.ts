@@ -1042,8 +1042,8 @@ export class NoteRepository {
     return folderPath
       .replaceAll('\\', '/')
       .replace(/^\.\//, '')
-      .replace(/^\/+/, '')
-      .replace(/\/+$/, '');
+      .replace(/^\/{1,100}/, '')
+      .replace(/\/{1,100}$/, '');
   }
 
   /**
@@ -1180,8 +1180,9 @@ export class NoteRepository {
    */
   private resolveImagePaths(html: string, workspacePath: string): string {
     // Match img src attributes with relative .assets paths
+    // Bounded quantifiers prevent ReDoS
     return html.replaceAll(
-      /(<img[^>]*\s+src=["'])\.assets\/([^"']+)(["'][^>]*>)/gi,
+      /(<img[^>]{0,500}\s+src=["'])\.assets\/([^"']{1,500})(["'][^>]{0,500}>)/gi,
       (_, prefix, imagePath, suffix) => {
         const absolutePath = path.join(workspacePath, '.assets', imagePath);
         return `${prefix}file://${absolutePath}${suffix}`;

@@ -579,4 +579,186 @@ describe('MarkdownService', () => {
       expect(result).toBeDefined();
     });
   });
+
+  describe('htmlToMarkdown Turndown rules', () => {
+    it('should convert task list with data-type="taskList"', () => {
+      const html = `<ul data-type="taskList">
+        <li data-type="taskItem" data-state="doing" data-checked="false">
+          <p>In progress task</p>
+        </li>
+      </ul>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('DOING');
+      expect(markdown).toContain('In progress task');
+    });
+
+    it('should convert indented paragraph with data-indent', () => {
+      const html = '<p data-indent="2" style="margin-left: 48px">Double indented paragraph</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Double indented paragraph');
+    });
+
+    it('should convert indented h3 with data-indent', () => {
+      const html = '<h3 data-indent="1" style="margin-left: 24px">Indented H3</h3>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Indented H3');
+    });
+
+    it('should handle task item with button element', () => {
+      const html = `<ul data-type="taskList">
+        <li data-type="taskItem" data-state="waiting" data-checked="false">
+          <button></button>
+          <div>Task with button</div>
+        </li>
+      </ul>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('WAITING');
+      expect(markdown).toContain('Task with button');
+    });
+
+    it('should convert note-link span', () => {
+      const html = '<p>See <span data-type="note-link" data-title="Related Note">Related Note</span></p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('[[Related Note]]');
+    });
+
+    it('should handle code block with data-language on wrapper', () => {
+      const html = `<div data-language="typescript">
+        <pre><code>const x: number = 1;</code></pre>
+      </div>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('const x');
+    });
+
+    it('should handle code block with nested data-language wrapper', () => {
+      const html = `<div class="code-wrapper">
+        <div data-language="python">
+          <pre><code>print("hello")</code></pre>
+        </div>
+      </div>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('print');
+    });
+
+    it('should handle highlight mark element', () => {
+      const html = '<p>This is <mark>highlighted</mark> text</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('highlighted');
+    });
+
+    it('should handle highlight span with bg-accent class', () => {
+      const html = '<p>This is <span class="bg-accent">highlighted</span> text</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('highlighted');
+    });
+  });
+
+  describe('simpleHtmlToMarkdown edge cases', () => {
+    it('should handle deeply nested structures', () => {
+      const html = `
+        <div>
+          <div>
+            <p>Nested paragraph</p>
+          </div>
+        </div>
+      `;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Nested paragraph');
+    });
+
+    it('should handle task items with different states', () => {
+      const html = `<ul data-type="taskList">
+        <li data-type="taskItem" data-state="canceled" data-checked="true">
+          <div>Canceled task</div>
+        </li>
+        <li data-type="taskItem" data-state="hold" data-checked="false">
+          <div>On hold task</div>
+        </li>
+        <li data-type="taskItem" data-state="idea" data-checked="false">
+          <div>Just an idea</div>
+        </li>
+      </ul>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('CANCELED');
+      expect(markdown).toContain('HOLD');
+      expect(markdown).toContain('IDEA');
+    });
+
+    it('should handle blockquote elements', () => {
+      const html = '<blockquote><p>A quoted text</p></blockquote>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('A quoted text');
+    });
+
+    it('should handle horizontal rules', () => {
+      const html = '<p>Before</p><hr><p>After</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Before');
+      expect(markdown).toContain('After');
+    });
+
+    it('should handle nested lists', () => {
+      const html = `<ul>
+        <li>Item 1
+          <ul>
+            <li>Nested item</li>
+          </ul>
+        </li>
+      </ul>`;
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Item 1');
+      expect(markdown).toContain('Nested item');
+    });
+
+    it('should preserve line breaks', () => {
+      const html = '<p>Line 1<br>Line 2<br>Line 3</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('Line 1');
+      expect(markdown).toContain('Line 2');
+      expect(markdown).toContain('Line 3');
+    });
+  });
+
+  describe('preprocessLogseqTasks edge cases', () => {
+    it('should handle case-insensitive task states', async () => {
+      const markdown = '- todo lowercase task';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-state="todo"');
+    });
+
+    it('should close task list at end of document', async () => {
+      const markdown = '- TODO Task 1\n- TODO Task 2';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('</ul>');
+    });
+
+    it('should handle mixed content with tasks', async () => {
+      const markdown = '# Heading\n\n- TODO Task\n\nRegular paragraph';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-type="taskItem"');
+      expect(html).toContain('Regular paragraph');
+    });
+  });
+
+  describe('preprocessIndentedBlocks edge cases', () => {
+    it('should handle multiple indentation levels', async () => {
+      const markdown = '\t\t\t### Triple indented heading';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-indent="3"');
+    });
+
+    it('should handle indented regular text as paragraph', async () => {
+      const markdown = '\t\tJust indented text';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-indent="2"');
+    });
+
+    it('should handle h4, h5, h6 headings with indentation', async () => {
+      const markdown = '\t#### H4\n\t##### H5\n\t###### H6';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('<h4');
+      expect(html).toContain('<h5');
+      expect(html).toContain('<h6');
+    });
+  });
 });

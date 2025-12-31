@@ -160,7 +160,7 @@ export class MarkdownService {
 
     // Convert [[note name]] to custom HTML spans
     // The note ID will be resolved in the frontend
-    result = result.replaceAll(/\[\[([^\]]+)\]\]/g, (_: string, noteName: string) => {
+    result = result.replaceAll(/\[\[([^\]]{1,500})\]\]/g, (_: string, noteName: string) => {
       return `<span data-type="note-link" data-title="${escapeHtml(noteName)}">${escapeHtml(noteName)}</span>`;
     });
 
@@ -178,14 +178,14 @@ export class MarkdownService {
     const result: string[] = [];
 
     for (const line of lines) {
-      // Count leading tabs
-      const tabMatch = /^(\t+)(.*)$/.exec(line);
+      // Count leading tabs (bounded quantifiers prevent ReDoS)
+      const tabMatch = /^(\t{1,20})(.{0,10000})$/.exec(line);
       if (tabMatch) {
         const indent = tabMatch[1].length;
         const content = tabMatch[2];
 
-        // Check if it's a heading
-        const headingMatch = /^(#{1,6})\s+(.+)$/.exec(content);
+        // Check if it's a heading (bounded quantifiers prevent ReDoS)
+        const headingMatch = /^(#{1,6})\s{1,10}(.{1,500})$/.exec(content);
         if (headingMatch) {
           const level = headingMatch[1].length;
           const text = headingMatch[2];
@@ -490,6 +490,13 @@ function simpleHtmlToMarkdown(input: string): string {
   // Normalize whitespace around block tags
   out = out.replaceAll('\r\n', '\n');
 
+  // Note links: <span data-type="note-link" data-title="Note Name">Note Name</span>
+  // Process early before stripTags is called on paragraph content
+  out = out.replaceAll(
+    /<span[^>]*data-type=["']note-link["'][^>]*data-title=["']([^"']+)["'][^>]*>[^<]*<\/span>/gi,
+    (_, title: string) => `[[${decodeHtmlEntities(title)}]]`,
+  );
+
   // Code blocks: <pre><code class="language-xyz">...</code></pre>
   out = out.replaceAll(
     /<pre>\s*<code([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/gi,
@@ -579,19 +586,19 @@ function simpleHtmlToMarkdown(input: string): string {
     return '\n\n' + formatted.join('\n') + '\n\n';
   });
 
-  // Images
+  // Images (bounded quantifiers prevent ReDoS)
   out = out.replaceAll(
-    /<img\s+[^>]*src=["']([^"']+)["'][^>]*alt=["']([^"']*)["'][^>]*\/?>(?:<\/img>)?/gi,
+    /<img\s{1,10}[^>]{0,500}src=["']([^"']{1,2000})["'][^>]{0,500}alt=["']([^"']{0,500})["'][^>]{0,500}\/?>(?:<\/img>)?/gi,
     (_, src: string, alt: string) => `![${alt}](${src})`,
   );
   out = out.replaceAll(
-    /<img\s+[^>]*alt=["']([^"']*)["'][^>]*src=["']([^"']+)["'][^>]*\/?>(?:<\/img>)?/gi,
+    /<img\s{1,10}[^>]{0,500}alt=["']([^"']{0,500})["'][^>]{0,500}src=["']([^"']{1,2000})["'][^>]{0,500}\/?>(?:<\/img>)?/gi,
     (_, alt: string, src: string) => `![${alt}](${src})`,
   );
 
-  // Links
+  // Links (bounded quantifiers prevent ReDoS)
   out = out.replaceAll(
-    /<a\s+[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+    /<a\s{1,10}[^>]{0,500}href=["']([^"']{1,2000})["'][^>]{0,500}>([\s\S]{0,10000}?)<\/a>/gi,
     (_, href: string, text: string) => `[${stripTags(text)}](${href})`,
   );
 
@@ -607,12 +614,6 @@ function simpleHtmlToMarkdown(input: string): string {
   out = out.replaceAll(/<em[^>]*>([\s\S]*?)<\/em>/gi, (_, t: string) => `*${stripTags(t)}*`);
   out = out.replaceAll(/<i[^>]*>([\s\S]*?)<\/i>/gi, (_, t: string) => `*${stripTags(t)}*`);
 
-  // Note links: <span data-type="note-link" data-title="Note Name">Note Name</span>
-  out = out.replaceAll(
-    /<span[^>]*data-type=["']note-link["'][^>]*data-title=["']([^"']+)["'][^>]*>[^<]*<\/span>/gi,
-    (_, title: string) => `[[${decodeHtmlEntities(title)}]]`,
-  );
-
   // Finally strip any remaining tags
   out = stripTags(out);
 
@@ -623,7 +624,7 @@ function simpleHtmlToMarkdown(input: string): string {
 }
 
 function stripTags(s: string): string {
-  return s.replaceAll(/<[^>]+>/g, '');
+  return s.replaceAll(/<[^>]{1,1000}>/g, '');
 }
 
 function decodeHtmlEntities(s: string): string {
