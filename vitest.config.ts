@@ -8,7 +8,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['src/**/*.ts'],
       exclude: [
         'src/**/*.test.ts',
@@ -23,6 +23,7 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
       '@main': path.resolve(__dirname, './src/main'),
       '@shared': path.resolve(__dirname, './src/shared'),
+      '@renderer': path.resolve(__dirname, './src/renderer'),
     },
   },
 })
