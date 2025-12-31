@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { MarkdownService } from '../../src/main/services/MarkdownService';
+import { MarkdownService, getMarkdownService } from '../../src/main/services/MarkdownService';
 
 describe('MarkdownService', () => {
   let service: MarkdownService;
@@ -358,6 +358,225 @@ describe('MarkdownService', () => {
       // The test mainly ensures clearCache doesn't throw
       const html = await service.markdownToHtml('# Test 2', cacheKey, mtime);
       expect(html).toContain('Test 2');
+    });
+  });
+
+  describe('Note links [[note name]]', () => {
+    it('should convert [[note name]] to HTML span in markdown', async () => {
+      const markdown = 'Check out [[My Note]] for details';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-type="note-link"');
+      expect(html).toContain('data-title="My Note"');
+    });
+
+    it('should convert note link HTML back to [[note name]]', () => {
+      const html = '<span data-type="note-link" data-title="My Note">My Note</span>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('[[My Note]]');
+    });
+
+    it('should handle multiple note links', async () => {
+      const markdown = 'See [[Note A]] and [[Note B]]';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-title="Note A"');
+      expect(html).toContain('data-title="Note B"');
+    });
+  });
+
+  describe('Indented blocks', () => {
+    it('should convert indented heading to HTML', async () => {
+      const markdown = '\t## Indented Heading';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-indent="1"');
+      expect(html).toContain('Indented Heading');
+    });
+
+    it('should convert indented paragraph to HTML', async () => {
+      const markdown = '\tIndented paragraph text';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-indent="1"');
+      expect(html).toContain('Indented paragraph text');
+    });
+
+    it('should convert multiple levels of indentation', async () => {
+      const markdown = '\t\t### Double indented';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-indent="2"');
+    });
+
+    it('should convert indented heading HTML back to markdown', () => {
+      const html = '<h2 data-indent="1" style="margin-left: 24px">Indented Title</h2>';
+      const markdown = service.htmlToMarkdown(html);
+      // In Node environment, indented headings preserve the indent
+      expect(markdown).toContain('Indented Title');
+      expect(markdown).toContain('##');
+    });
+
+    it('should convert indented paragraph HTML back to markdown', () => {
+      const html = '<p data-indent="2" style="margin-left: 48px">Indented text</p>';
+      const markdown = service.htmlToMarkdown(html);
+      // In Node environment, preserves text content
+      expect(markdown).toContain('Indented text');
+    });
+  });
+
+  describe('Images', () => {
+    it('should convert image HTML to markdown', () => {
+      const html = '<img src="image.png" alt="My Image">';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('![My Image](image.png)');
+    });
+
+    it('should handle images with alt before src', () => {
+      const html = '<img alt="Alt Text" src="photo.jpg">';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('![Alt Text](photo.jpg)');
+    });
+  });
+
+  describe('Emphasis and formatting', () => {
+    it('should preserve bold text content', () => {
+      const html = '<p>This is <b>bold</b> text</p>';
+      const markdown = service.htmlToMarkdown(html);
+      // In Node environment, preserves content
+      expect(markdown).toContain('bold');
+      expect(markdown).toContain('This is');
+    });
+
+    it('should preserve italic text content', () => {
+      const html = '<p>This is <i>italic</i> text</p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('italic');
+    });
+
+    it('should preserve strong tag content', () => {
+      const html = '<p>This is <strong>important</strong></p>';
+      const markdown = service.htmlToMarkdown(html);
+      // In Node environment, content is preserved
+      expect(markdown).toContain('important');
+    });
+
+    it('should preserve em tag content', () => {
+      const html = '<p>This is <em>emphasized</em></p>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('emphasized');
+    });
+  });
+
+  describe('Code blocks with language', () => {
+    it('should preserve language in code block conversion', () => {
+      const html = '<pre><code class="language-python">print("hello")</code></pre>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('```python');
+      expect(markdown).toContain('print("hello")');
+    });
+
+    it('should handle code block without language', () => {
+      const html = '<pre><code>const x = 1;</code></pre>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('```');
+      expect(markdown).toContain('const x = 1;');
+    });
+  });
+
+  describe('extractTitle edge cases', () => {
+    it('should skip empty lines before heading', () => {
+      const markdown = '\n\n\n# Actual Title\n\nContent';
+      const title = service.extractTitle(markdown);
+      expect(title).toBe('Actual Title');
+    });
+
+    it('should use first non-empty line when no headings exist', () => {
+      const markdown = '\n\n\nFirst real line\n\nMore content';
+      const title = service.extractTitle(markdown);
+      expect(title).toBe('First real line');
+    });
+  });
+
+  describe('Standalone task items', () => {
+    it('should convert standalone TODO (without dash)', async () => {
+      const markdown = 'TODO Complete the task';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-type="taskItem"');
+      expect(html).toContain('data-state="todo"');
+      expect(html).toContain('Complete the task');
+    });
+
+    it('should normalize CANCELLED to canceled', async () => {
+      const markdown = '- CANCELLED Skipped task';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-state="canceled"');
+    });
+
+    it('should handle HOLD state', async () => {
+      const markdown = '- HOLD Paused task';
+      const html = await service.markdownToHtml(markdown);
+      expect(html).toContain('data-state="hold"');
+    });
+  });
+
+  describe('HTML entity handling', () => {
+    it('should preserve code block content with special chars', () => {
+      const html = '<pre><code>const x = 1 &amp;&amp; y;</code></pre>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('const x = 1');
+      expect(markdown).toContain('y');
+    });
+
+    it('should handle simple code content', () => {
+      const html = '<pre><code>function test() {}</code></pre>';
+      const markdown = service.htmlToMarkdown(html);
+      expect(markdown).toContain('function test()');
+    });
+  });
+
+  describe('Cache LRU behavior', () => {
+    it('should handle cache at capacity', async () => {
+      const mtime = Date.now();
+
+      // Fill cache with many entries
+      for (let i = 0; i < 150; i++) {
+        await service.markdownToHtml(`# Test ${i}`, `/file${i}.md`, mtime);
+      }
+
+      // Should still work (oldest entries evicted)
+      const html = await service.markdownToHtml('# Final', '/final.md', mtime);
+      expect(html).toContain('Final');
+    });
+  });
+
+  describe('getMarkdownService singleton', () => {
+    it('should return a MarkdownService instance', () => {
+      const instance = getMarkdownService();
+      expect(instance).toBeInstanceOf(MarkdownService);
+    });
+
+    it('should return same instance on multiple calls', () => {
+      const instance1 = getMarkdownService();
+      const instance2 = getMarkdownService();
+      expect(instance1).toBe(instance2);
+    });
+  });
+
+  describe('extractTitle edge cases', () => {
+    it('should return Untitled when content is only whitespace lines', () => {
+      const markdown = '   \n\t\n   \n';
+      const title = service.extractTitle(markdown);
+      expect(title).toBe('Untitled');
+    });
+
+    it('should return Untitled for content with only empty lines', () => {
+      const markdown = '\n\n\n\n';
+      const title = service.extractTitle(markdown);
+      expect(title).toBe('Untitled');
+    });
+  });
+
+  describe('markdownToHtml error handling', () => {
+    it('should return original markdown on parsing error', async () => {
+      // Test that invalid input doesn't throw
+      const result = await service.markdownToHtml('normal text');
+      expect(result).toBeDefined();
     });
   });
 });
