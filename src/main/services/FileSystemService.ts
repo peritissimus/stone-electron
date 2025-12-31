@@ -62,7 +62,7 @@ export class FileSystemService {
       try {
         const buffer = Buffer.alloc(FAST_READ_BYTES);
         const { bytesRead } = await handle.read(buffer, 0, FAST_READ_BYTES, 0);
-        const headContent = buffer.slice(0, bytesRead).toString('utf-8');
+        const headContent = buffer.subarray(0, bytesRead).toString('utf-8');
 
         const parsed = matter(headContent);
         const title = this.markdownService.extractTitle(parsed.content);

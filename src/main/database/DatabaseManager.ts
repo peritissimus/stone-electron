@@ -37,17 +37,16 @@ import { nanoid } from 'nanoid';
 import * as schema from './schema';
 import { logger } from '../utils/logger';
 import { getFileSystemService } from '../services/FileSystemService';
-import { getMarkdownService } from '../services/MarkdownService';
 
 export class DatabaseManager {
-  private client: any | null = null;
-  private db: any | null = null;
+  private client: any = null;
+  private db: any = null;
   private readonly dataPath: string;
   private readonly dbPath: string;
 
   constructor() {
     // In packaged apps, always use userData directory, ignore DATABASE_URL
-    const dbUrl = !app.isPackaged ? process.env.DATABASE_URL : undefined;
+    const dbUrl = app.isPackaged ? undefined : process.env.DATABASE_URL;
 
     if (dbUrl) {
       this.dbPath = path.isAbsolute(dbUrl) ? dbUrl : path.join(process.cwd(), dbUrl);
@@ -276,7 +275,9 @@ export class DatabaseManager {
       const welcomeFilePath = path.join(workspaceFolderPath, 'Personal', 'Welcome to Stone.md');
       const roadmapFilePath = path.join(workspaceFolderPath, 'Work', 'Product Roadmap.md');
 
-      if (!fs.existsSync(welcomeFilePath)) {
+      if (fs.existsSync(welcomeFilePath)) {
+        logger.info('Welcome to Stone.md already exists, skipping');
+      } else {
         const welcomeMarkdown = `# Welcome to Stone\n\nThis sample note shows how rich text content is stored.\n\n- Create notebooks to organize topics.\n- Add tags to group related ideas.\n- Use the TipTap editor to capture your thoughts.`;
         await fileSystemService.writeMarkdownFile(welcomeFilePath, welcomeMarkdown, {
           tags: ['ideas'],
@@ -284,11 +285,11 @@ export class DatabaseManager {
           pinned: true,
         });
         logger.info('Created Welcome to Stone.md');
-      } else {
-        logger.info('Welcome to Stone.md already exists, skipping');
       }
 
-      if (!fs.existsSync(roadmapFilePath)) {
+      if (fs.existsSync(roadmapFilePath)) {
+        logger.info('Product Roadmap.md already exists, skipping');
+      } else {
         const roadmapMarkdown = `# Quarterly Roadmap\n\nTrack the high-level initiatives planned for this quarter.\n\n1. Ship the new editor experience.\n2. Improve sync reliability.\n3. Publish public beta announcement.`;
         await fileSystemService.writeMarkdownFile(roadmapFilePath, roadmapMarkdown, {
           tags: ['planning'],
@@ -296,8 +297,6 @@ export class DatabaseManager {
           pinned: false,
         });
         logger.info('Created Product Roadmap.md');
-      } else {
-        logger.info('Product Roadmap.md already exists, skipping');
       }
 
       logger.info('Seed markdown files processed successfully');

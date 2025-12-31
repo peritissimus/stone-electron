@@ -78,8 +78,8 @@ export function registerWorkspaceHandlers() {
         try {
           const folderPath = path.join(request.folderPath, folderName);
           await fsService.createFolder(folderPath);
-        } catch (error) {
-          // Folder may already exist - that's fine
+        } catch {
+          // Folder may already exist - that's fine, ignore
         }
       }
 
@@ -87,14 +87,14 @@ export function registerWorkspaceHandlers() {
       try {
         await repos.notebook.syncWithWorkspaceFolders(workspace.id);
         await repos.note.syncWithFileSystem(workspace.id);
-      } catch (error) {
-        logger.error('[Workspace] Error syncing after creating default folders:', error);
+      } catch (syncError) {
+        logger.error('[Workspace] Error syncing after creating default folders:', syncError);
       }
 
       // Start watching the new workspace
       try {
         await getFileWatcherService().watchWorkspace(workspace);
-      } catch (e) {
+      } catch {
         // Non-fatal: watcher failure should not block workspace creation
       }
 
@@ -216,7 +216,7 @@ export function registerWorkspaceHandlers() {
       const parentRelative = getParentRelativePath(targetRelative);
       const parentAbsolute = resolveInsideRoot(
         workspace.folderPath,
-        parentRelative ? parentRelative : '.',
+        parentRelative || '.',
       );
 
       const desiredName = request.name && request.name.trim().length > 0 ? request.name : 'Folder';
@@ -346,7 +346,9 @@ export function registerWorkspaceHandlers() {
       // Stop watching removed workspace
       try {
         await getFileWatcherService().unwatchWorkspace(request.id);
-      } catch (e) {}
+      } catch {
+        // Non-fatal: unwatch failure should not block workspace deletion
+      }
 
       // Broadcast event
       BrowserWindow.getAllWindows().forEach((win) => {

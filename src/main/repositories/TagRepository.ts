@@ -2,7 +2,7 @@
  * TagRepository - Handles tag operations and note-tag associations
  */
 
-import { eq, sql, desc, asc, and } from 'drizzle-orm';
+import { eq, sql, asc, and } from 'drizzle-orm';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import { tags, notes, noteTags } from '../database/schema';
 import type { Tag, TagWithCount, InsertTag } from '@shared/types';
