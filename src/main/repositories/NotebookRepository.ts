@@ -182,22 +182,22 @@ export class NotebookRepository {
     if (options?.where) {
       const conditions = this.buildWhereConditions(options.where);
       if (conditions.length > 0) {
-        query = (query as any).where(conditions.length === 1 ? conditions[0] : and(...conditions));
+        query = query.where(conditions.length === 1 ? conditions[0] : and(...conditions));
       }
     }
 
     if (options?.sort) {
       const column = this.getSortColumn(options.sort.field);
       if (column) {
-        query = (query as any).orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
+        query = query.orderBy(options.sort.order === 'DESC' ? desc(column) : asc(column));
       }
     }
 
     if (options?.limit) query = query.limit(options.limit);
     if (options?.offset) query = query.offset(options.offset);
 
-    const result = await (query as any);
-    return result as Notebook[];
+    const result = await query;
+    return result;
   }
 
   /**
