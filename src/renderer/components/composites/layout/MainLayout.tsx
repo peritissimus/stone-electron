@@ -24,6 +24,7 @@ import { logger } from '@renderer/utils/logger';
 // Lazy load components not needed on initial render
 const SearchPanel = lazy(() => import('@renderer/components/features/search/SearchPanel').then(m => ({ default: m.SearchPanel })));
 const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
+const CommandCenter = lazy(() => import('@renderer/components/features/CommandCenter/CommandCenter').then(m => ({ default: m.CommandCenter })));
 const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
 
 // Minimal loading skeletons for fast LCP
@@ -217,9 +218,14 @@ export function MainLayout() {
           </MainContentArea>
         }
         overlayContent={
-          <Suspense fallback={null}>
-            <SettingsModal />
-          </Suspense>
+          <>
+            <Suspense fallback={null}>
+              <SettingsModal />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CommandCenter />
+            </Suspense>
+          </>
         }
       />
 

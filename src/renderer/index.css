@@ -577,8 +577,9 @@ textarea:focus {
   content: attr(data-placeholder) !important;
   color: hsl(var(--muted-foreground));
   opacity: 0.6;
-  float: left;
-  height: 0;
+  position: absolute;
+  left: 16px;  /* Match the paragraph's left padding */
+  top: 3px;    /* Match the paragraph's top padding */
   width: auto !important;
   border-radius: 0 !important;
   background-color: transparent !important;

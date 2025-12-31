@@ -97,51 +97,70 @@ preloadCommonLanguages();
 // Note: 'mermaid' language is handled by CodeBlockWithMermaid extension
 // which auto-renders diagrams when language is set to 'mermaid'
 
-// Fetch notes for NoteLink autocomplete
+// Cache for notes autocomplete (avoids fetching ALL notes on every keystroke)
+let notesCache: { notes: Note[]; timestamp: number } | null = null;
+const NOTES_CACHE_TTL_MS = 30000; // 30 seconds
+
+// Fetch notes for NoteLink autocomplete (with caching)
 async function fetchNotesForAutocomplete(query: string) {
   try {
-    const response = await window.electron.invoke<{ notes: Note[] }>(
-      NOTE_CHANNELS.GET_ALL,
-      { isDeleted: false },
-    );
+    const now = Date.now();
 
-    if (response.success && response.data) {
-      const notes = response.data.notes || [];
-      const lowerQuery = query.toLowerCase();
+    // Use cache if valid
+    if (!notesCache || (now - notesCache.timestamp) > NOTES_CACHE_TTL_MS) {
+      const response = await window.electron.invoke<{ notes: Note[] }>(
+        NOTE_CHANNELS.GET_ALL,
+        { isDeleted: false },
+      );
 
-      // Filter notes by query
-      const filtered = query
-        ? notes.filter((note) =>
-            note.title?.toLowerCase().includes(lowerQuery)
-          )
-        : notes;
-
-      // Sort by relevance (title starts with query first, then contains)
-      const sorted = filtered.sort((a, b) => {
-        const aTitle = (a.title || '').toLowerCase();
-        const bTitle = (b.title || '').toLowerCase();
-        const aStarts = aTitle.startsWith(lowerQuery);
-        const bStarts = bTitle.startsWith(lowerQuery);
-
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        return aTitle.localeCompare(bTitle);
-      });
-
-      // Limit results
-      return sorted.slice(0, 10).map((note) => ({
-        id: note.id,
-        title: note.title || 'Untitled',
-        filePath: note.filePath,
-        note,
-      }));
+      if (response.success && response.data) {
+        notesCache = {
+          notes: response.data.notes || [],
+          timestamp: now,
+        };
+      } else {
+        return [];
+      }
     }
 
-    return [];
+    const notes = notesCache.notes;
+    const lowerQuery = query.toLowerCase();
+
+    // Filter notes by query
+    const filtered = query
+      ? notes.filter((note) =>
+          note.title?.toLowerCase().includes(lowerQuery)
+        )
+      : notes;
+
+    // Sort by relevance (title starts with query first, then contains)
+    const sorted = filtered.sort((a, b) => {
+      const aTitle = (a.title || '').toLowerCase();
+      const bTitle = (b.title || '').toLowerCase();
+      const aStarts = aTitle.startsWith(lowerQuery);
+      const bStarts = bTitle.startsWith(lowerQuery);
+
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return aTitle.localeCompare(bTitle);
+    });
+
+    // Limit results
+    return sorted.slice(0, 10).map((note) => ({
+      id: note.id,
+      title: note.title || 'Untitled',
+      filePath: note.filePath,
+      note,
+    }));
   } catch (error) {
     logger.error('Failed to fetch notes for autocomplete:', error);
     return [];
   }
+}
+
+// Export function to invalidate cache when notes change
+export function invalidateNotesAutocompleteCache() {
+  notesCache = null;
 }
 
 export function useTipTapEditor() {

@@ -52,6 +52,7 @@ interface UIState {
   settingsOpen: boolean
   exportModalOpen: boolean
   importModalOpen: boolean
+  commandCenterOpen: boolean
 
   // Theme
   theme: 'light' | 'dark' | 'system'
@@ -81,6 +82,9 @@ interface UIState {
   closeExportModal: () => void
   openImportModal: () => void
   closeImportModal: () => void
+  openCommandCenter: () => void
+  closeCommandCenter: () => void
+  toggleCommandCenter: () => void
   setTheme: (theme: 'light' | 'dark' | 'system') => void
   setAccentColor: (color: AccentColor) => void
   setFontSettings: (settings: Partial<FontSettings>) => void
@@ -117,6 +121,7 @@ export const useUIStore = create<UIState>()(
       settingsOpen: false,
       exportModalOpen: false,
       importModalOpen: false,
+      commandCenterOpen: false,
 
       // Theme
       theme: 'system',
@@ -165,6 +170,12 @@ export const useUIStore = create<UIState>()(
       openImportModal: () => set({ importModalOpen: true }),
 
       closeImportModal: () => set({ importModalOpen: false }),
+
+      openCommandCenter: () => set({ commandCenterOpen: true }),
+
+      closeCommandCenter: () => set({ commandCenterOpen: false }),
+
+      toggleCommandCenter: () => set((state) => ({ commandCenterOpen: !state.commandCenterOpen })),
 
       setTheme: (theme) => set({ theme }),
 

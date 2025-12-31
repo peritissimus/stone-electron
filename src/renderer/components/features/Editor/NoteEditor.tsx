@@ -65,6 +65,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const [isDirty, setIsDirty] = useState(false);
   const lastSavedJsonRef = useRef<any | null>(null);
   const creatingNoteRef = useRef(false);
+  const titleSaveTimeoutRef = useRef<number | null>(null);
 
   const { title, content, isLoading, handleTitleChange } = useNoteContent({
     activeNote,
@@ -255,9 +256,14 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     async (newTitle: string) => {
       await handleTitleChange(newTitle, async (title: string) => {
         if (!activeNoteId) return;
+        // Clear any pending title save
+        if (titleSaveTimeoutRef.current) {
+          clearTimeout(titleSaveTimeoutRef.current);
+        }
         // Immediate title save (shorter debounce)
         // Use silent: false so store updates reflect any failures
-        setTimeout(async () => {
+        titleSaveTimeoutRef.current = window.setTimeout(async () => {
+          titleSaveTimeoutRef.current = null;
           try {
             await updateNote(activeNoteId, { title }, false);
           } catch (error) {
@@ -268,6 +274,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     },
     [handleTitleChange, activeNoteId, updateNote],
   );
+
+  // Cleanup title save timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (titleSaveTimeoutRef.current) {
+        clearTimeout(titleSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Handle note link clicks to navigate to linked notes
   useEffect(() => {
