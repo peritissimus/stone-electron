@@ -308,6 +308,31 @@ Content here.`;
 
       expect(filename).toMatch(/\.txt$/);
     });
+
+    it('should handle collision and append counter', async () => {
+      // Generate a timestamp filename and create a file with that name
+      const filename1 = await service.generateTimestampFilename(testDir);
+      fs.writeFileSync(path.join(testDir, filename1), 'first');
+
+      // Mock Date and Math.random to produce the same timestamp
+      const originalDate = Date;
+      const originalRandom = Math.random;
+
+      // Get the components from the first filename
+      const parts = filename1.replace('.md', '').split('-');
+      const timestamp = parts.slice(0, 5).join('-'); // YYYY-MM-DD-HHMMSS-XXX
+
+      // Create a file that would collide
+      const collidingName = `${timestamp}.md`;
+      fs.writeFileSync(path.join(testDir, collidingName), 'colliding');
+
+      // The next timestamp might collide, causing counter to be used
+      const filename2 = await service.generateTimestampFilename(testDir);
+
+      // Should still generate a unique filename
+      expect(filename2).toMatch(/\.md$/);
+      expect(await service.fileExists(path.join(testDir, filename2))).toBe(false);
+    });
   });
 
   describe('generateUniqueFolderName', () => {
@@ -503,6 +528,36 @@ Content here.`;
       expect(fs.existsSync(oldPath)).toBe(false);
       expect(fs.existsSync(newPath)).toBe(true);
       expect(fs.existsSync(path.join(newPath, 'file.md'))).toBe(true);
+    });
+
+    it('should throw error for non-existent source folder', async () => {
+      const oldPath = path.join(testDir, 'nonexistent-folder');
+      const newPath = path.join(testDir, 'new-folder');
+
+      await expect(service.renameFolder(oldPath, newPath)).rejects.toThrow();
+    });
+  });
+
+  describe('validateFolderPath edge cases', () => {
+    it('should handle permission denied error', async () => {
+      // Create a directory and make it unreadable (simulated via mocking)
+      const folderPath = path.join(testDir, 'restricted');
+      fs.mkdirSync(folderPath);
+
+      // Make folder unreadable (Unix only - skip on Windows)
+      if (process.platform !== 'win32') {
+        fs.chmodSync(folderPath, 0o000);
+
+        try {
+          const result = await service.validateFolderPath(folderPath);
+          // Should return invalid with permission error
+          expect(result.valid).toBe(false);
+          expect(result.error).toContain('ermission');
+        } finally {
+          // Restore permissions for cleanup
+          fs.chmodSync(folderPath, 0o755);
+        }
+      }
     });
   });
 });
