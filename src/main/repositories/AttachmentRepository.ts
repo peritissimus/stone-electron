@@ -2,7 +2,7 @@
  * AttachmentRepository - Handles file attachment metadata
  */
 
-import { eq, and, sql, desc } from 'drizzle-orm';
+import { eq, sql, desc } from 'drizzle-orm';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import { attachments } from '../database/schema';
 import type { Attachment, InsertAttachment } from '@shared/types';

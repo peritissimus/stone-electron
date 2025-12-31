@@ -54,7 +54,7 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            relevance: 1.0, // FTS5 ranking could be added here
+            relevance: 1, // FTS5 ranking could be added here
             title_highlight: note.title,
           })),
           total: results.length,
@@ -112,7 +112,7 @@ export function registerSearchHandlers() {
         return {
           results: results.map((note) => ({
             ...note,
-            score: 1.0,
+            score: 1,
             search_type: 'fts' as const,
           })),
           total: results.length,

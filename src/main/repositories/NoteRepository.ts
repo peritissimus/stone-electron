@@ -2,16 +2,13 @@
  * NoteRepository - Handles all note-related database operations
  */
 
-import { eq, and, sql, desc, asc, or, isNull } from 'drizzle-orm';
+import { eq, and, sql, desc, asc, isNull } from 'drizzle-orm';
 import { BrowserWindow } from 'electron';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import {
   notes,
   noteTags,
-  tags,
   noteLinks,
-  noteVersions,
-  attachments,
   notebooks,
 } from '../database/schema';
 import type { Note } from '@shared/types';
@@ -929,7 +926,8 @@ export class NoteRepository {
   async updateLinksFromContent(sourceNoteId: string, markdownContent: string): Promise<void> {
     try {
       // Extract all [[note name]] patterns from the content
-      const linkPattern = /\[\[([^\]]+)\]\]/g;
+      // Limit capture to 500 chars to prevent excessive matching on malformed input
+      const linkPattern = /\[\[([^\]]{1,500})\]\]/g;
       const matches = markdownContent.matchAll(linkPattern);
       const linkedTitles = new Set<string>();
 
@@ -1126,7 +1124,7 @@ export class NoteRepository {
       if (note.length > 0 && note[0].title) {
         const escapedTitle = note[0].title.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
         const titleHeading = `# ${escapedTitle}`;
-        const titleHeadingRegex = new RegExp(`^${titleHeading}\\s*\\n*`);
+        const titleHeadingRegex = new RegExp(String.raw`^${titleHeading}\s*\n*`);
         contentForEditor = contentForEditor.replace(titleHeadingRegex, '');
       }
 

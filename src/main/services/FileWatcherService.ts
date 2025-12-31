@@ -65,7 +65,7 @@ export class FileWatcherService {
       BrowserWindow.getAllWindows().forEach((win) => {
         try {
           win.webContents.send(EVENTS[event], payload);
-        } catch (e) {
+        } catch {
           // Ignore send failures if window is gone
         }
       });
@@ -145,7 +145,9 @@ export class FileWatcherService {
       BrowserWindow.getAllWindows().forEach((win) => {
         try {
           win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
-        } catch {}
+        } catch {
+          // Ignore send failures if window is gone
+        }
       });
       logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
     } catch (e) {

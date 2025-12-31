@@ -98,7 +98,7 @@ export function registerHandler<TRequest = unknown, TResponse = unknown>(
   handler: (event: IpcMainInvokeEvent, request: TRequest) => Promise<TResponse> | TResponse
 ) {
   ipcMain.handle(channel, async (event: IpcMainInvokeEvent, request: TRequest) => {
-    const start = PROFILE_THRESHOLD !== null ? performance.now() : 0
+    const start = PROFILE_THRESHOLD === null ? 0 : performance.now()
 
     try {
       const result = await handler(event, request)
