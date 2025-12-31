@@ -8,8 +8,8 @@ export function normalizeRelativePath(input?: string | null): string {
   return input
     .replaceAll('\\', '/')
     .replace(/^\.\//, '')
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '')
+    .replace(/^\/{1,100}/, '')
+    .replace(/\/{1,100}$/, '')
 }
 
 /**

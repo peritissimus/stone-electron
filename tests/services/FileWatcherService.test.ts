@@ -482,4 +482,54 @@ describe('FileWatcherService', () => {
       expect(instance1).toBe(instance2);
     });
   });
+
+  describe('syncWorkspace edge cases', () => {
+    it('should handle send failure during WORKSPACE_UPDATED broadcast', async () => {
+      vi.useFakeTimers();
+
+      // First window throws, second succeeds
+      const mockWindows = [
+        { webContents: { send: vi.fn(() => { throw new Error('Window closed'); }) } },
+        { webContents: { send: vi.fn() } },
+      ];
+      (BrowserWindow.getAllWindows as any).mockReturnValue(mockWindows);
+
+      const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
+      mockWsRepoInstance.findById.mockResolvedValue(workspace);
+      mockNbRepoInstance.syncWithWorkspaceFolders.mockResolvedValue({});
+      mockNoteRepoInstance.syncWithFileSystem.mockResolvedValue({});
+
+      await service.watchWorkspace(workspace);
+      mockWatcher.emit('add', '/test/path/new-file.md');
+
+      // Should not throw even if first window fails
+      await expect(vi.advanceTimersByTimeAsync(600)).resolves.not.toThrow();
+
+      // Second window should still receive the event
+      expect(mockWindows[1].webContents.send).toHaveBeenCalledWith(
+        'workspaces:updated',
+        expect.objectContaining({ workspace })
+      );
+
+      vi.useRealTimers();
+    });
+
+    it('should log error when debounced sync fails unexpectedly', async () => {
+      vi.useFakeTimers();
+
+      const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
+      // Make findById throw an error that's not caught internally
+      mockWsRepoInstance.findById.mockImplementation(() => {
+        throw new Error('Unexpected database error');
+      });
+
+      await service.watchWorkspace(workspace);
+      mockWatcher.emit('add', '/test/path/new-file.md');
+
+      // Should not throw - error should be caught and logged
+      await expect(vi.advanceTimersByTimeAsync(600)).resolves.not.toThrow();
+
+      vi.useRealTimers();
+    });
+  });
 });

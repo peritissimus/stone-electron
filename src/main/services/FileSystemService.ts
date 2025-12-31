@@ -374,7 +374,7 @@ export class FileSystemService {
     const seconds = String(now.getSeconds()).padStart(2, '0');
 
     // Add a random suffix to handle multiple notes created in the same second
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // NOSONAR - safe for filename uniqueness
 
     let filename = `${year}-${month}-${day}-${hours}${minutes}${seconds}-${random}${extension}`;
     let counter = 1;
