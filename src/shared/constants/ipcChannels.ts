@@ -63,6 +63,27 @@ export const TAG_CHANNELS = {
   REMOVE_FROM_NOTE: 'tags:removeFromNote',
 } as const;
 
+// Topic Operations (Semantic Classification)
+export const TOPIC_CHANNELS = {
+  GET_ALL: 'topics:getAll',
+  GET_BY_ID: 'topics:getById',
+  CREATE: 'topics:create',
+  UPDATE: 'topics:update',
+  DELETE: 'topics:delete',
+  GET_NOTES_BY_TOPIC: 'topics:getNotesByTopic',
+  GET_TOPICS_FOR_NOTE: 'topics:getTopicsForNote',
+  ASSIGN_TO_NOTE: 'topics:assignToNote',
+  REMOVE_FROM_NOTE: 'topics:removeFromNote',
+  CLASSIFY_NOTE: 'topics:classifyNote',
+  CLASSIFY_ALL: 'topics:classifyAll',
+  RECLASSIFY_ALL: 'topics:reclassifyAll',
+  SEMANTIC_SEARCH: 'topics:semanticSearch',
+  GET_SIMILAR_NOTES: 'topics:getSimilarNotes',
+  RECOMPUTE_CENTROIDS: 'topics:recomputeCentroids',
+  GET_EMBEDDING_STATUS: 'topics:getEmbeddingStatus',
+  INITIALIZE: 'topics:initialize',
+} as const;
+
 // Search Operations
 export const SEARCH_CHANNELS = {
   FULL_TEXT: 'search:fullText',
@@ -149,6 +170,13 @@ export const EVENTS = {
 
   // Settings events
   SETTINGS_CHANGED: 'settings:changed',
+
+  // Topic events
+  TOPIC_CREATED: 'topics:created',
+  TOPIC_UPDATED: 'topics:updated',
+  TOPIC_DELETED: 'topics:deleted',
+  NOTE_CLASSIFIED: 'topics:noteClassified',
+  EMBEDDING_PROGRESS: 'topics:embeddingProgress',
 } as const;
 
 // Get all channels as an array for validation
@@ -159,6 +187,7 @@ export const ALL_CHANNELS = [
   ...Object.values(NOTE_CHANNELS),
   ...Object.values(NOTEBOOK_CHANNELS),
   ...Object.values(TAG_CHANNELS),
+  ...Object.values(TOPIC_CHANNELS),
   ...Object.values(SEARCH_CHANNELS),
   ...Object.values(ATTACHMENT_CHANNELS),
   ...Object.values(DATABASE_CHANNELS),

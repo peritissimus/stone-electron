@@ -439,6 +439,35 @@ export class MarkdownService {
   }
 
   /**
+   * Convert HTML to plain text (strip all tags and decode entities)
+   * Useful for generating embeddings from note content
+   */
+  htmlToPlainText(html: string): string {
+    if (!html || html.trim() === '') {
+      return '';
+    }
+
+    // First convert to markdown to preserve structure
+    const markdown = this.htmlToMarkdown(html);
+
+    // Then strip markdown syntax to get plain text
+    return markdown
+      .replaceAll(/#{1,6}\s+/g, '') // Remove heading markers
+      .replaceAll(/\*\*([^*]+)\*\*/g, '$1') // Bold
+      .replaceAll(/\*([^*]+)\*/g, '$1') // Italic
+      .replaceAll(/`([^`]+)`/g, '$1') // Inline code
+      .replaceAll(/```[\s\S]*?```/g, '') // Code blocks
+      .replaceAll(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Links
+      .replaceAll(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // Images
+      .replaceAll(/\[\[([^\]]+)\]\]/g, '$1') // Wiki links
+      .replaceAll(/^[-*+]\s+/gm, '') // Unordered lists
+      .replaceAll(/^\d+\.\s+/gm, '') // Ordered lists
+      .replaceAll(/^>\s+/gm, '') // Blockquotes
+      .replaceAll(/\n{3,}/g, '\n\n') // Collapse blank lines
+      .trim();
+  }
+
+  /**
    * Extract title from markdown content (first heading or first line)
    */
   extractTitle(markdown: string): string {

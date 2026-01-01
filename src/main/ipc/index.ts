@@ -9,6 +9,7 @@ import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerNoteHandlers } from './handlers/noteHandlers'
 import { registerNotebookHandlers } from './handlers/notebookHandlers'
 import { registerTagHandlers } from './handlers/tagHandlers'
+import { registerTopicHandlers } from './handlers/topicHandlers'
 import { registerSearchHandlers } from './handlers/searchHandlers'
 import { registerAttachmentHandlers } from './handlers/attachmentHandlers'
 import { registerDatabaseHandlers } from './handlers/databaseHandlers'
@@ -29,6 +30,7 @@ export function registerAllIpcHandlers(): void {
   registerNoteHandlers()
   registerNotebookHandlers()
   registerTagHandlers()
+  registerTopicHandlers()
   registerAttachmentHandlers()
 
   // Feature handlers

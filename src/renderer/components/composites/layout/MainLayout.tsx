@@ -13,6 +13,7 @@ const NoteEditor = lazy(() => import('@renderer/components/features/Editor/NoteE
 const HomePage = lazy(() => import('@renderer/components/features/HomePage/HomePage').then(m => ({ default: m.HomePage })));
 const TasksPage = lazy(() => import('@renderer/components/features/Tasks/TasksPage').then(m => ({ default: m.TasksPage })));
 const GraphPage = lazy(() => import('@renderer/components/features/Graph/GraphPage').then(m => ({ default: m.GraphPage })));
+const TopicsPage = lazy(() => import('@renderer/components/features/Topics/TopicsPage').then(m => ({ default: m.TopicsPage })));
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -236,6 +237,10 @@ export function MainLayout() {
             ) : activePage === 'graph' ? (
               <Suspense fallback={<HomeSkeleton />}>
                 <GraphPage />
+              </Suspense>
+            ) : activePage === 'topics' ? (
+              <Suspense fallback={<HomeSkeleton />}>
+                <TopicsPage />
               </Suspense>
             ) : (
               // Only show HomePage after initial bootstrap and journal open attempt

@@ -11,6 +11,8 @@ import {
   noteLinks,
   attachments,
   noteVersions,
+  topics,
+  noteTopics,
 } from '@main/database/schema';
 
 // IDs
@@ -44,6 +46,43 @@ export type InsertNoteTag = typeof noteTags.$inferInsert;
 
 export type NoteLink = typeof noteLinks.$inferSelect;
 export type InsertNoteLink = typeof noteLinks.$inferInsert;
+
+export type Topic = typeof topics.$inferSelect;
+export type InsertTopic = typeof topics.$inferInsert;
+
+export interface TopicWithCount extends Topic {
+  noteCount: number;
+}
+
+export type NoteTopic = typeof noteTopics.$inferSelect;
+export type InsertNoteTopic = typeof noteTopics.$inferInsert;
+
+export interface NoteTopicWithDetails extends NoteTopic {
+  topicName: string;
+  topicColor: string | null;
+}
+
+// Classification result from embedding similarity
+export interface ClassificationResult {
+  topicId: string;
+  topicName: string;
+  confidence: number;
+}
+
+// Similar note result from semantic search
+export interface SimilarNote {
+  noteId: string;
+  title: string;
+  distance: number;
+}
+
+// Embedding status
+export interface EmbeddingStatus {
+  ready: boolean;
+  totalNotes: number;
+  embeddedNotes: number;
+  pendingNotes: number;
+}
 
 export type Attachment = typeof attachments.$inferSelect;
 export type InsertAttachment = typeof attachments.$inferInsert;

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index, real, blob, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // Workspaces table
 export const workspaces = sqliteTable('workspaces', {
@@ -40,6 +40,7 @@ export const notes = sqliteTable('notes', {
   isArchived: integer('is_archived', { mode: 'boolean' }).default(false),
   isDeleted: integer('is_deleted', { mode: 'boolean' }).default(false),
   deletedAt: integer('deleted_at', { mode: 'timestamp' }),
+  embedding: blob('embedding'), // F32_BLOB(384) - 384-dim float vector for semantic search
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 }, (table) => [
@@ -113,3 +114,36 @@ export const noteVersions = sqliteTable('note_versions', {
   versionNumber: integer('version_number').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
+
+// Topics table - for organizing notes by topic (predefined + auto-discovered)
+export const topics = sqliteTable('topics', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  color: text('color').default('#6366f1'),
+  isPredefined: integer('is_predefined', { mode: 'boolean' }).default(false),
+  centroid: blob('centroid'), // F32_BLOB(384) - average embedding of topic's notes
+  noteCount: integer('note_count').default(0),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+}, (table) => [
+  index('idx_topics_name').on(table.name),
+  index('idx_topics_is_predefined').on(table.isPredefined),
+]);
+
+// Note-Topic junction table (many-to-many relationship)
+export const noteTopics = sqliteTable('note_topics', {
+  noteId: text('note_id')
+    .notNull()
+    .references(() => notes.id, { onDelete: 'cascade' }),
+  topicId: text('topic_id')
+    .notNull()
+    .references(() => topics.id, { onDelete: 'cascade' }),
+  confidence: real('confidence').default(1.0), // Classification confidence score
+  isManual: integer('is_manual', { mode: 'boolean' }).default(false), // User-assigned vs auto-classified
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+}, (table) => [
+  primaryKey({ columns: [table.noteId, table.topicId] }),
+  index('idx_note_topics_note_id').on(table.noteId),
+  index('idx_note_topics_topic_id').on(table.topicId),
+]);
