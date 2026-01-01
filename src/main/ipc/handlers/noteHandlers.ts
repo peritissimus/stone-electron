@@ -520,76 +520,122 @@ export function registerNoteHandlers() {
   );
 
   // notes:getAllTodos - Get all todo items from all notes
-  // Cache JSDOM at module level to avoid repeated dynamic imports
-  let cachedJSDOM: typeof import('jsdom').JSDOM | null = null;
-
+  // Scans markdown files directly for Logseq-style task patterns
   registerHandler(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
-    // Load JSDOM once and cache it
-    if (!cachedJSDOM) {
-      const jsdom = await import('jsdom');
-      cachedJSDOM = jsdom.JSDOM;
-    }
-    const JSDOM = cachedJSDOM;
-
     const notes = await repos.note.findAll();
+    logger.info('[NoteHandlers] GET_ALL_TODOS - Scanning', notes.length, 'notes');
 
-    // Process notes in parallel with concurrency limit to avoid overwhelming the system
-    const CONCURRENCY_LIMIT = 10;
     const todos: any[] = [];
+    const taskPattern = /^(\s*)(?:[-*]\s+)?(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s+(.+)$/gim;
 
-    // Helper to process a single note
-    const processNote = async (note: typeof notes[0]) => {
+    for (const note of notes) {
       try {
-        const content = await repos.note.getContentById(note.id);
-        if (!content) return [];
+        // Get raw markdown content (not HTML) - silently skip missing files
+        const content = await repos.note.getRawContentById(note.id);
+        if (!content) continue;
 
-        const dom = new JSDOM(content);
-        const document = dom.window.document;
-        const taskItems = document.querySelectorAll('li[data-type="taskItem"]');
-        const noteTodos: any[] = [];
-
-        taskItems.forEach((taskItem, index) => {
-          const el = taskItem as HTMLElement;
-          const state = el.dataset.state || 'todo';
-          const checked = el.dataset.checked === 'true';
-
-          const contentDiv = taskItem.querySelector('div');
-          const text = contentDiv?.textContent?.trim() || '';
+        // Find all task lines in the markdown
+        let match;
+        let index = 0;
+        while ((match = taskPattern.exec(content)) !== null) {
+          const stateRaw = match[2].toLowerCase();
+          const state = stateRaw === 'cancelled' ? 'canceled' : stateRaw;
+          const text = match[3].trim();
+          const isDone = state === 'done' || state === 'canceled';
 
           if (text) {
-            noteTodos.push({
+            todos.push({
               id: `${note.id}-${index}`,
               noteId: note.id,
               noteTitle: note.title,
               notePath: note.filePath,
               text,
               state,
-              checked,
+              checked: isDone,
               createdAt: note.createdAt,
               updatedAt: note.updatedAt,
             });
+            index++;
           }
-        });
-
-        return noteTodos;
-      } catch (error) {
-        logger.warn('[NoteHandlers] Failed to extract todos from note', {
-          noteId: note.id,
-          error,
-        });
-        return [];
+        }
+      } catch {
+        // Silently skip notes with missing files (orphaned DB entries)
       }
-    };
-
-    // Process in batches with concurrency limit
-    for (let i = 0; i < notes.length; i += CONCURRENCY_LIMIT) {
-      const batch = notes.slice(i, i + CONCURRENCY_LIMIT);
-      const batchResults = await Promise.all(batch.map(processNote));
-      batchResults.forEach(noteTodos => todos.push(...noteTodos));
     }
 
+    logger.info('[NoteHandlers] GET_ALL_TODOS - Found', todos.length, 'todos');
     return todos;
   });
+
+  // notes:updateTaskState - Update a task's state in a note's markdown file
+  registerHandler(
+    NOTE_CHANNELS.UPDATE_TASK_STATE,
+    async (
+      event,
+      request: {
+        noteId: string;
+        taskIndex: number;
+        newState: string;
+      },
+    ) => {
+      const { noteId, taskIndex, newState } = request;
+      logger.info('[NoteHandlers] UPDATE_TASK_STATE', { noteId, taskIndex, newState });
+
+      // Get raw markdown content
+      const content = await repos.note.getRawContentById(noteId);
+      if (!content) {
+        throw new IpcError('NOT_FOUND', 'Note content not found');
+      }
+
+      // Find and replace the task at the specified index
+      const taskPattern =
+        /^(\s*)([-*]\s+)?(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s+(.+)$/gim;
+      let currentIndex = 0;
+      let found = false;
+
+      const newContent = content.replace(
+        taskPattern,
+        (match, indent, listMarker, _state, text) => {
+          if (currentIndex === taskIndex) {
+            found = true;
+            const prefix = listMarker || '- ';
+            currentIndex++;
+            return `${indent}${prefix}${newState.toUpperCase()} ${text}`;
+          }
+          currentIndex++;
+          return match;
+        },
+      );
+
+      if (!found) {
+        throw new IpcError('NOT_FOUND', `Task at index ${taskIndex} not found`);
+      }
+
+      // Write back to file
+      const note = await repos.note.findById(noteId);
+      if (!note?.filePath || !note?.workspaceId) {
+        throw new IpcError('NOT_FOUND', 'Note file path not found');
+      }
+
+      const workspace = await repos.workspace.findById(note.workspaceId);
+      if (!workspace) {
+        throw new IpcError('NOT_FOUND', 'Workspace not found');
+      }
+
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const absolutePath = path.join(workspace.folderPath, note.filePath);
+
+      // Prepend title heading if it was stripped
+      const titleHeading = `# ${note.title}\n\n`;
+      const contentWithTitle = titleHeading + newContent;
+
+      await fs.writeFile(absolutePath, contentWithTitle, 'utf-8');
+
+      logger.info('[NoteHandlers] Task state updated successfully');
+      return { success: true };
+    },
+  );
 
   // notes:exportHtml - Export note as HTML file
   registerHandler(

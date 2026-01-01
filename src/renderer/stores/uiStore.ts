@@ -12,8 +12,9 @@ type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
 type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal'
 type EditorMode = 'rich' | 'raw'
+type ActivePage = 'home' | 'tasks' | 'graph'
 
-export type { EditorMode }
+export type { EditorMode, ActivePage }
 
 export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> = {
   blue: { name: 'Blue', hue: 211 },
@@ -65,7 +66,11 @@ interface UIState {
   // Font settings
   fontSettings: FontSettings
 
+  // Page navigation (when no note is active)
+  activePage: ActivePage
+
   // Actions
+  setActivePage: (page: ActivePage) => void
   toggleSidebar: () => void
   setSidebarWidth: (width: number) => void
   setSidebarPanel: (panel: SidebarPanel) => void
@@ -139,7 +144,12 @@ export const useUIStore = create<UIState>()(
       // Font settings
       fontSettings: DEFAULT_FONT_SETTINGS,
 
+      // Page navigation
+      activePage: 'home',
+
       // Actions
+      setActivePage: (page) => set({ activePage: page }),
+
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
       setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(400, width)) }),
@@ -221,6 +231,7 @@ export const useUIStore = create<UIState>()(
         theme: state.theme,
         accentColor: state.accentColor,
         fontSettings: state.fontSettings,
+        activePage: state.activePage,
       }),
     }
   )
