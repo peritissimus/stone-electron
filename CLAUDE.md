@@ -60,6 +60,7 @@ Stone includes a comprehensive keyboard shortcut system with platform-aware dete
 - **Cmd+N** (Ctrl+N on Windows/Linux) - Create new note in current folder
 - **Cmd+Shift+P** (Ctrl+Shift+P on Windows/Linux) - Create new personal note (in Personal folder)
 - **Cmd+Shift+W** (Ctrl+Shift+W on Windows/Linux) - Create new work note (in Work folder)
+- **Cmd+Shift+M** (Ctrl+Shift+M on Windows/Linux) - Toggle editor mode (rich text ↔ raw markdown)
 - **Cmd+J** (Ctrl+J on Windows/Linux) - Open or create today's journal
 - **Cmd+K** (Ctrl+K on Windows/Linux) - Open search
 - **Cmd+\\** (Ctrl+\\ on Windows/Linux) - Toggle sidebar

@@ -2,7 +2,8 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense, useMemo } from 'react';
+import type { Editor } from '@tiptap/react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
@@ -28,6 +29,7 @@ const SettingsModal = lazy(() => import('@renderer/components/features/Settings/
 const CommandCenter = lazy(() => import('@renderer/components/features/CommandCenter/CommandCenter').then(m => ({ default: m.CommandCenter })));
 const FileSwitcher = lazy(() => import('@renderer/components/features/FileSwitcher/FileSwitcher').then(m => ({ default: m.FileSwitcher })));
 const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
+const FindReplaceModal = lazy(() => import('@renderer/components/features/FindReplace/FindReplaceModal').then(m => ({ default: m.FindReplaceModal })));
 
 // Minimal loading skeletons for fast LCP
 const EditorSkeleton = () => (
@@ -99,6 +101,26 @@ export function MainLayout() {
   // Draft recovery state
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
   const recoveryEditorRef = useRef<any>(null);
+
+  // Track editor instance for FindReplaceModal
+  const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
+
+  // Update editor reference when it changes
+  useEffect(() => {
+    const checkEditor = () => {
+      const editor = editorRef.current?.getEditor() ?? null;
+      if (editor !== currentEditor) {
+        setCurrentEditor(editor);
+      }
+    };
+
+    // Check initially and on activeNoteId change
+    checkEditor();
+
+    // Also check periodically in case editor initializes asynchronously
+    const interval = setInterval(checkEditor, 500);
+    return () => clearInterval(interval);
+  }, [activeNoteId, currentEditor]);
 
   // Track if bootstrap is complete and if we've attempted to open the initial journal
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
@@ -232,6 +254,9 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <FileSwitcher />
+            </Suspense>
+            <Suspense fallback={null}>
+              <FindReplaceModal editor={currentEditor} />
             </Suspense>
           </>
         }

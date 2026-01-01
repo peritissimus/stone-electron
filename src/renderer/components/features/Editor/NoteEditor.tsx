@@ -1,13 +1,16 @@
 /**
  * Note Editor Component - TipTap Rich Text Editor
  * Uses document buffer for instant note switching
+ * Supports both rich text and raw markdown editing modes
  */
 
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { marked } from 'marked';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
@@ -16,6 +19,7 @@ import {
   NoteEditorHeader,
   NoteEditorEmptyState,
   NoteEditorContent,
+  RawMarkdownEditor,
   EditorStats,
   BacklinksPanel,
 } from '@renderer/components/features/Editor';
@@ -23,6 +27,9 @@ import { Copy, Check } from 'phosphor-react';
 import { logger } from '@renderer/utils/logger';
 import { getRenderedEditorContent, buildExportHTML } from '@renderer/utils/exportUtils';
 import { normalizePath } from '@renderer/utils/path';
+import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
+
+import type { Editor } from '@tiptap/react';
 
 /**
  * NoteEditor ref API - exposed actions for keyboard shortcuts
@@ -31,6 +38,7 @@ export interface NoteEditorHandle {
   save: () => Promise<void>;
   createSiblingNote: () => Promise<void>;
   restoreDraft: (content: string) => void;
+  getEditor: () => Editor | null;
 }
 
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
@@ -65,6 +73,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const creatingNoteRef = useRef(false);
   const titleSaveTimeoutRef = useRef<number | null>(null);
 
+  // Editor mode (rich vs raw)
+  const { editorMode, setEditorMode } = useUIStore();
+  const [rawMarkdown, setRawMarkdown] = useState('');
+  const [rawDirty, setRawDirty] = useState(false);
+  const previousModeRef = useRef(editorMode);
+
   // Use document buffer for content management
   const { isDirty, save } = useDocumentBuffer({
     noteId: activeNoteId,
@@ -80,6 +94,77 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       setTitle(activeNote.title || '');
     }
   }, [activeNote?.title]);
+
+  // Track the last synced markdown to detect if we need to update the editor
+  const lastSyncedMarkdownRef = useRef('');
+
+  // Handle mode switching - convert content between formats
+  useEffect(() => {
+    if (!editor) return;
+
+    const prevMode = previousModeRef.current;
+    previousModeRef.current = editorMode;
+
+    // Skip if mode hasn't changed
+    if (prevMode === editorMode) return;
+
+    if (editorMode === 'raw') {
+      // Rich → Raw: Convert TipTap JSON to markdown
+      const json = editor.getJSON();
+      const markdown = jsonToMarkdown(json);
+      setRawMarkdown(markdown);
+      lastSyncedMarkdownRef.current = markdown;
+      setRawDirty(false);
+      logger.info('[NoteEditor] Switched to raw mode');
+    } else {
+      // Raw → Rich: Convert markdown to HTML and update editor
+      // Always update if content differs from last synced version
+      if (rawMarkdown !== lastSyncedMarkdownRef.current) {
+        // Configure marked for GFM
+        marked.setOptions({
+          gfm: true,
+          breaks: true,
+        });
+
+        const html = marked.parse(rawMarkdown) as string;
+        editor.commands.setContent(html);
+        lastSyncedMarkdownRef.current = rawMarkdown;
+        setRawDirty(false);
+        logger.info('[NoteEditor] Switched to rich mode, content updated');
+      } else {
+        logger.info('[NoteEditor] Switched to rich mode, no changes');
+      }
+    }
+  }, [editorMode, editor, rawMarkdown]);
+
+  // Reset to rich mode when switching notes
+  useEffect(() => {
+    const { editorMode: currentMode, setEditorMode: setMode } = useUIStore.getState();
+    if (currentMode === 'raw') {
+      setMode('rich');
+    }
+    setRawMarkdown('');
+    lastSyncedMarkdownRef.current = '';
+    setRawDirty(false);
+  }, [activeNoteId]);
+
+  // Handle raw markdown changes
+  const handleRawMarkdownChange = useCallback((value: string) => {
+    setRawMarkdown(value);
+    setRawDirty(true);
+  }, []);
+
+  // Handle mode toggle with unsaved changes warning
+  const handleModeToggle = useCallback(() => {
+    const hasUnsavedChanges = editorMode === 'raw' ? rawDirty : isDirty;
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        'You have unsaved changes. Switch modes anyway? Changes will be preserved but not saved.'
+      );
+      return confirmed;
+    }
+    return true;
+  }, [editorMode, rawDirty, isDirty]);
 
   // Enable image paste/drag-drop upload
   useImageUpload({
@@ -102,10 +187,22 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     }
   }, [activeNoteFilePath]);
 
-  // Handle save
+  // Handle save - works in both rich and raw modes
   const handleSave = useCallback(async () => {
-    await save();
-  }, [save]);
+    if (editorMode === 'raw' && rawDirty && activeNoteId) {
+      // In raw mode, save markdown directly
+      try {
+        await updateNote(activeNoteId, { content: rawMarkdown }, false);
+        setRawDirty(false);
+        logger.info('[NoteEditor] Raw markdown saved');
+      } catch (error) {
+        logger.error('[NoteEditor] Failed to save raw markdown:', error);
+      }
+    } else {
+      // In rich mode, use the document buffer save
+      await save();
+    }
+  }, [editorMode, rawDirty, rawMarkdown, activeNoteId, updateNote, save]);
 
   // Create sibling note
   const handleCreateSiblingNote = useCallback(async () => {
@@ -162,8 +259,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       save: handleSave,
       createSiblingNote: handleCreateSiblingNote,
       restoreDraft: handleRestoreDraft,
+      getEditor: () => editor,
     }),
-    [handleSave, handleCreateSiblingNote, handleRestoreDraft]
+    [handleSave, handleCreateSiblingNote, handleRestoreDraft, editor]
   );
 
   // Handle title change with debounced save
@@ -257,8 +355,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
           setActiveNote(null);
         }}
         onDelete={handleDelete}
-        showSave={isDirty}
+        showSave={editorMode === 'raw' ? rawDirty : isDirty}
         onSave={handleSave}
+        onModeToggle={handleModeToggle}
         onExportHtml={async () => {
           if (!activeNote || !editor) return;
           const htmlContent = editor.getHTML();
@@ -276,15 +375,26 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         }}
       />
 
-      {/* Editor Content */}
-      <NoteEditorContent editor={editor} isLoading={false} />
+      {/* Editor Content - Rich or Raw mode */}
+      {editorMode === 'raw' ? (
+        <RawMarkdownEditor
+          value={rawMarkdown}
+          onChange={handleRawMarkdownChange}
+        />
+      ) : (
+        <NoteEditorContent editor={editor} isLoading={false} />
+      )}
 
-      {/* Backlinks Panel */}
-      {activeNoteId && <BacklinksPanel noteId={activeNoteId} />}
+      {/* Backlinks Panel - only in rich mode */}
+      {activeNoteId && editorMode === 'rich' && <BacklinksPanel noteId={activeNoteId} />}
 
       {/* Minimal Footer */}
       <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
-        <EditorStats editor={editor} />
+        {editorMode === 'raw' ? (
+          <RawEditorStats markdown={rawMarkdown} />
+        ) : (
+          <EditorStats editor={editor} />
+        )}
         {activeNote?.filePath && activeWorkspace?.folderPath && (
           <CopyPathButton filePath={activeNote.filePath} workspacePath={activeWorkspace.folderPath} />
         )}
@@ -316,6 +426,21 @@ function CopyPathButton({ filePath, workspacePath }: { filePath: string; workspa
       {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}
       <span className="max-w-[200px] truncate">{filePath}</span>
     </button>
+  );
+}
+
+function RawEditorStats({ markdown }: { markdown: string }) {
+  const lines = markdown.split('\n').length;
+  const chars = markdown.length;
+  const words = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
+
+  return (
+    <div className="flex items-center gap-3">
+      <span>{words} words</span>
+      <span>{chars} characters</span>
+      <span>{lines} lines</span>
+      <span className="text-muted-foreground/60">Markdown</span>
+    </div>
   );
 }
 

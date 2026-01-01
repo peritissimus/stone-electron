@@ -15,6 +15,8 @@ import {
   FilePdf,
   FileHtml,
   FileText,
+  Code,
+  TextAa,
 } from 'phosphor-react';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
@@ -46,6 +48,7 @@ export interface NoteEditorHeaderProps {
   onExportHtml?: () => void;
   onExportPdf?: () => void;
   onExportMarkdown?: () => void;
+  onModeToggle?: () => boolean; // Returns true if mode switch should proceed
 }
 
 export function NoteEditorHeader({
@@ -63,8 +66,17 @@ export function NoteEditorHeader({
   onExportHtml,
   onExportPdf,
   onExportMarkdown,
+  onModeToggle,
 }: NoteEditorHeaderProps) {
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen, editorMode, toggleEditorMode } = useUIStore();
+
+  const handleModeToggle = useCallback(() => {
+    // If onModeToggle returns false, don't toggle
+    if (onModeToggle && !onModeToggle()) {
+      return;
+    }
+    toggleEditorMode();
+  }, [onModeToggle, toggleEditorMode]);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +158,7 @@ export function NoteEditorHeader({
               'bg-accent/20 rounded',
               'text-foreground placeholder:text-muted-foreground/60',
               'border border-accent/40',
-              'outline-none focus:border-primary/50 focus:bg-accent/30',
+              'outline-none focus:border-ring focus:bg-accent/30',
               'transition-colors duration-150',
             )}
           />
@@ -174,6 +186,12 @@ export function NoteEditorHeader({
             onClick={onSave}
           />
         )}
+        <IconButton
+          size="normal"
+          icon={editorMode === 'rich' ? <Code size={16} /> : <TextAa size={16} />}
+          tooltip={editorMode === 'rich' ? `Switch to raw markdown (${formatShortcut('M', true, true)})` : `Switch to rich editor (${formatShortcut('M', true, true)})`}
+          onClick={handleModeToggle}
+        />
         <div className="flex items-center justify-center">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

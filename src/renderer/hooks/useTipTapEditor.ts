@@ -24,6 +24,7 @@ import { NoteLink } from '@renderer/extensions/NoteLink';
 import { Note } from '@shared/types';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
+import { SearchAndReplace } from '@renderer/extensions/SearchAndReplace';
 import { logger } from '@renderer/utils/logger';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
@@ -242,6 +243,10 @@ export function useTipTapEditor() {
       IndentableBlock.configure({
         types: ['paragraph', 'heading'],
         maxIndent: 8,
+      }),
+      SearchAndReplace.configure({
+        highlightClass: 'search-highlight',
+        activeHighlightClass: 'search-highlight-active',
       }),
     ],
     content: '',

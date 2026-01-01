@@ -91,7 +91,7 @@ export function SearchPanel() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search notes..."
-          className="flex-1 h-8"
+          className="flex-1 h-8 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"
           autoFocus
         />
         {loading && <Spinner size={18} className="text-muted-foreground animate-spin" />}
@@ -128,7 +128,7 @@ export function SearchPanel() {
                     {result.content_highlight || result.content?.substring(0, 150)}
                   </Text>
                   <Text size="xs" variant="muted" as="div" className="mt-2">
-                    {formatDistanceToNow(new Date(result.updatedAt * 1000), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(result.updatedAt), { addSuffix: true })}
                   </Text>
                 </div>
               </ContainerFlex>

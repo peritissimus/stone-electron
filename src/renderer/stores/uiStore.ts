@@ -11,6 +11,9 @@ type SidebarPanel = 'home' | 'folders' | 'tags' | 'search'
 type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
 type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal'
+type EditorMode = 'rich' | 'raw'
+
+export type { EditorMode }
 
 export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> = {
   blue: { name: 'Blue', hue: 211 },
@@ -43,6 +46,7 @@ interface UIState {
   showPreview: boolean
   showOutline: boolean
   showBlockIndicators: boolean
+  editorMode: EditorMode
 
   // Search
   searchQuery: string
@@ -54,6 +58,7 @@ interface UIState {
   importModalOpen: boolean
   commandCenterOpen: boolean
   fileSwitcherOpen: boolean
+  findReplaceOpen: boolean
 
   // Theme
   theme: 'light' | 'dark' | 'system'
@@ -75,6 +80,8 @@ interface UIState {
   togglePreview: () => void
   toggleOutline: () => void
   toggleBlockIndicators: () => void
+  toggleEditorMode: () => void
+  setEditorMode: (mode: EditorMode) => void
   setSearchQuery: (query: string) => void
   toggleSearch: () => void
   openSettings: () => void
@@ -89,6 +96,9 @@ interface UIState {
   openFileSwitcher: () => void
   closeFileSwitcher: () => void
   toggleFileSwitcher: () => void
+  openFindReplace: () => void
+  closeFindReplace: () => void
+  toggleFindReplace: () => void
   setTheme: (theme: 'light' | 'dark' | 'system') => void
   setAccentColor: (color: AccentColor) => void
   setFontSettings: (settings: Partial<FontSettings>) => void
@@ -116,6 +126,7 @@ export const useUIStore = create<UIState>()(
       showPreview: false,
       showOutline: true,
       showBlockIndicators: false,
+      editorMode: 'rich',
 
       // Search
       searchQuery: '',
@@ -127,6 +138,7 @@ export const useUIStore = create<UIState>()(
       importModalOpen: false,
       commandCenterOpen: false,
       fileSwitcherOpen: false,
+      findReplaceOpen: false,
 
       // Theme
       theme: 'system',
@@ -160,6 +172,10 @@ export const useUIStore = create<UIState>()(
 
       toggleBlockIndicators: () => set((state) => ({ showBlockIndicators: !state.showBlockIndicators })),
 
+      toggleEditorMode: () => set((state) => ({ editorMode: state.editorMode === 'rich' ? 'raw' : 'rich' })),
+
+      setEditorMode: (mode) => set({ editorMode: mode }),
+
       setSearchQuery: (query) => set({ searchQuery: query }),
 
       toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
@@ -188,6 +204,12 @@ export const useUIStore = create<UIState>()(
 
       toggleFileSwitcher: () => set((state) => ({ fileSwitcherOpen: !state.fileSwitcherOpen })),
 
+      openFindReplace: () => set({ findReplaceOpen: true }),
+
+      closeFindReplace: () => set({ findReplaceOpen: false }),
+
+      toggleFindReplace: () => set((state) => ({ findReplaceOpen: !state.findReplaceOpen })),
+
       setTheme: (theme) => set({ theme }),
 
       setAccentColor: (accentColor) => set({ accentColor }),
@@ -211,6 +233,7 @@ export const useUIStore = create<UIState>()(
         showPreview: state.showPreview,
         showOutline: state.showOutline,
         showBlockIndicators: state.showBlockIndicators,
+        editorMode: state.editorMode,
         theme: state.theme,
         accentColor: state.accentColor,
         fontSettings: state.fontSettings,
