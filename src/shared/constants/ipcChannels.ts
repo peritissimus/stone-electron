@@ -30,6 +30,7 @@ export const NOTE_CHANNELS = {
   GET_CONTENT: 'notes:getContent',
   GET_ALL: 'notes:getAll',
   GET_ALL_TODOS: 'notes:getAllTodos',
+  UPDATE_TASK_STATE: 'notes:updateTaskState',
   FAVORITE: 'notes:favorite',
   PIN: 'notes:pin',
   ARCHIVE: 'notes:archive',

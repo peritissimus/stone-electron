@@ -11,6 +11,8 @@ import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/compon
 // Lazy load heavy components - NoteEditor pulls in entire TipTap stack
 const NoteEditor = lazy(() => import('@renderer/components/features/Editor/NoteEditor').then(m => ({ default: m.NoteEditor })));
 const HomePage = lazy(() => import('@renderer/components/features/HomePage/HomePage').then(m => ({ default: m.HomePage })));
+const TasksPage = lazy(() => import('@renderer/components/features/Tasks/TasksPage').then(m => ({ default: m.TasksPage })));
+const GraphPage = lazy(() => import('@renderer/components/features/Graph/GraphPage').then(m => ({ default: m.GraphPage })));
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -60,6 +62,7 @@ export function MainLayout() {
     sidebarWidth,
     noteListWidth,
     editorFullscreen,
+    activePage,
     setSidebarWidth,
     setNoteListWidth,
   } = useUIStore();
@@ -225,6 +228,14 @@ export function MainLayout() {
             {activeNoteId ? (
               <Suspense fallback={<EditorSkeleton />}>
                 <NoteEditor ref={editorRef} />
+              </Suspense>
+            ) : activePage === 'tasks' ? (
+              <Suspense fallback={<HomeSkeleton />}>
+                <TasksPage />
+              </Suspense>
+            ) : activePage === 'graph' ? (
+              <Suspense fallback={<HomeSkeleton />}>
+                <GraphPage />
               </Suspense>
             ) : (
               // Only show HomePage after initial bootstrap and journal open attempt

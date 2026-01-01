@@ -2,7 +2,7 @@
  * Sidebar Component - Navigation and organization
  */
 
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -18,7 +18,7 @@ import {
 import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { type Workspace, type Note } from '@shared/types';
-import { House, CaretLeft, Graph } from 'phosphor-react';
+import { House, CaretLeft, Graph, CheckSquare } from 'phosphor-react';
 import {
   QuickLink,
   sizeHeightClasses,
@@ -33,11 +33,6 @@ import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
 
-// Lazy load heavy GraphView component (pulls in react-force-graph-2d)
-const GraphView = lazy(() =>
-  import('@renderer/components/features/Editor').then((m) => ({ default: m.GraphView }))
-);
-
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
   const { loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
@@ -45,10 +40,9 @@ export function Sidebar() {
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
-  const { toggleSidebar } = useUIStore();
+  const { toggleSidebar, activePage, setActivePage } = useUIStore();
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
-  const [graphViewOpen, setGraphViewOpen] = useState(false);
 
   useEffect(() => {
     loadWorkspaces();
@@ -256,13 +250,29 @@ export function Sidebar() {
         <QuickLink
           icon={<House size={14} />}
           label="Home"
-          onClick={() => setActiveNote(null)}
-          isActive={!activeNoteId}
+          onClick={() => {
+            setActiveNote(null);
+            setActivePage('home');
+          }}
+          isActive={!activeNoteId && activePage === 'home'}
+        />
+        <QuickLink
+          icon={<CheckSquare size={14} />}
+          label="Tasks"
+          onClick={() => {
+            setActiveNote(null);
+            setActivePage('tasks');
+          }}
+          isActive={!activeNoteId && activePage === 'tasks'}
         />
         <QuickLink
           icon={<Graph size={14} />}
           label="Graph"
-          onClick={() => setGraphViewOpen(true)}
+          onClick={() => {
+            setActiveNote(null);
+            setActivePage('graph');
+          }}
+          isActive={!activeNoteId && activePage === 'graph'}
         />
       </div>
 
@@ -280,12 +290,6 @@ export function Sidebar() {
         }}
         onSubmit={handleCreateWorkspace}
       />
-
-      {graphViewOpen && (
-        <Suspense fallback={null}>
-          <GraphView isOpen={graphViewOpen} onClose={() => setGraphViewOpen(false)} />
-        </Suspense>
-      )}
     </div>
   );
 }
