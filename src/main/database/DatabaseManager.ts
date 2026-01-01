@@ -312,6 +312,14 @@ export class DatabaseManager {
     return this.db;
   }
 
+  /**
+   * Get raw libsql client for direct SQL operations (needed for blob handling)
+   */
+  getClient() {
+    if (!this.client) throw new Error('Database not initialized');
+    return this.client;
+  }
+
   async getStatus(): Promise<{
     version: number;
     noteCount: number;

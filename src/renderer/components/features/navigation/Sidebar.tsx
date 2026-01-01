@@ -18,7 +18,7 @@ import {
 import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { type Workspace, type Note } from '@shared/types';
-import { House, CaretLeft, Graph, CheckSquare } from 'phosphor-react';
+import { House, CaretLeft, Graph, CheckSquare, Tag } from 'phosphor-react';
 import {
   QuickLink,
   sizeHeightClasses,
@@ -273,6 +273,15 @@ export function Sidebar() {
             setActivePage('graph');
           }}
           isActive={!activeNoteId && activePage === 'graph'}
+        />
+        <QuickLink
+          icon={<Tag size={14} />}
+          label="Topics"
+          onClick={() => {
+            setActiveNote(null);
+            setActivePage('topics');
+          }}
+          isActive={!activeNoteId && activePage === 'topics'}
         />
       </div>
 

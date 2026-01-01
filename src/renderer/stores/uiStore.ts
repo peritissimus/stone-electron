@@ -12,7 +12,7 @@ type SortBy = 'updated' | 'created' | 'title' | 'favorite'
 type SortOrder = 'asc' | 'desc'
 type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal'
 type EditorMode = 'rich' | 'raw'
-type ActivePage = 'home' | 'tasks' | 'graph'
+type ActivePage = 'home' | 'tasks' | 'graph' | 'topics'
 
 export type { EditorMode, ActivePage }
 

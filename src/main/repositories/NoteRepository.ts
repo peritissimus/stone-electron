@@ -1488,4 +1488,131 @@ export class NoteRepository {
       return results;
     }
   }
+
+  // ============================================================================
+  // Embedding Operations (for Topics/Semantic Search)
+  // ============================================================================
+
+  /**
+   * Update embedding for a note
+   */
+  async updateEmbedding(noteId: string, embedding: number[]): Promise<void> {
+    const floatArray = new Float32Array(embedding);
+    const buffer = Buffer.from(floatArray.buffer);
+    // Use raw libsql client for blob handling - Drizzle's adapter doesn't handle blobs correctly
+    const client = getDatabaseManager().getClient();
+    const hexString = buffer.toString('hex');
+
+    await client.execute({
+      sql: `UPDATE notes SET embedding = X'${hexString}', updated_at = ? WHERE id = ?`,
+      args: [Date.now(), noteId],
+    });
+  }
+
+  /**
+   * Get embedding for a note
+   */
+  async getEmbedding(noteId: string): Promise<number[] | null> {
+    const result = await this.db
+      .select({ embedding: notes.embedding })
+      .from(notes)
+      .where(eq(notes.id, noteId))
+      .limit(1);
+
+    const data = result[0]?.embedding;
+    if (!data) return null;
+
+    // Handle both Buffer and Uint8Array (libsql returns ArrayBuffer or Uint8Array)
+    let uint8: Uint8Array;
+    if (data instanceof Uint8Array) {
+      uint8 = data;
+    } else if (data instanceof ArrayBuffer) {
+      uint8 = new Uint8Array(data);
+    } else if (Buffer.isBuffer(data)) {
+      uint8 = new Uint8Array(data.buffer, data.byteOffset, data.length);
+    } else {
+      return null;
+    }
+
+    const floatArray = new Float32Array(uint8.buffer, uint8.byteOffset, uint8.length / 4);
+    return Array.from(floatArray);
+  }
+
+  /**
+   * Find notes similar to a query embedding using vector distance
+   */
+  async findBySimilarity(
+    queryEmbedding: number[],
+    limit = 10
+  ): Promise<{ noteId: string; title: string; distance: number }[]> {
+    const floatArray = new Float32Array(queryEmbedding);
+    const queryBuffer = Buffer.from(floatArray.buffer);
+
+    // Use libsql vector_distance_cos for cosine similarity search
+    const result = await this.db
+      .select({
+        noteId: notes.id,
+        title: notes.title,
+        distance: sql<number>`vector_distance_cos(${notes.embedding}, ${queryBuffer})`,
+      })
+      .from(notes)
+      .where(
+        and(
+          eq(notes.isDeleted, false),
+          sql`${notes.embedding} IS NOT NULL`
+        )
+      )
+      .orderBy(sql`vector_distance_cos(${notes.embedding}, ${queryBuffer}) ASC`)
+      .limit(limit);
+
+    return result.map((r: { noteId: string; title: string | null; distance: number }) => ({
+      noteId: r.noteId,
+      title: r.title || 'Untitled',
+      distance: r.distance,
+    }));
+  }
+
+  /**
+   * Get notes that don't have embeddings yet
+   */
+  async getNotesWithoutEmbeddings(limit = 100): Promise<Note[]> {
+    const result = await this.db
+      .select()
+      .from(notes)
+      .where(
+        and(
+          eq(notes.isDeleted, false),
+          isNull(notes.embedding)
+        )
+      )
+      .orderBy(desc(notes.updatedAt))
+      .limit(limit);
+
+    return result;
+  }
+
+  /**
+   * Count notes with embeddings
+   */
+  async countWithEmbeddings(): Promise<{ total: number; withEmbeddings: number }> {
+    const totalResult = await this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(notes)
+      .where(eq(notes.isDeleted, false));
+
+    const embeddedResult = await this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(notes)
+      .where(
+        and(
+          eq(notes.isDeleted, false),
+          sql`${notes.embedding} IS NOT NULL`
+        )
+      );
+
+    return {
+      total: totalResult[0]?.count ?? 0,
+      withEmbeddings: embeddedResult[0]?.count ?? 0,
+    };
+  }
 }

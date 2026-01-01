@@ -35,6 +35,8 @@ export default defineConfig({
         'fs/promises',
         'crypto',
         'os',
+        'child_process',
+        'readline',
         'vm',
         'url',
         'util',
@@ -60,6 +62,8 @@ export default defineConfig({
         'node:net',
         'node:tls',
         'node:assert',
+        'node:child_process',
+        'node:readline',
         // Watcher/libs
         'chokidar',
         'readdirp',
