@@ -1,11 +1,15 @@
 /**
  * CommandCenter - Cmd+K command palette for quick navigation and actions
+ *
+ * Performance optimizations:
+ * - In-memory filtering for instant results (no API calls)
+ * - Fuzzy matching for typo-tolerant search
+ * - Memoized commands and stable callbacks
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useSearchAPI } from '@renderer/hooks/useSearchAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import {
   MagnifyingGlass,
@@ -13,246 +17,253 @@ import {
   Gear,
   House,
   Plus,
-  Keyboard,
   SidebarSimple,
   Calendar,
   CalendarBlank,
   ArrowRight,
   Command,
 } from 'phosphor-react';
-import {
-  DEFAULT_SHORTCUTS,
-  formatShortcutDisplay,
-} from '@renderer/stores/shortcutsStore';
-import { logger } from '@renderer/utils/logger';
 
 interface CommandItem {
   id: string;
-  type: 'note' | 'command' | 'shortcut';
+  type: 'note' | 'command';
   title: string;
   subtitle?: string;
   icon: React.ReactNode;
   shortcut?: string;
+  score?: number;
   action: () => void;
 }
 
+/**
+ * Simple fuzzy match - checks if query chars appear in order in target
+ * Returns match score (higher = better) or 0 if no match
+ */
+function fuzzyMatch(query: string, target: string): number {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+
+  // Empty query matches everything
+  if (q.length === 0) return 1;
+
+  // Exact match gets highest score
+  if (t === q) return 100;
+
+  // Starts with gets high score
+  if (t.startsWith(q)) return 90 + (q.length / t.length) * 10;
+
+  // Contains gets medium score
+  if (t.includes(q)) return 70 + (q.length / t.length) * 10;
+
+  // Fuzzy match - chars in order
+  let qi = 0;
+  let consecutiveMatches = 0;
+  let maxConsecutive = 0;
+  let lastMatchIndex = -2;
+
+  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) {
+      if (ti === lastMatchIndex + 1) {
+        consecutiveMatches++;
+        maxConsecutive = Math.max(maxConsecutive, consecutiveMatches);
+      } else {
+        consecutiveMatches = 1;
+      }
+      lastMatchIndex = ti;
+      qi++;
+    }
+  }
+
+  // All chars matched
+  if (qi === q.length) {
+    // Score based on consecutive matches and coverage
+    const coverage = q.length / t.length;
+    return 30 + maxConsecutive * 10 + coverage * 20;
+  }
+
+  return 0;
+}
+
 export function CommandCenter() {
-  const { commandCenterOpen, closeCommandCenter, openSettings, toggleSidebar } = useUIStore();
-  const { setActiveNote, notes } = useNoteStore();
-  const { fullTextSearch } = useSearchAPI();
+  const { commandCenterOpen } = useUIStore();
+  const { notes } = useNoteStore();
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Build command list
-  const commands = useMemo<CommandItem[]>(() => {
-    const cmds: CommandItem[] = [
-      {
-        id: 'new-note',
-        type: 'command',
-        title: 'New Note',
-        subtitle: 'Create a new note in current folder',
-        icon: <Plus size={18} weight="bold" />,
-        shortcut: '⌘N',
-        action: () => {
-          closeCommandCenter();
-          // Will be handled by parent
-        },
-      },
-      {
-        id: 'go-home',
-        type: 'command',
-        title: 'Go Home',
-        subtitle: 'Navigate to home view',
-        icon: <House size={18} />,
-        shortcut: '⌘⇧H',
-        action: () => {
-          setActiveNote(null);
-          closeCommandCenter();
-        },
-      },
-      {
-        id: 'toggle-sidebar',
-        type: 'command',
-        title: 'Toggle Sidebar',
-        subtitle: 'Show or hide the sidebar',
-        icon: <SidebarSimple size={18} />,
-        shortcut: '⌘\\',
-        action: () => {
-          toggleSidebar();
-          closeCommandCenter();
-        },
-      },
-      {
-        id: 'open-settings',
-        type: 'command',
-        title: 'Open Settings',
-        subtitle: 'Configure app preferences',
-        icon: <Gear size={18} />,
-        shortcut: '⌘,',
-        action: () => {
-          closeCommandCenter();
-          openSettings();
-        },
-      },
-      {
-        id: 'today-journal',
-        type: 'command',
-        title: "Today's Journal",
-        subtitle: 'Open or create today\'s journal entry',
-        icon: <Calendar size={18} />,
-        shortcut: '⌘J',
-        action: () => {
-          closeCommandCenter();
-          openOrCreateTodayJournal();
-        },
-      },
-      {
-        id: 'yesterday-journal',
-        type: 'command',
-        title: "Yesterday's Journal",
-        subtitle: 'Open or create yesterday\'s journal entry',
-        icon: <CalendarBlank size={18} />,
-        action: () => {
-          closeCommandCenter();
-          openOrCreateYesterdayJournal();
-        },
-      },
-    ];
+  // Stable action callbacks - no dependencies on closeCommandCenter
+  const handleClose = useCallback(() => {
+    useUIStore.getState().closeCommandCenter();
+  }, []);
 
-    // Add shortcuts section
-    const shortcutItems: CommandItem[] = DEFAULT_SHORTCUTS.map((shortcut) => ({
-      id: `shortcut-${shortcut.id}`,
-      type: 'shortcut' as const,
-      title: shortcut.label,
-      subtitle: shortcut.description,
-      icon: <Keyboard size={18} />,
-      shortcut: formatShortcutDisplay(shortcut),
+  const handleSelectNote = useCallback((noteId: string) => {
+    useNoteStore.getState().setActiveNote(noteId);
+    useUIStore.getState().closeCommandCenter();
+  }, []);
+
+  // Build static command list once
+  const commands = useMemo<CommandItem[]>(() => [
+    {
+      id: 'new-note',
+      type: 'command',
+      title: 'New Note',
+      subtitle: 'Create a new note',
+      icon: <Plus size={18} weight="bold" />,
+      shortcut: '⌘N',
+      action: handleClose,
+    },
+    {
+      id: 'go-home',
+      type: 'command',
+      title: 'Go Home',
+      subtitle: 'Navigate to home view',
+      icon: <House size={18} />,
+      shortcut: '⌘⇧H',
       action: () => {
-        closeCommandCenter();
+        useNoteStore.getState().setActiveNote(null);
+        handleClose();
       },
-    }));
+    },
+    {
+      id: 'toggle-sidebar',
+      type: 'command',
+      title: 'Toggle Sidebar',
+      subtitle: 'Show or hide the sidebar',
+      icon: <SidebarSimple size={18} />,
+      shortcut: '⌘\\',
+      action: () => {
+        useUIStore.getState().toggleSidebar();
+        handleClose();
+      },
+    },
+    {
+      id: 'open-settings',
+      type: 'command',
+      title: 'Open Settings',
+      subtitle: 'Configure app preferences',
+      icon: <Gear size={18} />,
+      shortcut: '⌘,',
+      action: () => {
+        handleClose();
+        useUIStore.getState().openSettings();
+      },
+    },
+    {
+      id: 'today-journal',
+      type: 'command',
+      title: "Today's Journal",
+      subtitle: "Open or create today's journal entry",
+      icon: <Calendar size={18} />,
+      shortcut: '⌘J',
+      action: () => {
+        handleClose();
+        openOrCreateTodayJournal();
+      },
+    },
+    {
+      id: 'yesterday-journal',
+      type: 'command',
+      title: "Yesterday's Journal",
+      subtitle: "Open or create yesterday's journal entry",
+      icon: <CalendarBlank size={18} />,
+      action: () => {
+        handleClose();
+        openOrCreateYesterdayJournal();
+      },
+    },
+  ], [handleClose, openOrCreateTodayJournal, openOrCreateYesterdayJournal]);
 
-    return [...cmds, ...shortcutItems];
-  }, [closeCommandCenter, openSettings, toggleSidebar, setActiveNote, openOrCreateTodayJournal, openOrCreateYesterdayJournal]);
+  // In-memory filtered notes (instant) - with fuzzy matching
+  const filteredNotes = useMemo<CommandItem[]>(() => {
+    const q = query.trim();
 
-  // Recent notes (top 5)
-  const recentNotes = useMemo<CommandItem[]>(() => {
-    return notes
-      .filter((n) => !n.isDeleted)
-      .sort((a, b) => {
-        const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : a.updatedAt;
-        const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : b.updatedAt;
-        return bTime - aTime;
+    // Get all non-deleted notes
+    const activeNotes = notes.filter((n) => !n.isDeleted);
+
+    if (q.length === 0) {
+      // No query - return recent notes (top 3)
+      return activeNotes
+        .sort((a, b) => {
+          const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : a.updatedAt;
+          const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : b.updatedAt;
+          return bTime - aTime;
+        })
+        .slice(0, 3)
+        .map((note) => ({
+          id: `note-${note.id}`,
+          type: 'note' as const,
+          title: note.title || 'Untitled',
+          subtitle: note.filePath?.replace(/^.*[/\\]/, '') || undefined,
+          icon: <FileText size={18} />,
+          score: 100,
+          action: () => handleSelectNote(note.id),
+        }));
+    }
+
+    // Fuzzy match against titles and file paths
+    return activeNotes
+      .map((note) => {
+        const titleScore = fuzzyMatch(q, note.title || 'Untitled');
+        const pathScore = note.filePath ? fuzzyMatch(q, note.filePath) * 0.5 : 0;
+        const score = Math.max(titleScore, pathScore);
+        return { note, score };
       })
-      .slice(0, 5)
-      .map((note) => ({
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 15)
+      .map(({ note, score }) => ({
         id: `note-${note.id}`,
         type: 'note' as const,
         title: note.title || 'Untitled',
-        subtitle: note.filePath || undefined,
+        subtitle: note.filePath?.replace(/^.*[/\\]/, '') || undefined,
         icon: <FileText size={18} />,
-        action: () => {
-          setActiveNote(note.id);
-          closeCommandCenter();
-        },
+        score,
+        action: () => handleSelectNote(note.id),
       }));
-  }, [notes, setActiveNote, closeCommandCenter]);
+  }, [notes, query, handleSelectNote]);
 
-  // Search for notes
-  const performSearch = useCallback(
-    async (searchQuery: string) => {
-      if (searchQuery.length < 2) {
-        setSearchResults([]);
-        return;
-      }
+  // Filtered commands (instant)
+  const filteredCommands = useMemo<CommandItem[]>(() => {
+    if (query.length === 0) return commands;
 
-      setIsSearching(true);
-      try {
-        const results = await fullTextSearch(searchQuery, { limit: 10 });
-        if (results?.results) {
-          setSearchResults(results.results);
-        }
-      } catch (error) {
-        logger.error('Command center search failed:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    },
-    [fullTextSearch]
-  );
+    return commands
+      .map((cmd) => {
+        const titleScore = fuzzyMatch(query, cmd.title);
+        const subtitleScore = cmd.subtitle ? fuzzyMatch(query, cmd.subtitle) * 0.5 : 0;
+        const score = Math.max(titleScore, subtitleScore);
+        return { cmd, score };
+      })
+      .filter(({ score }) => score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(({ cmd, score }) => ({ ...cmd, score }));
+  }, [commands, query]);
 
-  // Debounced search
-  useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    if (query.length >= 2) {
-      searchTimeoutRef.current = setTimeout(() => {
-        performSearch(query);
-      }, 200);
-    } else {
-      setSearchResults([]);
-    }
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [query, performSearch]);
-
-  // Build filtered items list
+  // Combined items list
   const items = useMemo<CommandItem[]>(() => {
-    const lowerQuery = query.toLowerCase();
-
-    // If searching, show search results first
-    if (query.length >= 2) {
-      const noteResults: CommandItem[] = searchResults.map((result) => ({
-        id: `search-${result.id}`,
-        type: 'note' as const,
-        title: result.title || 'Untitled',
-        subtitle: result.filePath,
-        icon: <FileText size={18} />,
-        action: () => {
-          setActiveNote(result.id);
-          closeCommandCenter();
-        },
-      }));
-
-      // Also filter commands
-      const filteredCommands = commands.filter(
-        (cmd) =>
-          cmd.title.toLowerCase().includes(lowerQuery) ||
-          cmd.subtitle?.toLowerCase().includes(lowerQuery)
-      );
-
-      return [...noteResults, ...filteredCommands];
+    if (query.length === 0) {
+      // No query: show recent notes then commands
+      return [...filteredNotes, ...commands];
     }
 
-    // No query - show recent notes and commands
-    return [...recentNotes, ...commands.filter((cmd) => cmd.type === 'command')];
-  }, [query, searchResults, commands, recentNotes, setActiveNote, closeCommandCenter]);
+    // With query: notes first, then commands
+    return [...filteredNotes, ...filteredCommands];
+  }, [query, filteredNotes, filteredCommands, commands]);
 
   // Reset selection when items change
   useEffect(() => {
     setSelectedIndex(0);
-  }, [items.length]);
+  }, [items.length, query]);
 
   // Focus input when opened
   useEffect(() => {
     if (commandCenterOpen) {
       setQuery('');
       setSelectedIndex(0);
-      setSearchResults([]);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      // Focus immediately - no setTimeout needed
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [commandCenterOpen]);
 
@@ -264,7 +275,7 @@ export function CommandCenter() {
       switch (e.key) {
         case 'Escape':
           e.preventDefault();
-          closeCommandCenter();
+          handleClose();
           break;
         case 'ArrowDown':
           e.preventDefault();
@@ -285,7 +296,7 @@ export function CommandCenter() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [commandCenterOpen, closeCommandCenter, items, selectedIndex]);
+  }, [commandCenterOpen, handleClose, items, selectedIndex]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -299,26 +310,29 @@ export function CommandCenter() {
 
   if (!commandCenterOpen) return null;
 
+  const noteItems = items.filter((i) => i.type === 'note');
+  const commandItems = items.filter((i) => i.type === 'command');
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-md"
-        onClick={closeCommandCenter}
+        className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm"
+        onClick={handleClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl mx-4 bg-popover rounded-xl overflow-hidden border border-border shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
+      <div className="relative w-full max-w-xl mx-4 bg-popover rounded-xl overflow-hidden border border-border shadow-2xl">
         {/* Search Input */}
-        <div className="flex items-center gap-4 px-5 py-4">
-          <MagnifyingGlass size={22} weight="regular" className="text-muted-foreground flex-shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3">
+          <MagnifyingGlass size={20} weight="regular" className="text-muted-foreground flex-shrink-0" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            className="flex-1 bg-transparent text-lg text-foreground placeholder:text-muted-foreground/50 outline-none"
+            placeholder="Search notes and commands..."
+            className="flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground/60 outline-none"
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}
@@ -328,133 +342,77 @@ export function CommandCenter() {
         <div className="h-px bg-border" />
 
         {/* Results List */}
-        <div ref={listRef} className="max-h-[420px] overflow-y-auto py-2">
-          {items.length === 0 && query.length >= 2 && !isSearching && (
-            <div className="px-5 py-12 text-center">
-              <p className="text-muted-foreground text-sm">No results found for "{query}"</p>
+        <div ref={listRef} className="max-h-[380px] overflow-y-auto py-1.5">
+          {items.length === 0 && query.length >= 2 && (
+            <div className="px-4 py-10 text-center">
+              <p className="text-muted-foreground text-sm">No results for "{query}"</p>
             </div>
           )}
 
-          {items.length === 0 && query.length < 2 && (
-            <div className="px-5 py-12 text-center">
-              <p className="text-muted-foreground text-sm">Start typing to search notes...</p>
-            </div>
-          )}
-
-          {/* Group: Recent Notes */}
-          {query.length < 2 && recentNotes.length > 0 && (
+          {/* Notes Section */}
+          {noteItems.length > 0 && (
             <>
-              <div className="px-5 py-2">
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Recent Notes
+              <div className="px-4 py-1.5">
+                <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                  {query.length > 0 ? 'Notes' : 'Recent'}
                 </span>
               </div>
-              {recentNotes.map((item, idx) => (
-                <CommandItem
+              {noteItems.map((item, idx) => (
+                <CommandItemRow
                   key={item.id}
                   item={item}
                   index={idx}
                   isSelected={selectedIndex === idx}
-                  onClick={() => item.action()}
+                  onClick={item.action}
                   onMouseEnter={() => setSelectedIndex(idx)}
                 />
               ))}
             </>
           )}
 
-          {/* Group: Commands */}
-          {query.length < 2 && (
+          {/* Commands Section */}
+          {commandItems.length > 0 && (
             <>
-              <div className="px-5 py-2 mt-2">
-                <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+              <div className="px-4 py-1.5 mt-1">
+                <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
                   Commands
                 </span>
               </div>
-              {commands
-                .filter((cmd) => cmd.type === 'command')
-                .map((item, idx) => {
-                  const actualIndex = recentNotes.length + idx;
-                  return (
-                    <CommandItem
-                      key={item.id}
-                      item={item}
-                      index={actualIndex}
-                      isSelected={selectedIndex === actualIndex}
-                      onClick={() => item.action()}
-                      onMouseEnter={() => setSelectedIndex(actualIndex)}
-                    />
-                  );
-                })}
-            </>
-          )}
-
-          {/* Search Results */}
-          {query.length >= 2 && items.length > 0 && (
-            <>
-              {searchResults.length > 0 && (
-                <div className="px-5 py-2">
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Notes
-                  </span>
-                </div>
-              )}
-              {items
-                .filter((item) => item.type === 'note')
-                .map((item, idx) => (
-                  <CommandItem
+              {commandItems.map((item, idx) => {
+                const actualIndex = noteItems.length + idx;
+                return (
+                  <CommandItemRow
                     key={item.id}
                     item={item}
-                    index={idx}
-                    isSelected={selectedIndex === idx}
-                    onClick={() => item.action()}
-                    onMouseEnter={() => setSelectedIndex(idx)}
+                    index={actualIndex}
+                    isSelected={selectedIndex === actualIndex}
+                    onClick={item.action}
+                    onMouseEnter={() => setSelectedIndex(actualIndex)}
                   />
-                ))}
-
-              {items.filter((item) => item.type !== 'note').length > 0 && (
-                <div className="px-5 py-2 mt-2">
-                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Commands
-                  </span>
-                </div>
-              )}
-              {items
-                .filter((item) => item.type !== 'note')
-                .map((item, idx) => {
-                  const actualIndex = items.filter((i) => i.type === 'note').length + idx;
-                  return (
-                    <CommandItem
-                      key={item.id}
-                      item={item}
-                      index={actualIndex}
-                      isSelected={selectedIndex === actualIndex}
-                      onClick={() => item.action()}
-                      onMouseEnter={() => setSelectedIndex(actualIndex)}
-                    />
-                  );
-                })}
+                );
+              })}
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-secondary/50">
-          <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">↑↓</kbd>
-              navigate
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-muted/30">
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70">
+            <span className="flex items-center gap-1">
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">↑↓</kbd>
+              <span>navigate</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">↵</kbd>
-              select
+            <span className="flex items-center gap-1">
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">↵</kbd>
+              <span>open</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">esc</kbd>
-              close
+            <span className="flex items-center gap-1">
+              <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono">esc</kbd>
+              <span>close</span>
             </span>
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-            <Command size={12} />
+          <div className="flex items-center gap-0.5 text-[11px] text-muted-foreground/70">
+            <Command size={11} />
             <span>K</span>
           </div>
         </div>
@@ -463,7 +421,7 @@ export function CommandCenter() {
   );
 }
 
-interface CommandItemProps {
+interface CommandItemRowProps {
   item: CommandItem;
   index: number;
   isSelected: boolean;
@@ -471,38 +429,38 @@ interface CommandItemProps {
   onMouseEnter: () => void;
 }
 
-function CommandItem({ item, index, isSelected, onClick, onMouseEnter }: CommandItemProps) {
+function CommandItemRow({ item, index, isSelected, onClick, onMouseEnter }: CommandItemRowProps) {
   return (
     <button
       data-index={index}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`w-full flex items-center gap-4 px-5 py-3 text-left transition-colors ${
-        isSelected ? 'bg-secondary' : 'hover:bg-secondary/50'
+      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${
+        isSelected ? 'bg-accent' : 'hover:bg-accent/50'
       }`}
     >
-      <span className={`flex-shrink-0 ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+      <span className={`flex-shrink-0 ${isSelected ? 'text-accent-foreground' : 'text-muted-foreground'}`}>
         {item.icon}
       </span>
       <div className="flex-1 min-w-0">
-        <div className={`font-medium truncate ${isSelected ? 'text-foreground' : 'text-foreground/80'}`}>
+        <div className={`text-sm truncate ${isSelected ? 'text-accent-foreground' : 'text-foreground'}`}>
           {item.title}
         </div>
         {item.subtitle && (
-          <div className={`text-sm truncate ${isSelected ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
+          <div className={`text-xs truncate ${isSelected ? 'text-accent-foreground/70' : 'text-muted-foreground'}`}>
             {item.subtitle}
           </div>
         )}
       </div>
       {item.shortcut && (
-        <kbd className={`ml-2 px-2 py-1 rounded text-xs font-mono ${
-          isSelected ? 'bg-muted text-foreground/80' : 'bg-muted/50 text-muted-foreground'
+        <kbd className={`ml-auto px-1.5 py-0.5 rounded text-[11px] font-mono ${
+          isSelected ? 'bg-accent-foreground/10 text-accent-foreground/80' : 'bg-muted text-muted-foreground'
         }`}>
           {item.shortcut}
         </kbd>
       )}
-      {isSelected && (
-        <ArrowRight size={16} className="flex-shrink-0 text-muted-foreground" />
+      {isSelected && !item.shortcut && (
+        <ArrowRight size={14} className="flex-shrink-0 text-accent-foreground/50" />
       )}
     </button>
   );

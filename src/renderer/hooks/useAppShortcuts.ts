@@ -28,7 +28,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
   const { onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, onFindReplace, onToggleEditorMode } = options;
 
   const { getShortcut } = useShortcutsStore();
-  const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleSearch, toggleFileSwitcher, toggleFindReplace, toggleEditorMode } = useUIStore();
+  const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleCommandCenter, toggleFindReplace, toggleEditorMode } = useUIStore();
   const { setActiveNote } = useNoteStore();
 
   // Action handlers mapped by shortcut ID
@@ -45,8 +45,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
           openSettings();
         }
       },
-      search: () => toggleSearch(),
-      fileSwitcher: () => toggleFileSwitcher(),
+      commandCenter: () => toggleCommandCenter(),
       toggleSidebar: () => toggleSidebar(),
       goHome: () => setActiveNote(null),
       closeNote: () => {
@@ -66,7 +65,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
         }
       },
     }),
-    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, onFindReplace, onToggleEditorMode, openSettings, closeSettings, settingsOpen, toggleSearch, toggleFileSwitcher, toggleFindReplace, toggleEditorMode, toggleSidebar, setActiveNote]
+    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, onFindReplace, onToggleEditorMode, openSettings, closeSettings, settingsOpen, toggleCommandCenter, toggleFindReplace, toggleEditorMode, toggleSidebar, setActiveNote]
   );
 
   // Build shortcuts config from store
@@ -77,8 +76,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       'newPersonalNote',
       'newWorkNote',
       'settings',
-      'search',
-      'fileSwitcher',
+      'commandCenter',
       'toggleSidebar',
       'goHome',
       'closeNote',

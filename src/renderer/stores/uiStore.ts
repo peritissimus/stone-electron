@@ -50,14 +50,12 @@ interface UIState {
 
   // Search
   searchQuery: string
-  searchOpen: boolean
 
   // Modals
   settingsOpen: boolean
   exportModalOpen: boolean
   importModalOpen: boolean
   commandCenterOpen: boolean
-  fileSwitcherOpen: boolean
   findReplaceOpen: boolean
 
   // Theme
@@ -83,7 +81,6 @@ interface UIState {
   toggleEditorMode: () => void
   setEditorMode: (mode: EditorMode) => void
   setSearchQuery: (query: string) => void
-  toggleSearch: () => void
   openSettings: () => void
   closeSettings: () => void
   openExportModal: () => void
@@ -93,9 +90,6 @@ interface UIState {
   openCommandCenter: () => void
   closeCommandCenter: () => void
   toggleCommandCenter: () => void
-  openFileSwitcher: () => void
-  closeFileSwitcher: () => void
-  toggleFileSwitcher: () => void
   openFindReplace: () => void
   closeFindReplace: () => void
   toggleFindReplace: () => void
@@ -130,14 +124,12 @@ export const useUIStore = create<UIState>()(
 
       // Search
       searchQuery: '',
-      searchOpen: false,
 
       // Modals
       settingsOpen: false,
       exportModalOpen: false,
       importModalOpen: false,
       commandCenterOpen: false,
-      fileSwitcherOpen: false,
       findReplaceOpen: false,
 
       // Theme
@@ -178,8 +170,6 @@ export const useUIStore = create<UIState>()(
 
       setSearchQuery: (query) => set({ searchQuery: query }),
 
-      toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
-
       openSettings: () => set({ settingsOpen: true }),
 
       closeSettings: () => set({ settingsOpen: false }),
@@ -197,12 +187,6 @@ export const useUIStore = create<UIState>()(
       closeCommandCenter: () => set({ commandCenterOpen: false }),
 
       toggleCommandCenter: () => set((state) => ({ commandCenterOpen: !state.commandCenterOpen })),
-
-      openFileSwitcher: () => set({ fileSwitcherOpen: true }),
-
-      closeFileSwitcher: () => set({ fileSwitcherOpen: false }),
-
-      toggleFileSwitcher: () => set((state) => ({ fileSwitcherOpen: !state.fileSwitcherOpen })),
 
       openFindReplace: () => set({ findReplaceOpen: true }),
 
