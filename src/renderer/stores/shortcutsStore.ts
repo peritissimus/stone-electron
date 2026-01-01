@@ -19,7 +19,9 @@ export type ShortcutAction =
   | 'toggleSidebar'
   | 'goHome'
   | 'closeNote'
-  | 'todayJournal';
+  | 'todayJournal'
+  | 'findReplace'
+  | 'toggleEditorMode';
 
 /**
  * Shortcut definition
@@ -161,6 +163,26 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     shiftKey: false,
     altKey: false,
     category: 'navigation',
+  },
+  {
+    id: 'findReplace',
+    label: 'Find & Replace',
+    description: 'Find and replace text in the current note',
+    key: 'f',
+    metaKey: true,
+    shiftKey: false,
+    altKey: false,
+    category: 'editor',
+  },
+  {
+    id: 'toggleEditorMode',
+    label: 'Toggle Editor Mode',
+    description: 'Switch between rich text and raw markdown',
+    key: 'm',
+    metaKey: true,
+    shiftKey: true,
+    altKey: false,
+    category: 'editor',
   },
 ];
 

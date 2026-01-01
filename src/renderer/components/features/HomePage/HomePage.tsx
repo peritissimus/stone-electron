@@ -81,6 +81,12 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
+// Normalize path for comparison (handle backslashes, leading slashes, case differences)
+function normalizePath(path: string | null): string {
+  if (!path) return '';
+  return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase();
+}
+
 export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
@@ -106,7 +112,8 @@ export function HomePage() {
   const now = new Date();
   const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const expectedJournalPath = `Journal/${journalFilename}.md`;
-  const todaysJournal = notes.find((note) => note.filePath === expectedJournalPath);
+  const normalizedExpectedPath = normalizePath(expectedJournalPath);
+  const todaysJournal = notes.find((note) => normalizePath(note.filePath) === normalizedExpectedPath);
 
   // Format today's date for journal title (e.g., "November 10, 2025")
   const journalTitle = now.toLocaleDateString('en-US', {
@@ -172,8 +179,8 @@ export function HomePage() {
     logger.info('[HomePage] Journal clicked', { journalFilename, journalTitle });
 
     // Check if today's journal already exists in Journal folder (by filename)
-    const expectedFilePath = `Journal/${journalFilename}.md`;
-    const existingJournal = notes.find((note) => note.filePath === expectedFilePath);
+    // Use the same normalized path we computed earlier
+    const existingJournal = todaysJournal;
 
     if (existingJournal) {
       // Open existing journal
