@@ -24,10 +24,8 @@ import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
 
 // Lazy load components not needed on initial render
-const SearchPanel = lazy(() => import('@renderer/components/features/search/SearchPanel').then(m => ({ default: m.SearchPanel })));
 const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
 const CommandCenter = lazy(() => import('@renderer/components/features/CommandCenter/CommandCenter').then(m => ({ default: m.CommandCenter })));
-const FileSwitcher = lazy(() => import('@renderer/components/features/FileSwitcher/FileSwitcher').then(m => ({ default: m.FileSwitcher })));
 const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
 const FindReplaceModal = lazy(() => import('@renderer/components/features/FindReplace/FindReplaceModal').then(m => ({ default: m.FindReplaceModal })));
 
@@ -62,7 +60,6 @@ export function MainLayout() {
     sidebarWidth,
     noteListWidth,
     editorFullscreen,
-    searchOpen,
     setSidebarWidth,
     setNoteListWidth,
   } = useUIStore();
@@ -225,11 +222,6 @@ export function MainLayout() {
         showNoteList={false}
         mainContent={
           <MainContentArea>
-            {searchOpen && (
-              <Suspense fallback={<div className="p-4 text-muted-foreground">Loading search...</div>}>
-                <SearchPanel />
-              </Suspense>
-            )}
             {activeNoteId ? (
               <Suspense fallback={<EditorSkeleton />}>
                 <NoteEditor ref={editorRef} />
@@ -251,9 +243,6 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <CommandCenter />
-            </Suspense>
-            <Suspense fallback={null}>
-              <FileSwitcher />
             </Suspense>
             <Suspense fallback={null}>
               <FindReplaceModal editor={currentEditor} />

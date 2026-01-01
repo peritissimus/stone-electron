@@ -14,8 +14,7 @@ export type ShortcutAction =
   | 'newPersonalNote'
   | 'newWorkNote'
   | 'settings'
-  | 'search'
-  | 'fileSwitcher'
+  | 'commandCenter'
   | 'toggleSidebar'
   | 'goHome'
   | 'closeNote'
@@ -63,20 +62,10 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
     category: 'general',
   },
   {
-    id: 'search',
-    label: 'Search',
-    description: 'Open search',
+    id: 'commandCenter',
+    label: 'Command Center',
+    description: 'Open command center to search and run commands',
     key: 'k',
-    metaKey: true,
-    shiftKey: false,
-    altKey: false,
-    category: 'general',
-  },
-  {
-    id: 'fileSwitcher',
-    label: 'Quick Open',
-    description: 'Quickly switch between files',
-    key: 'p',
     metaKey: true,
     shiftKey: false,
     altKey: false,
