@@ -4,10 +4,12 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckSquare, Search, FolderOpen, Layers, Filter } from 'lucide-react';
+import { CaretRight } from 'phosphor-react';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { TodoItem } from '@shared/types';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { logger } from '@renderer/utils/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Input } from '@renderer/components/base/ui/input';
@@ -27,6 +29,8 @@ import {
   DropdownMenuLabel,
 } from '@renderer/components/base/ui/dropdown-menu';
 import { Button } from '@renderer/components/base/ui/button';
+import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { cn } from '@renderer/lib/utils';
 import { TaskSection } from './TaskSection';
 
 // State configuration in priority order
@@ -54,6 +58,7 @@ export function TasksPage() {
   const [groupBy, setGroupBy] = useState<GroupByOption>('state');
   const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { toggleSidebar, sidebarOpen } = useUIStore();
 
   // Debounce timer ref for auto-refresh
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -283,13 +288,26 @@ export function TasksPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <Skeleton className="w-6 h-6 rounded" />
-            <Skeleton className="w-24 h-6 rounded" />
-          </div>
-          <Skeleton className="w-32 h-8 rounded" />
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div
+          className={cn(
+            'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+            sizeHeightClasses['spacious'],
+          )}
+        >
+          {!sidebarOpen && (
+            <IconButton
+              size="normal"
+              icon={<CaretRight size={16} weight="bold" />}
+              tooltip="Expand sidebar"
+              onClick={toggleSidebar}
+            />
+          )}
+          <CheckSquare className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Tasks</span>
+          <div className="flex-1" />
+          <Skeleton className="w-20 h-4 rounded" />
         </div>
         <div className="flex-1 overflow-auto p-6">
           <div className="max-w-2xl mx-auto space-y-4">
@@ -307,109 +325,119 @@ export function TasksPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex flex-col gap-3 px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckSquare className="w-5 h-5 text-muted-foreground" />
-            <h1 className="text-lg font-semibold">Tasks</h1>
-            <span className="text-sm text-muted-foreground">
-              {counts.visible} of {counts.total} tasks
-            </span>
-          </div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header Bar */}
+      <div
+        className={cn(
+          'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+          sizeHeightClasses['spacious'],
+        )}
+      >
+        {!sidebarOpen && (
+          <IconButton
+            size="normal"
+            icon={<CaretRight size={16} weight="bold" />}
+            tooltip="Expand sidebar"
+            onClick={toggleSidebar}
+          />
+        )}
+        <CheckSquare className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Tasks</span>
+        <div className="flex-1" />
+        <span className="text-xs text-muted-foreground">
+          {counts.visible} of {counts.total} tasks
+        </span>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="px-4 py-2 border-b border-border bg-card/50 flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search tasks..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-8"
+          />
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px] max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search tasks..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8"
-            />
-          </div>
-
-          {/* Notebook Filter */}
-          {folders.length > 0 && (
-            <Select value={folderFilter} onValueChange={setFolderFilter}>
-              <SelectTrigger className="w-[140px] h-8">
-                <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="All notebooks" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All notebooks</SelectItem>
-                {folders.map((folder) => (
-                  <SelectItem key={folder} value={folder}>
-                    {folder}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* State Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-8 gap-2">
-                <Filter className="w-4 h-4" />
-                States
-                <span className="text-xs text-muted-foreground">
-                  ({visibleStates.size}/{TASK_STATES.length})
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-48">
-              <DropdownMenuLabel>Show States</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {TASK_STATES.map((state) => (
-                <DropdownMenuCheckboxItem
-                  key={state.key}
-                  checked={visibleStates.has(state.key)}
-                  onCheckedChange={() => toggleStateVisibility(state.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${state.color}`} />
-                    {state.label}
-                  </div>
-                </DropdownMenuCheckboxItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={visibleStates.size === TASK_STATES.length}
-                onCheckedChange={selectAllStates}
-              >
-                All states
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={
-                  visibleStates.size === TASK_STATES.filter((s) => !s.done).length &&
-                  TASK_STATES.filter((s) => !s.done).every((s) => visibleStates.has(s.key))
-                }
-                onCheckedChange={selectActiveStates}
-              >
-                Active only
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {/* Group By */}
-          <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByOption)}>
+        {/* Notebook Filter */}
+        {folders.length > 0 && (
+          <Select value={folderFilter} onValueChange={setFolderFilter}>
             <SelectTrigger className="w-[140px] h-8">
-              <Layers className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue />
+              <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="All notebooks" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="state">By State</SelectItem>
-              <SelectItem value="notebook">By Notebook</SelectItem>
-              <SelectItem value="note">By Note</SelectItem>
-              <SelectItem value="none">No Grouping</SelectItem>
+              <SelectItem value="all">All notebooks</SelectItem>
+              {folders.map((folder) => (
+                <SelectItem key={folder} value={folder}>
+                  {folder}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
-        </div>
+        )}
+
+        {/* State Filter */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 gap-2">
+              <Filter className="w-4 h-4" />
+              States
+              <span className="text-xs text-muted-foreground">
+                ({visibleStates.size}/{TASK_STATES.length})
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuLabel>Show States</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {TASK_STATES.map((state) => (
+              <DropdownMenuCheckboxItem
+                key={state.key}
+                checked={visibleStates.has(state.key)}
+                onCheckedChange={() => toggleStateVisibility(state.key)}
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${state.color}`} />
+                  {state.label}
+                </div>
+              </DropdownMenuCheckboxItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={visibleStates.size === TASK_STATES.length}
+              onCheckedChange={selectAllStates}
+            >
+              All states
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={
+                visibleStates.size === TASK_STATES.filter((s) => !s.done).length &&
+                TASK_STATES.filter((s) => !s.done).every((s) => visibleStates.has(s.key))
+              }
+              onCheckedChange={selectActiveStates}
+            >
+              Active only
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Group By */}
+        <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByOption)}>
+          <SelectTrigger className="w-[140px] h-8">
+            <Layers className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="state">By State</SelectItem>
+            <SelectItem value="notebook">By Notebook</SelectItem>
+            <SelectItem value="note">By Note</SelectItem>
+            <SelectItem value="none">No Grouping</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Content */}

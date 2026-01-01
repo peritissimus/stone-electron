@@ -5,9 +5,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { GitFork } from 'lucide-react';
+import { CaretRight } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { useUIStore } from '@renderer/stores/uiStore';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
+import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
 
 interface GraphNode {
@@ -32,6 +36,7 @@ interface GraphData {
 export function GraphPage() {
   const { getGraphData } = useNoteAPI();
   const { setActiveNote, activeNoteId } = useNoteStore();
+  const { toggleSidebar, sidebarOpen } = useUIStore();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -137,13 +142,26 @@ export function GraphPage() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            <Skeleton className="w-5 h-5 rounded" />
-            <Skeleton className="w-20 h-6 rounded" />
-          </div>
-          <Skeleton className="w-40 h-4 rounded" />
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div
+          className={cn(
+            'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+            sizeHeightClasses['spacious'],
+          )}
+        >
+          {!sidebarOpen && (
+            <IconButton
+              size="normal"
+              icon={<CaretRight size={16} weight="bold" />}
+              tooltip="Expand sidebar"
+              onClick={toggleSidebar}
+            />
+          )}
+          <GitFork className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Graph</span>
+          <div className="flex-1" />
+          <Skeleton className="w-24 h-4 rounded" />
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -153,20 +171,32 @@ export function GraphPage() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <GitFork className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Graph</h1>
-        </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div
+        className={cn(
+          'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+          sizeHeightClasses['spacious'],
+        )}
+      >
+        {!sidebarOpen && (
+          <IconButton
+            size="normal"
+            icon={<CaretRight size={16} weight="bold" />}
+            tooltip="Expand sidebar"
+            onClick={toggleSidebar}
+          />
+        )}
+        <GitFork className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm font-medium">Graph</span>
+        <div className="flex-1" />
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
+            <span className="w-2 h-2 rounded-full bg-primary"></span>
             {graphData.nodes.length} notes
           </span>
           <span className="flex items-center gap-2">
-            <span className="w-4 h-px bg-muted-foreground"></span>
+            <span className="w-3 h-px bg-muted-foreground"></span>
             {graphData.links.length} links
           </span>
         </div>
