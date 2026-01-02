@@ -34,13 +34,15 @@ vi.mock('chokidar', () => ({
   watch: vi.fn(() => mockWatcher),
 }));
 
-// Mock electron
-vi.mock('electron', () => ({
-  BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } },
-    ]),
-  },
+// Mock EventBus
+const mockEventBus = {
+  emit: vi.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+};
+
+vi.mock('../../src/main/services/EventBus', () => ({
+  getEventBus: vi.fn(() => mockEventBus),
 }));
 
 // Mock logger
@@ -81,7 +83,6 @@ vi.mock('../../src/main/repositories/NoteRepository', () => ({
 
 // Import after mocks
 import chokidar from 'chokidar';
-import { BrowserWindow } from 'electron';
 import { FileWatcherService, getFileWatcherService } from '../../src/main/services/FileWatcherService';
 
 describe('FileWatcherService', () => {
@@ -91,6 +92,10 @@ describe('FileWatcherService', () => {
     vi.clearAllMocks();
     mockWatcher = createMockWatcher();
     (chokidar.watch as any).mockReturnValue(mockWatcher);
+    // Reset mockEventBus to clean state
+    mockEventBus.emit = vi.fn();
+    mockEventBus.on = vi.fn();
+    mockEventBus.off = vi.fn();
     service = new FileWatcherService();
   });
 
@@ -221,75 +226,61 @@ describe('FileWatcherService', () => {
 
   describe('file events', () => {
     it('should emit FILE_CREATED event for new .md files', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
       // Trigger add event
       mockWatcher.emit('add', '/test/path/new-file.md');
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
         'files:created',
         expect.objectContaining({ workspaceId: 'ws-1', path: 'new-file.md' })
       );
     });
 
     it('should emit FILE_CHANGED event for modified .md files', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
       mockWatcher.emit('change', '/test/path/changed-file.md');
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
         'files:changed',
         expect.objectContaining({ workspaceId: 'ws-1', path: 'changed-file.md' })
       );
     });
 
     it('should emit FILE_DELETED event for removed .md files', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
       mockWatcher.emit('unlink', '/test/path/deleted-file.md');
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
         'files:deleted',
         expect.objectContaining({ workspaceId: 'ws-1', path: 'deleted-file.md' })
       );
     });
 
     it('should ignore non-markdown files', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
+      mockEventBus.emit.mockClear(); // Clear any previous calls
       mockWatcher.emit('add', '/test/path/image.png');
       mockWatcher.emit('change', '/test/path/document.txt');
       mockWatcher.emit('unlink', '/test/path/data.json');
 
-      expect(mockWindow.webContents.send).not.toHaveBeenCalled();
+      expect(mockEventBus.emit).not.toHaveBeenCalled();
     });
 
     it('should handle nested paths correctly', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
       mockWatcher.emit('add', '/test/path/folder/subfolder/note.md');
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
         'files:created',
         expect.objectContaining({ path: 'folder/subfolder/note.md' })
       );
@@ -375,30 +366,23 @@ describe('FileWatcherService', () => {
       vi.useRealTimers();
     });
 
-    it('should handle send errors gracefully', async () => {
-      const mockWindow = {
-        webContents: {
-          send: vi.fn(() => { throw new Error('Window closed'); }),
-        },
-      };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
+    it('should call emit for each file event', async () => {
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       await service.watchWorkspace(workspace);
 
-      // Should not throw
-      expect(() => {
-        mockWatcher.emit('add', '/test/path/new-file.md');
-      }).not.toThrow();
+      // Emit multiple events
+      mockWatcher.emit('add', '/test/path/file1.md');
+      mockWatcher.emit('change', '/test/path/file2.md');
+      mockWatcher.emit('unlink', '/test/path/file3.md');
+
+      // Should have called emit for each event
+      expect(mockEventBus.emit).toHaveBeenCalledTimes(3);
     });
   });
 
   describe('syncWorkspace', () => {
     it('should sync notebooks and notes', async () => {
       vi.useFakeTimers();
-
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
 
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       mockWsRepoInstance.findById.mockResolvedValue(workspace);
@@ -419,9 +403,6 @@ describe('FileWatcherService', () => {
     it('should broadcast WORKSPACE_UPDATED after sync', async () => {
       vi.useFakeTimers();
 
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
       mockWsRepoInstance.findById.mockResolvedValue(workspace);
       mockNbRepoInstance.syncWithWorkspaceFolders.mockResolvedValue({});
@@ -432,7 +413,7 @@ describe('FileWatcherService', () => {
 
       await vi.advanceTimersByTimeAsync(600);
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
+      expect(mockEventBus.emit).toHaveBeenCalledWith(
         'workspaces:updated',
         expect.objectContaining({ workspace })
       );
@@ -484,36 +465,6 @@ describe('FileWatcherService', () => {
   });
 
   describe('syncWorkspace edge cases', () => {
-    it('should handle send failure during WORKSPACE_UPDATED broadcast', async () => {
-      vi.useFakeTimers();
-
-      // First window throws, second succeeds
-      const mockWindows = [
-        { webContents: { send: vi.fn(() => { throw new Error('Window closed'); }) } },
-        { webContents: { send: vi.fn() } },
-      ];
-      (BrowserWindow.getAllWindows as any).mockReturnValue(mockWindows);
-
-      const workspace = { id: 'ws-1', name: 'Test', folderPath: '/test/path' };
-      mockWsRepoInstance.findById.mockResolvedValue(workspace);
-      mockNbRepoInstance.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepoInstance.syncWithFileSystem.mockResolvedValue({});
-
-      await service.watchWorkspace(workspace);
-      mockWatcher.emit('add', '/test/path/new-file.md');
-
-      // Should not throw even if first window fails
-      await expect(vi.advanceTimersByTimeAsync(600)).resolves.not.toThrow();
-
-      // Second window should still receive the event
-      expect(mockWindows[1].webContents.send).toHaveBeenCalledWith(
-        'workspaces:updated',
-        expect.objectContaining({ workspace })
-      );
-
-      vi.useRealTimers();
-    });
-
     it('should log error when debounced sync fails unexpectedly', async () => {
       vi.useFakeTimers();
 

@@ -3,7 +3,6 @@
  */
 
 import { eq, and, sql, desc, asc, isNull } from 'drizzle-orm';
-import { BrowserWindow } from 'electron';
 import { getDatabaseManager } from '../database/DatabaseManager';
 import {
   notes,
@@ -15,6 +14,7 @@ import type { Note } from '@shared/types';
 import { generateId } from '@shared/utils/id';
 import { getFileSystemService } from '../services/FileSystemService';
 import { getMarkdownService } from '../services/MarkdownService';
+import { getEventBus } from '../services/EventBus';
 import { WorkspaceRepository } from './WorkspaceRepository';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
@@ -1237,20 +1237,17 @@ export class NoteRepository {
       await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
 
       // Emit file system events to update UI
+      const eventBus = getEventBus();
       // First emit FILE_DELETED for the old path
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.FILE_DELETED, {
-          workspaceId,
-          path: oldFilePath,
-        });
+      eventBus.emit(EVENTS.FILE_DELETED, {
+        workspaceId,
+        path: oldFilePath,
       });
 
       // Then emit FILE_CREATED for the new path
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.FILE_CREATED, {
-          workspaceId,
-          path: newFilePath,
-        });
+      eventBus.emit(EVENTS.FILE_CREATED, {
+        workspaceId,
+        path: newFilePath,
       });
     } catch (error) {
       logger.error(`Error renaming markdown file ${oldFilePath} to ${newFilePath}:`, error);

@@ -5,13 +5,13 @@
 
 import chokidar, { FSWatcher } from 'chokidar';
 import path from 'node:path';
-import { BrowserWindow } from 'electron';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { Workspace } from '@shared/types';
 import { WorkspaceRepository } from '../repositories/WorkspaceRepository';
 import { NoteRepository } from '../repositories/NoteRepository';
 import { NotebookRepository } from '../repositories/NotebookRepository';
+import { getEventBus } from './EventBus';
 
 type WatchEntry = {
   watcher: FSWatcher;
@@ -61,14 +61,9 @@ export class FileWatcherService {
       depth: undefined,
     });
 
+    const eventBus = getEventBus();
     const sendEvent = (event: keyof typeof EVENTS, payload: any) => {
-      BrowserWindow.getAllWindows().forEach((win) => {
-        try {
-          win.webContents.send(EVENTS[event], payload);
-        } catch {
-          // Ignore send failures if window is gone
-        }
-      });
+      eventBus.emit(EVENTS[event], payload);
     };
 
     const onFsEvent = (kind: 'add' | 'change' | 'unlink', fullPath: string) => {
@@ -142,13 +137,7 @@ export class FileWatcherService {
       await nbRepo.syncWithWorkspaceFolders(workspaceId);
       await noteRepo.syncWithFileSystem(workspaceId);
       // Notify renderer that workspace has updated; UI can refresh trees/counts
-      BrowserWindow.getAllWindows().forEach((win) => {
-        try {
-          win.webContents.send(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
-        } catch {
-          // Ignore send failures if window is gone
-        }
-      });
+      getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
       logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
     } catch (e) {
       logger.error(`[Watcher] Error syncing ${ws.name}:`, e);

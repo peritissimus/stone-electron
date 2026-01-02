@@ -11,7 +11,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock electron before importing handlers
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [{ webContents: { send: vi.fn() } }]),
     getFocusedWindow: vi.fn(() => ({
       webContents: {
         printToPDF: vi.fn(() => Promise.resolve(Buffer.from('pdf-data'))),
@@ -29,6 +28,17 @@ vi.mock('electron', () => ({
   app: {
     getPath: vi.fn(() => '/tmp'),
   },
+}));
+
+// Mock EventBus
+const mockEventBus = {
+  emit: vi.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+};
+
+vi.mock('../../../src/main/services/EventBus', () => ({
+  getEventBus: vi.fn(() => mockEventBus),
 }));
 
 // Mock fs/promises
