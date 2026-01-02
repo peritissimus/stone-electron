@@ -864,6 +864,14 @@ export class NoteRepository {
   }
 
   /**
+   * Get all links (for graph building)
+   */
+  async getAllLinks(): Promise<{ sourceNoteId: string; targetNoteId: string }[]> {
+    const result = await this.db.select().from(noteLinks);
+    return result;
+  }
+
+  /**
    * Get graph data for visualization (nodes and edges)
    * Uses TTL-based caching to avoid expensive queries on frequent calls
    */
