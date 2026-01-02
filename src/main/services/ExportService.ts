@@ -103,7 +103,7 @@ class ExportService {
       "'": '&#039;',
     };
 
-    return text.replace(/[&<>"']/g, (char) => htmlEntities[char] || char);
+    return text.replaceAll(/[&<>"']/g, (char) => htmlEntities[char] || char);
   }
 }
 

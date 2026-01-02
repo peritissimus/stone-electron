@@ -1,11 +1,11 @@
 /**
- * TaskService - TODO/Task management for notes
+ * TaskService - Task management for notes
  *
  * Handles extracting and updating Logseq-style task patterns from markdown files.
  * Supported states: TODO, DOING, DONE, WAITING, HOLD, CANCELED, IDEA
  */
 
-import fs from 'fs/promises';
+import fs from 'node:fs/promises';
 import path from 'node:path';
 import { getRepositories } from '../repositories';
 import { getNoteService } from './NoteService';
@@ -25,7 +25,15 @@ export interface TodoItem {
 
 export type TaskState = 'todo' | 'doing' | 'done' | 'waiting' | 'hold' | 'canceled' | 'idea';
 
-const VALID_STATES: TaskState[] = ['todo', 'doing', 'done', 'waiting', 'hold', 'canceled', 'idea'];
+const VALID_STATES = new Set<TaskState>([
+  'todo',
+  'doing',
+  'done',
+  'waiting',
+  'hold',
+  'canceled',
+  'idea',
+]);
 
 /**
  * TaskService handles task extraction and updates
@@ -107,7 +115,7 @@ class TaskService {
 
     // Validate state
     const normalizedState = newState.toLowerCase() as TaskState;
-    if (!VALID_STATES.includes(normalizedState)) {
+    if (!VALID_STATES.has(normalizedState)) {
       throw new Error(`Invalid task state: ${newState}`);
     }
 

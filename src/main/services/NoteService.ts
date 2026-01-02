@@ -10,7 +10,6 @@ import path from 'node:path';
 import { getRepositories } from '../repositories';
 import { getFileSystemService } from './FileSystemService';
 import { getMarkdownService } from './MarkdownService';
-import { getDatabaseManager } from '../database/DatabaseManager';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { resolveInsideRoot } from '../utils/path';
@@ -51,7 +50,7 @@ class NoteService {
   private readonly markdownService = getMarkdownService();
 
   // Content cache (moved from repository)
-  private contentCache = new Map<string, { content: string; timestamp: number }>();
+  private readonly contentCache = new Map<string, { content: string; timestamp: number }>();
   private static readonly CONTENT_CACHE_TTL_MS = 5000; // 5 seconds
 
   // ==========================================================================
@@ -211,74 +210,80 @@ class NoteService {
     const existingNote = await repos.note.findById(id);
     if (!existingNote) throw new Error('Note not found');
 
-    const hasFileBacking = Boolean(existingNote.filePath && existingNote.workspaceId);
     const updateData: Partial<Note> = { updatedAt: new Date() };
+    this.applyMetadataUpdates(updateData, data);
 
-    // Handle metadata updates
-    if (data.title !== undefined) updateData.title = data.title;
-    if (data.isFavorite !== undefined) updateData.isFavorite = data.isFavorite;
-    if (data.isPinned !== undefined) updateData.isPinned = data.isPinned;
-    if (data.isArchived !== undefined) updateData.isArchived = data.isArchived;
-
-    if (hasFileBacking) {
-      const workspace = await repos.workspace.findById(existingNote.workspaceId!);
-      if (!workspace) throw new Error('Workspace not found');
-
-      // Handle folder change
-      if (data.folderPath !== undefined || data.notebookId !== undefined) {
-        const newFilePath = await this.handleFolderChange(
-          existingNote,
-          data.folderPath,
-          data.notebookId,
-          workspace,
-        );
-        if (newFilePath) {
-          updateData.filePath = newFilePath;
-          if (data.notebookId !== undefined) {
-            updateData.notebookId = data.notebookId || null;
-          }
-        }
-      }
-
-      // Handle content or title change
-      const shouldUpdateFile =
-        data.content != null ||
-        (data.title !== undefined && data.title !== existingNote.title);
-
-      if (shouldUpdateFile) {
-        const filePathToUse = (updateData.filePath as string) || existingNote.filePath!;
-        const currentTitle = data.title || existingNote.title || 'Untitled Note';
-
-        let contentToSave = data.content ?? (await this.getContent(existingNote.id)) ?? '';
-        contentToSave = this.syncContentWithTitle(contentToSave, currentTitle);
-
-        await this.saveContentToFile(filePathToUse, existingNote.workspaceId!, contentToSave, {
-          favorite: (data.isFavorite ?? existingNote.isFavorite) || undefined,
-          pinned: (data.isPinned ?? existingNote.isPinned) || undefined,
-        });
-
-        // Invalidate content cache
-        this.contentCache.delete(id);
-      }
+    if (existingNote.filePath && existingNote.workspaceId) {
+      await this.handleFileBackedUpdate(existingNote, data, updateData);
+    } else if (data.folderPath !== undefined || data.notebookId !== undefined) {
+      throw new Error('Cannot change folder or notebook for notes without file backing');
     }
 
-    // Update DB
     await repos.note.update(id, updateData);
-
-    // Handle tags
     if (data.tags !== undefined) {
       await this.setNoteTags(id, data.tags);
     }
 
-    // Emit event
     this.emitNoteUpdated(id);
 
-    // Return note with relations
     const note = await repos.note.findById(id);
     if (!note) throw new Error('Note not found after update');
 
     const tags = await this.getNoteTags(id);
     return { ...note, tags };
+  }
+
+  private applyMetadataUpdates(updateData: Partial<Note>, data: UpdateNoteRequest): void {
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.isFavorite !== undefined) updateData.isFavorite = data.isFavorite;
+    if (data.isPinned !== undefined) updateData.isPinned = data.isPinned;
+    if (data.isArchived !== undefined) updateData.isArchived = data.isArchived;
+  }
+
+  private async handleFileBackedUpdate(
+    existingNote: Note,
+    data: UpdateNoteRequest,
+    updateData: Partial<Note>,
+  ): Promise<void> {
+    const repos = getRepositories();
+    const workspace = await repos.workspace.findById(existingNote.workspaceId!);
+    if (!workspace) throw new Error('Workspace not found');
+
+    if (data.folderPath !== undefined || data.notebookId !== undefined) {
+      const newFilePath = await this.handleFolderChange(
+        existingNote,
+        data.folderPath,
+        data.notebookId,
+        workspace,
+      );
+      if (newFilePath) {
+        updateData.filePath = newFilePath;
+        if (data.notebookId !== undefined) {
+          updateData.notebookId = data.notebookId || null;
+        }
+      }
+    }
+
+    const shouldUpdateFile =
+      data.content != null ||
+      (data.title !== undefined && data.title !== existingNote.title);
+
+    if (!shouldUpdateFile) {
+      return;
+    }
+
+    const filePathToUse = (updateData.filePath as string) || existingNote.filePath!;
+    const currentTitle = data.title || existingNote.title || 'Untitled Note';
+
+    let contentToSave = data.content ?? (await this.getContent(existingNote.id)) ?? '';
+    contentToSave = this.syncContentWithTitle(contentToSave, currentTitle);
+
+    await this.saveContentToFile(filePathToUse, existingNote.workspaceId!, contentToSave, {
+      favorite: (data.isFavorite ?? existingNote.isFavorite) || undefined,
+      pinned: (data.isPinned ?? existingNote.isPinned) || undefined,
+    });
+
+    this.contentCache.delete(existingNote.id);
   }
 
   /**
