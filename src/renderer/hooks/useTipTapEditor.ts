@@ -22,10 +22,10 @@ import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid'
 import { SlashCommand } from '@renderer/extensions/SlashCommand';
 import { NoteLink } from '@renderer/extensions/NoteLink';
 import { Note } from '@shared/types';
-import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
 import { SearchAndReplace } from '@renderer/extensions/SearchAndReplace';
 import { logger } from '@renderer/utils/logger';
+import { noteAPI } from '@renderer/api';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
 // Language loader map for dynamic imports
@@ -109,10 +109,7 @@ async function fetchNotesForAutocomplete(query: string) {
 
     // Use cache if valid
     if (!notesCache || (now - notesCache.timestamp) > NOTES_CACHE_TTL_MS) {
-      const response = await window.electron.invoke<{ notes: Note[] }>(
-        NOTE_CHANNELS.GET_ALL,
-        { isDeleted: false },
-      );
+      const response = await noteAPI.getAll({ include_archived: false });
 
       if (response.success && response.data) {
         notesCache = {

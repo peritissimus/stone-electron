@@ -5,8 +5,8 @@
 import { useState, useEffect } from 'react';
 import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
 import { Database, HardDrive, Download, CheckCircle, Palette, Info, Keyboard } from 'phosphor-react';
-import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
-import { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
+import { databaseAPI } from '@renderer/api';
+import { DatabaseStatus } from '@shared/types';
 import { logger } from '@renderer/utils/logger';
 import { TabbedModal } from '@renderer/components/composites';
 import { SettingsSection } from './SettingsSection';
@@ -81,10 +81,7 @@ function DatabaseSettings() {
 
   const loadStatus = async () => {
     try {
-      const response = await window.electron.invoke<DatabaseStatus>(
-        DATABASE_CHANNELS.GET_STATUS,
-        {},
-      );
+      const response = await databaseAPI.getStatus();
       if (response.success && response.data) {
         setStatus(response.data);
       } else {
@@ -99,9 +96,7 @@ function DatabaseSettings() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await window.electron.invoke<BackupResult>(DATABASE_CHANNELS.BACKUP, {
-        label: 'manual',
-      });
+      const response = await databaseAPI.backup();
       if (response.success && response.data) {
         setMessage({
           type: 'success',
@@ -124,7 +119,7 @@ function DatabaseSettings() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await window.electron.invoke<VacuumResult>(DATABASE_CHANNELS.VACUUM, {});
+      const response = await databaseAPI.vacuum();
       if (response.success && response.data) {
         const freedMB = (response.data.freed_bytes / 1024 / 1024).toFixed(2);
         setMessage({ type: 'success', text: `Database optimized. Freed ${freedMB} MB` });
@@ -143,12 +138,7 @@ function DatabaseSettings() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await window.electron.invoke<IntegrityResult>(
-        DATABASE_CHANNELS.CHECK_INTEGRITY,
-        {
-          detailed: true,
-        },
-      );
+      const response = await databaseAPI.checkIntegrity();
       if (response.success && response.data) {
         if (response.data.ok) {
           setMessage({ type: 'success', text: 'Database integrity check passed' });

@@ -5,12 +5,13 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckSquare, Search, FolderOpen, Layers, Filter } from 'lucide-react';
 import { CaretRight } from 'phosphor-react';
-import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { TodoItem } from '@shared/types';
+import { events } from '@renderer/lib/events';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { logger } from '@renderer/utils/logger';
+import { noteAPI } from '@renderer/api';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Input } from '@renderer/components/base/ui/input';
 import {
@@ -66,7 +67,7 @@ export function TasksPage() {
   const loadTodos = useCallback(async (showLoadingState = true) => {
     try {
       if (showLoadingState) setLoading(true);
-      const response = await window.electron.invoke<TodoItem[]>(NOTE_CHANNELS.GET_ALL_TODOS, {});
+      const response = await noteAPI.getAllTodos();
       if (response.success && response.data) {
         setTodos(response.data);
       }
@@ -93,15 +94,15 @@ export function TasksPage() {
       }, 500);
     };
 
-    const offNoteUpdated = window.electron.on(EVENTS.NOTE_UPDATED, debouncedRefresh);
-    const offFileChanged = window.electron.on(EVENTS.FILE_CHANGED, debouncedRefresh);
+    const offNoteUpdated = events.onNoteUpdated(debouncedRefresh);
+    const offFileChanged = events.onFileChanged(debouncedRefresh);
 
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
-      offNoteUpdated?.();
-      offFileChanged?.();
+      offNoteUpdated();
+      offFileChanged();
     };
   }, [loadTodos]);
 
@@ -260,11 +261,7 @@ export function TasksPage() {
           ),
         );
 
-        const response = await window.electron.invoke(NOTE_CHANNELS.UPDATE_TASK_STATE, {
-          noteId: todo.noteId,
-          taskIndex,
-          newState,
-        });
+        const response = await noteAPI.updateTaskState(todo.noteId, taskIndex, newState);
 
         if (!response.success) {
           // Revert on error
