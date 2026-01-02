@@ -130,6 +130,27 @@ export class NotebookRepository {
   }
 
   /**
+   * Find notebook by folder path in a workspace
+   */
+  async findByFolderPath(workspaceId: string, folderPath: string): Promise<Notebook | undefined> {
+    const db = getDatabaseManager().getDrizzle();
+    const normalizedPath = folderPath.replaceAll('\\', '/');
+
+    const result = await db
+      .select()
+      .from(notebooks)
+      .where(
+        and(
+          eq(notebooks.workspaceId, workspaceId),
+          eq(notebooks.folderPath, normalizedPath),
+        ),
+      )
+      .limit(1);
+
+    return result[0];
+  }
+
+  /**
    * Build WHERE conditions from filter options
    */
   private buildWhereConditions(where: Partial<Notebook>): ReturnType<typeof eq>[] {

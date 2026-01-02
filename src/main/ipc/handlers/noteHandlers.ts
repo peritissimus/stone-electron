@@ -1,5 +1,8 @@
 /**
  * Note IPC Handlers
+ *
+ * Uses services for business logic, not repositories directly.
+ * Pattern: IPC Handler → Service → Repository → Database
  */
 
 import { BrowserWindow, dialog } from 'electron';
@@ -8,6 +11,10 @@ import * as path from 'node:path';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import type { Attachment, Note, Tag } from '@shared/types';
 import { getRepositories } from '../../repositories';
+import { getNoteService } from '../../services/NoteService';
+import { getGraphService } from '../../services/GraphService';
+import { getTaskService } from '../../services/TaskService';
+import { getExportService } from '../../services/ExportService';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
 
@@ -237,44 +244,38 @@ async function enrichNotes(
 export function registerNoteHandlers() {
   const repos = getRepositories();
 
-  // notes:create
+  // notes:create - uses NoteService
   registerHandler(NOTE_CHANNELS.CREATE, async (event, request: CreateNoteRequest) => {
     logger.info(`[IPC] notes:create "${request.title || 'Untitled'}"`);
 
-    const createData: NoteCreateData = {
-      title: request.title || 'Untitled',
-      notebookId: null,
+    const noteService = getNoteService();
+    const note = await noteService.createNote({
+      title: request.title,
       folderPath: request.folderPath ?? undefined,
-    };
+      content: request.content,
+      tags: request.tags,
+    });
 
-    const note = await repos.note.create(createData);
-
-    if (request.content && note.filePath && note.workspaceId) {
-      const contentUpdate: NoteUpdateData = { content: request.content };
-      await repos.note.update(note.id, contentUpdate);
-    }
-
-    if (request.tags && request.tags.length > 0) {
-      await repos.tag.setTagsForNote(note.id, request.tags);
-    }
-
-    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_CREATED);
-
+    const noteWithRelations = await buildNoteResponse(note, repos);
     return noteWithRelations;
   });
 
-  // notes:update
+  // notes:update - uses NoteService
   registerHandler(NOTE_CHANNELS.UPDATE, async (event, request: UpdateNoteRequest) => {
     const logId = request.title ? `"${request.title}"` : request.id.slice(0, 8);
     logger.info(`[IPC] notes:update ${logId}`);
 
+    const noteService = getNoteService();
+
+    // Check if note exists
     const oldNote = await repos.note.findById(request.id);
     if (!oldNote) {
       throw new IpcError('NOT_FOUND', 'Note not found');
     }
 
+    // Create version before update if content is changing
     if (request.content) {
-      const currentContent = await repos.note.getContentById(oldNote.id);
+      const currentContent = await noteService.getContent(oldNote.id);
       if (currentContent && request.content !== currentContent) {
         await repos.version.createVersion(
           oldNote.id,
@@ -284,48 +285,41 @@ export function registerNoteHandlers() {
       }
     }
 
-    const updateData: NoteUpdateData = {};
-    if (request.title !== undefined) updateData.title = request.title;
-    if (request.notebookId !== undefined) updateData.notebookId = request.notebookId;
-    if (request.folderPath !== undefined) updateData.folderPath = request.folderPath;
-    if (request.content !== undefined) updateData.content = request.content;
-    if (request.isFavorite !== undefined) updateData.isFavorite = request.isFavorite;
-    if (request.isPinned !== undefined) updateData.isPinned = request.isPinned;
-    if (request.isArchived !== undefined) updateData.isArchived = request.isArchived;
+    // Use NoteService for update
+    const note = await noteService.updateNote(request.id, {
+      title: request.title,
+      content: request.content,
+      folderPath: request.folderPath ?? undefined,
+      notebookId: request.notebookId ?? undefined,
+      isFavorite: request.isFavorite,
+      isPinned: request.isPinned,
+      isArchived: request.isArchived,
+      tags: request.tags,
+    });
 
-    const note = await repos.note.update(request.id, updateData);
-
-    if (request.tags) {
-      await repos.tag.setTagsForNote(note.id, request.tags);
-    }
-
-    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
-
+    const noteWithRelations = await buildNoteResponse(note, repos);
     return noteWithRelations;
   });
 
-  // notes:delete
+  // notes:delete - uses NoteService
   registerHandler(NOTE_CHANNELS.DELETE, async (event, request: { id: string; permanent?: boolean }) => {
     logger.info(`[IPC] notes:delete ${request.permanent ? '(permanent)' : '(soft)'}`);
 
-    if (request.permanent) {
-      const deleted = await repos.note.permanentDelete(request.id);
-      if (!deleted) {
+    const noteService = getNoteService();
+
+    try {
+      await noteService.deleteNote(request.id, request.permanent);
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Note not found') {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
-    } else {
-      await repos.note.softDelete(request.id);
+      throw error;
     }
-
-    // Broadcast event
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(EVENTS.NOTE_DELETED, { id: request.id });
-    });
 
     return { success: true, id: request.id };
   });
 
-  // notes:get - Get note metadata only (no content)
+  // notes:get - Get note metadata only (no content), uses GraphService for backlinks
   registerHandler(
     NOTE_CHANNELS.GET,
     async (
@@ -348,7 +342,8 @@ export function registerNoteHandlers() {
       }
 
       if (request.include_backlinks) {
-        result.backlinks = await repos.note.getBacklinks(note.id);
+        const graphService = getGraphService();
+        result.backlinks = await graphService.getBacklinks(note.id);
       }
 
       return result;
@@ -371,9 +366,10 @@ export function registerNoteHandlers() {
     },
   );
 
-  // notes:getContent - Get note content from file
+  // notes:getContent - uses NoteService
   registerHandler(NOTE_CHANNELS.GET_CONTENT, async (event, request: { id: string }) => {
-    const content = await repos.note.getContentById(request.id);
+    const noteService = getNoteService();
+    const content = await noteService.getContent(request.id);
     if (content === null) {
       throw new IpcError('NOT_FOUND', 'Note content not found');
     }
@@ -471,35 +467,40 @@ export function registerNoteHandlers() {
     },
   );
 
-  // notes:getBacklinks
+  // notes:getBacklinks - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_BACKLINKS, async (event, request: { noteId: string }) => {
-    const backlinks = await repos.note.getBacklinks(request.noteId);
+    const graphService = getGraphService();
+    const backlinks = await graphService.getBacklinks(request.noteId);
     return { backlinks };
   });
 
-  // notes:getForwardLinks
+  // notes:getForwardLinks - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_FORWARD_LINKS, async (event, request: { noteId: string }) => {
-    const forwardLinks = await repos.note.getForwardLinks(request.noteId);
+    const graphService = getGraphService();
+    const forwardLinks = await graphService.getForwardLinks(request.noteId);
     return { forwardLinks };
   });
 
-  // notes:getGraphData
+  // notes:getGraphData - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_GRAPH_DATA, async () => {
-    const graphData = await repos.note.getGraphData();
+    const graphService = getGraphService();
+    const graphData = await graphService.getGraphData();
     return graphData;
   });
 
-  // notes:move
+  // notes:move - uses NoteService
   registerHandler(
     NOTE_CHANNELS.MOVE,
     async (event, request: { id: string; folderPath: string | null }) => {
+      const noteService = getNoteService();
+
       const oldNote = await repos.note.findById(request.id);
       if (!oldNote) {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
 
       // Create a version before moving
-      const currentContent = await repos.note.getContentById(oldNote.id);
+      const currentContent = await noteService.getContent(oldNote.id);
       if (currentContent) {
         await repos.version.createVersion(
           oldNote.id,
@@ -508,66 +509,21 @@ export function registerNoteHandlers() {
         );
       }
 
-      // Move the note by updating its folderPath
-      const updateData: any = {
-        folderPath: request.folderPath,
-      };
-      const note = await repos.note.update(request.id, updateData);
-
-      const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+      // Move the note using NoteService
+      const note = await noteService.moveNote(request.id, request.folderPath || '');
+      const noteWithRelations = await buildNoteResponse(note, repos);
       return noteWithRelations;
     },
   );
 
-  // notes:getAllTodos - Get all todo items from all notes
-  // Scans markdown files directly for Logseq-style task patterns
+  // notes:getAllTodos - uses TaskService
   registerHandler(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
-    const notes = await repos.note.findAll();
-    logger.info('[NoteHandlers] GET_ALL_TODOS - Scanning', notes.length, 'notes');
-
-    const todos: any[] = [];
-    const taskPattern = /^(\s*)(?:[-*]\s+)?(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s+(.+)$/gim;
-
-    for (const note of notes) {
-      try {
-        // Get raw markdown content (not HTML) - silently skip missing files
-        const content = await repos.note.getRawContentById(note.id);
-        if (!content) continue;
-
-        // Find all task lines in the markdown
-        let match;
-        let index = 0;
-        while ((match = taskPattern.exec(content)) !== null) {
-          const stateRaw = match[2].toLowerCase();
-          const state = stateRaw === 'cancelled' ? 'canceled' : stateRaw;
-          const text = match[3].trim();
-          const isDone = state === 'done' || state === 'canceled';
-
-          if (text) {
-            todos.push({
-              id: `${note.id}-${index}`,
-              noteId: note.id,
-              noteTitle: note.title,
-              notePath: note.filePath,
-              text,
-              state,
-              checked: isDone,
-              createdAt: note.createdAt,
-              updatedAt: note.updatedAt,
-            });
-            index++;
-          }
-        }
-      } catch {
-        // Silently skip notes with missing files (orphaned DB entries)
-      }
-    }
-
-    logger.info('[NoteHandlers] GET_ALL_TODOS - Found', todos.length, 'todos');
+    const taskService = getTaskService();
+    const todos = await taskService.getAllTodos();
     return todos;
   });
 
-  // notes:updateTaskState - Update a task's state in a note's markdown file
+  // notes:updateTaskState - uses TaskService
   registerHandler(
     NOTE_CHANNELS.UPDATE_TASK_STATE,
     async (
@@ -579,65 +535,29 @@ export function registerNoteHandlers() {
       },
     ) => {
       const { noteId, taskIndex, newState } = request;
-      logger.info('[NoteHandlers] UPDATE_TASK_STATE', { noteId, taskIndex, newState });
+      logger.info('[IPC] notes:updateTaskState', { noteId, taskIndex, newState });
 
-      // Get raw markdown content
-      const content = await repos.note.getRawContentById(noteId);
-      if (!content) {
-        throw new IpcError('NOT_FOUND', 'Note content not found');
-      }
+      const taskService = getTaskService();
 
-      // Find and replace the task at the specified index
-      const taskPattern =
-        /^(\s*)([-*]\s+)?(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s+(.+)$/gim;
-      let currentIndex = 0;
-      let found = false;
-
-      const newContent = content.replace(
-        taskPattern,
-        (match, indent, listMarker, _state, text) => {
-          if (currentIndex === taskIndex) {
-            found = true;
-            const prefix = listMarker || '- ';
-            currentIndex++;
-            return `${indent}${prefix}${newState.toUpperCase()} ${text}`;
+      try {
+        await taskService.updateTaskState(noteId, taskIndex, newState as any);
+      } catch (error) {
+        if (error instanceof Error) {
+          if (error.message.includes('not found')) {
+            throw new IpcError('NOT_FOUND', error.message);
           }
-          currentIndex++;
-          return match;
-        },
-      );
-
-      if (!found) {
-        throw new IpcError('NOT_FOUND', `Task at index ${taskIndex} not found`);
+          if (error.message.includes('Invalid task state')) {
+            throw new IpcError('INVALID_INPUT', error.message);
+          }
+        }
+        throw error;
       }
 
-      // Write back to file
-      const note = await repos.note.findById(noteId);
-      if (!note?.filePath || !note?.workspaceId) {
-        throw new IpcError('NOT_FOUND', 'Note file path not found');
-      }
-
-      const workspace = await repos.workspace.findById(note.workspaceId);
-      if (!workspace) {
-        throw new IpcError('NOT_FOUND', 'Workspace not found');
-      }
-
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      const absolutePath = path.join(workspace.folderPath, note.filePath);
-
-      // Prepend title heading if it was stripped
-      const titleHeading = `# ${note.title}\n\n`;
-      const contentWithTitle = titleHeading + newContent;
-
-      await fs.writeFile(absolutePath, contentWithTitle, 'utf-8');
-
-      logger.info('[NoteHandlers] Task state updated successfully');
       return { success: true };
     },
   );
 
-  // notes:exportHtml - Export note as HTML file
+  // notes:exportHtml - uses ExportService for content preparation
   registerHandler(
     NOTE_CHANNELS.EXPORT_HTML,
     async (event, request: { id: string; content: string; title: string }) => {
@@ -662,51 +582,16 @@ export function registerNoteHandlers() {
         return { success: false, canceled: true };
       }
 
-      // Create a styled HTML document
-      const htmlContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${request.title || 'Untitled'}</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      line-height: 1.6;
-      color: #333;
-    }
-    h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; }
-    h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-    h2 { font-size: 1.5em; }
-    h3 { font-size: 1.25em; }
-    p { margin: 1em 0; }
-    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: 'SF Mono', Monaco, monospace; }
-    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
-    pre code { background: none; padding: 0; }
-    blockquote { border-left: 4px solid #ddd; margin: 1em 0; padding-left: 1em; color: #666; }
-    ul, ol { margin: 1em 0; padding-left: 2em; }
-    li { margin: 0.25em 0; }
-    a { color: #0066cc; }
-    img { max-width: 100%; height: auto; }
-    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f4f4f4; }
-    hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
-    .task-list-item { list-style: none; margin-left: -1.5em; }
-    .task-list-item input { margin-right: 0.5em; }
-  </style>
-</head>
-<body>
-  <h1>${request.title || 'Untitled'}</h1>
-  ${request.content}
-</body>
-</html>`;
+      // Use ExportService to prepare the HTML content
+      const exportService = getExportService();
+      const htmlContent = await exportService.prepareHtmlExport(
+        request.id,
+        request.content,
+        request.title,
+      );
 
       await fs.writeFile(result.filePath, htmlContent, 'utf-8');
-      logger.info(`[NoteHandlers] Exported HTML to ${result.filePath}`);
+      logger.info(`[IPC] notes:exportHtml → ${result.filePath}`);
 
       return { success: true, filePath: result.filePath };
     },
@@ -789,7 +674,7 @@ export function registerNoteHandlers() {
     },
   );
 
-  // notes:exportMarkdown - Export note as Markdown file
+  // notes:exportMarkdown - uses ExportService
   registerHandler(
     NOTE_CHANNELS.EXPORT_MARKDOWN,
     async (event, request: { id: string; title: string }) => {
@@ -798,8 +683,9 @@ export function registerNoteHandlers() {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
 
-      // Get markdown content directly from file
-      const markdownContent = await repos.note.getRawContentById(request.id);
+      // Get markdown content via ExportService
+      const exportService = getExportService();
+      const markdownContent = await exportService.getMarkdownForExport(request.id);
       if (!markdownContent) {
         throw new IpcError('NOT_FOUND', 'Note content not found');
       }
@@ -821,7 +707,7 @@ export function registerNoteHandlers() {
       }
 
       await fs.writeFile(result.filePath, markdownContent, 'utf-8');
-      logger.info(`[NoteHandlers] Exported Markdown to ${result.filePath}`);
+      logger.info(`[IPC] notes:exportMarkdown → ${result.filePath}`);
 
       return { success: true, filePath: result.filePath };
     },

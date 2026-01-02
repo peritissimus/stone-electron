@@ -492,10 +492,11 @@ export class TopicService {
    */
   private bufferToFloatArray(data: Uint8Array | Buffer): number[] {
     let uint8: Uint8Array;
-    if (data instanceof Uint8Array) {
-      uint8 = data;
-    } else if (Buffer.isBuffer(data)) {
+    // Check Buffer first since Buffer extends Uint8Array
+    if (Buffer.isBuffer(data)) {
       uint8 = new Uint8Array(data.buffer, data.byteOffset, data.length);
+    } else if (data instanceof Uint8Array) {
+      uint8 = data;
     } else {
       throw new Error('Invalid data type for embedding');
     }

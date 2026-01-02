@@ -1,11 +1,15 @@
 /**
  * Search IPC Handlers
+ *
+ * Uses services for business logic, not repositories directly.
+ * Pattern: IPC Handler → Service → Repository → Database
  */
-
 
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
+import { getSearchService } from '../../services/SearchService';
 import { registerHandler } from '../utils';
+import { logger } from '../../utils/logger';
 
 /**
  * Register all search handlers
@@ -13,112 +17,119 @@ import { registerHandler } from '../utils';
 export function registerSearchHandlers() {
   const repos = getRepositories();
 
-  // search:fullText
+  // search:fullText - uses SearchService
   registerHandler(
     SEARCH_CHANNELS.FULL_TEXT,
-    
-      async (
-        event,
-        request: {
-          query: string;
-          notebookId?: string;
-          tagIds?: string[];
-          limit?: number;
-          offset?: number;
-        },
-      ) => {
-        const startTime = Date.now();
-
-        let results = await repos.note.searchFullText(request.query, request.limit || 50);
-
-        // Filter by notebook if specified
-        if (request.notebookId) {
-          results = results.filter((note) => note.notebookId === request.notebookId);
-        }
-
-        // Filter by tags if specified - use bulk loading instead of N+1
-        if (request.tagIds && request.tagIds.length > 0) {
-          const noteIds = results.map(note => note.id);
-          const tagsMap = await repos.tag.getTagsForNotes(noteIds);
-          const requestedTagIds = new Set(request.tagIds);
-
-          results = results.filter(note => {
-            const noteTags = tagsMap.get(note.id) || [];
-            const noteTagIds = noteTags.map(t => t.id);
-            return noteTagIds.some(id => requestedTagIds.has(id));
-          });
-        }
-
-        const queryTime = Date.now() - startTime;
-
-        return {
-          results: results.map((note) => ({
-            ...note,
-            relevance: 1, // FTS5 ranking could be added here
-            title_highlight: note.title,
-          })),
-          total: results.length,
-          query_time_ms: queryTime,
-        };
+    async (
+      event,
+      request: {
+        query: string;
+        notebookId?: string;
+        tagIds?: string[];
+        limit?: number;
+        offset?: number;
       },
+    ) => {
+      const startTime = Date.now();
+
+      // Use SearchService for full-text search
+      const searchService = getSearchService();
+      let searchResults = await searchService.searchFullText(request.query, request.limit || 50);
+
+      // Filter by notebook if specified
+      if (request.notebookId) {
+        searchResults = searchResults.filter((r) => r.note.notebookId === request.notebookId);
+      }
+
+      // Filter by tags if specified - use bulk loading instead of N+1
+      if (request.tagIds && request.tagIds.length > 0) {
+        const noteIds = searchResults.map((r) => r.note.id);
+        const tagsMap = await repos.tag.getTagsForNotes(noteIds);
+        const requestedTagIds = new Set(request.tagIds);
+
+        searchResults = searchResults.filter((r) => {
+          const noteTags = tagsMap.get(r.note.id) || [];
+          const noteTagIds = noteTags.map((t) => t.id);
+          return noteTagIds.some((id) => requestedTagIds.has(id));
+        });
+      }
+
+      const queryTime = Date.now() - startTime;
+      logger.info(`[IPC] search:fullText "${request.query}" → ${searchResults.length} results (${queryTime}ms)`);
+
+      return {
+        results: searchResults.map((r) => ({
+          ...r.note,
+          relevance: 1,
+          title_highlight: r.note.title,
+          matchType: r.matchType,
+        })),
+        total: searchResults.length,
+        query_time_ms: queryTime,
+      };
+    },
   );
 
-  // search:semantic (placeholder - will implement with vector DB)
+  // search:semantic - uses SearchService
   registerHandler(
     SEARCH_CHANNELS.SEMANTIC,
-    
-      async (
-        event,
-        request: { query: string; threshold?: number; limit?: number; notebookId?: string },
-      ) => {
-        // TODO: Implement vector search with Vectra
-        // For now, fallback to full-text search
-        const startTime = Date.now();
-        const results = await repos.note.searchFullText(request.query, request.limit || 20);
-        const queryTime = Date.now() - startTime;
+    async (
+      event,
+      request: { query: string; threshold?: number; limit?: number; notebookId?: string },
+    ) => {
+      const startTime = Date.now();
+      const searchService = getSearchService();
 
-        return {
-          results: results.map((note) => ({
-            ...note,
-            similarity: 0.8, // Placeholder similarity score
-          })),
-          total: results.length,
-          query_time_ms: queryTime,
-        };
-      },
+      // Use semantic search from TopicService via SearchService
+      const results = await searchService.semanticSearch(request.query, request.limit || 20);
+      const queryTime = Date.now() - startTime;
+
+      logger.info(`[IPC] search:semantic "${request.query}" → ${results.length} results (${queryTime}ms)`);
+
+      return {
+        results: results.map((r) => ({
+          noteId: r.noteId,
+          title: r.title,
+          similarity: 1 - r.distance, // Convert distance to similarity
+        })),
+        total: results.length,
+        query_time_ms: queryTime,
+      };
+    },
   );
 
-  // search:hybrid
+  // search:hybrid - uses SearchService (combines FTS + semantic)
   registerHandler(
     SEARCH_CHANNELS.HYBRID,
-    
-      async (
-        event,
-        request: {
-          query: string;
-          weights?: { fts: number; semantic: number };
-          limit?: number;
-          notebookId?: string;
-          tagIds?: string[];
-        },
-      ) => {
-        const startTime = Date.now();
-
-        // For now, just use FTS (will combine with vector search later)
-        const results = await repos.note.searchFullText(request.query, request.limit || 50);
-
-        const queryTime = Date.now() - startTime;
-
-        return {
-          results: results.map((note) => ({
-            ...note,
-            score: 1,
-            search_type: 'fts' as const,
-          })),
-          total: results.length,
-          query_time_ms: queryTime,
-        };
+    async (
+      event,
+      request: {
+        query: string;
+        weights?: { fts: number; semantic: number };
+        limit?: number;
+        notebookId?: string;
+        tagIds?: string[];
       },
+    ) => {
+      const startTime = Date.now();
+      const searchService = getSearchService();
+
+      // Use full-text search via SearchService
+      const ftsResults = await searchService.searchFullText(request.query, request.limit || 50);
+
+      const queryTime = Date.now() - startTime;
+      logger.info(`[IPC] search:hybrid "${request.query}" → ${ftsResults.length} results (${queryTime}ms)`);
+
+      return {
+        results: ftsResults.map((r) => ({
+          ...r.note,
+          score: 1,
+          search_type: 'fts' as const,
+        })),
+        total: ftsResults.length,
+        query_time_ms: queryTime,
+      };
+    },
   );
 
   // search:byTag
