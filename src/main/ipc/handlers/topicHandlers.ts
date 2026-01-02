@@ -8,12 +8,12 @@
  * - Embedding management
  */
 
-import { BrowserWindow } from 'electron';
 import { TOPIC_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getRepositories } from '../../repositories';
 import { getTopicService } from '../../services/TopicService';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
+import { getEventBus } from '../../services/EventBus';
 
 /**
  * Register all topic handlers
@@ -74,9 +74,7 @@ export function registerTopicHandlers() {
       });
 
       // Broadcast event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.TOPIC_CREATED, { topic });
-      });
+      getEventBus().emit(EVENTS.TOPIC_CREATED, { topic });
 
       return { topic };
     }
@@ -106,9 +104,7 @@ export function registerTopicHandlers() {
       });
 
       // Broadcast event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.TOPIC_UPDATED, { topic });
-      });
+      getEventBus().emit(EVENTS.TOPIC_UPDATED, { topic });
 
       return { topic };
     }
@@ -131,9 +127,7 @@ export function registerTopicHandlers() {
       await topicService.deleteTopic(request.id);
 
       // Broadcast event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.TOPIC_DELETED, { id: request.id });
-      });
+      getEventBus().emit(EVENTS.TOPIC_DELETED, { id: request.id });
 
       return { success: true };
     }
@@ -205,11 +199,9 @@ export function registerTopicHandlers() {
       const results = await topicService.classifyNote(request.noteId);
 
       // Broadcast event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_CLASSIFIED, {
-          noteId: request.noteId,
-          topics: results,
-        });
+      getEventBus().emit(EVENTS.NOTE_CLASSIFIED, {
+        noteId: request.noteId,
+        topics: results,
       });
 
       return { noteId: request.noteId, topics: results };
@@ -239,12 +231,10 @@ export function registerTopicHandlers() {
 
           // Send progress updates every 10 notes
           if (processed % 10 === 0) {
-            BrowserWindow.getAllWindows().forEach((win) => {
-              win.webContents.send(EVENTS.EMBEDDING_PROGRESS, {
-                processed,
-                total,
-                failed,
-              });
+            getEventBus().emit(EVENTS.EMBEDDING_PROGRESS, {
+              processed,
+              total,
+              failed,
             });
           }
         } catch (error) {
@@ -292,13 +282,11 @@ export function registerTopicHandlers() {
 
           // Send progress updates every 10 notes
           if (processed % 10 === 0) {
-            BrowserWindow.getAllWindows().forEach((win) => {
-              win.webContents.send(EVENTS.EMBEDDING_PROGRESS, {
-                processed,
-                total,
-                failed,
-                skipped,
-              });
+            getEventBus().emit(EVENTS.EMBEDDING_PROGRESS, {
+              processed,
+              total,
+              failed,
+              skipped,
             });
           }
         } catch (error) {

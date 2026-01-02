@@ -15,6 +15,7 @@ import { getNoteService } from '../../services/NoteService';
 import { getGraphService } from '../../services/GraphService';
 import { getTaskService } from '../../services/TaskService';
 import { getExportService } from '../../services/ExportService';
+import { getEventBus } from '../../services/EventBus';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
 
@@ -114,9 +115,7 @@ function deriveFolderPath(
 }
 
 function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {
-  BrowserWindow.getAllWindows().forEach((win) => {
-    win.webContents.send(eventName, { note });
-  });
+  getEventBus().emit(eventName, { note });
 }
 
 async function buildNoteResponse(
@@ -451,9 +450,7 @@ export function registerNoteHandlers() {
       const enrichedNote = await buildNoteWithRelations(note, repos);
 
       // Broadcast event
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
-      });
+      getEventBus().emit(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
 
       const restoredContent = await repos.note.getContentById(note.id);
 

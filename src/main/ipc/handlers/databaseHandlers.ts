@@ -2,10 +2,10 @@
  * Database Management IPC Handlers
  */
 
-import { BrowserWindow } from 'electron';
 import { DATABASE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { getDatabaseManager } from '../../database';
 import { registerHandler } from '../utils';
+import { getEventBus } from '../../services/EventBus';
 
 /**
  * Register all database handlers
@@ -36,9 +36,7 @@ export function registerDatabaseHandlers() {
       const sizeBefore = (await dbManager.getStatus()).databaseSize;
 
       // Emit progress
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.DB_VACUUM_PROGRESS, {});
-      });
+      getEventBus().emit(EVENTS.DB_VACUUM_PROGRESS, {});
 
       await dbManager.optimize();
 
@@ -46,9 +44,7 @@ export function registerDatabaseHandlers() {
       const freedBytes = sizeBefore - sizeAfter;
 
       // Emit completion
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.DB_VACUUM_COMPLETE, {});
-      });
+      getEventBus().emit(EVENTS.DB_VACUUM_COMPLETE, {});
 
       return {
         success: true,

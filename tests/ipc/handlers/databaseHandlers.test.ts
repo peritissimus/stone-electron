@@ -6,14 +6,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock electron before importing handlers
 vi.mock('electron', () => ({
-  BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } },
-    ]),
-  },
   ipcMain: {
     handle: vi.fn(),
   },
+}));
+
+// Mock EventBus
+const mockEventBus = {
+  emit: vi.fn(),
+  on: vi.fn(),
+  off: vi.fn(),
+};
+
+vi.mock('../../../src/main/services/EventBus', () => ({
+  getEventBus: vi.fn(() => mockEventBus),
 }));
 
 // Mock database manager
@@ -29,7 +35,7 @@ vi.mock('../../../src/main/database', () => ({
 
 // Import after mocks
 import { registerDatabaseHandlers } from '../../../src/main/ipc/handlers/databaseHandlers';
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain } from 'electron';
 
 describe('Database IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
@@ -94,14 +100,11 @@ describe('Database IPC Handlers', () => {
         .mockResolvedValueOnce({ databaseSize: 1024 });
       mockDbManager.optimize.mockResolvedValue(undefined);
 
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
       const handler = registeredHandlers.get('db:vacuum');
       await handler({}, {});
 
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith('db:vacuumProgress', {});
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith('db:vacuumComplete', {});
+      expect(mockEventBus.emit).toHaveBeenCalledWith('db:vacuumProgress', {});
+      expect(mockEventBus.emit).toHaveBeenCalledWith('db:vacuumComplete', {});
     });
 
     it('should return 0 freed bytes if size increases', async () => {

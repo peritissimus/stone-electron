@@ -5,11 +5,11 @@
  * IPC handlers should use this service, not repositories directly.
  */
 
-import { BrowserWindow } from 'electron';
 import path from 'node:path';
 import { getRepositories } from '../repositories';
 import { getFileSystemService } from './FileSystemService';
 import { getMarkdownService } from './MarkdownService';
+import { getEventBus } from './EventBus';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { resolveInsideRoot } from '../utils/path';
@@ -654,15 +654,14 @@ class NoteService {
       await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
 
       // Emit file system events to update UI
-      BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send(EVENTS.FILE_DELETED, {
-          workspaceId,
-          path: oldFilePath,
-        });
-        win.webContents.send(EVENTS.FILE_CREATED, {
-          workspaceId,
-          path: newFilePath,
-        });
+      const eventBus = getEventBus();
+      eventBus.emit(EVENTS.FILE_DELETED, {
+        workspaceId,
+        path: oldFilePath,
+      });
+      eventBus.emit(EVENTS.FILE_CREATED, {
+        workspaceId,
+        path: newFilePath,
       });
     } catch (error) {
       logger.error(`Error renaming markdown file ${oldFilePath} to ${newFilePath}:`, error);
@@ -709,21 +708,15 @@ class NoteService {
   // ==========================================================================
 
   private emitNoteCreated(noteId: string): void {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(EVENTS.NOTE_CREATED, { id: noteId });
-    });
+    getEventBus().emit(EVENTS.NOTE_CREATED, { id: noteId });
   }
 
   private emitNoteUpdated(noteId: string): void {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(EVENTS.NOTE_UPDATED, { id: noteId });
-    });
+    getEventBus().emit(EVENTS.NOTE_UPDATED, { id: noteId });
   }
 
   private emitNoteDeleted(noteId: string): void {
-    BrowserWindow.getAllWindows().forEach((win) => {
-      win.webContents.send(EVENTS.NOTE_DELETED, { id: noteId });
-    });
+    getEventBus().emit(EVENTS.NOTE_DELETED, { id: noteId });
   }
 }
 
