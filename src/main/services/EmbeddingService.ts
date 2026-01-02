@@ -5,9 +5,9 @@
  * Communicates via JSON lines over stdin/stdout.
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import path from 'path';
-import readline from 'readline';
+import { spawn, ChildProcess } from 'node:child_process';
+import path from 'node:path';
+import readline from 'node:readline';
 import { app } from 'electron';
 import { logger } from '../utils/logger';
 
@@ -34,11 +34,11 @@ const WARMUP_TIMEOUT_MS = 120000; // 2 minutes for initial model download
 export class EmbeddingService {
   private process: ChildProcess | null = null;
   private rl: readline.Interface | null = null;
-  private pending: Map<number, PendingRequest> = new Map();
+  private readonly pending: Map<number, PendingRequest> = new Map();
   private requestId = 0;
   private initialized = false;
   private initializing = false;
-  private scriptsPath: string;
+  private readonly scriptsPath: string;
 
   constructor() {
     // Determine scripts path based on whether app is packaged
@@ -280,11 +280,16 @@ export class EmbeddingService {
   private handleResponse(line: string): void {
     try {
       const data = JSON.parse(line) as EmbedResponse;
-      const pending = this.pending.get(data.id!);
+      const responseId = data.id;
+      if (responseId === undefined) {
+        return;
+      }
+
+      const pending = this.pending.get(responseId);
 
       if (pending) {
         clearTimeout(pending.timeout);
-        this.pending.delete(data.id!);
+        this.pending.delete(responseId);
 
         if (data.ok) {
           pending.resolve(data);

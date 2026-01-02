@@ -49,30 +49,52 @@ class SearchService {
     for (const note of allNotes) {
       if (matches.length >= limit) break;
 
-      const titleMatch = note.title?.toLowerCase().includes(lowerQuery) ?? false;
-      let contentMatch = false;
-
-      // Check content if note has file backing
-      if (note.filePath && note.workspaceId) {
-        try {
-          const content = await noteService.getContent(note.id);
-          if (content) {
-            contentMatch = content.toLowerCase().includes(lowerQuery);
-          }
-        } catch (error) {
-          logger.debug(`[SearchService] Could not read content for note ${note.id}`);
-        }
-      }
-
-      if (titleMatch || contentMatch) {
-        matches.push({
-          note,
-          matchType: titleMatch && contentMatch ? 'both' : titleMatch ? 'title' : 'content',
-        });
+      const matchResult = await this.evaluateNoteMatch(note, lowerQuery, noteService);
+      if (matchResult) {
+        matches.push(matchResult);
       }
     }
 
     return matches;
+  }
+
+  private async evaluateNoteMatch(
+    note: Note,
+    lowerQuery: string,
+    noteService: ReturnType<typeof getNoteService>,
+  ): Promise<SearchResult | null> {
+    const titleMatch = note.title?.toLowerCase().includes(lowerQuery) ?? false;
+    const contentMatch = await this.matchesContent(note, lowerQuery, noteService);
+
+    if (!titleMatch && !contentMatch) {
+      return null;
+    }
+
+    const matchType: SearchResult['matchType'] = titleMatch && contentMatch
+      ? 'both'
+      : titleMatch
+        ? 'title'
+        : 'content';
+
+    return { note, matchType };
+  }
+
+  private async matchesContent(
+    note: Note,
+    lowerQuery: string,
+    noteService: ReturnType<typeof getNoteService>,
+  ): Promise<boolean> {
+    if (!note.filePath || !note.workspaceId) {
+      return false;
+    }
+
+    try {
+      const content = await noteService.getContent(note.id);
+      return Boolean(content && content.toLowerCase().includes(lowerQuery));
+    } catch (error) {
+      logger.debug(`[SearchService] Could not read content for note ${note.id}:`, error);
+      return false;
+    }
   }
 
   /**

@@ -247,7 +247,7 @@ export class TopicService {
    */
   async assignTopicToNote(noteId: string, topicId: string): Promise<void> {
     await this.repos.topic.assignToNote(noteId, topicId, {
-      confidence: 1.0,
+      confidence: 1,
       isManual: true,
     });
     logger.info(`[TopicService] Manually assigned topic ${topicId} to note ${noteId}`);
@@ -395,7 +395,7 @@ export class TopicService {
         const assignment = noteAssignments.find(a => a.noteId === id);
         return note ? {
           ...note,
-          confidence: assignment?.confidence ?? 1.0,
+          confidence: assignment?.confidence ?? 1,
           isManual: assignment?.isManual ?? false,
         } : null;
       })
@@ -498,7 +498,7 @@ export class TopicService {
     } else if (data instanceof Uint8Array) {
       uint8 = data;
     } else {
-      throw new Error('Invalid data type for embedding');
+      throw new TypeError('Invalid data type for embedding');
     }
     const floats = new Float32Array(uint8.buffer, uint8.byteOffset, uint8.length / 4);
     return Array.from(floats);

@@ -226,53 +226,71 @@ class SyncService {
     workspaceId: string,
     results: SyncResult,
   ): Promise<void> {
-    const repos = getRepositories();
-
     for (const note of notesInDb) {
       if (!note.filePath || filesMap.has(note.filePath)) continue;
 
-      const candidates = filesByBase.get(path.basename(note.filePath)) || [];
-      let relocated = false;
+      const relocated = await this.tryRelocateNote(
+        note,
+        filesByBase.get(path.basename(note.filePath)) || [],
+        notesMap,
+        workspaceId,
+        results,
+      );
 
-      // Try to relocate to a candidate file
-      for (const cand of candidates) {
-        if (notesMap.has(cand.relativePath)) continue;
-
-        try {
-          const folderRel = path.dirname(cand.relativePath);
-          const notebookId = await this.findNotebookIdByFolder(workspaceId, folderRel);
-
-          await repos.note.update(note.id, {
-            filePath: cand.relativePath,
-            notebookId: notebookId || null,
-            updatedAt: new Date(),
-          });
-
-          notesMap.set(cand.relativePath, { ...note, filePath: cand.relativePath, notebookId });
-          logger.info(`[SyncService] Relocated note ${note.id} -> ${cand.relativePath}`);
-          results.updated++;
-          relocated = true;
-          break;
-        } catch (error) {
-          logger.error(`[SyncService] Failed to relocate note ${note.id}:`, error);
-          results.errors.push(`Failed to relocate note ${note.id}: ${error}`);
-        }
-      }
-
-      // If not relocated, soft delete
       if (!relocated) {
-        logger.info(`[SyncService] Soft deleting note (file no longer exists): ${note.filePath}`);
-        try {
-          await repos.note.update(note.id, {
-            isDeleted: true,
-            deletedAt: new Date(),
-          });
-          results.deleted++;
-        } catch (error) {
-          logger.error(`[SyncService] Failed to delete note ${note.id}:`, error);
-          results.errors.push(`Failed to delete note ${note.id}: ${error}`);
-        }
+        await this.softDeleteMissingNote(note, results);
       }
+    }
+  }
+
+  private async tryRelocateNote(
+    note: Note,
+    candidates: any[],
+    notesMap: Map<string, Note>,
+    workspaceId: string,
+    results: SyncResult,
+  ): Promise<boolean> {
+    const repos = getRepositories();
+
+    for (const cand of candidates) {
+      if (notesMap.has(cand.relativePath)) continue;
+
+      try {
+        const folderRel = path.dirname(cand.relativePath);
+        const notebookId = await this.findNotebookIdByFolder(workspaceId, folderRel);
+
+        await repos.note.update(note.id, {
+          filePath: cand.relativePath,
+          notebookId: notebookId || null,
+          updatedAt: new Date(),
+        });
+
+        notesMap.set(cand.relativePath, { ...note, filePath: cand.relativePath, notebookId });
+        logger.info(`[SyncService] Relocated note ${note.id} -> ${cand.relativePath}`);
+        results.updated++;
+        return true;
+      } catch (error) {
+        logger.error(`[SyncService] Failed to relocate note ${note.id}:`, error);
+        results.errors.push(`Failed to relocate note ${note.id}: ${error}`);
+      }
+    }
+
+    return false;
+  }
+
+  private async softDeleteMissingNote(note: Note, results: SyncResult): Promise<void> {
+    const repos = getRepositories();
+
+    logger.info(`[SyncService] Soft deleting note (file no longer exists): ${note.filePath}`);
+    try {
+      await repos.note.update(note.id, {
+        isDeleted: true,
+        deletedAt: new Date(),
+      });
+      results.deleted++;
+    } catch (error) {
+      logger.error(`[SyncService] Failed to delete note ${note.id}:`, error);
+      results.errors.push(`Failed to delete note ${note.id}: ${error}`);
     }
   }
 

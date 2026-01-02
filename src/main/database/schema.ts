@@ -139,7 +139,7 @@ export const noteTopics = sqliteTable('note_topics', {
   topicId: text('topic_id')
     .notNull()
     .references(() => topics.id, { onDelete: 'cascade' }),
-  confidence: real('confidence').default(1.0), // Classification confidence score
+  confidence: real('confidence').default(1), // Classification confidence score
   isManual: integer('is_manual', { mode: 'boolean' }).default(false), // User-assigned vs auto-classified
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 }, (table) => [

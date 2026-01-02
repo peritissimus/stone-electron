@@ -283,7 +283,7 @@ export class TopicRepository {
   ): Promise<void> {
     const db = getDatabaseManager().getDrizzle();
     const now = new Date();
-    const { confidence = 1.0, isManual = false } = options;
+    const { confidence = 1, isManual = false } = options;
 
     await db
       .insert(noteTopics)
@@ -348,7 +348,7 @@ export class TopicRepository {
     for (const t of topicAssignments) {
       await client.execute({
         sql: 'INSERT OR REPLACE INTO note_topics (note_id, topic_id, confidence, is_manual, created_at) VALUES (?, ?, ?, ?, ?)',
-        args: [noteId, t.topicId, t.confidence ?? 1.0, t.isManual ? 1 : 0, now],
+        args: [noteId, t.topicId, t.confidence ?? 1, t.isManual ? 1 : 0, now],
       });
     }
 
