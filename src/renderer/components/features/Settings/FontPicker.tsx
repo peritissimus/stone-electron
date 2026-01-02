@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { Check, CaretDown } from 'phosphor-react';
-import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
+import { systemAPI } from '@renderer/api';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
 import { logger } from '@renderer/utils/logger';
@@ -37,9 +37,9 @@ export function FontPicker({ value, onValueChange, placeholder = 'Select font...
   const loadFonts = async () => {
     try {
       setLoading(true);
-      const response = await window.electron.invoke<string[]>(SYSTEM_CHANNELS.GET_FONTS, {});
+      const response = await systemAPI.getFonts();
       if (response.success && response.data) {
-        setFonts(response.data);
+        setFonts(response.data.fonts);
       }
     } catch (error) {
       logger.error('Failed to load fonts:', error);

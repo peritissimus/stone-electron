@@ -4,6 +4,7 @@
 
 import { useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
+import { invokeIpc } from '@renderer/lib/ipc';
 import { ATTACHMENT_CHANNELS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/utils/logger';
 
@@ -85,7 +86,7 @@ export function useImageUpload({ editor, noteId, enabled = true }: UseImageUploa
 
         const base64Data = await fileToBase64(file);
 
-        const response = await window.electron.invoke<{
+        const response = await invokeIpc<{
           success: boolean;
           relativePath: string;
           absolutePath: string;

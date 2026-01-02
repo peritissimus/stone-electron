@@ -9,10 +9,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Editor, JSONContent } from '@tiptap/react';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 import { deleteDraft } from '@renderer/utils/draftStorage';
+import { noteAPI } from '@renderer/api';
 
 interface UseDocumentBufferOptions {
   noteId: string | null;
@@ -66,10 +66,7 @@ export function useDocumentBuffer({
 
       try {
         logger.debug('[useDocumentBuffer] Loading from file:', noteId);
-        const response = await window.electron.invoke<{ content: string }>(
-          NOTE_CHANNELS.GET_CONTENT,
-          { id: noteId }
-        );
+        const response = await noteAPI.getContent(noteId);
 
         if (response.success && response.data) {
           const htmlContent = response.data.content;

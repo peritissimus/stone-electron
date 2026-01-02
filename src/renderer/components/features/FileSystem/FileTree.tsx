@@ -28,7 +28,7 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
 import { normalizePath, getParentPath, getDisplayName } from '@renderer/utils/path';
-import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
+import { noteAPI } from '@renderer/api';
 
 interface FileTreeFileProps {
   node: StoreFileTreeNode;
@@ -80,13 +80,13 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
       });
       setActiveNote(cachedNote.id);
     } else {
-      // Note not in store - load it directly via IPC (Obsidian-style)
-      logger.info('[FileTree] Note not in cache, loading via IPC', { normalizedPath });
-      window.electron
-        .invoke(NOTE_CHANNELS.GET_BY_PATH, { filePath: normalizedPath })
-        .then((response: any) => {
+      // Note not in store - load it directly via API (Obsidian-style)
+      logger.info('[FileTree] Note not in cache, loading via API', { normalizedPath });
+      noteAPI
+        .getByPath(normalizedPath)
+        .then((response) => {
           if (response.success && response.data) {
-            logger.info('[FileTree] Loaded note via IPC', {
+            logger.info('[FileTree] Loaded note via API', {
               noteId: response.data.id,
               noteTitle: response.data.title,
             });
@@ -97,7 +97,7 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
             logger.warn('[FileTree] No note found for file path', { normalizedPath });
           }
         })
-        .catch((error: any) => {
+        .catch((error) => {
           logger.error('[FileTree] Failed to load note by path', { normalizedPath, error });
         });
     }

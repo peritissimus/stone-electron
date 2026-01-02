@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import { useFileTreeStore, FileTreeNode } from '@renderer/stores/fileTreeStore';
 import { logger } from '@renderer/utils/logger';
+import { workspaceAPI } from '@renderer/api';
 
 // Module-level deduplication for loadFileTree calls
 let pendingLoadFileTree: Promise<void> | null = null;
@@ -81,9 +81,7 @@ export function useFileTreeAPI() {
 
     const doLoad = async () => {
       try {
-        const activeWorkspace = await window.electron.invoke<{
-          workspace?: { id: string };
-        }>(WORKSPACE_CHANNELS.GET_ACTIVE, undefined);
+        const activeWorkspace = await workspaceAPI.getActive();
 
         const workspaceId = activeWorkspace.success ? activeWorkspace.data?.workspace?.id : undefined;
 
@@ -95,10 +93,7 @@ export function useFileTreeAPI() {
 
         const { activeFolder: prevActive, selectedFile: prevSelected } = useFileTreeStore.getState();
 
-        const response = await window.electron.invoke<{
-          structure: FolderStructure[];
-          counts?: Record<string, number>;
-        }>(WORKSPACE_CHANNELS.SCAN, { workspaceId });
+        const response = await workspaceAPI.scan(workspaceId);
 
         if (response.success && response.data) {
           const tree = toFileTree(response.data.structure || []);
@@ -133,12 +128,9 @@ export function useFileTreeAPI() {
   const createFolder = useCallback(
     async ({ parentPath, name }: { parentPath?: string | null; name?: string } = {}) => {
       try {
-        const response = await window.electron.invoke<{ folderPath: string }>(
-          WORKSPACE_CHANNELS.CREATE_FOLDER,
-          {
-            name: name ?? 'New Folder',
-            parentPath: parentPath ?? undefined,
-          },
+        const response = await workspaceAPI.createFolder(
+          name ?? 'New Folder',
+          parentPath ?? undefined,
         );
 
         if (response.success && response.data) {
@@ -158,13 +150,7 @@ export function useFileTreeAPI() {
   const renameFolder = useCallback(
     async (path: string, name: string) => {
       try {
-        const response = await window.electron.invoke<{ folderPath: string }>(
-          WORKSPACE_CHANNELS.RENAME_FOLDER,
-          {
-            path,
-            name,
-          },
-        );
+        const response = await workspaceAPI.renameFolder(path, name);
 
         if (response.success && response.data) {
           return response.data.folderPath;
@@ -183,10 +169,7 @@ export function useFileTreeAPI() {
   const deleteFolder = useCallback(
     async (path: string) => {
       try {
-        const response = await window.electron.invoke<{ success: boolean }>(
-          WORKSPACE_CHANNELS.DELETE_FOLDER,
-          { path },
-        );
+        const response = await workspaceAPI.deleteFolder(path);
 
         if (response.success && response.data) {
           return response.data.success;
@@ -205,13 +188,7 @@ export function useFileTreeAPI() {
   const moveFolder = useCallback(
     async (sourcePath: string, destinationPath: string | null) => {
       try {
-        const response = await window.electron.invoke<{ folderPath: string }>(
-          WORKSPACE_CHANNELS.MOVE_FOLDER,
-          {
-            sourcePath,
-            destinationPath,
-          },
-        );
+        const response = await workspaceAPI.moveFolder(sourcePath, destinationPath);
 
         if (response.success && response.data) {
           return response.data.folderPath;

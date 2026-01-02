@@ -1,18 +1,49 @@
 /**
  * Topic API Hook - React hooks for topic and semantic search operations
+ *
+ * Uses createEntityAPI for base CRUD, extends with semantic search operations.
  */
 
 import { useCallback } from 'react';
 import { useTopicStore } from '@renderer/stores/topicStore';
-import type { TopicWithCount, EmbeddingStatus, SimilarNote, ClassificationResult } from '@shared/types';
+import type { TopicWithCount } from '@shared/types';
 import { TOPIC_CHANNELS } from '@shared/constants/ipcChannels';
+import { createEntityAPI } from './createEntityAPI';
+import { topicAPI } from '@renderer/api';
+import { handleIpcResponse } from '@renderer/lib/ipc';
 
+/**
+ * Base CRUD operations from factory
+ */
+const useTopicCRUD = createEntityAPI<TopicWithCount>({
+  entityName: 'topic',
+  channels: {
+    GET_ALL: TOPIC_CHANNELS.GET_ALL,
+    CREATE: TOPIC_CHANNELS.CREATE,
+    UPDATE: TOPIC_CHANNELS.UPDATE,
+    DELETE: TOPIC_CHANNELS.DELETE,
+  },
+  useStore: () => {
+    const store = useTopicStore();
+    return {
+      setItems: store.setTopics,
+      addItem: store.addTopic,
+      updateItem: (topic: TopicWithCount) => store.updateTopic(topic.id, topic),
+      deleteItem: store.deleteTopic,
+      setLoading: store.setLoading,
+      setError: store.setError,
+    };
+  },
+  responseKey: 'topics',
+  logPrefix: '[TopicAPI]',
+});
+
+/**
+ * Topic API hook with CRUD + semantic search operations
+ */
 export function useTopicAPI() {
+  const { loadAll, create, update, remove } = useTopicCRUD();
   const {
-    setTopics,
-    addTopic,
-    updateTopic,
-    deleteTopic,
     setEmbeddingStatus,
     setSearchResults,
     setLoading,
@@ -27,16 +58,9 @@ export function useTopicAPI() {
     setLoading(true);
     setError(null);
     try {
-      const response = await window.electron.invoke<{ success: boolean; ready: boolean }>(
-        TOPIC_CHANNELS.INITIALIZE,
-        {},
-      );
-      if (response.success && response.data) {
-        return response.data.ready;
-      } else {
-        setError(response.error?.message || 'Failed to initialize embedding service');
-        return false;
-      }
+      const response = await topicAPI.initialize();
+      const result = handleIpcResponse(response, 'Failed to initialize embedding service');
+      return result.success ? result.data.ready : false;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to initialize embedding service');
       return false;
@@ -49,52 +73,17 @@ export function useTopicAPI() {
    * Load all topics
    */
   const loadTopics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await window.electron.invoke<{ topics: TopicWithCount[] }>(
-        TOPIC_CHANNELS.GET_ALL,
-        {},
-      );
-      if (response.success && response.data) {
-        setTopics(response.data.topics);
-      } else {
-        setError(response.error?.message || 'Failed to load topics');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load topics');
-    } finally {
-      setLoading(false);
-    }
-  }, [setTopics, setLoading, setError]);
+    return loadAll({});
+  }, [loadAll]);
 
   /**
    * Create a new topic
    */
   const createTopic = useCallback(
     async (data: { name: string; description?: string; color?: string }) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await window.electron.invoke<{ topic: TopicWithCount }>(
-          TOPIC_CHANNELS.CREATE,
-          data,
-        );
-        if (response.success && response.data) {
-          addTopic({ ...response.data.topic, noteCount: 0 });
-          return response.data.topic;
-        } else {
-          setError(response.error?.message || 'Failed to create topic');
-          return null;
-        }
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to create topic');
-        return null;
-      } finally {
-        setLoading(false);
-      }
+      return create(data as Partial<TopicWithCount>);
     },
-    [addTopic, setLoading, setError],
+    [create]
   );
 
   /**
@@ -102,48 +91,9 @@ export function useTopicAPI() {
    */
   const updateTopicById = useCallback(
     async (id: string, data: { name?: string; description?: string; color?: string }) => {
-      setError(null);
-      try {
-        const response = await window.electron.invoke<{ topic: TopicWithCount }>(
-          TOPIC_CHANNELS.UPDATE,
-          { id, ...data },
-        );
-        if (response.success && response.data) {
-          updateTopic(id, response.data.topic);
-          return response.data.topic;
-        } else {
-          setError(response.error?.message || 'Failed to update topic');
-          return null;
-        }
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to update topic');
-        return null;
-      }
+      return update(id, data as Partial<TopicWithCount>);
     },
-    [updateTopic, setError],
-  );
-
-  /**
-   * Delete a topic
-   */
-  const deleteTopicById = useCallback(
-    async (id: string) => {
-      setError(null);
-      try {
-        const response = await window.electron.invoke(TOPIC_CHANNELS.DELETE, { id });
-        if (response.success) {
-          deleteTopic(id);
-          return true;
-        } else {
-          setError(response.error?.message || 'Failed to delete topic');
-          return false;
-        }
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to delete topic');
-        return false;
-      }
-    },
-    [deleteTopic, setError],
+    [update]
   );
 
   /**
@@ -153,22 +103,15 @@ export function useTopicAPI() {
     async (topicId: string, options?: { limit?: number; offset?: number }) => {
       setError(null);
       try {
-        const response = await window.electron.invoke<{ notes: unknown[] }>(
-          TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
-          { topicId, ...options },
-        );
-        if (response.success && response.data) {
-          return response.data.notes;
-        } else {
-          setError(response.error?.message || 'Failed to get notes for topic');
-          return [];
-        }
+        const response = await topicAPI.getNotesByTopic(topicId, options);
+        const result = handleIpcResponse(response, 'Failed to get notes for topic');
+        return result.success ? result.data.notes : [];
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to get notes for topic');
         return [];
       }
     },
-    [setError],
+    [setError]
   );
 
   /**
@@ -179,16 +122,9 @@ export function useTopicAPI() {
       setClassifying(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<{
-          noteId: string;
-          topics: ClassificationResult[];
-        }>(TOPIC_CHANNELS.CLASSIFY_NOTE, { noteId });
-        if (response.success && response.data) {
-          return response.data.topics;
-        } else {
-          setError(response.error?.message || 'Failed to classify note');
-          return [];
-        }
+        const response = await topicAPI.classifyNote(noteId);
+        const result = handleIpcResponse(response, 'Failed to classify note');
+        return result.success ? result.data.topics : [];
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to classify note');
         return [];
@@ -196,7 +132,7 @@ export function useTopicAPI() {
         setClassifying(false);
       }
     },
-    [setClassifying, setError],
+    [setClassifying, setError]
   );
 
   /**
@@ -206,19 +142,14 @@ export function useTopicAPI() {
     setClassifying(true);
     setError(null);
     try {
-      const response = await window.electron.invoke<{
-        processed: number;
-        total: number;
-        failed: number;
-      }>(TOPIC_CHANNELS.CLASSIFY_ALL, {});
-      if (response.success && response.data) {
-        // Reload topics to get updated counts
+      const response = await topicAPI.classifyAll();
+      const result = handleIpcResponse(response, 'Failed to classify notes');
+      if (result.success) {
         await loadTopics();
-        return response.data;
-      } else {
-        setError(response.error?.message || 'Failed to classify notes');
-        return null;
+        return result.data;
       }
+      setError(result.error);
+      return null;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to classify notes');
       return null;
@@ -228,26 +159,20 @@ export function useTopicAPI() {
   }, [loadTopics, setClassifying, setError]);
 
   /**
-   * Reclassify ALL notes (force reclassification, ignores embedding status)
+   * Reclassify ALL notes (force reclassification)
    */
   const reclassifyAllNotes = useCallback(async () => {
     setClassifying(true);
     setError(null);
     try {
-      const response = await window.electron.invoke<{
-        processed: number;
-        total: number;
-        failed: number;
-        skipped: number;
-      }>(TOPIC_CHANNELS.RECLASSIFY_ALL, {});
-      if (response.success && response.data) {
-        // Reload topics to get updated counts
+      const response = await topicAPI.reclassifyAll();
+      const result = handleIpcResponse(response, 'Failed to reclassify notes');
+      if (result.success) {
         await loadTopics();
-        return response.data;
-      } else {
-        setError(response.error?.message || 'Failed to reclassify notes');
-        return null;
+        return result.data;
       }
+      setError(result.error);
+      return null;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to reclassify notes');
       return null;
@@ -264,17 +189,14 @@ export function useTopicAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<{ results: SimilarNote[] }>(
-          TOPIC_CHANNELS.SEMANTIC_SEARCH,
-          { query, limit },
-        );
-        if (response.success && response.data) {
-          setSearchResults(response.data.results);
-          return response.data.results;
-        } else {
-          setError(response.error?.message || 'Failed to perform semantic search');
-          return [];
+        const response = await topicAPI.semanticSearch(query, limit);
+        const result = handleIpcResponse(response, 'Failed to perform semantic search');
+        if (result.success) {
+          setSearchResults(result.data.results);
+          return result.data.results;
         }
+        setError(result.error);
+        return [];
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to perform semantic search');
         return [];
@@ -282,7 +204,7 @@ export function useTopicAPI() {
         setLoading(false);
       }
     },
-    [setSearchResults, setLoading, setError],
+    [setSearchResults, setLoading, setError]
   );
 
   /**
@@ -292,22 +214,15 @@ export function useTopicAPI() {
     async (noteId: string, limit = 5) => {
       setError(null);
       try {
-        const response = await window.electron.invoke<{ similar: SimilarNote[] }>(
-          TOPIC_CHANNELS.GET_SIMILAR_NOTES,
-          { noteId, limit },
-        );
-        if (response.success && response.data) {
-          return response.data.similar;
-        } else {
-          setError(response.error?.message || 'Failed to find similar notes');
-          return [];
-        }
+        const response = await topicAPI.getSimilarNotes(noteId, limit);
+        const result = handleIpcResponse(response, 'Failed to find similar notes');
+        return result.success ? result.data.similar : [];
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to find similar notes');
         return [];
       }
     },
-    [setError],
+    [setError]
   );
 
   /**
@@ -317,22 +232,14 @@ export function useTopicAPI() {
     async (noteId: string, topicId: string) => {
       setError(null);
       try {
-        const response = await window.electron.invoke(TOPIC_CHANNELS.ASSIGN_TO_NOTE, {
-          noteId,
-          topicId,
-        });
-        if (response.success) {
-          return true;
-        } else {
-          setError(response.error?.message || 'Failed to assign topic to note');
-          return false;
-        }
+        const response = await topicAPI.assignToNote(noteId, topicId);
+        return response.success;
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to assign topic to note');
         return false;
       }
     },
-    [setError],
+    [setError]
   );
 
   /**
@@ -342,22 +249,14 @@ export function useTopicAPI() {
     async (noteId: string, topicId: string) => {
       setError(null);
       try {
-        const response = await window.electron.invoke(TOPIC_CHANNELS.REMOVE_FROM_NOTE, {
-          noteId,
-          topicId,
-        });
-        if (response.success) {
-          return true;
-        } else {
-          setError(response.error?.message || 'Failed to remove topic from note');
-          return false;
-        }
+        const response = await topicAPI.removeFromNote(noteId, topicId);
+        return response.success;
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to remove topic from note');
         return false;
       }
     },
-    [setError],
+    [setError]
   );
 
   /**
@@ -366,17 +265,14 @@ export function useTopicAPI() {
   const getEmbeddingStatus = useCallback(async () => {
     setError(null);
     try {
-      const response = await window.electron.invoke<EmbeddingStatus>(
-        TOPIC_CHANNELS.GET_EMBEDDING_STATUS,
-        {},
-      );
-      if (response.success && response.data) {
-        setEmbeddingStatus(response.data);
-        return response.data;
-      } else {
-        setError(response.error?.message || 'Failed to get embedding status');
-        return null;
+      const response = await topicAPI.getEmbeddingStatus();
+      const result = handleIpcResponse(response, 'Failed to get embedding status');
+      if (result.success) {
+        setEmbeddingStatus(result.data);
+        return result.data;
       }
+      setError(result.error);
+      return null;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to get embedding status');
       return null;
@@ -390,13 +286,8 @@ export function useTopicAPI() {
     setLoading(true);
     setError(null);
     try {
-      const response = await window.electron.invoke(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, {});
-      if (response.success) {
-        return true;
-      } else {
-        setError(response.error?.message || 'Failed to recompute centroids');
-        return false;
-      }
+      const response = await topicAPI.recomputeCentroids();
+      return response.success;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to recompute centroids');
       return false;
@@ -410,7 +301,7 @@ export function useTopicAPI() {
     loadTopics,
     createTopic,
     updateTopic: updateTopicById,
-    deleteTopic: deleteTopicById,
+    deleteTopic: remove,
     getNotesForTopic,
     classifyNote,
     classifyAllNotes,

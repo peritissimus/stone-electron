@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { CheckSquare, Square, ArrowRight } from 'lucide-react';
-import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import { TodoItem } from '@shared/types';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { logger } from '@renderer/utils/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
+import { noteAPI } from '@renderer/api';
 
 interface TodoListProps {
   onTodoClick?: (noteId: string) => void;
@@ -97,7 +97,7 @@ export function TodoList({ onTodoClick }: TodoListProps) {
   const loadTodos = async () => {
     try {
       setLoading(true);
-      const response = await window.electron.invoke<TodoItem[]>(NOTE_CHANNELS.GET_ALL_TODOS, {});
+      const response = await noteAPI.getAllTodos();
       if (response.success && response.data) {
         // Filter out completed todos and sort by state priority
         const activeTodos = response.data.filter((todo) => !todo.checked);

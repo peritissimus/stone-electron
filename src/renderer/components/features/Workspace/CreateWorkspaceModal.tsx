@@ -10,7 +10,7 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { ContainerStack, ContainerFlex } from '@renderer/components/base/ui';
 import { Label, Text } from '@renderer/components/base/ui/text';
-import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
+import { workspaceAPI } from '@renderer/api';
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean;
@@ -44,10 +44,7 @@ export function CreateWorkspaceModal({
 
   const handleBrowse = async () => {
     try {
-      const response = await window.electron.invoke<{ canceled?: boolean; folderPath?: string }>(
-        WORKSPACE_CHANNELS.SELECT_FOLDER,
-        undefined,
-      );
+      const response = await workspaceAPI.selectFolder();
 
       if (response.success && response.data?.folderPath && !response.data.canceled) {
         setFolderPath(response.data.folderPath);

@@ -30,8 +30,9 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
-import { WORKSPACE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { cn } from '@renderer/lib/utils';
+import { noteAPI, workspaceAPI } from '@renderer/api';
+import { events } from '@renderer/lib/events';
 
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
@@ -90,7 +91,7 @@ export function Sidebar() {
       if (note) {
         // Fetch updated note details
         try {
-          const response = await window.electron.invoke<Note>('notes:get', { id: note.id });
+          const response = await noteAPI.getById(note.id);
           if (response.success && response.data) {
             updateNoteByPath(payload.path, response.data);
           }
@@ -132,21 +133,18 @@ export function Sidebar() {
       }
     };
 
-    const offCreated = window.electron.on(EVENTS.FILE_CREATED, handleFileCreated);
-    const offChanged = window.electron.on(EVENTS.FILE_CHANGED, handleFileChanged);
-    const offDeleted = window.electron.on(EVENTS.FILE_DELETED, handleFileDeleted);
-    const offWorkspaceUpdated = window.electron.on(
-      EVENTS.WORKSPACE_UPDATED,
-      handleWorkspaceUpdated,
-    );
-    const offNoteUpdated = window.electron.on(EVENTS.NOTE_UPDATED, handleNoteUpdated);
+    const offCreated = events.onFileCreated(handleFileCreated);
+    const offChanged = events.onFileChanged(handleFileChanged);
+    const offDeleted = events.onFileDeleted(handleFileDeleted);
+    const offWorkspaceUpdated = events.onWorkspaceUpdated(handleWorkspaceUpdated);
+    const offNoteUpdated = events.onNoteUpdated(handleNoteUpdated);
 
     return () => {
-      offCreated?.();
-      offChanged?.();
-      offDeleted?.();
-      offWorkspaceUpdated?.();
-      offNoteUpdated?.();
+      offCreated();
+      offChanged();
+      offDeleted();
+      offWorkspaceUpdated();
+      offNoteUpdated();
     };
   }, [activeFolder, loadFileTree, loadNotes]);
 
@@ -159,10 +157,7 @@ export function Sidebar() {
   }) => {
     setIsWorkspaceModalProcessing(true);
     try {
-      const response = await window.electron.invoke<Workspace>(WORKSPACE_CHANNELS.CREATE, {
-        name,
-        folderPath,
-      });
+      const response = await workspaceAPI.create({ name, path: folderPath });
 
       if (!response.success || !response.data) {
         throw new Error(response.error?.message || 'Failed to create workspace');

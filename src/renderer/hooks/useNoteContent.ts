@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
-import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
+import { noteAPI } from '@renderer/api';
 import { logger } from '@renderer/utils/logger';
 
 export interface UseNoteContentOptions {
@@ -38,11 +38,8 @@ export function useNoteContent({ activeNote, editor }: UseNoteContentOptions) {
       // Title is handled by the other effect
 
       try {
-        // Load content from file
-        const response = await window.electron.invoke<{ content: string }>(
-          NOTE_CHANNELS.GET_CONTENT,
-          { id: activeNote.id },
-        );
+        // Load content from file via API layer
+        const response = await noteAPI.getContent(activeNote.id);
 
         if (response.success && response.data) {
           const loadedContent = response.data.content;

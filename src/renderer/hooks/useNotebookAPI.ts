@@ -1,136 +1,122 @@
 /**
  * Notebook API Hook - React hooks for notebook operations
+ *
+ * Uses createEntityAPI for base CRUD, extends with notebook-specific operations.
  */
 
 import { useCallback } from 'react';
 import { useNotebookStore } from '@renderer/stores/notebookStore';
 import { Notebook } from '@shared/types';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
-import { logger } from '@renderer/utils/logger';
+import { createEntityAPI } from './createEntityAPI';
+import { notebookAPI } from '@renderer/api';
 
+/**
+ * Base CRUD operations from factory
+ */
+const useNotebookCRUD = createEntityAPI<Notebook>({
+  entityName: 'notebook',
+  channels: {
+    GET_ALL: NOTEBOOK_CHANNELS.GET_ALL,
+    CREATE: NOTEBOOK_CHANNELS.CREATE,
+    UPDATE: NOTEBOOK_CHANNELS.UPDATE,
+    DELETE: NOTEBOOK_CHANNELS.DELETE,
+  },
+  useStore: () => {
+    const store = useNotebookStore();
+    return {
+      setItems: store.setNotebooks,
+      addItem: store.addNotebook,
+      updateItem: store.updateNotebook,
+      deleteItem: store.deleteNotebook,
+      setLoading: store.setLoading,
+      setError: store.setError,
+    };
+  },
+  responseKey: 'notebooks',
+  logPrefix: '[NotebookAPI]',
+});
+
+/**
+ * Notebook API hook with CRUD + notebook-specific operations
+ */
 export function useNotebookAPI() {
-  const { setNotebooks, addNotebook, updateNotebook, deleteNotebook, setLoading, setError } =
-    useNotebookStore();
+  const { loadAll, create, update, remove } = useNotebookCRUD();
+  const { setError } = useNotebookStore();
 
+  /**
+   * Load notebooks with optional flat mode
+   */
   const loadNotebooks = useCallback(
     async (flat = false) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const params = { include_counts: true, flat } as any;
-        logger.info('[useNotebookAPI.loadNotebooks] invoking', params);
-        const response = await window.electron.invoke<{ notebooks: Notebook[] }>(
-          NOTEBOOK_CHANNELS.GET_ALL,
-          params,
-        );
-        logger.info('[useNotebookAPI.loadNotebooks] response', response);
-        if (response.success && response.data) {
-          setNotebooks(response.data.notebooks);
-        } else {
-          setError(response.error?.message || 'Failed to load notebooks');
-        }
-      } catch (error) {
-        logger.error('[useNotebookAPI.loadNotebooks] error', error);
-        setError(error instanceof Error ? error.message : 'Failed to load notebooks');
-      } finally {
-        setLoading(false);
-      }
+      return loadAll({ include_counts: true, flat });
     },
-    [setNotebooks, setLoading, setError],
+    [loadAll]
   );
 
+  /**
+   * Create a new notebook
+   */
   const createNotebook = useCallback(
     async (data: { name: string; parent_id?: string; icon?: string; color?: string }) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await window.electron.invoke<Notebook>(NOTEBOOK_CHANNELS.CREATE, data);
-        if (response.success && response.data) {
-          addNotebook(response.data);
-          return response.data;
-        } else {
-          setError(response.error?.message || 'Failed to create notebook');
-          return null;
-        }
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to create notebook');
-        return null;
-      } finally {
-        setLoading(false);
-      }
+      return create(data as Partial<Notebook>);
     },
-    [addNotebook, setLoading, setError],
+    [create]
   );
 
+  /**
+   * Update notebook data
+   */
   const updateNotebookData = useCallback(
     async (id: string, data: { name?: string; icon?: string; color?: string }) => {
-      setError(null);
-      try {
-        const response = await window.electron.invoke<Notebook>(NOTEBOOK_CHANNELS.UPDATE, {
-          id,
-          ...data,
-        });
-        if (response.success && response.data) {
-          updateNotebook(response.data);
-          return response.data;
-        } else {
-          setError(response.error?.message || 'Failed to update notebook');
-          return null;
-        }
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to update notebook');
-        return null;
-      }
+      return update(id, data as Partial<Notebook>);
     },
-    [updateNotebook, setError],
+    [update]
   );
 
+  /**
+   * Delete a notebook
+   */
   const deleteNotebookById = useCallback(
     async (id: string, deleteNotes = false) => {
       setError(null);
       try {
-        const response = await window.electron.invoke(NOTEBOOK_CHANNELS.DELETE, {
-          id,
-          delete_notes: deleteNotes,
-        });
+        const response = await notebookAPI.delete(id, deleteNotes);
         if (response.success) {
-          deleteNotebook(id);
+          useNotebookStore.getState().deleteNotebook(id);
           return true;
-        } else {
-          setError(response.error?.message || 'Failed to delete notebook');
-          return false;
         }
+        setError(response.error?.message || 'Failed to delete notebook');
+        return false;
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to delete notebook');
         return false;
       }
     },
-    [deleteNotebook, setError],
+    [setError]
   );
 
+  /**
+   * Move a notebook to a new parent or position
+   */
   const moveNotebook = useCallback(
     async (id: string, parentId?: string, position?: number) => {
       setError(null);
       try {
-        const response = await window.electron.invoke(NOTEBOOK_CHANNELS.MOVE, {
-          id,
-          parent_id: parentId,
-          position,
-        });
+        const response = await notebookAPI.move(id, parentId, position);
         if (response.success) {
           // Reload notebooks to update the tree structure
           await loadNotebooks();
           return true;
-        } else {
-          setError(response.error?.message || 'Failed to move notebook');
-          return false;
         }
+        setError(response.error?.message || 'Failed to move notebook');
+        return false;
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Failed to move notebook');
         return false;
       }
     },
-    [loadNotebooks, setError],
+    [loadNotebooks, setError]
   );
 
   return {

@@ -3,11 +3,11 @@
  */
 
 import { useCallback } from 'react';
-import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
-import { Workspace } from '@shared/types';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { workspaceAPI } from '@renderer/api';
+
 export function useWorkspaceAPI() {
   const { setWorkspaces, setActiveWorkspaceId, setLoading, setError } = useWorkspaceStore();
   const { setActiveFolder, setSelectedFile } = useFileTreeStore();
@@ -17,10 +17,7 @@ export function useWorkspaceAPI() {
     setLoading(true);
     setError(null);
     try {
-      const response = await window.electron.invoke<{ workspaces: Workspace[] }>(
-        WORKSPACE_CHANNELS.GET_ALL,
-        undefined,
-      );
+      const response = await workspaceAPI.getAll();
 
       if (response.success && response.data) {
         setWorkspaces(response.data.workspaces);
@@ -37,7 +34,7 @@ export function useWorkspaceAPI() {
   const setActiveWorkspace = useCallback(
     async (workspaceId: string) => {
       try {
-        const response = await window.electron.invoke(WORKSPACE_CHANNELS.SET_ACTIVE, { id: workspaceId });
+        const response = await workspaceAPI.setActive(workspaceId);
         if (response.success) {
           setActiveWorkspaceId(workspaceId);
           setActiveFolder(null);
@@ -56,11 +53,7 @@ export function useWorkspaceAPI() {
 
   const syncWorkspace = useCallback(
     async (workspaceId?: string) => {
-      const response = await window.electron.invoke<{
-        workspaceId: string;
-        notebooks: { created: number; updated: number; errors: string[] };
-        notes: { created: number; updated: number; deleted: number; errors: string[] };
-      }>(WORKSPACE_CHANNELS.SYNC, workspaceId ? { workspaceId } : {});
+      const response = await workspaceAPI.sync(workspaceId);
 
       if (response.success) {
         await loadWorkspaces();

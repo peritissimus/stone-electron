@@ -3,6 +3,8 @@
  */
 
 import { useCallback, useState } from 'react';
+import { searchAPI } from '@renderer/api';
+import { invokeIpc } from '@renderer/lib/ipc';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import { Note } from '@shared/types';
 
@@ -36,7 +38,7 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<SearchResults>(SEARCH_CHANNELS.FULL_TEXT, {
+        const response = await invokeIpc<SearchResults>(SEARCH_CHANNELS.FULL_TEXT, {
           query,
           ...filters,
         });
@@ -64,7 +66,7 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<SearchResults>(SEARCH_CHANNELS.SEMANTIC, {
+        const response = await invokeIpc<SearchResults>(SEARCH_CHANNELS.SEMANTIC, {
           query,
           ...filters,
         });
@@ -97,7 +99,7 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<SearchResults>(SEARCH_CHANNELS.HYBRID, {
+        const response = await invokeIpc<SearchResults>(SEARCH_CHANNELS.HYBRID, {
           query,
           ...filters,
         });
@@ -125,7 +127,7 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<{ notes: Note[]; total: number }>(
+        const response = await invokeIpc<{ notes: Note[]; total: number }>(
           SEARCH_CHANNELS.BY_TAG,
           {
             tagIds: tagIds,
@@ -157,7 +159,7 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await window.electron.invoke<{ notes: Note[]; total: number }>(
+        const response = await invokeIpc<{ notes: Note[]; total: number }>(
           SEARCH_CHANNELS.BY_DATE_RANGE,
           {
             start_date: startDate,
