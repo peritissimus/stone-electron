@@ -7,9 +7,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock electron before importing handlers
 vi.mock('electron', () => ({
   BrowserWindow: {
-    getAllWindows: vi.fn(() => [
-      { webContents: { send: vi.fn() } },
-    ]),
+    getAllWindows: vi.fn(() => []),
   },
   ipcMain: {
     handle: vi.fn(),
@@ -22,80 +20,30 @@ vi.mock('electron', () => ({
   },
 }));
 
-// Mock logger
-vi.mock('../../../src/main/utils/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
-
-// Mock path utilities
-vi.mock('../../../src/main/utils/path', () => ({
-  resolveInsideRoot: vi.fn((root: string, rel: string) =>
-    rel === '.' ? root : `${root}/${rel}`
-  ),
-  normalizeRelativePath: vi.fn((input: string) => input?.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') || ''),
-}));
-
-// Mock repositories
-const mockWorkspaceRepo = {
-  create: vi.fn(),
-  findAll: vi.fn(),
-  findById: vi.fn(),
-  getActive: vi.fn(),
-  setActive: vi.fn(),
-  update: vi.fn(),
-  delete: vi.fn(),
-};
-
-const mockNotebookRepo = {
-  syncWithWorkspaceFolders: vi.fn(),
-};
-
-const mockNoteRepo = {
-  syncWithFileSystem: vi.fn(),
-};
-
-vi.mock('../../../src/main/repositories', () => ({
-  getRepositories: vi.fn(() => ({
-    workspace: mockWorkspaceRepo,
-    notebook: mockNotebookRepo,
-    note: mockNoteRepo,
-  })),
-}));
-
-// Mock file system service
-const mockFsService = {
-  validateFolderPath: vi.fn(),
+// Mock WorkspaceService
+const mockWorkspaceService = {
+  createWorkspace: vi.fn(),
+  getAllWorkspaces: vi.fn(),
+  getActiveWorkspace: vi.fn(),
+  setActiveWorkspace: vi.fn(),
+  updateWorkspace: vi.fn(),
+  deleteWorkspace: vi.fn(),
   createFolder: vi.fn(),
-  fileExists: vi.fn(),
-  deleteFolder: vi.fn(),
   renameFolder: vi.fn(),
-  scanFolder: vi.fn(),
-  getFolderStructure: vi.fn(),
-  generateUniqueFolderName: vi.fn(),
+  deleteFolder: vi.fn(),
+  moveFolder: vi.fn(),
+  scanWorkspace: vi.fn(),
+  syncWorkspace: vi.fn(),
+  validatePath: vi.fn(),
 };
 
-vi.mock('../../../src/main/services/FileSystemService', () => ({
-  getFileSystemService: vi.fn(() => mockFsService),
-}));
-
-// Mock file watcher service
-const mockFileWatcherService = {
-  watchWorkspace: vi.fn(),
-  unwatchWorkspace: vi.fn(),
-};
-
-vi.mock('../../../src/main/services/FileWatcherService', () => ({
-  getFileWatcherService: vi.fn(() => mockFileWatcherService),
+vi.mock('../../../src/main/services/WorkspaceService', () => ({
+  getWorkspaceService: vi.fn(() => mockWorkspaceService),
 }));
 
 // Import after mocks
 import { registerWorkspaceHandlers } from '../../../src/main/ipc/handlers/workspaceHandlers';
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { ipcMain, dialog } from 'electron';
 
 describe('Workspace IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
@@ -147,22 +95,18 @@ describe('Workspace IPC Handlers', () => {
 
   describe('workspaces:validatePath', () => {
     it('should validate folder path', async () => {
-      mockFsService.validateFolderPath.mockResolvedValue({
-        valid: true,
-        readable: true,
-        writable: true,
-      });
+      mockWorkspaceService.validatePath.mockResolvedValue({ valid: true });
 
       const handler = registeredHandlers.get('workspaces:validatePath');
       const result = await handler({}, { folderPath: '/valid/path' });
 
       expect(result.success).toBe(true);
       expect(result.data.valid).toBe(true);
-      expect(mockFsService.validateFolderPath).toHaveBeenCalledWith('/valid/path');
+      expect(mockWorkspaceService.validatePath).toHaveBeenCalledWith('/valid/path');
     });
 
     it('should return invalid for non-existent path', async () => {
-      mockFsService.validateFolderPath.mockResolvedValue({
+      mockWorkspaceService.validatePath.mockResolvedValue({
         valid: false,
         error: 'Path does not exist',
       });
@@ -177,17 +121,13 @@ describe('Workspace IPC Handlers', () => {
   });
 
   describe('workspaces:create', () => {
-    it('should create a workspace with default folders', async () => {
-      mockFsService.validateFolderPath.mockResolvedValue({ valid: true });
-      mockWorkspaceRepo.create.mockResolvedValue({
+    it('should create a workspace', async () => {
+      const mockWorkspace = {
         id: 'ws-1',
         name: 'My Workspace',
         folderPath: '/workspace/path',
-      });
-      mockFsService.createFolder.mockResolvedValue(undefined);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({ created: 3 });
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({ created: 0, updated: 0 });
-      mockFileWatcherService.watchWorkspace.mockResolvedValue(undefined);
+      };
+      mockWorkspaceService.createWorkspace.mockResolvedValue(mockWorkspace);
 
       const handler = registeredHandlers.get('workspaces:create');
       const result = await handler({}, {
@@ -198,14 +138,14 @@ describe('Workspace IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data.id).toBe('ws-1');
       expect(result.data.name).toBe('My Workspace');
-      expect(mockFsService.createFolder).toHaveBeenCalledTimes(3); // Work, Journal, Personal
+      expect(mockWorkspaceService.createWorkspace).toHaveBeenCalledWith({
+        name: 'My Workspace',
+        folderPath: '/workspace/path',
+      });
     });
 
     it('should throw error for invalid path', async () => {
-      mockFsService.validateFolderPath.mockResolvedValue({
-        valid: false,
-        error: 'Path not writable',
-      });
+      mockWorkspaceService.createWorkspace.mockRejectedValue(new Error('Path not writable'));
 
       const handler = registeredHandlers.get('workspaces:create');
       const result = await handler({}, {
@@ -216,37 +156,6 @@ describe('Workspace IPC Handlers', () => {
       expect(result.success).toBe(false);
       expect(result.error.code).toBe('INVALID_PATH');
     });
-
-    it('should broadcast workspace created event', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
-      mockFsService.validateFolderPath.mockResolvedValue({ valid: true });
-      mockWorkspaceRepo.create.mockResolvedValue({ id: 'ws-1', name: 'Test' });
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({});
-
-      const handler = registeredHandlers.get('workspaces:create');
-      await handler({}, { name: 'Test', folderPath: '/path' });
-
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-        'workspaces:created',
-        expect.objectContaining({ workspace: expect.any(Object) })
-      );
-    });
-
-    it('should start watching the new workspace', async () => {
-      mockFsService.validateFolderPath.mockResolvedValue({ valid: true });
-      const workspace = { id: 'ws-1', name: 'Test', folderPath: '/path' };
-      mockWorkspaceRepo.create.mockResolvedValue(workspace);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({});
-
-      const handler = registeredHandlers.get('workspaces:create');
-      await handler({}, { name: 'Test', folderPath: '/path' });
-
-      expect(mockFileWatcherService.watchWorkspace).toHaveBeenCalledWith(workspace);
-    });
   });
 
   describe('workspaces:getAll', () => {
@@ -255,7 +164,7 @@ describe('Workspace IPC Handlers', () => {
         { id: 'ws-1', name: 'Workspace 1' },
         { id: 'ws-2', name: 'Workspace 2' },
       ];
-      mockWorkspaceRepo.findAll.mockResolvedValue(workspaces);
+      mockWorkspaceService.getAllWorkspaces.mockResolvedValue(workspaces);
 
       const handler = registeredHandlers.get('workspaces:getAll');
       const result = await handler({});
@@ -268,18 +177,17 @@ describe('Workspace IPC Handlers', () => {
   describe('workspaces:getActive', () => {
     it('should return active workspace', async () => {
       const workspace = { id: 'ws-1', name: 'Active Workspace', isActive: true };
-      mockWorkspaceRepo.getActive.mockResolvedValue(workspace);
+      mockWorkspaceService.getActiveWorkspace.mockResolvedValue(workspace);
 
       const handler = registeredHandlers.get('workspaces:getActive');
       const result = await handler({});
 
       expect(result.success).toBe(true);
       expect(result.data.workspace.id).toBe('ws-1');
-      expect(result.data.workspace.isActive).toBe(true);
     });
 
     it('should return null if no active workspace', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue(null);
+      mockWorkspaceService.getActiveWorkspace.mockResolvedValue(null);
 
       const handler = registeredHandlers.get('workspaces:getActive');
       const result = await handler({});
@@ -292,84 +200,45 @@ describe('Workspace IPC Handlers', () => {
   describe('workspaces:setActive', () => {
     it('should set active workspace', async () => {
       const workspace = { id: 'ws-1', name: 'Test', isActive: true };
-      mockWorkspaceRepo.setActive.mockResolvedValue(workspace);
+      mockWorkspaceService.setActiveWorkspace.mockResolvedValue(workspace);
 
       const handler = registeredHandlers.get('workspaces:setActive');
       const result = await handler({}, { id: 'ws-1' });
 
       expect(result.success).toBe(true);
       expect(result.data.isActive).toBe(true);
-      expect(mockWorkspaceRepo.setActive).toHaveBeenCalledWith('ws-1');
-    });
-
-    it('should broadcast workspace switched event', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
-      mockWorkspaceRepo.setActive.mockResolvedValue({ id: 'ws-1', name: 'Test' });
-
-      const handler = registeredHandlers.get('workspaces:setActive');
-      await handler({}, { id: 'ws-1' });
-
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-        'workspaces:switched',
-        expect.objectContaining({ workspace: expect.any(Object) })
-      );
+      expect(mockWorkspaceService.setActiveWorkspace).toHaveBeenCalledWith('ws-1');
     });
   });
 
   describe('workspaces:update', () => {
     it('should update workspace name', async () => {
       const workspace = { id: 'ws-1', name: 'Updated Name' };
-      mockWorkspaceRepo.update.mockResolvedValue(workspace);
+      mockWorkspaceService.updateWorkspace.mockResolvedValue(workspace);
 
       const handler = registeredHandlers.get('workspaces:update');
       const result = await handler({}, { id: 'ws-1', name: 'Updated Name' });
 
       expect(result.success).toBe(true);
       expect(result.data.name).toBe('Updated Name');
-      expect(mockWorkspaceRepo.update).toHaveBeenCalledWith('ws-1', { name: 'Updated Name' });
-    });
-
-    it('should broadcast workspace updated event', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
-      mockWorkspaceRepo.update.mockResolvedValue({ id: 'ws-1', name: 'Test' });
-
-      const handler = registeredHandlers.get('workspaces:update');
-      await handler({}, { id: 'ws-1', name: 'Test' });
-
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-        'workspaces:updated',
-        expect.objectContaining({ workspace: expect.any(Object) })
-      );
+      expect(mockWorkspaceService.updateWorkspace).toHaveBeenCalledWith('ws-1', { name: 'Updated Name' });
     });
   });
 
   describe('workspaces:createFolder', () => {
     it('should create a folder in the active workspace', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.generateUniqueFolderName.mockResolvedValue('New Folder');
-      mockFsService.createFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.createFolder.mockResolvedValue({ folderPath: 'New Folder' });
 
       const handler = registeredHandlers.get('workspaces:createFolder');
       const result = await handler({}, { name: 'New Folder' });
 
       expect(result.success).toBe(true);
       expect(result.data.folderPath).toBe('New Folder');
+      expect(mockWorkspaceService.createFolder).toHaveBeenCalledWith('New Folder', undefined);
     });
 
     it('should create a nested folder', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.generateUniqueFolderName.mockResolvedValue('Subfolder');
-      mockFsService.createFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.createFolder.mockResolvedValue({ folderPath: 'Projects/Subfolder' });
 
       const handler = registeredHandlers.get('workspaces:createFolder');
       const result = await handler({}, { name: 'Subfolder', parentPath: 'Projects' });
@@ -379,7 +248,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should throw error if no active workspace', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue(null);
+      mockWorkspaceService.createFolder.mockRejectedValue(new Error('No active workspace'));
 
       const handler = registeredHandlers.get('workspaces:createFolder');
       const result = await handler({}, { name: 'New Folder' });
@@ -391,43 +260,18 @@ describe('Workspace IPC Handlers', () => {
 
   describe('workspaces:renameFolder', () => {
     it('should rename a folder', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockFsService.generateUniqueFolderName.mockResolvedValue('Renamed');
-      mockFsService.renameFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.renameFolder.mockResolvedValue({ folderPath: 'Renamed' });
 
       const handler = registeredHandlers.get('workspaces:renameFolder');
       const result = await handler({}, { path: 'OldName', name: 'Renamed' });
 
       expect(result.success).toBe(true);
       expect(result.data.folderPath).toBe('Renamed');
-    });
-
-    it('should rename a nested folder', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockFsService.generateUniqueFolderName.mockResolvedValue('NewName');
-      mockFsService.renameFolder.mockResolvedValue(undefined);
-
-      const handler = registeredHandlers.get('workspaces:renameFolder');
-      const result = await handler({}, { path: 'Projects/OldName', name: 'NewName' });
-
-      expect(result.success).toBe(true);
-      expect(result.data.folderPath).toBe('Projects/NewName');
+      expect(mockWorkspaceService.renameFolder).toHaveBeenCalledWith('OldName', 'Renamed');
     });
 
     it('should throw error if folder does not exist', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(false);
+      mockWorkspaceService.renameFolder.mockRejectedValue(new Error('Folder does not exist'));
 
       const handler = registeredHandlers.get('workspaces:renameFolder');
       const result = await handler({}, { path: 'NonExistent', name: 'New' });
@@ -437,10 +281,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should throw error if path is empty', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
+      mockWorkspaceService.renameFolder.mockRejectedValue(new Error('Folder path is required'));
 
       const handler = registeredHandlers.get('workspaces:renameFolder');
       const result = await handler({}, { path: '', name: 'New' });
@@ -452,27 +293,18 @@ describe('Workspace IPC Handlers', () => {
 
   describe('workspaces:deleteFolder', () => {
     it('should delete a folder', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockFsService.deleteFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.deleteFolder.mockResolvedValue(undefined);
 
       const handler = registeredHandlers.get('workspaces:deleteFolder');
       const result = await handler({}, { path: 'ToDelete' });
 
       expect(result.success).toBe(true);
       expect(result.data.success).toBe(true);
-      expect(mockFsService.deleteFolder).toHaveBeenCalled();
+      expect(mockWorkspaceService.deleteFolder).toHaveBeenCalledWith('ToDelete');
     });
 
     it('should throw error if folder does not exist', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(false);
+      mockWorkspaceService.deleteFolder.mockRejectedValue(new Error('Folder does not exist'));
 
       const handler = registeredHandlers.get('workspaces:deleteFolder');
       const result = await handler({}, { path: 'NonExistent' });
@@ -482,10 +314,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should throw error if path is empty', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
+      mockWorkspaceService.deleteFolder.mockRejectedValue(new Error('Folder path is required'));
 
       const handler = registeredHandlers.get('workspaces:deleteFolder');
       const result = await handler({}, { path: '' });
@@ -497,13 +326,7 @@ describe('Workspace IPC Handlers', () => {
 
   describe('workspaces:moveFolder', () => {
     it('should move a folder to root', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockFsService.generateUniqueFolderName.mockResolvedValue('Moved');
-      mockFsService.renameFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.moveFolder.mockResolvedValue({ folderPath: 'Moved' });
 
       const handler = registeredHandlers.get('workspaces:moveFolder');
       const result = await handler({}, {
@@ -516,13 +339,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should move a folder to another folder', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockFsService.generateUniqueFolderName.mockResolvedValue('Source');
-      mockFsService.renameFolder.mockResolvedValue(undefined);
+      mockWorkspaceService.moveFolder.mockResolvedValue({ folderPath: 'Archive/Source' });
 
       const handler = registeredHandlers.get('workspaces:moveFolder');
       const result = await handler({}, {
@@ -535,11 +352,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should throw error if source does not exist', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValueOnce(false); // source check
+      mockWorkspaceService.moveFolder.mockRejectedValue(new Error('Source folder does not exist'));
 
       const handler = registeredHandlers.get('workspaces:moveFolder');
       const result = await handler({}, {
@@ -552,11 +365,7 @@ describe('Workspace IPC Handlers', () => {
     });
 
     it('should throw error when moving folder into itself', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
+      mockWorkspaceService.moveFolder.mockRejectedValue(new Error('Cannot move a folder into itself'));
 
       const handler = registeredHandlers.get('workspaces:moveFolder');
       const result = await handler({}, {
@@ -571,8 +380,7 @@ describe('Workspace IPC Handlers', () => {
 
   describe('workspaces:delete', () => {
     it('should delete a workspace', async () => {
-      mockWorkspaceRepo.delete.mockResolvedValue(undefined);
-      mockFileWatcherService.unwatchWorkspace.mockResolvedValue(undefined);
+      mockWorkspaceService.deleteWorkspace.mockResolvedValue(undefined);
 
       const handler = registeredHandlers.get('workspaces:delete');
       const result = await handler({}, { id: 'ws-1' });
@@ -580,47 +388,22 @@ describe('Workspace IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data.success).toBe(true);
       expect(result.data.id).toBe('ws-1');
-    });
-
-    it('should stop watching the deleted workspace', async () => {
-      mockWorkspaceRepo.delete.mockResolvedValue(undefined);
-
-      const handler = registeredHandlers.get('workspaces:delete');
-      await handler({}, { id: 'ws-1' });
-
-      expect(mockFileWatcherService.unwatchWorkspace).toHaveBeenCalledWith('ws-1');
-    });
-
-    it('should broadcast workspace deleted event', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
-      mockWorkspaceRepo.delete.mockResolvedValue(undefined);
-
-      const handler = registeredHandlers.get('workspaces:delete');
-      await handler({}, { id: 'ws-1' });
-
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-        'workspaces:deleted',
-        { id: 'ws-1' }
-      );
+      expect(mockWorkspaceService.deleteWorkspace).toHaveBeenCalledWith('ws-1');
     });
   });
 
   describe('workspaces:scan', () => {
     it('should scan workspace for files', async () => {
-      mockWorkspaceRepo.findById.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.scanFolder.mockResolvedValue([
-        { relativePath: 'Personal/note1.md' },
-        { relativePath: 'Work/note2.md' },
-      ]);
-      mockFsService.getFolderStructure.mockResolvedValue({
-        name: 'workspace',
-        children: [],
-      });
+      const scanResult = {
+        files: [
+          { relativePath: 'Personal/note1.md', path: '/workspace/Personal/note1.md' },
+          { relativePath: 'Work/note2.md', path: '/workspace/Work/note2.md' },
+        ],
+        structure: { name: 'workspace', children: [] },
+        total: 2,
+        counts: { '__root__': 2, 'Personal': 1, 'Work': 1 },
+      };
+      mockWorkspaceService.scanWorkspace.mockResolvedValue(scanResult);
 
       const handler = registeredHandlers.get('workspaces:scan');
       const result = await handler({}, { workspaceId: 'ws-1' });
@@ -628,13 +411,11 @@ describe('Workspace IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data.files).toHaveLength(2);
       expect(result.data.total).toBe(2);
-      expect(result.data.counts['__root__']).toBe(2);
-      expect(result.data.counts['Personal']).toBe(1);
-      expect(result.data.counts['Work']).toBe(1);
+      expect(mockWorkspaceService.scanWorkspace).toHaveBeenCalledWith('ws-1');
     });
 
     it('should throw error if workspace not found', async () => {
-      mockWorkspaceRepo.findById.mockResolvedValue(null);
+      mockWorkspaceService.scanWorkspace.mockRejectedValue(new Error('Workspace not found'));
 
       const handler = registeredHandlers.get('workspaces:scan');
       const result = await handler({}, { workspaceId: 'non-existent' });
@@ -642,111 +423,51 @@ describe('Workspace IPC Handlers', () => {
       expect(result.success).toBe(false);
       expect(result.error.code).toBe('NOT_FOUND');
     });
-
-    it('should broadcast workspace scanned event', async () => {
-      const mockWindow = { webContents: { send: vi.fn() } };
-      (BrowserWindow.getAllWindows as any).mockReturnValue([mockWindow]);
-
-      mockWorkspaceRepo.findById.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.scanFolder.mockResolvedValue([]);
-      mockFsService.getFolderStructure.mockResolvedValue({ name: 'workspace' });
-
-      const handler = registeredHandlers.get('workspaces:scan');
-      await handler({}, { workspaceId: 'ws-1' });
-
-      expect(mockWindow.webContents.send).toHaveBeenCalledWith(
-        'workspaces:scanned',
-        expect.objectContaining({ workspace: expect.any(Object) })
-      );
-    });
   });
 
   describe('workspaces:sync', () => {
-    it('should sync active workspace', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({
-        created: 2,
-        updated: 1,
-      });
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({
-        created: 5,
-        updated: 3,
-      });
+    it('should sync workspace', async () => {
+      const syncResult = {
+        workspaceId: 'ws-1',
+        notebooks: { created: 2, updated: 1, errors: [] },
+        notes: { created: 5, updated: 3, deleted: 0, errors: [] },
+        durationMs: 100,
+      };
+      mockWorkspaceService.syncWorkspace.mockResolvedValue(syncResult);
 
       const handler = registeredHandlers.get('workspaces:sync');
       const result = await handler({}, {});
 
       expect(result.success).toBe(true);
       expect(result.data.workspaceId).toBe('ws-1');
-      expect(result.data.notebooks).toEqual({ created: 2, updated: 1 });
-      expect(result.data.notes).toEqual({ created: 5, updated: 3 });
+      expect(result.data.notebooks).toEqual({ created: 2, updated: 1, errors: [] });
     });
 
     it('should sync specific workspace by id', async () => {
-      mockWorkspaceRepo.findById.mockResolvedValue({
-        id: 'ws-2',
-        folderPath: '/other-workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({});
+      const syncResult = {
+        workspaceId: 'ws-2',
+        notebooks: { created: 0, updated: 0, errors: [] },
+        notes: { created: 0, updated: 0, deleted: 0, errors: [] },
+        durationMs: 50,
+      };
+      mockWorkspaceService.syncWorkspace.mockResolvedValue(syncResult);
 
       const handler = registeredHandlers.get('workspaces:sync');
       const result = await handler({}, { workspaceId: 'ws-2' });
 
       expect(result.success).toBe(true);
       expect(result.data.workspaceId).toBe('ws-2');
-      expect(mockWorkspaceRepo.findById).toHaveBeenCalledWith('ws-2');
+      expect(mockWorkspaceService.syncWorkspace).toHaveBeenCalledWith('ws-2');
     });
 
-    it('should throw error if no active workspace', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue(null);
+    it('should throw error if workspace not found', async () => {
+      mockWorkspaceService.syncWorkspace.mockRejectedValue(new Error('Workspace not found'));
 
       const handler = registeredHandlers.get('workspaces:sync');
       const result = await handler({}, {});
 
       expect(result.success).toBe(false);
       expect(result.error.code).toBe('NOT_FOUND');
-    });
-
-    it('should ensure default folders exist', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(false);
-      mockFsService.createFolder.mockResolvedValue(undefined);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({ created: 0, updated: 0 });
-
-      const handler = registeredHandlers.get('workspaces:sync');
-      await handler({}, {});
-
-      // Should try to create Work, Journal, Personal folders
-      expect(mockFsService.createFolder).toHaveBeenCalledTimes(3);
-    });
-
-    it('should include duration in result', async () => {
-      mockWorkspaceRepo.getActive.mockResolvedValue({
-        id: 'ws-1',
-        folderPath: '/workspace',
-      });
-      mockFsService.fileExists.mockResolvedValue(true);
-      mockNotebookRepo.syncWithWorkspaceFolders.mockResolvedValue({});
-      mockNoteRepo.syncWithFileSystem.mockResolvedValue({ created: 0, updated: 0 });
-
-      const handler = registeredHandlers.get('workspaces:sync');
-      const result = await handler({}, {});
-
-      expect(result.success).toBe(true);
-      expect(result.data.durationMs).toBeGreaterThanOrEqual(0);
     });
   });
 });
