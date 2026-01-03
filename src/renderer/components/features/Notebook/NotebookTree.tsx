@@ -1,5 +1,7 @@
 /**
  * Notebook Tree Component - Optimized with memoization
+ *
+ * Implements: specs/components.ts#NotebookTreeProps
  */
 
 import React, { useCallback } from 'react';

@@ -1,5 +1,7 @@
 /**
  * MainContentArea Component - Wrapper for main content area
+ *
+ * Implements: specs/components.ts#MainContentAreaProps
  */
 
 import React from 'react';

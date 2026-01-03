@@ -1,6 +1,7 @@
 /**
  * QuickLink Component - button-style link with icon and label
  *
+ * Implements: specs/components.ts#QuickLinkProps
  * Replaces: className="w-full justify-start h-6 px-2 text-xs gap-1.5"
  */
 

@@ -1,5 +1,7 @@
 /**
  * Tag List Component
+ *
+ * Implements: specs/components.ts#TagListProps
  */
 
 import React from 'react';

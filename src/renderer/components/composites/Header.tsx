@@ -1,6 +1,7 @@
 /**
  * Header Component - consistent top navigation/title areas
  *
+ * Implements: specs/components.ts#HeaderProps
  * Replaces: className="px-3 pt-titlebar pb-2.5 border-b border-border"
  */
 

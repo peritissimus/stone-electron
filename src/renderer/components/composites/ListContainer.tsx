@@ -1,5 +1,7 @@
 /**
  * ListContainer Component - wrapper for lists with layout based on view mode
+ *
+ * Implements: specs/components.ts#ListContainerProps
  */
 
 import * as React from 'react';

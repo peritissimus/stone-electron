@@ -1,6 +1,7 @@
 /**
  * IconButton Component - preset icon button
  *
+ * Implements: specs/components.ts#IconButtonProps
  * Replaces: className="h-7 w-7 p-0 flex-shrink-0"
  */
 

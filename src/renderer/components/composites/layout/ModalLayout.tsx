@@ -1,3 +1,9 @@
+/**
+ * ModalLayout Component - Base layout for modals
+ *
+ * Implements: specs/components.ts#ModalLayoutProps
+ */
+
 import React from 'react';
 import { X } from 'phosphor-react';
 import { Button } from '@renderer/components/base/ui/button';

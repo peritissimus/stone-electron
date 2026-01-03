@@ -1,6 +1,7 @@
 /**
  * ToolbarButton Component - consistent toolbar button styling
  *
+ * Implements: specs/components.ts#ToolbarButtonProps
  * Replaces: className="p-1.5 rounded transition-colors"
  */
 

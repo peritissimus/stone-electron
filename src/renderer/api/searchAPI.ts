@@ -1,6 +1,7 @@
 /**
  * Search API - IPC channel wrappers for search operations
  *
+ * Implements: specs/api.ts#SearchAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

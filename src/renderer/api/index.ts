@@ -1,6 +1,8 @@
 /**
  * API Layer - Centralized IPC channel wrappers
  *
+ * Implements: specs/api.ts#API
+ *
  * This module provides a clean abstraction over IPC communication.
  * All API functions are pure - no React, no stores, no side effects.
  *

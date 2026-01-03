@@ -1,5 +1,7 @@
 /**
  * TaskItem - Individual task row component
+ *
+ * Implements: specs/components.ts#TodoItemProps
  */
 
 import { ArrowRight, Loader2, Circle } from 'lucide-react';

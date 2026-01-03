@@ -1,5 +1,9 @@
 /**
  * Keyboard Shortcuts Store - Zustand state management for keyboard shortcuts
+ *
+ * Note: This is an application-specific store without a spec counterpart.
+ * Keyboard shortcuts are platform-specific and not typically shared across
+ * language implementations.
  */
 
 import { create } from 'zustand';

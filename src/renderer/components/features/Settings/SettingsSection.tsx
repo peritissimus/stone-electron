@@ -1,3 +1,9 @@
+/**
+ * SettingsSection Component - Settings group with title
+ *
+ * Implements: specs/components.ts#SettingsSectionProps
+ */
+
 import React from 'react';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { ContainerStack } from '@renderer/components/base/ui';

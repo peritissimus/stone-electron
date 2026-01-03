@@ -1,5 +1,7 @@
 /**
  * Topic Store - Zustand state management for topics and semantic search
+ *
+ * Pattern: specs/stores.ts#SingleSelectStore
  */
 
 import { create } from 'zustand';

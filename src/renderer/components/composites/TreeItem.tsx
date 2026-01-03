@@ -1,6 +1,7 @@
 /**
  * TreeItem Component - consistent tree item with indentation
  *
+ * Implements: specs/components.ts#TreeItemProps
  * Replaces: style={{ paddingLeft: `${level * 10 + 2}px` }} and custom button styling
  */
 

@@ -1,6 +1,7 @@
 /**
  * Topic API - IPC channel wrappers for topic/semantic operations
  *
+ * Implements: specs/api.ts#TopicAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
@@ -103,16 +104,16 @@ export const topicAPI = {
   /**
    * Classify all pending notes
    */
-  classifyAll: (): Promise<
+  classifyAll: (options?: { excludeJournal?: boolean }): Promise<
     IpcResponse<{ processed: number; total: number; failed: number }>
-  > => invokeIpc(TOPIC_CHANNELS.CLASSIFY_ALL, {}),
+  > => invokeIpc(TOPIC_CHANNELS.CLASSIFY_ALL, options || {}),
 
   /**
    * Reclassify all notes (force)
    */
-  reclassifyAll: (): Promise<
+  reclassifyAll: (options?: { excludeJournal?: boolean }): Promise<
     IpcResponse<{ processed: number; total: number; failed: number; skipped: number }>
-  > => invokeIpc(TOPIC_CHANNELS.RECLASSIFY_ALL, {}),
+  > => invokeIpc(TOPIC_CHANNELS.RECLASSIFY_ALL, options || {}),
 
   /**
    * Semantic search

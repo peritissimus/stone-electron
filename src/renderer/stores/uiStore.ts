@@ -1,32 +1,37 @@
 /**
  * UI Store - Zustand state management for UI state
+ *
+ * Implements: specs/stores.ts#UIStoreState
  */
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings'
+import { tokens } from '@/specs'
+import type {
+  ViewMode,
+  SortBy,
+  SortOrder,
+  Theme,
+  AccentColor,
+  EditorMode,
+  SidebarPanel,
+  ActivePage,
+} from '@/specs'
 
-type ViewMode = 'list' | 'grid' | 'card'
-type SidebarPanel = 'home' | 'folders' | 'tags' | 'search'
-type SortBy = 'updated' | 'created' | 'title' | 'favorite'
-type SortOrder = 'asc' | 'desc'
-type AccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal'
-type EditorMode = 'rich' | 'raw'
-type ActivePage = 'home' | 'tasks' | 'graph' | 'topics'
+// Re-export types from specs
+export type { EditorMode, ActivePage, AccentColor, ViewMode, SortBy, SortOrder, Theme, SidebarPanel }
 
-export type { EditorMode, ActivePage }
-
+// Map accent colors with display names (uses hues from specs)
 export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> = {
-  blue: { name: 'Blue', hue: 211 },
-  purple: { name: 'Purple', hue: 270 },
-  pink: { name: 'Pink', hue: 330 },
-  red: { name: 'Red', hue: 0 },
-  orange: { name: 'Orange', hue: 30 },
-  green: { name: 'Green', hue: 142 },
-  teal: { name: 'Teal', hue: 180 },
+  blue: { name: 'Blue', hue: tokens.accentHues.blue },
+  purple: { name: 'Purple', hue: tokens.accentHues.purple },
+  pink: { name: 'Pink', hue: tokens.accentHues.pink },
+  red: { name: 'Red', hue: tokens.accentHues.red },
+  orange: { name: 'Orange', hue: tokens.accentHues.orange },
+  green: { name: 'Green', hue: tokens.accentHues.green },
+  teal: { name: 'Teal', hue: tokens.accentHues.teal },
 }
-
-export type { AccentColor }
 
 interface UIState {
   // Sidebar
