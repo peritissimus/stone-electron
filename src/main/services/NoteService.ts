@@ -6,15 +6,18 @@
  */
 
 import path from 'node:path';
-import { getRepositories } from '../repositories';
-import { getFileSystemService } from './FileSystemService';
-import { getMarkdownService } from './MarkdownService';
-import { getEventBus } from './EventBus';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { resolveInsideRoot } from '../utils/path';
 import { generateId } from '@shared/utils/id';
 import type { Note } from '@shared/types';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { WorkspaceRepository } from '../repositories/WorkspaceRepository';
+import type { NotebookRepository } from '../repositories/NotebookRepository';
+import type { TagRepository } from '../repositories/TagRepository';
+import type { FileSystemService } from './FileSystemService';
+import type { MarkdownService } from './MarkdownService';
+import type { EventBus } from './EventBus';
 
 // Request/Response types
 export interface CreateNoteRequest {
@@ -43,15 +46,27 @@ export interface NoteWithRelations extends Note {
 }
 
 /**
+ * Dependencies for NoteService
+ */
+export interface NoteServiceDeps {
+  noteRepository: NoteRepository;
+  workspaceRepository: WorkspaceRepository;
+  notebookRepository: NotebookRepository;
+  tagRepository: TagRepository;
+  fileSystemService: FileSystemService;
+  markdownService: MarkdownService;
+  eventBus: EventBus;
+}
+
+/**
  * NoteService handles all note business logic
  */
-class NoteService {
-  private readonly fileSystemService = getFileSystemService();
-  private readonly markdownService = getMarkdownService();
-
+export class NoteService {
   // Content cache (moved from repository)
   private readonly contentCache = new Map<string, { content: string; timestamp: number }>();
   private static readonly CONTENT_CACHE_TTL_MS = 5000; // 5 seconds
+
+  constructor(private readonly deps: NoteServiceDeps) {}
 
   // ==========================================================================
   // Content Management
@@ -61,8 +76,7 @@ class NoteService {
    * Get note content by ID (loads from file, converts to HTML)
    */
   async getContent(noteId: string): Promise<string | null> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) return null;
 
     if (!note.filePath || !note.workspaceId) {
@@ -76,8 +90,7 @@ class NoteService {
    * Get raw markdown content (for export - no HTML conversion)
    */
   async getRawContent(noteId: string): Promise<string | null> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) return null;
 
     if (!note.filePath || !note.workspaceId) {
@@ -85,7 +98,7 @@ class NoteService {
     }
 
     try {
-      const workspace = await repos.workspace.findById(note.workspaceId);
+      const workspace = await this.deps.workspaceRepository.findById(note.workspaceId);
       if (!workspace) {
         logger.error(`Workspace not found: ${note.workspaceId}`);
         return null;
@@ -94,7 +107,7 @@ class NoteService {
       const relativePath = note.filePath.replaceAll('\\', '/');
       const absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
 
-      const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath, true);
+      const markdownFile = await this.deps.fileSystemService.readMarkdownFile(absolutePath, true);
       return markdownFile.content;
     } catch (error) {
       logger.error(`Error reading raw content from file ${note.filePath}:`, error);
@@ -106,8 +119,7 @@ class NoteService {
    * Update note content (converts HTML to markdown, writes to file)
    */
   async updateContent(noteId: string, content: string): Promise<void> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) throw new Error('Note not found');
 
     if (!note.filePath || !note.workspaceId) {
@@ -123,7 +135,7 @@ class NoteService {
     this.contentCache.delete(noteId);
 
     // Update note timestamp
-    await repos.note.update(noteId, { updatedAt: new Date() });
+    await this.deps.noteRepository.update(noteId, { updatedAt: new Date() });
   }
 
   // ==========================================================================
@@ -134,13 +146,12 @@ class NoteService {
    * Create a new note with file creation and tag handling
    */
   async createNote(data: CreateNoteRequest): Promise<NoteWithRelations> {
-    const repos = getRepositories();
     const id = generateId();
     const now = new Date();
     const title = data.title?.trim() || 'Untitled Note';
     const requestedFolder = this.normalizeFolderPath(data.folderPath);
 
-    const activeWorkspace = await repos.workspace.getActive();
+    const activeWorkspace = await this.deps.workspaceRepository.getActive();
     if (!activeWorkspace) {
       throw new Error('Cannot create note without an active workspace');
     }
@@ -184,7 +195,7 @@ class NoteService {
       updatedAt: now,
     };
 
-    await repos.note.create(noteData);
+    await this.deps.noteRepository.create(noteData);
 
     // Handle tags
     if (data.tags && data.tags.length > 0) {
@@ -195,7 +206,7 @@ class NoteService {
     this.emitNoteCreated(id);
 
     // Return note with relations
-    const note = await repos.note.findById(id);
+    const note = await this.deps.noteRepository.findById(id);
     if (!note) throw new Error('Failed to create note');
 
     const tags = await this.getNoteTags(id);
@@ -206,8 +217,7 @@ class NoteService {
    * Update a note with file operations and tag handling
    */
   async updateNote(id: string, data: UpdateNoteRequest): Promise<NoteWithRelations> {
-    const repos = getRepositories();
-    const existingNote = await repos.note.findById(id);
+    const existingNote = await this.deps.noteRepository.findById(id);
     if (!existingNote) throw new Error('Note not found');
 
     const updateData: Partial<Note> = { updatedAt: new Date() };
@@ -219,14 +229,14 @@ class NoteService {
       throw new Error('Cannot change folder or notebook for notes without file backing');
     }
 
-    await repos.note.update(id, updateData);
+    await this.deps.noteRepository.update(id, updateData);
     if (data.tags !== undefined) {
       await this.setNoteTags(id, data.tags);
     }
 
     this.emitNoteUpdated(id);
 
-    const note = await repos.note.findById(id);
+    const note = await this.deps.noteRepository.findById(id);
     if (!note) throw new Error('Note not found after update');
 
     const tags = await this.getNoteTags(id);
@@ -245,8 +255,7 @@ class NoteService {
     data: UpdateNoteRequest,
     updateData: Partial<Note>,
   ): Promise<void> {
-    const repos = getRepositories();
-    const workspace = await repos.workspace.findById(existingNote.workspaceId!);
+    const workspace = await this.deps.workspaceRepository.findById(existingNote.workspaceId!);
     if (!workspace) throw new Error('Workspace not found');
 
     if (data.folderPath !== undefined || data.notebookId !== undefined) {
@@ -290,8 +299,7 @@ class NoteService {
    * Delete a note (soft or permanent)
    */
   async deleteNote(id: string, permanent: boolean = false): Promise<void> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(id);
+    const note = await this.deps.noteRepository.findById(id);
     if (!note) throw new Error('Note not found');
 
     if (permanent) {
@@ -301,10 +309,10 @@ class NoteService {
       }
 
       // Delete from database (CASCADE handles relations)
-      await repos.note.delete(id);
+      await this.deps.noteRepository.delete(id);
     } else {
       // Soft delete
-      await repos.note.update(id, {
+      await this.deps.noteRepository.update(id, {
         isDeleted: true,
         deletedAt: new Date(),
       });
@@ -318,16 +326,15 @@ class NoteService {
    * Restore a deleted note
    */
   async restoreNote(id: string): Promise<Note> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(id);
+    const note = await this.deps.noteRepository.findById(id);
     if (!note) throw new Error('Note not found');
 
-    await repos.note.update(id, {
+    await this.deps.noteRepository.update(id, {
       isDeleted: false,
       deletedAt: null,
     });
 
-    const restored = await repos.note.findById(id);
+    const restored = await this.deps.noteRepository.findById(id);
     if (!restored) throw new Error('Note not found after restore');
 
     return restored;
@@ -337,15 +344,14 @@ class NoteService {
    * Move note to a different folder
    */
   async moveNote(id: string, targetFolder: string): Promise<Note> {
-    const repos = getRepositories();
-    const note = await repos.note.findById(id);
+    const note = await this.deps.noteRepository.findById(id);
     if (!note) throw new Error('Note not found');
 
     if (!note.filePath || !note.workspaceId) {
       throw new Error('Note has no file backing');
     }
 
-    const workspace = await repos.workspace.findById(note.workspaceId);
+    const workspace = await this.deps.workspaceRepository.findById(note.workspaceId);
     if (!workspace) throw new Error('Workspace not found');
 
     const newFilePath = await this.handleFolderChange(
@@ -356,13 +362,13 @@ class NoteService {
     );
 
     if (newFilePath) {
-      await repos.note.update(id, {
+      await this.deps.noteRepository.update(id, {
         filePath: newFilePath,
         updatedAt: new Date(),
       });
     }
 
-    const updated = await repos.note.findById(id);
+    const updated = await this.deps.noteRepository.findById(id);
     if (!updated) throw new Error('Note not found after move');
 
     return updated;
@@ -395,10 +401,8 @@ class NoteService {
     filePath: string,
     workspaceId: string,
   ): Promise<string | null> {
-    const repos = getRepositories();
-
     try {
-      const workspace = await repos.workspace.findById(workspaceId);
+      const workspace = await this.deps.workspaceRepository.findById(workspaceId);
       if (!workspace) {
         logger.error(`Workspace not found: ${workspaceId}`);
         return null;
@@ -407,11 +411,11 @@ class NoteService {
       let relativePath = filePath.replaceAll('\\', '/');
       let absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
 
-      const fileExists = await this.fileSystemService.fileExists(absolutePath);
+      const fileExists = await this.deps.fileSystemService.fileExists(absolutePath);
 
       if (!fileExists) {
         // Try to find the file by basename
-        const scannedFiles = await this.fileSystemService.scanFolder(workspace.folderPath, true);
+        const scannedFiles = await this.deps.fileSystemService.scanFolder(workspace.folderPath, true);
         const exactMatch = scannedFiles.find(
           (file) => file.relativePath.replaceAll('\\', '/') === relativePath,
         );
@@ -425,17 +429,17 @@ class NoteService {
         if (basenameMatch) {
           relativePath = basenameMatch.relativePath.replaceAll('\\', '/');
           absolutePath = resolveInsideRoot(workspace.folderPath, relativePath);
-          await repos.note.update(noteId, { filePath: relativePath });
+          await this.deps.noteRepository.update(noteId, { filePath: relativePath });
         } else {
           return null;
         }
       }
 
-      const markdownFile = await this.fileSystemService.readMarkdownFile(absolutePath, true);
+      const markdownFile = await this.deps.fileSystemService.readMarkdownFile(absolutePath, true);
 
       // Strip the title heading from content for editor display
       let contentForEditor = markdownFile.content;
-      const note = await repos.note.findById(noteId);
+      const note = await this.deps.noteRepository.findById(noteId);
       if (note?.title) {
         const escapedTitle = note.title.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
         const titleHeading = `# ${escapedTitle}`;
@@ -444,9 +448,9 @@ class NoteService {
       }
 
       // Convert markdown to HTML for TipTap editor
-      const stats = await this.fileSystemService.getFileStats(absolutePath);
+      const stats = await this.deps.fileSystemService.getFileStats(absolutePath);
       const mtime = stats.mtimeMs;
-      let html = await this.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
+      let html = await this.deps.markdownService.markdownToHtml(contentForEditor, absolutePath, mtime);
 
       // Resolve relative image paths to absolute file:// URLs
       html = this.resolveImagePaths(html, workspace.folderPath);
@@ -471,10 +475,8 @@ class NoteService {
       pinned?: boolean;
     },
   ): Promise<void> {
-    const repos = getRepositories();
-
     try {
-      const workspace = await repos.workspace.findById(workspaceId);
+      const workspace = await this.deps.workspaceRepository.findById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
@@ -482,9 +484,9 @@ class NoteService {
       const absolutePath = resolveInsideRoot(workspace.folderPath, filePath);
 
       // Convert HTML content to markdown
-      const markdownContent = this.markdownService.htmlToMarkdown(content);
+      const markdownContent = this.deps.markdownService.htmlToMarkdown(content);
 
-      await this.fileSystemService.writeMarkdownFile(absolutePath, markdownContent, metadata);
+      await this.deps.fileSystemService.writeMarkdownFile(absolutePath, markdownContent, metadata);
     } catch (error) {
       logger.error(`Error saving content to file ${filePath}:`, error);
       throw error;
@@ -499,12 +501,10 @@ class NoteService {
     requestedFolder: string,
     notebookId?: string,
   ): Promise<string> {
-    const repos = getRepositories();
-
     // Ensure Personal folder exists as default
     const personalFolderPath = path.join(workspace.folderPath, 'Personal');
-    if (!(await this.fileSystemService.fileExists(personalFolderPath))) {
-      await this.fileSystemService.createFolder(personalFolderPath);
+    if (!(await this.deps.fileSystemService.fileExists(personalFolderPath))) {
+      await this.deps.fileSystemService.createFolder(personalFolderPath);
       logger.info(`Created Personal folder: ${personalFolderPath}`);
     }
 
@@ -513,7 +513,7 @@ class NoteService {
 
     // If notebook specified, use its folder
     if (notebookId) {
-      const notebook = await repos.notebook.findById(notebookId);
+      const notebook = await this.deps.notebookRepository.findById(notebookId);
       if (!notebook) throw new Error('Notebook not found');
       if (notebook.workspaceId && notebook.workspaceId !== workspace.id) {
         throw new Error('Notebook belongs to a different workspace');
@@ -535,9 +535,9 @@ class NoteService {
     const isJournalNote = relativeFolder === 'Journal' && /^\d{4}-\d{2}-\d{2}$/.test(title);
 
     if (isJournalNote) {
-      return this.fileSystemService.generateUniqueFilename(targetFolderAbsolute, title, '.md');
+      return this.deps.fileSystemService.generateUniqueFilename(targetFolderAbsolute, title, '.md');
     }
-    return this.fileSystemService.generateTimestampFilename(targetFolderAbsolute, '.md');
+    return this.deps.fileSystemService.generateTimestampFilename(targetFolderAbsolute, '.md');
   }
 
   /**
@@ -549,8 +549,6 @@ class NoteService {
     notebookId: string | null | undefined,
     workspace: { id: string; folderPath: string },
   ): Promise<string | null> {
-    const repos = getRepositories();
-
     const currentRelativePath = note.filePath;
     if (!currentRelativePath) return null;
 
@@ -563,7 +561,7 @@ class NoteService {
     if (folderPath !== undefined) {
       targetFolderRelative = this.normalizeFolderPath(folderPath);
     } else if (notebookId !== undefined) {
-      const targetNotebook = notebookId ? await repos.notebook.findById(notebookId) : null;
+      const targetNotebook = notebookId ? await this.deps.notebookRepository.findById(notebookId) : null;
       if (targetNotebook?.workspaceId && targetNotebook.workspaceId !== workspace.id) {
         throw new Error('Target notebook belongs to a different workspace');
       }
@@ -615,17 +613,15 @@ class NoteService {
    * Delete markdown file
    */
   private async deleteMarkdownFile(filePath: string, workspaceId: string): Promise<void> {
-    const repos = getRepositories();
-
     try {
-      const workspace = await repos.workspace.findById(workspaceId);
+      const workspace = await this.deps.workspaceRepository.findById(workspaceId);
       if (!workspace) {
         logger.warn(`Workspace not found: ${workspaceId}, skipping file deletion`);
         return;
       }
 
       const absolutePath = resolveInsideRoot(workspace.folderPath, filePath);
-      await this.fileSystemService.deleteMarkdownFile(absolutePath);
+      await this.deps.fileSystemService.deleteMarkdownFile(absolutePath);
     } catch (error) {
       logger.error(`Error deleting markdown file ${filePath}:`, error);
       // Don't throw - allow database deletion to proceed
@@ -640,10 +636,8 @@ class NoteService {
     newFilePath: string,
     workspaceId: string,
   ): Promise<void> {
-    const repos = getRepositories();
-
     try {
-      const workspace = await repos.workspace.findById(workspaceId);
+      const workspace = await this.deps.workspaceRepository.findById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
@@ -651,15 +645,14 @@ class NoteService {
       const oldAbsolutePath = resolveInsideRoot(workspace.folderPath, oldFilePath);
       const newAbsolutePath = resolveInsideRoot(workspace.folderPath, newFilePath);
 
-      await this.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
+      await this.deps.fileSystemService.renameMarkdownFile(oldAbsolutePath, newAbsolutePath);
 
       // Emit file system events to update UI
-      const eventBus = getEventBus();
-      eventBus.emit(EVENTS.FILE_DELETED, {
+      this.deps.eventBus.emit(EVENTS.FILE_DELETED, {
         workspaceId,
         path: oldFilePath,
       });
-      eventBus.emit(EVENTS.FILE_CREATED, {
+      this.deps.eventBus.emit(EVENTS.FILE_CREATED, {
         workspaceId,
         path: newFilePath,
       });
@@ -691,16 +684,85 @@ class NoteService {
   private async getNoteTags(
     noteId: string,
   ): Promise<{ id: string; name: string; color: string | null }[]> {
-    const repos = getRepositories();
-    return repos.tag.getTagsForNote(noteId);
+    return this.deps.tagRepository.getTagsForNote(noteId);
   }
 
   /**
    * Set tags for a note
    */
   private async setNoteTags(noteId: string, tagNames: string[]): Promise<void> {
-    const repos = getRepositories();
-    await repos.tag.setTagsForNote(noteId, tagNames);
+    await this.deps.tagRepository.setTagsForNote(noteId, tagNames);
+  }
+
+  // ==========================================================================
+  // Query Methods (delegated to repository)
+  // ==========================================================================
+
+  /**
+   * Find all notes with optional pagination
+   */
+  async findAll(options?: { limit?: number; offset?: number }): Promise<Note[]> {
+    return this.deps.noteRepository.findAll(options);
+  }
+
+  /**
+   * Find a note by ID
+   */
+  async findById(id: string): Promise<Note | null> {
+    return this.deps.noteRepository.findById(id);
+  }
+
+  /**
+   * Find notes by folder path
+   */
+  async findByFolder(folderPath: string, includeSubfolders = true): Promise<Note[]> {
+    return this.deps.noteRepository.findByFolder(folderPath, includeSubfolders);
+  }
+
+  /**
+   * Get favorite notes
+   */
+  async getFavorites(): Promise<Note[]> {
+    return this.deps.noteRepository.getFavorites();
+  }
+
+  /**
+   * Get deleted (soft-deleted) notes
+   */
+  async getDeleted(): Promise<Note[]> {
+    return this.deps.noteRepository.getDeleted();
+  }
+
+  /**
+   * Get recently updated notes
+   */
+  async getRecent(limit = 20): Promise<Note[]> {
+    return this.deps.noteRepository.getRecent(limit);
+  }
+
+  /**
+   * Toggle favorite status
+   */
+  async toggleFavorite(id: string): Promise<Note> {
+    const note = await this.deps.noteRepository.toggleFavorite(id);
+    this.emitNoteUpdated(id);
+    return note;
+  }
+
+  /**
+   * Toggle pin status
+   */
+  async togglePin(id: string): Promise<Note> {
+    const note = await this.deps.noteRepository.togglePin(id);
+    this.emitNoteUpdated(id);
+    return note;
+  }
+
+  /**
+   * Get notes that link to this note
+   */
+  async getBacklinks(noteId: string): Promise<Note[]> {
+    return this.deps.noteRepository.getBacklinks(noteId);
   }
 
   // ==========================================================================
@@ -708,22 +770,48 @@ class NoteService {
   // ==========================================================================
 
   private emitNoteCreated(noteId: string): void {
-    getEventBus().emit(EVENTS.NOTE_CREATED, { id: noteId });
+    this.deps.eventBus.emit(EVENTS.NOTE_CREATED, { id: noteId });
   }
 
   private emitNoteUpdated(noteId: string): void {
-    getEventBus().emit(EVENTS.NOTE_UPDATED, { id: noteId });
+    this.deps.eventBus.emit(EVENTS.NOTE_UPDATED, { id: noteId });
   }
 
   private emitNoteDeleted(noteId: string): void {
-    getEventBus().emit(EVENTS.NOTE_DELETED, { id: noteId });
+    this.deps.eventBus.emit(EVENTS.NOTE_DELETED, { id: noteId });
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getFileSystemService } from './FileSystemService';
+import { getMarkdownService } from './MarkdownService';
+import { getEventBus } from './EventBus';
+
 let instance: NoteService | null = null;
 
 export function getNoteService(): NoteService {
-  instance ??= new NoteService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new NoteService({
+      noteRepository: repos.note,
+      workspaceRepository: repos.workspace,
+      notebookRepository: repos.notebook,
+      tagRepository: repos.tag,
+      fileSystemService: getFileSystemService(),
+      markdownService: getMarkdownService(),
+      eventBus: getEventBus(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create NoteService with custom dependencies (for DI container)
+ */
+export function createNoteService(deps: NoteServiceDeps): NoteService {
+  return new NoteService(deps);
 }

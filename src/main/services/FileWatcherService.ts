@@ -8,27 +8,38 @@ import path from 'node:path';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { Workspace } from '@shared/types';
-import { WorkspaceRepository } from '../repositories/WorkspaceRepository';
-import { NoteRepository } from '../repositories/NoteRepository';
-import { NotebookRepository } from '../repositories/NotebookRepository';
-import { getEventBus } from './EventBus';
+import type { WorkspaceRepository } from '../repositories/WorkspaceRepository';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { NotebookRepository } from '../repositories/NotebookRepository';
+import type { EventBus } from './EventBus';
 
 type WatchEntry = {
   watcher: FSWatcher;
   workspace: Workspace;
 };
 
+/**
+ * Dependencies for FileWatcherService
+ */
+export interface FileWatcherServiceDeps {
+  workspaceRepository: WorkspaceRepository;
+  noteRepository: NoteRepository;
+  notebookRepository: NotebookRepository;
+  eventBus: EventBus;
+}
+
 export class FileWatcherService {
   private readonly watchers = new Map<string, WatchEntry>();
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
   private started = false;
 
+  constructor(private readonly deps: FileWatcherServiceDeps) {}
+
   async start(): Promise<void> {
     if (this.started) return;
     this.started = true;
 
-    const wsRepo = new WorkspaceRepository();
-    const workspaces = await wsRepo.findAll();
+    const workspaces = await this.deps.workspaceRepository.findAll();
 
     for (const ws of workspaces) {
       await this.watchWorkspace(ws);
@@ -61,9 +72,8 @@ export class FileWatcherService {
       depth: undefined,
     });
 
-    const eventBus = getEventBus();
     const sendEvent = (event: keyof typeof EVENTS, payload: any) => {
-      eventBus.emit(EVENTS[event], payload);
+      this.deps.eventBus.emit(EVENTS[event], payload);
     };
 
     const onFsEvent = (kind: 'add' | 'change' | 'unlink', fullPath: string) => {
@@ -125,19 +135,15 @@ export class FileWatcherService {
   }
 
   private async syncWorkspace(workspaceId: string) {
-    const wsRepo = new WorkspaceRepository();
-    const nbRepo = new NotebookRepository();
-    const noteRepo = new NoteRepository();
-
-    const ws = await wsRepo.findById(workspaceId);
+    const ws = await this.deps.workspaceRepository.findById(workspaceId);
     if (!ws) return;
 
     logger.info(`[Watcher] Debounced sync start for workspace ${ws.name}`);
     try {
-      await nbRepo.syncWithWorkspaceFolders(workspaceId);
-      await noteRepo.syncWithFileSystem(workspaceId);
+      await this.deps.notebookRepository.syncWithWorkspaceFolders(workspaceId);
+      await this.deps.noteRepository.syncWithFileSystem(workspaceId);
       // Notify renderer that workspace has updated; UI can refresh trees/counts
-      getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
+      this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
       logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
     } catch (e) {
       logger.error(`[Watcher] Error syncing ${ws.name}:`, e);
@@ -145,9 +151,31 @@ export class FileWatcherService {
   }
 }
 
-// Singleton
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getEventBus } from './EventBus';
+
 let watcherInstance: FileWatcherService | null = null;
+
 export function getFileWatcherService(): FileWatcherService {
-  watcherInstance ??= new FileWatcherService();
+  if (!watcherInstance) {
+    const repos = getRepositories();
+    watcherInstance = new FileWatcherService({
+      workspaceRepository: repos.workspace,
+      noteRepository: repos.note,
+      notebookRepository: repos.notebook,
+      eventBus: getEventBus(),
+    });
+  }
   return watcherInstance;
+}
+
+/**
+ * Create FileWatcherService with custom dependencies (for DI container)
+ */
+export function createFileWatcherService(deps: FileWatcherServiceDeps): FileWatcherService {
+  return new FileWatcherService(deps);
 }

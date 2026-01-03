@@ -5,14 +5,16 @@
  */
 
 import path from 'node:path';
-import { getRepositories } from '../repositories';
-import { getFileSystemService } from './FileSystemService';
-import { getFileWatcherService } from './FileWatcherService';
-import { getEventBus } from './EventBus';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import { resolveInsideRoot, normalizeRelativePath } from '../utils/path';
 import type { Workspace } from '@shared/types';
+import type { WorkspaceRepository } from '../repositories/WorkspaceRepository';
+import type { NotebookRepository } from '../repositories/NotebookRepository';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { FileSystemService } from './FileSystemService';
+import type { FileWatcherService } from './FileWatcherService';
+import type { EventBus } from './EventBus';
 
 export interface CreateWorkspaceRequest {
   name: string;
@@ -47,10 +49,22 @@ export interface SyncResult {
 const DEFAULT_FOLDERS = ['Work', 'Journal', 'Personal'];
 
 /**
+ * Dependencies for WorkspaceService
+ */
+export interface WorkspaceServiceDeps {
+  workspaceRepository: WorkspaceRepository;
+  notebookRepository: NotebookRepository;
+  noteRepository: NoteRepository;
+  fileSystemService: FileSystemService;
+  fileWatcherService: FileWatcherService;
+  eventBus: EventBus;
+}
+
+/**
  * WorkspaceService handles workspace operations
  */
-class WorkspaceService {
-  private readonly fileSystemService = getFileSystemService();
+export class WorkspaceService {
+  constructor(private readonly deps: WorkspaceServiceDeps) {}
 
   // ==========================================================================
   // Workspace CRUD
@@ -60,16 +74,14 @@ class WorkspaceService {
    * Create a new workspace with default folders
    */
   async createWorkspace(data: CreateWorkspaceRequest): Promise<Workspace> {
-    const repos = getRepositories();
-
     // Validate folder path
-    const validation = await this.fileSystemService.validateFolderPath(data.folderPath);
+    const validation = await this.deps.fileSystemService.validateFolderPath(data.folderPath);
     if (!validation.valid) {
       throw new Error(validation.error || 'Invalid folder path');
     }
 
     // Create workspace in DB
-    const workspace = await repos.workspace.create({
+    const workspace = await this.deps.workspaceRepository.create({
       name: data.name,
       folderPath: data.folderPath,
     });
@@ -79,21 +91,21 @@ class WorkspaceService {
 
     // Sync notebooks and notes
     try {
-      await repos.notebook.syncWithWorkspaceFolders(workspace.id);
-      await repos.note.syncWithFileSystem(workspace.id);
+      await this.deps.notebookRepository.syncWithWorkspaceFolders(workspace.id);
+      await this.deps.noteRepository.syncWithFileSystem(workspace.id);
     } catch (error) {
       logger.error('[WorkspaceService] Error syncing after creation:', error);
     }
 
     // Start watching the workspace
     try {
-      await getFileWatcherService().watchWorkspace(workspace);
+      await this.deps.fileWatcherService.watchWorkspace(workspace);
     } catch (error) {
       logger.warn('[WorkspaceService] Could not start file watcher:', error);
     }
 
     // Emit event
-    getEventBus().emit(EVENTS.WORKSPACE_CREATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_CREATED, { workspace });
 
     logger.info(`[WorkspaceService] Created workspace: ${workspace.name}`);
     return workspace;
@@ -103,26 +115,23 @@ class WorkspaceService {
    * Get all workspaces
    */
   async getAllWorkspaces(): Promise<Workspace[]> {
-    const repos = getRepositories();
-    return repos.workspace.findAll();
+    return this.deps.workspaceRepository.findAll();
   }
 
   /**
    * Get the active workspace
    */
   async getActiveWorkspace(): Promise<Workspace | null> {
-    const repos = getRepositories();
-    return repos.workspace.getActive();
+    return this.deps.workspaceRepository.getActive();
   }
 
   /**
    * Set the active workspace
    */
   async setActiveWorkspace(id: string): Promise<Workspace> {
-    const repos = getRepositories();
-    const workspace = await repos.workspace.setActive(id);
+    const workspace = await this.deps.workspaceRepository.setActive(id);
 
-    getEventBus().emit(EVENTS.WORKSPACE_SWITCHED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_SWITCHED, { workspace });
 
     logger.info(`[WorkspaceService] Switched to workspace: ${workspace.name}`);
     return workspace;
@@ -132,10 +141,9 @@ class WorkspaceService {
    * Update workspace
    */
   async updateWorkspace(id: string, data: UpdateWorkspaceRequest): Promise<Workspace> {
-    const repos = getRepositories();
-    const workspace = await repos.workspace.update(id, { name: data.name });
+    const workspace = await this.deps.workspaceRepository.update(id, { name: data.name });
 
-    getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace });
 
     return workspace;
   }
@@ -144,18 +152,16 @@ class WorkspaceService {
    * Delete workspace
    */
   async deleteWorkspace(id: string): Promise<void> {
-    const repos = getRepositories();
-
-    await repos.workspace.delete(id);
+    await this.deps.workspaceRepository.delete(id);
 
     // Stop watching
     try {
-      await getFileWatcherService().unwatchWorkspace(id);
+      await this.deps.fileWatcherService.unwatchWorkspace(id);
     } catch (error) {
       logger.warn('[WorkspaceService] Could not stop file watcher:', error);
     }
 
-    getEventBus().emit(EVENTS.WORKSPACE_DELETED, { id });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_DELETED, { id });
 
     logger.info(`[WorkspaceService] Deleted workspace: ${id}`);
   }
@@ -176,7 +182,7 @@ class WorkspaceService {
       parentRelative || '.',
     );
 
-    const folderName = await this.fileSystemService.generateUniqueFolderName(
+    const folderName = await this.deps.fileSystemService.generateUniqueFolderName(
       targetBase,
       name || 'New Folder',
     );
@@ -185,11 +191,11 @@ class WorkspaceService {
       ? path.posix.join(parentRelative, folderName)
       : folderName;
 
-    await this.fileSystemService.createFolder(
+    await this.deps.fileSystemService.createFolder(
       resolveInsideRoot(workspace.folderPath, newRelative),
     );
 
-    getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace });
 
     logger.info(`[WorkspaceService] Created folder: ${newRelative}`);
     return { folderPath: newRelative };
@@ -207,7 +213,7 @@ class WorkspaceService {
     }
 
     const currentAbsolute = resolveInsideRoot(workspace.folderPath, targetRelative);
-    const exists = await this.fileSystemService.fileExists(currentAbsolute);
+    const exists = await this.deps.fileSystemService.fileExists(currentAbsolute);
     if (!exists) {
       throw new Error('Folder does not exist');
     }
@@ -216,7 +222,7 @@ class WorkspaceService {
     const parentAbsolute = resolveInsideRoot(workspace.folderPath, parentRelative || '.');
 
     const desiredName = newName?.trim() || 'Folder';
-    const newFolderName = await this.fileSystemService.generateUniqueFolderName(
+    const newFolderName = await this.deps.fileSystemService.generateUniqueFolderName(
       parentAbsolute,
       desiredName,
       currentAbsolute,
@@ -229,10 +235,10 @@ class WorkspaceService {
     const newAbsolute = resolveInsideRoot(workspace.folderPath, newRelative);
 
     if (newAbsolute !== currentAbsolute) {
-      await this.fileSystemService.renameFolder(currentAbsolute, newAbsolute);
+      await this.deps.fileSystemService.renameFolder(currentAbsolute, newAbsolute);
     }
 
-    getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace });
 
     logger.info(`[WorkspaceService] Renamed folder: ${targetRelative} → ${newRelative}`);
     return { folderPath: newRelative };
@@ -250,14 +256,14 @@ class WorkspaceService {
     }
 
     const targetAbsolute = resolveInsideRoot(workspace.folderPath, targetRelative);
-    const exists = await this.fileSystemService.fileExists(targetAbsolute);
+    const exists = await this.deps.fileSystemService.fileExists(targetAbsolute);
     if (!exists) {
       throw new Error('Folder does not exist');
     }
 
-    await this.fileSystemService.deleteFolder(targetAbsolute, true);
+    await this.deps.fileSystemService.deleteFolder(targetAbsolute, true);
 
-    getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace });
 
     logger.info(`[WorkspaceService] Deleted folder: ${targetRelative}`);
   }
@@ -274,7 +280,7 @@ class WorkspaceService {
     }
 
     const sourceAbsolute = resolveInsideRoot(workspace.folderPath, sourceRelative);
-    const exists = await this.fileSystemService.fileExists(sourceAbsolute);
+    const exists = await this.deps.fileSystemService.fileExists(sourceAbsolute);
     if (!exists) {
       throw new Error('Source folder does not exist');
     }
@@ -287,7 +293,7 @@ class WorkspaceService {
 
     // Check destination exists
     if (destinationRelative) {
-      const destExists = await this.fileSystemService.fileExists(destinationAbsolute);
+      const destExists = await this.deps.fileSystemService.fileExists(destinationAbsolute);
       if (!destExists) {
         throw new Error('Destination folder does not exist');
       }
@@ -299,7 +305,7 @@ class WorkspaceService {
     }
 
     const folderName = path.basename(sourceRelative);
-    const uniqueName = await this.fileSystemService.generateUniqueFolderName(
+    const uniqueName = await this.deps.fileSystemService.generateUniqueFolderName(
       destinationAbsolute,
       folderName,
     );
@@ -310,9 +316,9 @@ class WorkspaceService {
 
     const finalAbsolute = resolveInsideRoot(workspace.folderPath, finalRelative);
 
-    await this.fileSystemService.renameFolder(sourceAbsolute, finalAbsolute);
+    await this.deps.fileSystemService.renameFolder(sourceAbsolute, finalAbsolute);
 
-    getEventBus().emit(EVENTS.WORKSPACE_UPDATED, { workspace });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_UPDATED, { workspace });
 
     logger.info(`[WorkspaceService] Moved folder: ${sourceRelative} → ${finalRelative}`);
     return { folderPath: finalRelative };
@@ -326,13 +332,12 @@ class WorkspaceService {
    * Scan workspace for files and structure
    */
   async scanWorkspace(workspaceId: string): Promise<ScanResult> {
-    const repos = getRepositories();
-    const workspace = await repos.workspace.findById(workspaceId);
+    const workspace = await this.deps.workspaceRepository.findById(workspaceId);
     if (!workspace) {
       throw new Error('Workspace not found');
     }
 
-    const files = await this.fileSystemService.scanFolder(workspace.folderPath, true);
+    const files = await this.deps.fileSystemService.scanFolder(workspace.folderPath, true);
     const counts: Record<string, number> = {};
 
     for (const file of files) {
@@ -352,9 +357,9 @@ class WorkspaceService {
       }
     }
 
-    const structure = await this.fileSystemService.getFolderStructure(workspace.folderPath);
+    const structure = await this.deps.fileSystemService.getFolderStructure(workspace.folderPath);
 
-    getEventBus().emit(EVENTS.WORKSPACE_SCANNED, { workspace, files, structure });
+    this.deps.eventBus.emit(EVENTS.WORKSPACE_SCANNED, { workspace, files, structure });
 
     return { files, structure, total: files.length, counts };
   }
@@ -363,11 +368,9 @@ class WorkspaceService {
    * Sync workspace - reconcile DB with filesystem
    */
   async syncWorkspace(workspaceId?: string): Promise<SyncResult> {
-    const repos = getRepositories();
-
     const workspace = workspaceId
-      ? await repos.workspace.findById(workspaceId)
-      : await repos.workspace.getActive();
+      ? await this.deps.workspaceRepository.findById(workspaceId)
+      : await this.deps.workspaceRepository.getActive();
 
     if (!workspace) {
       throw new Error('Workspace not found');
@@ -379,10 +382,10 @@ class WorkspaceService {
     await this.ensureDefaultFolders(workspace.folderPath);
 
     // Sync notebooks from folders
-    const nbResult = await repos.notebook.syncWithWorkspaceFolders(workspace.id);
+    const nbResult = await this.deps.notebookRepository.syncWithWorkspaceFolders(workspace.id);
 
     // Sync notes from files
-    const noteResult = await repos.note.syncWithFileSystem(workspace.id);
+    const noteResult = await this.deps.noteRepository.syncWithFileSystem(workspace.id);
 
     const durationMs = Date.now() - start;
 
@@ -403,7 +406,7 @@ class WorkspaceService {
    * Validate a folder path
    */
   async validatePath(folderPath: string): Promise<{ valid: boolean; error?: string }> {
-    return this.fileSystemService.validateFolderPath(folderPath);
+    return this.deps.fileSystemService.validateFolderPath(folderPath);
   }
 
   // ==========================================================================
@@ -422,9 +425,9 @@ class WorkspaceService {
     for (const folderName of DEFAULT_FOLDERS) {
       try {
         const fullPath = path.join(folderPath, folderName);
-        const exists = await this.fileSystemService.fileExists(fullPath);
+        const exists = await this.deps.fileSystemService.fileExists(fullPath);
         if (!exists) {
-          await this.fileSystemService.createFolder(fullPath);
+          await this.deps.fileSystemService.createFolder(fullPath);
           logger.debug(`[WorkspaceService] Created default folder: ${folderName}`);
         }
       } catch (error) {
@@ -442,10 +445,35 @@ class WorkspaceService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getFileSystemService } from './FileSystemService';
+import { getFileWatcherService } from './FileWatcherService';
+import { getEventBus } from './EventBus';
+
 let instance: WorkspaceService | null = null;
 
 export function getWorkspaceService(): WorkspaceService {
-  instance ??= new WorkspaceService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new WorkspaceService({
+      workspaceRepository: repos.workspace,
+      notebookRepository: repos.notebook,
+      noteRepository: repos.note,
+      fileSystemService: getFileSystemService(),
+      fileWatcherService: getFileWatcherService(),
+      eventBus: getEventBus(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create WorkspaceService with custom dependencies (for DI container)
+ */
+export function createWorkspaceService(deps: WorkspaceServiceDeps): WorkspaceService {
+  return new WorkspaceService(deps);
 }

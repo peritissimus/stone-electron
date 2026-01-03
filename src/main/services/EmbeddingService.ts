@@ -8,8 +8,40 @@
 import { spawn, ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import readline from 'node:readline';
-import { app } from 'electron';
 import { logger } from '../utils/logger';
+
+/**
+ * Get Electron app if available
+ */
+function getElectronApp(): typeof import('electron').app | null {
+  try {
+    const electron = require('electron');
+    if (electron.app && typeof electron.app.isPackaged === 'boolean') {
+      return electron.app;
+    }
+  } catch {
+    // Not in Electron environment
+  }
+  return null;
+}
+
+/**
+ * Get the scripts path based on environment
+ */
+function getScriptsPath(): string {
+  const electronApp = getElectronApp();
+
+  if (electronApp) {
+    // Electron mode
+    if (electronApp.isPackaged) {
+      return path.join(process.resourcesPath!, 'app.asar.unpacked', 'scripts');
+    }
+    return path.join(electronApp.getAppPath(), 'scripts');
+  }
+
+  // Standalone mode - scripts are relative to project root
+  return path.join(process.cwd(), 'scripts');
+}
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -41,12 +73,7 @@ export class EmbeddingService {
   private readonly scriptsPath: string;
 
   constructor() {
-    // Determine scripts path based on whether app is packaged
-    if (app.isPackaged) {
-      this.scriptsPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'scripts');
-    } else {
-      this.scriptsPath = path.join(app.getAppPath(), 'scripts');
-    }
+    this.scriptsPath = getScriptsPath();
   }
 
   /**
@@ -303,7 +330,10 @@ export class EmbeddingService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
 let instance: EmbeddingService | null = null;
 
 /**
@@ -312,4 +342,11 @@ let instance: EmbeddingService | null = null;
 export function getEmbeddingService(): EmbeddingService {
   instance ??= new EmbeddingService();
   return instance;
+}
+
+/**
+ * Create EmbeddingService instance (for DI container)
+ */
+export function createEmbeddingService(): EmbeddingService {
+  return new EmbeddingService();
 }

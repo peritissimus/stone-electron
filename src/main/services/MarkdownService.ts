@@ -497,7 +497,10 @@ export class MarkdownService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
 let instance: MarkdownService | null = null;
 
 /**
@@ -506,6 +509,13 @@ let instance: MarkdownService | null = null;
 export function getMarkdownService(): MarkdownService {
   instance ??= new MarkdownService();
   return instance;
+}
+
+/**
+ * Create MarkdownService instance (for DI container)
+ */
+export function createMarkdownService(): MarkdownService {
+  return new MarkdownService();
 }
 
 /**
