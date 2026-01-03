@@ -45,6 +45,13 @@ vi.mock('../../../src/main/services/WorkspaceService', () => ({
 import { registerWorkspaceHandlers } from '../../../src/main/ipc/handlers/workspaceHandlers';
 import { ipcMain, dialog } from 'electron';
 
+// Create mock container
+const mockContainer = {
+  cradle: {
+    workspaceService: mockWorkspaceService,
+  },
+} as any;
+
 describe('Workspace IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -57,7 +64,7 @@ describe('Workspace IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerWorkspaceHandlers();
+    registerWorkspaceHandlers(mockContainer);
   });
 
   afterEach(() => {

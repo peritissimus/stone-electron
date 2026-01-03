@@ -25,10 +25,16 @@ vi.mock('../../src/main/utils/logger', () => ({
   logger: loggerSpies,
 }));
 
-import { getExportService } from '../../src/main/services/ExportService';
+import { createExportService } from '../../src/main/services/ExportService';
+
+// Create mock NoteService
+const mockNoteService = {
+  getRawContent: mockGetRawContent,
+};
 
 describe('ExportService', () => {
-  const exportService = getExportService();
+  // Use factory function with mocked dependencies instead of singleton getter
+  const exportService = createExportService({ noteService: mockNoteService as any });
 
   beforeEach(() => {
     vi.clearAllMocks();

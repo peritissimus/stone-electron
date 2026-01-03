@@ -161,6 +161,25 @@ import { registerNoteHandlers } from '../../../src/main/ipc/handlers/noteHandler
 import { ipcMain, dialog } from 'electron';
 import * as fs from 'node:fs/promises';
 
+// Create mock container with all required repos and services
+const mockContainer = {
+  cradle: {
+    // Repositories
+    noteRepository: mockNoteRepo,
+    notebookRepository: mockNotebookRepo,
+    tagRepository: mockTagRepo,
+    workspaceRepository: mockWorkspaceRepo,
+    attachmentRepository: mockAttachmentRepo,
+    versionRepository: mockVersionRepo,
+    // Services
+    noteService: mockNoteService,
+    graphService: mockGraphService,
+    taskService: mockTaskService,
+    exportService: mockExportService,
+    eventBus: mockEventBus,
+  },
+} as any;
+
 describe('Note IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -181,7 +200,7 @@ describe('Note IPC Handlers', () => {
     mockNotebookRepo.findByIds.mockResolvedValue(new Map());
     mockWorkspaceRepo.getActive.mockResolvedValue({ id: 'ws-1' });
 
-    registerNoteHandlers();
+    registerNoteHandlers(mockContainer);
   });
 
   afterEach(() => {

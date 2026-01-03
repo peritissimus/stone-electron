@@ -83,7 +83,7 @@ vi.mock('../../src/main/repositories/NoteRepository', () => ({
 
 // Import after mocks
 import chokidar from 'chokidar';
-import { FileWatcherService, getFileWatcherService } from '../../src/main/services/FileWatcherService';
+import { FileWatcherService, createFileWatcherService, getFileWatcherService } from '../../src/main/services/FileWatcherService';
 
 describe('FileWatcherService', () => {
   let service: FileWatcherService;
@@ -96,7 +96,12 @@ describe('FileWatcherService', () => {
     mockEventBus.emit = vi.fn();
     mockEventBus.on = vi.fn();
     mockEventBus.off = vi.fn();
-    service = new FileWatcherService();
+    service = createFileWatcherService({
+      workspaceRepository: mockWsRepoInstance as any,
+      noteRepository: mockNoteRepoInstance as any,
+      notebookRepository: mockNbRepoInstance as any,
+      eventBus: mockEventBus as any,
+    });
   });
 
   afterEach(() => {

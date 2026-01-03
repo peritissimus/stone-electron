@@ -46,10 +46,15 @@ vi.mock('../../src/main/services/NoteService', () => ({
   getNoteService: vi.fn(() => mockNoteService),
 }));
 
-import { getTaskService } from '../../src/main/services/TaskService';
+import { createTaskService } from '../../src/main/services/TaskService';
 
 describe('TaskService', () => {
-  const taskService = getTaskService();
+  // Use factory function with mocked dependencies instead of singleton getter
+  const taskService = createTaskService({
+    noteRepository: mockNoteRepo as any,
+    workspaceRepository: mockWorkspaceRepo as any,
+    noteService: mockNoteService as any,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

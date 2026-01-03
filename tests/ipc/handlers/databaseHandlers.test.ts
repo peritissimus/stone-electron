@@ -37,6 +37,14 @@ vi.mock('../../../src/main/database', () => ({
 import { registerDatabaseHandlers } from '../../../src/main/ipc/handlers/databaseHandlers';
 import { ipcMain } from 'electron';
 
+// Create mock container
+const mockContainer = {
+  cradle: {
+    db: mockDbManager,
+    eventBus: mockEventBus,
+  },
+} as any;
+
 describe('Database IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -49,7 +57,7 @@ describe('Database IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerDatabaseHandlers();
+    registerDatabaseHandlers(mockContainer);
   });
 
   afterEach(() => {
