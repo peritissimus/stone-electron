@@ -1,3 +1,9 @@
+/**
+ * FileTree Component - File system tree navigation
+ *
+ * Implements: specs/components.ts#FileTreeProps
+ */
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FileText,

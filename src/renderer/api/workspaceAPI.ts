@@ -1,6 +1,7 @@
 /**
  * Workspace API - IPC channel wrappers for workspace operations
  *
+ * Implements: specs/api.ts#WorkspaceAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

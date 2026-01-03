@@ -1,3 +1,9 @@
+/**
+ * TodoList Component - Displays todos from all notes
+ *
+ * Implements: specs/components.ts#TodoListProps
+ */
+
 import React, { useEffect, useState } from 'react';
 import { CheckSquare, Square, ArrowRight } from 'lucide-react';
 import { TodoItem } from '@shared/types';

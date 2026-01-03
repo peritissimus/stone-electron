@@ -13,6 +13,8 @@ import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
+import { Checkbox } from '@renderer/components/base/ui/checkbox';
+import { Label } from '@renderer/components/base/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +22,11 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@renderer/components/base/ui/dialog';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@renderer/components/base/ui/popover';
 import { cn } from '@renderer/lib/utils';
 import type { TopicWithCount } from '@shared/types';
 
@@ -118,6 +125,7 @@ export function TopicsPage() {
   const [newTopicName, setNewTopicName] = useState('');
   const [newTopicColor, setNewTopicColor] = useState('#6366f1');
   const [creating, setCreating] = useState(false);
+  const [excludeJournal, setExcludeJournal] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -160,11 +168,11 @@ export function TopicsPage() {
   const handleReclassify = useCallback(async () => {
     const ready = await initialize();
     if (ready) {
-      await reclassifyAllNotes();
+      await reclassifyAllNotes({ excludeJournal });
       await getEmbeddingStatus();
       await loadTopics();
     }
-  }, [initialize, reclassifyAllNotes, getEmbeddingStatus, loadTopics]);
+  }, [initialize, reclassifyAllNotes, getEmbeddingStatus, loadTopics, excludeJournal]);
 
   const handleCreate = useCallback(async () => {
     if (!newTopicName.trim()) return;
@@ -206,15 +214,42 @@ export function TopicsPage() {
         )}
         <span className="text-sm font-medium">Topics</span>
         <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleReclassify}
-          disabled={classifying}
-          className="h-7 px-2 text-xs"
-        >
-          <RotateCw className={cn('w-3.5 h-3.5', classifying && 'animate-spin')} />
-        </Button>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={classifying}
+              className="h-7 px-2 text-xs"
+              title="Reclassify options"
+            >
+              <RotateCw className={cn('w-3.5 h-3.5', classifying && 'animate-spin')} />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-3" align="end">
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Reclassify Options</div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="exclude-journal"
+                  checked={excludeJournal}
+                  onCheckedChange={(checked) => setExcludeJournal(checked === true)}
+                />
+                <Label htmlFor="exclude-journal" className="text-xs cursor-pointer">
+                  Exclude Journal notes
+                </Label>
+              </div>
+              <Button
+                size="sm"
+                className="w-full h-7 text-xs"
+                onClick={handleReclassify}
+                disabled={classifying}
+              >
+                {classifying ? 'Reclassifying...' : 'Reclassify All'}
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
         <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)} className="h-7 px-2 text-xs">
           <Plus className="w-3.5 h-3.5" />
         </Button>

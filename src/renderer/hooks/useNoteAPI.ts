@@ -84,7 +84,7 @@ export function useNoteAPI() {
         const response = await noteAPI.create({
           title: data.title,
           content: data.content,
-          folder_path: data.folderPath,
+          folderPath: data.folderPath,
         });
         logger.info('[useNoteAPI.createNote] Response:', {
           success: response.success,
@@ -120,7 +120,7 @@ export function useNoteAPI() {
         const response = await noteAPI.update(id, {
           title: data.title,
           content: data.content,
-          notebook_id: data.notebookId,
+          notebookId: data.notebookId,
         }, silent);
         if (response.success && response.data) {
           // Only update store if not silent (silent = autosave without re-render)
@@ -313,9 +313,10 @@ export function useNoteAPI() {
     try {
       const response = await noteAPI.getGraphData();
       if (response.success && response.data) {
+        // GraphService returns { nodes, links } where nodes have { id, name, val }
         return {
-          nodes: response.data.nodes.map((n) => ({ id: n.id, name: n.title, val: 1 })),
-          links: response.data.edges.map((e) => ({ source: e.source, target: e.target })),
+          nodes: response.data.nodes?.map((n) => ({ id: n.id, name: n.name, val: n.val || 1 })) || [],
+          links: response.data.links?.map((e) => ({ source: e.source, target: e.target })) || [],
         };
       }
       return { nodes: [], links: [] };

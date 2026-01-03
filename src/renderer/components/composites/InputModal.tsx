@@ -1,6 +1,7 @@
 /**
  * InputModal Component - Token-based modal for text input
  *
+ * Implements: specs/components.ts#InputModalProps
  * Replaces: Manual Dialog + Input + Button combinations with inline styling
  */
 

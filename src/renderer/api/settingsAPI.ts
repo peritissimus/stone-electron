@@ -1,6 +1,7 @@
 /**
  * Settings API - IPC channel wrappers for settings and database operations
  *
+ * Implements: specs/api.ts#SettingsAPI, specs/api.ts#DatabaseAPI, specs/api.ts#SystemAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

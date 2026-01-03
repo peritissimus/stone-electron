@@ -1,6 +1,7 @@
 /**
  * Tag API - IPC channel wrappers for tag operations
  *
+ * Implements: specs/api.ts#TagAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

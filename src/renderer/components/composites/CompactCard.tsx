@@ -1,6 +1,7 @@
 /**
  * CompactCard Component - simplified card for grid/card views
  *
+ * Implements: specs/components.ts#CompactCardProps
  * Replaces: className="text-left p-2 rounded-md transition-all"
  */
 

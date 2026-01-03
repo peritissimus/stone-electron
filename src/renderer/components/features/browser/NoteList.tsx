@@ -1,9 +1,10 @@
 /**
  * Note List Component - Filesystem-centric note explorer
+ *
+ * Implements: specs/components.ts#NoteListProps
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { shallow } from 'zustand/shallow';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
@@ -23,18 +24,16 @@ import { Toggle } from '@renderer/components/base/ui/toggle';
 import { logger } from '@renderer/utils/logger';
 import { normalizePath, getParentPath } from '@renderer/utils/path';
 import {
-  Star,
-  PushPin,
-  Archive,
   List,
   GridFour,
   Article,
   CaretUp,
   CaretDown,
-  CaretRight,
   Plus,
 } from 'phosphor-react';
-import { Header, ControlGroup, ListContainer, TreeItem } from '@renderer/components/composites';
+import { Header, ControlGroup, ListContainer } from '@renderer/components/composites';
+import { NoteListFolderItem } from './NoteListFolderItem';
+import { NoteListFileItem } from './NoteListFileItem';
 
 import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
 import type { Note } from '@shared/types';
@@ -207,75 +206,40 @@ export function NoteList() {
     if (!nodes || nodes.length === 0) return [];
 
     return sortNodes(nodes).map((node) => {
+      const normalizedPath = normalizePath(node.path);
+
       if (node.type === 'folder') {
-        const normalizedPath = normalizePath(node.path);
-        const hasChildren = (node.children?.length ?? 0) > 0;
         const isExpanded = expandedPaths.has(normalizedPath);
         const isActive = normalizePath(activeFolder || '') === normalizedPath;
         const count = noteCountForFolder(normalizedPath);
 
         return (
-          <div key={`folder-${normalizedPath}`}>
-            <TreeItem
-              level={level}
-              isActive={isActive}
-              icon="📁"
-              label={node.name}
-              onClick={() => handleFolderClick(normalizedPath)}
-              right={
-                <>
-                  {hasChildren && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 w-5 p-0"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        toggleExpanded(normalizedPath);
-                      }}
-                      aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
-                    >
-                      {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
-                    </Button>
-                  )}
-                  <Text size="xs" variant="muted" className="text-[10px]">
-                    {count}
-                  </Text>
-                </>
-              }
-            />
-            {isExpanded && node.children && node.children.length > 0 && (
-              <div>{renderNodes(node.children, level + 1)}</div>
-            )}
-          </div>
+          <NoteListFolderItem
+            key={`folder-${normalizedPath}`}
+            node={node}
+            level={level}
+            isActive={isActive}
+            isExpanded={isExpanded}
+            noteCount={count}
+            onClick={() => handleFolderClick(normalizedPath)}
+            onToggle={() => toggleExpanded(normalizedPath)}
+          >
+            {node.children && node.children.length > 0 && renderNodes(node.children, level + 1)}
+          </NoteListFolderItem>
         );
       }
 
-      const normalizedPath = normalizePath(node.path);
       const note = notesByPath.get(normalizedPath);
       const isSelected = normalizePath(selectedFile || '') === normalizedPath;
-      const title = note?.title?.trim() ? note.title : node.name.replace(/\.md$/i, '');
-      const updatedAt = note
-        ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
-        : '';
-      const isPinned = note?.isPinned;
-      const isFavorite = note?.isFavorite;
 
       return (
-        <TreeItem
+        <NoteListFileItem
           key={`file-${normalizedPath}`}
+          note={note}
+          fileName={node.name}
           level={level}
           isActive={isSelected}
-          icon="📄"
-          label={title || node.name}
           onClick={() => handleFileClick(normalizedPath)}
-          right={
-            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-              {isPinned && <PushPin size={10} className="text-primary" />}
-              {isFavorite && <Star size={10} className="text-warning" />}
-              {updatedAt}
-            </div>
-          }
         />
       );
     });

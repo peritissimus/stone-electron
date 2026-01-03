@@ -1,5 +1,7 @@
 /**
  * ResizablePanel Component - Handles drag-to-resize functionality
+ *
+ * Implements: specs/components.ts#ResizablePanelProps
  */
 
 import React, { useRef, useCallback } from 'react';

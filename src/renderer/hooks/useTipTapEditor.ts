@@ -109,7 +109,7 @@ async function fetchNotesForAutocomplete(query: string) {
 
     // Use cache if valid
     if (!notesCache || (now - notesCache.timestamp) > NOTES_CACHE_TTL_MS) {
-      const response = await noteAPI.getAll({ include_archived: false });
+      const response = await noteAPI.getAll({ includeArchived: false });
 
       if (response.success && response.data) {
         notesCache = {

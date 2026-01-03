@@ -1,3 +1,9 @@
+/**
+ * TabbedModal Component - Modal with tabbed navigation
+ *
+ * Implements: specs/components.ts#TabbedModalProps
+ */
+
 import React from 'react';
 import { ModalLayout } from './ModalLayout';
 import { Text } from '@renderer/components/base/ui/text';

@@ -1,5 +1,7 @@
 /**
  * SidebarPanel Component - Wrapper for sidebar content
+ *
+ * Implements: specs/components.ts#SidebarPanelProps
  */
 
 import React from 'react';

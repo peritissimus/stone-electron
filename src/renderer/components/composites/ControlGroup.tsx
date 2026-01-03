@@ -1,6 +1,7 @@
 /**
  * ControlGroup Component - containers for related buttons/toggles
  *
+ * Implements: specs/components.ts#ControlGroupProps
  * Replaces: className="flex items-center gap-0.5 bg-muted rounded-md p-0.5"
  */
 

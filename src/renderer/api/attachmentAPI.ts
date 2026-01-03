@@ -1,6 +1,7 @@
 /**
  * Attachment API - IPC channel wrappers for attachment operations
  *
+ * Implements: specs/api.ts#AttachmentAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

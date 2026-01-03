@@ -1,3 +1,9 @@
+/**
+ * File Tree Store - Zustand state management for file system tree
+ *
+ * Pattern: specs/stores.ts#FileTreeStoreState
+ */
+
 import { create } from 'zustand';
 import { logger } from '@renderer/utils/logger';
 
@@ -17,6 +23,8 @@ interface FileTreeState {
   loading: boolean;
   error: string | null;
   counts: Record<string, number>;
+
+  // Actions
   setTree: (tree: FileTreeNode[]) => void;
   setActiveFolder: (path: string | null) => void;
   setSelectedFile: (path: string | null) => void;

@@ -1,6 +1,7 @@
 /**
  * Notebook API - IPC channel wrappers for notebook operations
  *
+ * Implements: specs/api.ts#NotebookAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 

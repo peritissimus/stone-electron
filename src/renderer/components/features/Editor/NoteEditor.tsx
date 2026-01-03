@@ -1,5 +1,7 @@
 /**
  * Note Editor Component - TipTap Rich Text Editor
+ *
+ * Implements: specs/components.ts#NoteEditorProps
  * Uses document buffer for instant note switching
  * Supports both rich text and raw markdown editing modes
  */

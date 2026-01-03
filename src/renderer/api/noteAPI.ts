@@ -1,40 +1,25 @@
 /**
  * Note API - IPC channel wrappers for note operations
  *
+ * Implements: specs/api.ts#NoteAPI
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem } from '@shared/types';
+import type { NoteFilters, GraphData as SpecGraphData } from '@/specs';
+
+// Re-export types aligned with specs
+export type GetAllNotesParams = NoteFilters;
 
 export interface NoteWithMeta extends Note {
   tags?: Array<{ id: string; name: string; color: string | null }>;
   topics?: Array<{ id: string; name: string; color: string | null; confidence: number }>;
 }
 
-export interface GetAllNotesParams {
-  notebook_id?: string;
-  notebookId?: string;
-  folderPath?: string;
-  folder_path?: string;
-  tagIds?: string[];
-  tag_ids?: string[];
-  isFavorite?: boolean;
-  is_favorite?: boolean;
-  isPinned?: boolean;
-  is_pinned?: boolean;
-  isArchived?: boolean;
-  is_archived?: boolean;
-  include_archived?: boolean;
-  include_tags?: boolean;
-  include_topics?: boolean;
-}
-
-export interface GraphData {
-  nodes: Array<{ id: string; title: string; type: 'note' | 'tag' }>;
-  edges: Array<{ source: string; target: string; type: 'link' | 'tag' }>;
-}
+// GraphData matches specs/entities.ts#GraphData
+export interface GraphData extends SpecGraphData {}
 
 export const noteAPI = {
   /**
@@ -67,8 +52,8 @@ export const noteAPI = {
   create: (data: {
     title: string;
     content?: string;
-    notebook_id?: string;
-    folder_path?: string;
+    notebookId?: string;
+    folderPath?: string;
   }): Promise<IpcResponse<Note>> =>
     invokeIpc(NOTE_CHANNELS.CREATE, data),
 
@@ -80,7 +65,7 @@ export const noteAPI = {
     data: Partial<{
       title: string;
       content: string;
-      notebook_id: string;
+      notebookId: string;
     }>,
     silent?: boolean
   ): Promise<IpcResponse<Note>> =>

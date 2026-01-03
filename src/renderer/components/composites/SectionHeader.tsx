@@ -1,5 +1,7 @@
 /**
  * SectionHeader Component - consistent section header with optional divider
+ *
+ * Implements: specs/components.ts#SectionHeaderProps
  */
 
 import * as React from 'react';

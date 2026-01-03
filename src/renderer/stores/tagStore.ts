@@ -1,5 +1,7 @@
 /**
  * Tag Store - Zustand state management for tags
+ *
+ * Pattern: specs/stores.ts#MultiSelectStore
  */
 
 import { create } from 'zustand';

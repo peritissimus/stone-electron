@@ -1,5 +1,7 @@
 /**
  * Note Store - Zustand state management for notes
+ *
+ * Pattern: specs/stores.ts#NoteStoreState
  */
 
 import { create } from 'zustand';

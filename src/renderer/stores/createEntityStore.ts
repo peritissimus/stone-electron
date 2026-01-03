@@ -1,6 +1,8 @@
 /**
  * Entity Store Factory - Creates Zustand stores with common CRUD patterns
  *
+ * Implements: specs/stores.ts#SingleSelectStore, specs/stores.ts#MultiSelectStore
+ *
  * Reduces duplication between similar stores like tagStore and topicStore.
  */
 

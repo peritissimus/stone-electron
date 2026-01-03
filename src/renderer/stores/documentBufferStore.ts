@@ -1,6 +1,8 @@
 /**
  * Document Buffer Store - In-memory buffer for note content
  *
+ * Pattern: specs/stores.ts#DocumentBufferStoreState
+ *
  * Keeps recently edited documents in memory for instant switching.
  * Saves to disk only on explicit save, blur, timer, or app close.
  */
@@ -18,11 +20,8 @@ export interface DocumentBuffer {
 }
 
 interface DocumentBufferState {
-  // Map of noteId -> buffer
   buffers: Map<string, DocumentBuffer>;
-
-  // Maximum number of buffers to keep (LRU eviction)
-  maxBuffers: number;
+  maxBuffers: number;  // LRU limit
 
   // Actions
   getBuffer: (noteId: string) => DocumentBuffer | undefined;

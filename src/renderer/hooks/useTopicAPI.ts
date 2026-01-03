@@ -138,11 +138,11 @@ export function useTopicAPI() {
   /**
    * Classify all notes (bulk operation - only pending notes)
    */
-  const classifyAllNotes = useCallback(async () => {
+  const classifyAllNotes = useCallback(async (options?: { excludeJournal?: boolean }) => {
     setClassifying(true);
     setError(null);
     try {
-      const response = await topicAPI.classifyAll();
+      const response = await topicAPI.classifyAll(options);
       const result = handleIpcResponse(response, 'Failed to classify notes');
       if (result.success) {
         await loadTopics();
@@ -161,11 +161,11 @@ export function useTopicAPI() {
   /**
    * Reclassify ALL notes (force reclassification)
    */
-  const reclassifyAllNotes = useCallback(async () => {
+  const reclassifyAllNotes = useCallback(async (options?: { excludeJournal?: boolean }) => {
     setClassifying(true);
     setError(null);
     try {
-      const response = await topicAPI.reclassifyAll();
+      const response = await topicAPI.reclassifyAll(options);
       const result = handleIpcResponse(response, 'Failed to reclassify notes');
       if (result.success) {
         await loadTopics();
