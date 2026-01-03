@@ -37,6 +37,13 @@ vi.mock('../../../src/main/services/NotebookService', () => ({
 import { registerNotebookHandlers } from '../../../src/main/ipc/handlers/notebookHandlers';
 import { ipcMain } from 'electron';
 
+// Create mock container
+const mockContainer = {
+  cradle: {
+    notebookService: mockNotebookService,
+  },
+} as any;
+
 describe('Notebook IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -48,7 +55,7 @@ describe('Notebook IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerNotebookHandlers();
+    registerNotebookHandlers(mockContainer);
   });
 
   afterEach(() => {

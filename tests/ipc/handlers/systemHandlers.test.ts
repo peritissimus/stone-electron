@@ -29,6 +29,11 @@ import { registerSystemHandlers } from '../../../src/main/ipc/handlers/systemHan
 import { ipcMain } from 'electron';
 import { getFonts } from 'font-list';
 
+// Create mock container (handler doesn't use container deps, but signature requires it)
+const mockContainer = {
+  cradle: {},
+} as any;
+
 describe('System IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -41,7 +46,7 @@ describe('System IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerSystemHandlers();
+    registerSystemHandlers(mockContainer);
   });
 
   afterEach(() => {

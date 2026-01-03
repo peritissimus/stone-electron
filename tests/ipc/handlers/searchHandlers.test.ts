@@ -56,6 +56,15 @@ vi.mock('../../../src/main/repositories', () => ({
 import { registerSearchHandlers } from '../../../src/main/ipc/handlers/searchHandlers';
 import { ipcMain } from 'electron';
 
+// Create mock container
+const mockContainer = {
+  cradle: {
+    noteRepository: mockNoteRepo,
+    tagRepository: mockTagRepo,
+    searchService: mockSearchService,
+  },
+} as any;
+
 describe('Search IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -67,7 +76,7 @@ describe('Search IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerSearchHandlers();
+    registerSearchHandlers(mockContainer);
   });
 
   afterEach(() => {

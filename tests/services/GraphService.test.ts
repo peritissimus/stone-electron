@@ -35,10 +35,11 @@ vi.mock('../../src/main/repositories', () => ({
   })),
 }));
 
-import { getGraphService } from '../../src/main/services/GraphService';
+import { createGraphService } from '../../src/main/services/GraphService';
 
 describe('GraphService', () => {
-  const graphService = getGraphService();
+  // Use factory function with mocked dependencies instead of singleton getter
+  const graphService = createGraphService({ noteRepository: mockNoteRepo as any });
 
   beforeEach(() => {
     vi.clearAllMocks();

@@ -34,6 +34,13 @@ vi.mock('../../../src/main/services/TagService', () => ({
 import { registerTagHandlers } from '../../../src/main/ipc/handlers/tagHandlers';
 import { ipcMain } from 'electron';
 
+// Create mock container
+const mockContainer = {
+  cradle: {
+    tagService: mockTagService,
+  },
+} as any;
+
 describe('Tag IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -45,7 +52,7 @@ describe('Tag IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerTagHandlers();
+    registerTagHandlers(mockContainer);
   });
 
   afterEach(() => {

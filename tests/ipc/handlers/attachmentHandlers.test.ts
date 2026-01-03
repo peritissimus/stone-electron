@@ -33,6 +33,11 @@ vi.mock('../../../src/main/services/AttachmentService', () => ({
 import { registerAttachmentHandlers } from '../../../src/main/ipc/handlers/attachmentHandlers';
 import { ipcMain } from 'electron';
 
+// Create mock container (handler still uses singleton, but signature requires container)
+const mockContainer = {
+  cradle: {},
+} as any;
+
 describe('Attachment IPC Handlers', () => {
   let registeredHandlers: Map<string, Function>;
 
@@ -44,7 +49,7 @@ describe('Attachment IPC Handlers', () => {
       registeredHandlers.set(channel, handler);
     });
 
-    registerAttachmentHandlers();
+    registerAttachmentHandlers(mockContainer);
   });
 
   afterEach(() => {

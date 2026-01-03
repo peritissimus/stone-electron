@@ -7,14 +7,17 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { FileSystemService } from '../../src/main/services/FileSystemService';
+import { FileSystemService, createFileSystemService } from '../../src/main/services/FileSystemService';
+import { createMarkdownService } from '../../src/main/services/MarkdownService';
 
 describe('FileSystemService', () => {
   let service: FileSystemService;
   let testDir: string;
 
   beforeEach(async () => {
-    service = new FileSystemService();
+    service = createFileSystemService({
+      markdownService: createMarkdownService(),
+    });
 
     // Create a unique test directory for each test
     testDir = path.join(process.cwd(), 'tests', 'tmp', `fs-service-${Date.now()}-${Math.random().toString(36).slice(2)}`);
