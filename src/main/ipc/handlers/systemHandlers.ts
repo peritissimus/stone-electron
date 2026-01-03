@@ -3,11 +3,12 @@
  * Handle system-level operations like getting available fonts
  */
 
-
 import { getFonts } from 'font-list';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import { registerHandler } from '../utils';
 import { logger } from '../../utils/logger';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Get all system fonts
@@ -34,7 +35,7 @@ async function getSystemFonts(): Promise<string[]> {
 /**
  * Register all system handlers
  */
-export function registerSystemHandlers() {
+export function registerSystemHandlers(_container: AwilixContainer<Container>) {
   // system:getFonts
   registerHandler(
     SYSTEM_CHANNELS.GET_FONTS,

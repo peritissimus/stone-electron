@@ -9,7 +9,7 @@ import { isDev } from './utils/environment';
 import { getDatabaseManager } from './database';
 import { registerAllIpcHandlers } from './ipc';
 import { logger } from './utils/logger';
-import { getFileWatcherService } from './services/FileWatcherService';
+import { getContainer } from './api/container';
 
 // Log startup
 logger.info('='.repeat(60));
@@ -113,9 +113,14 @@ app.on('ready', async () => {
     await dbManager.initialize();
     logger.info('✓ Database initialized');
 
+    // Initialize DI container
+    logger.info('🔄 Initializing DI container...');
+    const container = getContainer();
+    logger.info('✓ DI container initialized');
+
     // Register IPC handlers
     logger.info('🔄 Registering IPC handlers...');
-    registerAllIpcHandlers();
+    registerAllIpcHandlers(container);
     logger.info('✓ IPC handlers registered');
 
     // Create window
@@ -124,7 +129,7 @@ app.on('ready', async () => {
 
     // Start file watcher for all workspaces
     try {
-      await getFileWatcherService().start();
+      await container.cradle.fileWatcherService.start();
     } catch (e) {
       logger.error('Failed to start file watcher:', e);
     }
@@ -142,10 +147,15 @@ app.on('window-all-closed', () => {
   const dbManager = getDatabaseManager();
   dbManager.close();
 
-  // Stop watchers
-  getFileWatcherService()
-    .stopAll()
-    .catch(() => {});
+  // Stop watchers (use container if available)
+  try {
+    const container = getContainer();
+    container.cradle.fileWatcherService
+      .stopAll()
+      .catch(() => {});
+  } catch {
+    // Container may not be initialized yet
+  }
 
   if (process.platform !== 'darwin') {
     app.quit();

@@ -5,8 +5,8 @@
  * remains in IPC handlers since it requires window context.
  */
 
-import { getNoteService } from './NoteService';
 import { logger } from '../utils/logger';
+import type { NoteService } from './NoteService';
 
 export interface ExportResult {
   content: string;
@@ -14,9 +14,21 @@ export interface ExportResult {
 }
 
 /**
+ * Dependencies for ExportService
+ */
+export interface ExportServiceDeps {
+  noteService: NoteService;
+}
+
+/**
  * ExportService prepares content for export
  */
-class ExportService {
+export class ExportService {
+  private readonly noteService: NoteService;
+
+  constructor(private readonly deps: ExportServiceDeps) {
+    this.noteService = deps.noteService;
+  }
   // ==========================================================================
   // Content Preparation
   // ==========================================================================
@@ -75,8 +87,7 @@ class ExportService {
    * Get raw markdown content for export
    */
   async getMarkdownForExport(noteId: string): Promise<string | null> {
-    const noteService = getNoteService();
-    const content = await noteService.getRawContent(noteId);
+    const content = await this.noteService.getRawContent(noteId);
 
     if (!content) {
       logger.warn(`[ExportService] No content found for note ${noteId}`);
@@ -107,10 +118,31 @@ class ExportService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Factory and Singleton (backward compatibility)
+// ==========================================================================
+
+/**
+ * Create ExportService instance (for DI container)
+ */
+export function createExportService(deps: ExportServiceDeps): ExportService {
+  return new ExportService(deps);
+}
+
+// Singleton instance (for backward compatibility with IPC handlers)
 let instance: ExportService | null = null;
 
+/**
+ * Get singleton ExportService instance
+ * @deprecated Use DI container instead
+ */
 export function getExportService(): ExportService {
-  instance ??= new ExportService();
+  if (!instance) {
+    // Lazy import to avoid circular dependency
+    const { getNoteService } = require('./NoteService');
+    instance = new ExportService({
+      noteService: getNoteService(),
+    });
+  }
   return instance;
 }

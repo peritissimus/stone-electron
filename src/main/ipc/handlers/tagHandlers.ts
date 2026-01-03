@@ -6,14 +6,15 @@
  */
 
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
-import { getTagService } from '../../services/TagService';
 import { registerHandler, IpcError } from '../utils';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all tag handlers
  */
-export function registerTagHandlers() {
-  const tagService = getTagService();
+export function registerTagHandlers(container: AwilixContainer<Container>) {
+  const tagService = container.cradle.tagService;
 
   // tags:create
   registerHandler(

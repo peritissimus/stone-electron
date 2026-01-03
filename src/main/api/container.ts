@@ -34,6 +34,9 @@ import { MarkdownService, createMarkdownService } from '../services/MarkdownServ
 import { TopicService, createTopicService } from '../services/TopicService';
 import { EventBus, createEventBus } from '../services/EventBus';
 import { EmbeddingService, createEmbeddingService } from '../services/EmbeddingService';
+import { GraphService, createGraphService } from '../services/GraphService';
+import { TaskService, createTaskService } from '../services/TaskService';
+import { ExportService, createExportService } from '../services/ExportService';
 
 // Types for the container
 export interface Container {
@@ -62,6 +65,9 @@ export interface Container {
   tagService: TagService;
   workspaceService: WorkspaceService;
   searchService: SearchService;
+  graphService: GraphService;
+  taskService: TaskService;
+  exportService: ExportService;
 }
 
 /**
@@ -173,6 +179,29 @@ export function createAppContainer() {
         noteRepository: cradle.noteRepository,
         noteService: cradle.noteService,
         topicService: cradle.topicService,
+      }),
+    ).singleton(),
+
+    // GraphService
+    graphService: asFunction((cradle) =>
+      createGraphService({
+        noteRepository: cradle.noteRepository,
+      }),
+    ).singleton(),
+
+    // ExportService
+    exportService: asFunction((cradle) =>
+      createExportService({
+        noteService: cradle.noteService,
+      }),
+    ).singleton(),
+
+    // TaskService
+    taskService: asFunction((cradle) =>
+      createTaskService({
+        noteRepository: cradle.noteRepository,
+        workspaceRepository: cradle.workspaceRepository,
+        noteService: cradle.noteService,
       }),
     ).singleton(),
   });

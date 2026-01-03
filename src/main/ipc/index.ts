@@ -15,28 +15,32 @@ import { registerAttachmentHandlers } from './handlers/attachmentHandlers'
 import { registerDatabaseHandlers } from './handlers/databaseHandlers'
 import { registerSystemHandlers } from './handlers/systemHandlers'
 import { logger } from '../utils/logger'
+import type { Container } from '../api/container'
+import type { AwilixContainer } from 'awilix'
 
 /**
  * Register all IPC handlers
  *
  * Call this function once during app initialization to set up all
  * IPC communication channels between main and renderer processes.
+ *
+ * @param container - Awilix DI container with all dependencies
  */
-export function registerAllIpcHandlers(): void {
+export function registerAllIpcHandlers(container: AwilixContainer<Container>): void {
   // Workspace handlers
-  registerWorkspaceHandlers()
+  registerWorkspaceHandlers(container)
 
   // Core entity handlers
-  registerNoteHandlers()
-  registerNotebookHandlers()
-  registerTagHandlers()
-  registerTopicHandlers()
-  registerAttachmentHandlers()
+  registerNoteHandlers(container)
+  registerNotebookHandlers(container)
+  registerTagHandlers(container)
+  registerTopicHandlers(container)
+  registerAttachmentHandlers(container)
 
   // Feature handlers
-  registerSearchHandlers()
-  registerDatabaseHandlers()
-  registerSystemHandlers()
+  registerSearchHandlers(container)
+  registerDatabaseHandlers(container)
+  registerSystemHandlers(container)
 
   logger.info('[IPC] All handlers registered successfully')
 }

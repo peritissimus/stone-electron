@@ -7,9 +7,10 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { getRepositories } from '../repositories';
-import { getNoteService } from './NoteService';
 import { logger } from '../utils/logger';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { WorkspaceRepository } from '../repositories/WorkspaceRepository';
+import type { NoteService } from './NoteService';
 
 export interface TodoItem {
   id: string;
@@ -36,9 +37,27 @@ const VALID_STATES = new Set<TaskState>([
 ]);
 
 /**
+ * Dependencies for TaskService
+ */
+export interface TaskServiceDeps {
+  noteRepository: NoteRepository;
+  workspaceRepository: WorkspaceRepository;
+  noteService: NoteService;
+}
+
+/**
  * TaskService handles task extraction and updates
  */
-class TaskService {
+export class TaskService {
+  private readonly noteRepository: NoteRepository;
+  private readonly workspaceRepository: WorkspaceRepository;
+  private readonly noteService: NoteService;
+
+  constructor(private readonly deps: TaskServiceDeps) {
+    this.noteRepository = deps.noteRepository;
+    this.workspaceRepository = deps.workspaceRepository;
+    this.noteService = deps.noteService;
+  }
   // Task pattern for Logseq-style tasks
   private static readonly TASK_PATTERN =
     /^(\s*)(?:[-*]\s+)?(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s+(.+)$/gim;
@@ -52,10 +71,7 @@ class TaskService {
    * Scans markdown files directly for task patterns
    */
   async getAllTodos(): Promise<TodoItem[]> {
-    const repos = getRepositories();
-    const noteService = getNoteService();
-
-    const notes = await repos.note.findAll({ where: { isDeleted: false } });
+    const notes = await this.noteRepository.findAll({ where: { isDeleted: false } });
     logger.info(`[TaskService] Scanning ${notes.length} notes for tasks`);
 
     const todos: TodoItem[] = [];
@@ -63,7 +79,7 @@ class TaskService {
     for (const note of notes) {
       try {
         // Get raw markdown content (not HTML)
-        const content = await noteService.getRawContent(note.id);
+        const content = await this.noteService.getRawContent(note.id);
         if (!content) continue;
 
         // Find all task lines in the markdown
@@ -82,15 +98,12 @@ class TaskService {
    * Get todos for a specific note
    */
   async getTodosForNote(noteId: string): Promise<TodoItem[]> {
-    const repos = getRepositories();
-    const noteService = getNoteService();
-
-    const note = await repos.note.findById(noteId);
+    const note = await this.noteRepository.findById(noteId);
     if (!note) {
       throw new Error('Note not found');
     }
 
-    const content = await noteService.getRawContent(noteId);
+    const content = await this.noteService.getRawContent(noteId);
     if (!content) {
       return [];
     }
@@ -110,9 +123,6 @@ class TaskService {
     taskIndex: number,
     newState: TaskState,
   ): Promise<void> {
-    const repos = getRepositories();
-    const noteService = getNoteService();
-
     // Validate state
     const normalizedState = newState.toLowerCase() as TaskState;
     if (!VALID_STATES.has(normalizedState)) {
@@ -120,7 +130,7 @@ class TaskService {
     }
 
     // Get raw markdown content
-    const content = await noteService.getRawContent(noteId);
+    const content = await this.noteService.getRawContent(noteId);
     if (!content) {
       throw new Error('Note content not found');
     }
@@ -148,12 +158,12 @@ class TaskService {
     }
 
     // Get note and workspace info
-    const note = await repos.note.findById(noteId);
+    const note = await this.noteRepository.findById(noteId);
     if (!note?.filePath || !note?.workspaceId) {
       throw new Error('Note file path not found');
     }
 
-    const workspace = await repos.workspace.findById(note.workspaceId);
+    const workspace = await this.workspaceRepository.findById(note.workspaceId);
     if (!workspace) {
       throw new Error('Workspace not found');
     }
@@ -166,7 +176,7 @@ class TaskService {
     await fs.writeFile(absolutePath, contentWithTitle, 'utf-8');
 
     // Update note timestamp
-    await repos.note.update(noteId, { updatedAt: new Date() });
+    await this.noteRepository.update(noteId, { updatedAt: new Date() });
 
     logger.info(`[TaskService] Updated task ${taskIndex} in note ${noteId} to ${normalizedState}`);
   }
@@ -229,10 +239,35 @@ class TaskService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Factory and Singleton (backward compatibility)
+// ==========================================================================
+
+/**
+ * Create TaskService instance (for DI container)
+ */
+export function createTaskService(deps: TaskServiceDeps): TaskService {
+  return new TaskService(deps);
+}
+
+// Singleton instance (for backward compatibility with IPC handlers)
 let instance: TaskService | null = null;
 
+/**
+ * Get singleton TaskService instance
+ * @deprecated Use DI container instead
+ */
 export function getTaskService(): TaskService {
-  instance ??= new TaskService();
+  if (!instance) {
+    // Lazy import to avoid circular dependency
+    const { getRepositories } = require('../repositories');
+    const { getNoteService } = require('./NoteService');
+    const repos = getRepositories();
+    instance = new TaskService({
+      noteRepository: repos.note,
+      workspaceRepository: repos.workspace,
+      noteService: getNoteService(),
+    });
+  }
   return instance;
 }

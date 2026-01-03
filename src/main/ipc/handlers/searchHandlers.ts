@@ -6,16 +6,20 @@
  */
 
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
-import { getRepositories } from '../../repositories';
-import { getSearchService } from '../../services/SearchService';
 import { registerHandler } from '../utils';
 import { logger } from '../../utils/logger';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all search handlers
  */
-export function registerSearchHandlers() {
-  const repos = getRepositories();
+export function registerSearchHandlers(container: AwilixContainer<Container>) {
+  const repos = {
+    note: container.cradle.noteRepository,
+    tag: container.cradle.tagRepository,
+  };
+  const searchService = container.cradle.searchService;
 
   // search:fullText - uses SearchService
   registerHandler(
@@ -33,7 +37,6 @@ export function registerSearchHandlers() {
       const startTime = Date.now();
 
       // Use SearchService for full-text search
-      const searchService = getSearchService();
       let searchResults = await searchService.searchFullText(request.query, request.limit || 50);
 
       // Filter by notebook if specified
@@ -78,7 +81,6 @@ export function registerSearchHandlers() {
       request: { query: string; threshold?: number; limit?: number; notebookId?: string },
     ) => {
       const startTime = Date.now();
-      const searchService = getSearchService();
 
       // Use semantic search from TopicService via SearchService
       const results = await searchService.semanticSearch(request.query, request.limit || 20);
@@ -112,7 +114,6 @@ export function registerSearchHandlers() {
       },
     ) => {
       const startTime = Date.now();
-      const searchService = getSearchService();
 
       // Use full-text search via SearchService
       const ftsResults = await searchService.searchFullText(request.query, request.limit || 50);
