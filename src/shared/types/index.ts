@@ -1,5 +1,19 @@
 /**
  * Shared Types for Stone Application
+ *
+ * Implementation Layer - Drizzle-inferred types used at runtime.
+ * These types are tightly coupled to the database schema.
+ *
+ * For language-agnostic reference specifications, see: src/specs/entities.ts
+ *
+ * Relationship:
+ *   - specs/entities.ts = Cross-platform reference (Swift, Kotlin, etc.)
+ *   - shared/types/     = TypeScript implementation (Drizzle-specific)
+ *
+ * Key differences from specs:
+ *   - Timestamps: Date objects (Drizzle) vs UnixTimestamp (specs)
+ *   - Property names: snake_case counts vs camelCase (specs)
+ *   - Workspace: isActive (impl) vs isDefault (spec reference)
  */
 
 import {
