@@ -10,16 +10,27 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { NOTE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import type { Attachment, Note, Tag } from '@shared/types';
-import { getRepositories } from '../../repositories';
-import { getNoteService } from '../../services/NoteService';
-import { getGraphService } from '../../services/GraphService';
-import { getTaskService } from '../../services/TaskService';
-import { getExportService } from '../../services/ExportService';
-import { getEventBus } from '../../services/EventBus';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
-type RepositoriesInstance = ReturnType<typeof getRepositories>;
+interface Repositories {
+  note: Container['noteRepository'];
+  notebook: Container['notebookRepository'];
+  tag: Container['tagRepository'];
+  workspace: Container['workspaceRepository'];
+  attachment: Container['attachmentRepository'];
+  version: Container['versionRepository'];
+}
+
+interface Services {
+  noteService: Container['noteService'];
+  graphService: Container['graphService'];
+  taskService: Container['taskService'];
+  exportService: Container['exportService'];
+  eventBus: Container['eventBus'];
+}
 
 type NoteWithRelations = Note & {
   tags: Tag[];
@@ -64,7 +75,7 @@ type NoteUpdateData = Partial<Note> & { content?: string; folderPath?: string | 
 
 async function buildNoteWithRelations(
   note: Note,
-  repos: RepositoriesInstance,
+  repos: Repositories,
 ): Promise<NoteWithRelations> {
   const [tags, attachments, notebook] = await Promise.all([
     repos.tag.getTagsForNote(note.id),
@@ -114,19 +125,20 @@ function deriveFolderPath(
   return null;
 }
 
-function broadcastNoteEvent(eventName: string, note: NoteWithRelations) {
-  getEventBus().emit(eventName, { note });
+function broadcastNoteEvent(eventBus: Container['eventBus'], eventName: string, note: NoteWithRelations) {
+  eventBus.emit(eventName, { note });
 }
 
 async function buildNoteResponse(
   note: Note,
-  repos: RepositoriesInstance,
+  repos: Repositories,
+  eventBus: Container['eventBus'],
   eventName?: string,
 ): Promise<NoteWithRelations> {
   const noteWithRelations = await buildNoteWithRelations(note, repos);
 
   if (eventName) {
-    broadcastNoteEvent(eventName, noteWithRelations);
+    broadcastNoteEvent(eventBus, eventName, noteWithRelations);
   }
 
   return noteWithRelations;
@@ -149,7 +161,7 @@ function resolveSortOrder(order?: GetAllNotesRequest['order']): 'ASC' | 'DESC' {
 
 async function resolveDefaultNoteList(
   request: GetAllNotesRequest,
-  repos: RepositoriesInstance,
+  repos: Repositories,
 ): Promise<Note[]> {
   const workspace = await repos.workspace.getActive();
 
@@ -177,7 +189,7 @@ async function resolveDefaultNoteList(
 
 async function resolveNotesList(
   request: GetAllNotesRequest,
-  repos: RepositoriesInstance,
+  repos: Repositories,
 ): Promise<Note[]> {
   if (request.tagId) {
     return repos.note.findByTags([request.tagId]);
@@ -212,7 +224,7 @@ async function resolveNotesList(
 
 async function enrichNotes(
   notes: Note[],
-  repos: RepositoriesInstance,
+  repos: Repositories,
 ): Promise<NoteWithRelations[]> {
   if (notes.length === 0) {
     return [];
@@ -240,22 +252,37 @@ async function enrichNotes(
 /**
  * Register all note handlers
  */
-export function registerNoteHandlers() {
-  const repos = getRepositories();
+export function registerNoteHandlers(container: AwilixContainer<Container>) {
+  // Extract dependencies from container
+  const repos: Repositories = {
+    note: container.cradle.noteRepository,
+    notebook: container.cradle.notebookRepository,
+    tag: container.cradle.tagRepository,
+    workspace: container.cradle.workspaceRepository,
+    attachment: container.cradle.attachmentRepository,
+    version: container.cradle.versionRepository,
+  };
+
+  const services: Services = {
+    noteService: container.cradle.noteService,
+    graphService: container.cradle.graphService,
+    taskService: container.cradle.taskService,
+    exportService: container.cradle.exportService,
+    eventBus: container.cradle.eventBus,
+  };
 
   // notes:create - uses NoteService
   registerHandler(NOTE_CHANNELS.CREATE, async (event, request: CreateNoteRequest) => {
     logger.info(`[IPC] notes:create "${request.title || 'Untitled'}"`);
 
-    const noteService = getNoteService();
-    const note = await noteService.createNote({
+    const note = await services.noteService.createNote({
       title: request.title,
       folderPath: request.folderPath ?? undefined,
       content: request.content,
       tags: request.tags,
     });
 
-    const noteWithRelations = await buildNoteResponse(note, repos);
+    const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus);
     return noteWithRelations;
   });
 
@@ -263,8 +290,6 @@ export function registerNoteHandlers() {
   registerHandler(NOTE_CHANNELS.UPDATE, async (event, request: UpdateNoteRequest) => {
     const logId = request.title ? `"${request.title}"` : request.id.slice(0, 8);
     logger.info(`[IPC] notes:update ${logId}`);
-
-    const noteService = getNoteService();
 
     // Check if note exists
     const oldNote = await repos.note.findById(request.id);
@@ -274,7 +299,7 @@ export function registerNoteHandlers() {
 
     // Create version before update if content is changing
     if (request.content) {
-      const currentContent = await noteService.getContent(oldNote.id);
+      const currentContent = await services.noteService.getContent(oldNote.id);
       if (currentContent && request.content !== currentContent) {
         await repos.version.createVersion(
           oldNote.id,
@@ -285,7 +310,7 @@ export function registerNoteHandlers() {
     }
 
     // Use NoteService for update
-    const note = await noteService.updateNote(request.id, {
+    const note = await services.noteService.updateNote(request.id, {
       title: request.title,
       content: request.content,
       folderPath: request.folderPath ?? undefined,
@@ -296,7 +321,7 @@ export function registerNoteHandlers() {
       tags: request.tags,
     });
 
-    const noteWithRelations = await buildNoteResponse(note, repos);
+    const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus);
     return noteWithRelations;
   });
 
@@ -304,10 +329,8 @@ export function registerNoteHandlers() {
   registerHandler(NOTE_CHANNELS.DELETE, async (event, request: { id: string; permanent?: boolean }) => {
     logger.info(`[IPC] notes:delete ${request.permanent ? '(permanent)' : '(soft)'}`);
 
-    const noteService = getNoteService();
-
     try {
-      await noteService.deleteNote(request.id, request.permanent);
+      await services.noteService.deleteNote(request.id, request.permanent);
     } catch (error) {
       if (error instanceof Error && error.message === 'Note not found') {
         throw new IpcError('NOT_FOUND', 'Note not found');
@@ -341,8 +364,7 @@ export function registerNoteHandlers() {
       }
 
       if (request.include_backlinks) {
-        const graphService = getGraphService();
-        result.backlinks = await graphService.getBacklinks(note.id);
+        result.backlinks = await services.graphService.getBacklinks(note.id);
       }
 
       return result;
@@ -367,8 +389,7 @@ export function registerNoteHandlers() {
 
   // notes:getContent - uses NoteService
   registerHandler(NOTE_CHANNELS.GET_CONTENT, async (event, request: { id: string }) => {
-    const noteService = getNoteService();
-    const content = await noteService.getContent(request.id);
+    const content = await services.noteService.getContent(request.id);
     if (content === null) {
       throw new IpcError('NOT_FOUND', 'Note content not found');
     }
@@ -394,21 +415,21 @@ export function registerNoteHandlers() {
   // notes:favorite
   registerHandler(NOTE_CHANNELS.FAVORITE, async (event, request: { id: string }) => {
     const note = await repos.note.toggleFavorite(request.id);
-    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus, EVENTS.NOTE_UPDATED);
     return noteWithRelations;
   });
 
   // notes:pin
   registerHandler(NOTE_CHANNELS.PIN, async (event, request: { id: string }) => {
     const note = await repos.note.togglePin(request.id);
-    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus, EVENTS.NOTE_UPDATED);
     return noteWithRelations;
   });
 
   // notes:archive
   registerHandler(NOTE_CHANNELS.ARCHIVE, async (event, request: { id: string }) => {
     const note = await repos.note.toggleArchive(request.id);
-    const noteWithRelations = await buildNoteResponse(note, repos, EVENTS.NOTE_UPDATED);
+    const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus, EVENTS.NOTE_UPDATED);
     return noteWithRelations;
   });
 
@@ -450,7 +471,7 @@ export function registerNoteHandlers() {
       const enrichedNote = await buildNoteWithRelations(note, repos);
 
       // Broadcast event
-      getEventBus().emit(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
+      services.eventBus.emit(EVENTS.NOTE_VERSION_RESTORED, { note: enrichedNote, version });
 
       const restoredContent = await repos.note.getContentById(note.id);
 
@@ -466,22 +487,19 @@ export function registerNoteHandlers() {
 
   // notes:getBacklinks - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_BACKLINKS, async (event, request: { noteId: string }) => {
-    const graphService = getGraphService();
-    const backlinks = await graphService.getBacklinks(request.noteId);
+    const backlinks = await services.graphService.getBacklinks(request.noteId);
     return { backlinks };
   });
 
   // notes:getForwardLinks - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_FORWARD_LINKS, async (event, request: { noteId: string }) => {
-    const graphService = getGraphService();
-    const forwardLinks = await graphService.getForwardLinks(request.noteId);
+    const forwardLinks = await services.graphService.getForwardLinks(request.noteId);
     return { forwardLinks };
   });
 
   // notes:getGraphData - uses GraphService
   registerHandler(NOTE_CHANNELS.GET_GRAPH_DATA, async () => {
-    const graphService = getGraphService();
-    const graphData = await graphService.getGraphData();
+    const graphData = await services.graphService.getGraphData();
     return graphData;
   });
 
@@ -489,15 +507,13 @@ export function registerNoteHandlers() {
   registerHandler(
     NOTE_CHANNELS.MOVE,
     async (event, request: { id: string; folderPath: string | null }) => {
-      const noteService = getNoteService();
-
       const oldNote = await repos.note.findById(request.id);
       if (!oldNote) {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
 
       // Create a version before moving
-      const currentContent = await noteService.getContent(oldNote.id);
+      const currentContent = await services.noteService.getContent(oldNote.id);
       if (currentContent) {
         await repos.version.createVersion(
           oldNote.id,
@@ -507,16 +523,15 @@ export function registerNoteHandlers() {
       }
 
       // Move the note using NoteService
-      const note = await noteService.moveNote(request.id, request.folderPath || '');
-      const noteWithRelations = await buildNoteResponse(note, repos);
+      const note = await services.noteService.moveNote(request.id, request.folderPath || '');
+      const noteWithRelations = await buildNoteResponse(note, repos, services.eventBus);
       return noteWithRelations;
     },
   );
 
   // notes:getAllTodos - uses TaskService
   registerHandler(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
-    const taskService = getTaskService();
-    const todos = await taskService.getAllTodos();
+    const todos = await services.taskService.getAllTodos();
     return todos;
   });
 
@@ -534,10 +549,8 @@ export function registerNoteHandlers() {
       const { noteId, taskIndex, newState } = request;
       logger.info('[IPC] notes:updateTaskState', { noteId, taskIndex, newState });
 
-      const taskService = getTaskService();
-
       try {
-        await taskService.updateTaskState(noteId, taskIndex, newState as any);
+        await services.taskService.updateTaskState(noteId, taskIndex, newState as any);
       } catch (error) {
         if (error instanceof Error) {
           if (error.message.includes('not found')) {
@@ -580,8 +593,7 @@ export function registerNoteHandlers() {
       }
 
       // Use ExportService to prepare the HTML content
-      const exportService = getExportService();
-      const htmlContent = await exportService.prepareHtmlExport(
+      const htmlContent = await services.exportService.prepareHtmlExport(
         request.id,
         request.content,
         request.title,
@@ -681,8 +693,7 @@ export function registerNoteHandlers() {
       }
 
       // Get markdown content via ExportService
-      const exportService = getExportService();
-      const markdownContent = await exportService.getMarkdownForExport(request.id);
+      const markdownContent = await services.exportService.getMarkdownForExport(request.id);
       if (!markdownContent) {
         throw new IpcError('NOT_FOUND', 'Note content not found');
       }

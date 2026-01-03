@@ -7,15 +7,16 @@
 
 import { dialog } from 'electron';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
-import { getWorkspaceService } from '../../services/WorkspaceService';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all workspace handlers
  */
-export function registerWorkspaceHandlers() {
-  const workspaceService = getWorkspaceService();
+export function registerWorkspaceHandlers(container: AwilixContainer<Container>) {
+  const workspaceService = container.cradle.workspaceService;
 
   // workspaces:selectFolder - Dialog handling stays in IPC
   registerHandler(

@@ -4,9 +4,9 @@
  * Handles note linking, backlinks, and graph visualization data.
  */
 
-import { getRepositories } from '../repositories';
 import { logger } from '../utils/logger';
 import type { Note } from '@shared/types';
+import type { NoteRepository } from '../repositories/NoteRepository';
 
 export interface BacklinkInfo {
   id: string;
@@ -37,9 +37,21 @@ export interface GraphData {
 }
 
 /**
+ * Dependencies for GraphService
+ */
+export interface GraphServiceDeps {
+  noteRepository: NoteRepository;
+}
+
+/**
  * GraphService handles note linking and graph operations
  */
-class GraphService {
+export class GraphService {
+  private readonly noteRepository: NoteRepository;
+
+  constructor(private readonly deps: GraphServiceDeps) {
+    this.noteRepository = deps.noteRepository;
+  }
   // Cache for graph data (TTL-based)
   private graphCache: { data: GraphData | null; timestamp: number } = { data: null, timestamp: 0 };
   private static readonly GRAPH_CACHE_TTL_MS = 30000; // 30 seconds
@@ -81,8 +93,7 @@ class GraphService {
    * Get backlinks for a note (notes that link to this note)
    */
   async getBacklinks(noteId: string): Promise<BacklinkInfo[]> {
-    const repos = getRepositories();
-    const notes = await repos.note.getBacklinks(noteId);
+    const notes = await this.noteRepository.getBacklinks(noteId);
 
     return notes.map((note) => ({
       id: note.id,
@@ -95,8 +106,7 @@ class GraphService {
    * Get forward links from a note (notes this note links to)
    */
   async getForwardLinks(noteId: string): Promise<LinkInfo[]> {
-    const repos = getRepositories();
-    const notes = await repos.note.getForwardLinks(noteId);
+    const notes = await this.noteRepository.getForwardLinks(noteId);
 
     return notes.map((note) => ({
       id: note.id,
@@ -109,8 +119,6 @@ class GraphService {
    * Uses cached title map for performance
    */
   async updateLinksFromContent(sourceNoteId: string, markdownContent: string): Promise<void> {
-    const repos = getRepositories();
-
     try {
       // Extract all [[note name]] patterns from the content
       // Limit capture to 500 chars to prevent excessive matching
@@ -127,7 +135,7 @@ class GraphService {
         // Remove any existing links
         const currentLinks = await this.getForwardLinks(sourceNoteId);
         for (const link of currentLinks) {
-          await repos.note.removeLink(sourceNoteId, link.id);
+          await this.noteRepository.removeLink(sourceNoteId, link.id);
         }
         return;
       }
@@ -151,14 +159,14 @@ class GraphService {
       // Remove links that no longer exist
       for (const currentId of currentLinkIds) {
         if (!targetNoteIds.has(currentId)) {
-          await repos.note.removeLink(sourceNoteId, currentId);
+          await this.noteRepository.removeLink(sourceNoteId, currentId);
         }
       }
 
       // Add new links
       for (const targetId of targetNoteIds) {
         if (!currentLinkIds.has(targetId)) {
-          await repos.note.addLink(sourceNoteId, targetId);
+          await this.noteRepository.addLink(sourceNoteId, targetId);
         }
       }
 
@@ -184,14 +192,12 @@ class GraphService {
       return this.graphCache.data;
     }
 
-    const repos = getRepositories();
-
     try {
       // Get all non-deleted notes
-      const allNotes = await repos.note.findAll({ where: { isDeleted: false } });
+      const allNotes = await this.noteRepository.findAll({ where: { isDeleted: false } });
 
       // Get all links via raw query (more efficient)
-      const allLinks = await repos.note.getAllLinks();
+      const allLinks = await this.noteRepository.getAllLinks();
 
       // Create nodes with link counts for sizing
       const linkCounts = new Map<string, number>();
@@ -239,8 +245,7 @@ class GraphService {
       return this.noteTitleCache;
     }
 
-    const repos = getRepositories();
-    const allNotes = await repos.note.findAll({ where: { isDeleted: false } });
+    const allNotes = await this.noteRepository.findAll({ where: { isDeleted: false } });
 
     this.noteTitleCache = new Map();
     for (const note of allNotes) {
@@ -253,10 +258,32 @@ class GraphService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Factory and Singleton (backward compatibility)
+// ==========================================================================
+
+/**
+ * Create GraphService instance (for DI container)
+ */
+export function createGraphService(deps: GraphServiceDeps): GraphService {
+  return new GraphService(deps);
+}
+
+// Singleton instance (for backward compatibility with IPC handlers)
 let instance: GraphService | null = null;
 
+/**
+ * Get singleton GraphService instance
+ * @deprecated Use DI container instead
+ */
 export function getGraphService(): GraphService {
-  instance ??= new GraphService();
+  if (!instance) {
+    // Lazy import to avoid circular dependency
+    const { getRepositories } = require('../repositories');
+    const repos = getRepositories();
+    instance = new GraphService({
+      noteRepository: repos.note,
+    });
+  }
   return instance;
 }

@@ -3,15 +3,16 @@
  */
 
 import { DATABASE_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
-import { getDatabaseManager } from '../../database';
 import { registerHandler } from '../utils';
-import { getEventBus } from '../../services/EventBus';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all database handlers
  */
-export function registerDatabaseHandlers() {
-  const dbManager = getDatabaseManager();
+export function registerDatabaseHandlers(container: AwilixContainer<Container>) {
+  const dbManager = container.cradle.db;
+  const eventBus = container.cradle.eventBus;
 
   // db:getStatus
   registerHandler(
@@ -36,7 +37,7 @@ export function registerDatabaseHandlers() {
       const sizeBefore = (await dbManager.getStatus()).databaseSize;
 
       // Emit progress
-      getEventBus().emit(EVENTS.DB_VACUUM_PROGRESS, {});
+      eventBus.emit(EVENTS.DB_VACUUM_PROGRESS, {});
 
       await dbManager.optimize();
 
@@ -44,7 +45,7 @@ export function registerDatabaseHandlers() {
       const freedBytes = sizeBefore - sizeAfter;
 
       // Emit completion
-      getEventBus().emit(EVENTS.DB_VACUUM_COMPLETE, {});
+      eventBus.emit(EVENTS.DB_VACUUM_COMPLETE, {});
 
       return {
         success: true,

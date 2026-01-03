@@ -8,11 +8,14 @@
 import { ATTACHMENT_CHANNELS } from '@shared/constants/ipcChannels';
 import { getAttachmentService } from '../../services/AttachmentService';
 import { registerHandler, IpcError } from '../utils';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all attachment handlers
  */
-export function registerAttachmentHandlers() {
+export function registerAttachmentHandlers(_container: AwilixContainer<Container>) {
+  // TODO: Add attachmentService to container and use it here
   const attachmentService = getAttachmentService();
 
   // attachments:add

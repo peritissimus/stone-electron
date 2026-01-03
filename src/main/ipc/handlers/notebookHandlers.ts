@@ -6,14 +6,15 @@
  */
 
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
-import { getNotebookService } from '../../services/NotebookService';
 import { registerHandler, IpcError } from '../utils';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all notebook handlers
  */
-export function registerNotebookHandlers() {
-  const notebookService = getNotebookService();
+export function registerNotebookHandlers(container: AwilixContainer<Container>) {
+  const notebookService = container.cradle.notebookService;
 
   // notebooks:create
   registerHandler(

@@ -9,18 +9,21 @@
  */
 
 import { TOPIC_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
-import { getRepositories } from '../../repositories';
-import { getTopicService } from '../../services/TopicService';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
-import { getEventBus } from '../../services/EventBus';
+import type { Container } from '../../api/container';
+import type { AwilixContainer } from 'awilix';
 
 /**
  * Register all topic handlers
  */
-export function registerTopicHandlers() {
-  const repos = getRepositories();
-  const topicService = getTopicService();
+export function registerTopicHandlers(container: AwilixContainer<Container>) {
+  const repos = {
+    topic: container.cradle.topicRepository,
+    note: container.cradle.noteRepository,
+  };
+  const topicService = container.cradle.topicService;
+  const eventBus = container.cradle.eventBus;
 
   // topics:initialize - Initialize the embedding service
   registerHandler(
@@ -74,7 +77,7 @@ export function registerTopicHandlers() {
       });
 
       // Broadcast event
-      getEventBus().emit(EVENTS.TOPIC_CREATED, { topic });
+      eventBus.emit(EVENTS.TOPIC_CREATED, { topic });
 
       return { topic };
     }
@@ -104,7 +107,7 @@ export function registerTopicHandlers() {
       });
 
       // Broadcast event
-      getEventBus().emit(EVENTS.TOPIC_UPDATED, { topic });
+      eventBus.emit(EVENTS.TOPIC_UPDATED, { topic });
 
       return { topic };
     }
@@ -127,7 +130,7 @@ export function registerTopicHandlers() {
       await topicService.deleteTopic(request.id);
 
       // Broadcast event
-      getEventBus().emit(EVENTS.TOPIC_DELETED, { id: request.id });
+      eventBus.emit(EVENTS.TOPIC_DELETED, { id: request.id });
 
       return { success: true };
     }
@@ -199,7 +202,7 @@ export function registerTopicHandlers() {
       const results = await topicService.classifyNote(request.noteId);
 
       // Broadcast event
-      getEventBus().emit(EVENTS.NOTE_CLASSIFIED, {
+      eventBus.emit(EVENTS.NOTE_CLASSIFIED, {
         noteId: request.noteId,
         topics: results,
       });
@@ -211,13 +214,22 @@ export function registerTopicHandlers() {
   // topics:classifyAll - Classify all notes (background task)
   registerHandler(
     TOPIC_CHANNELS.CLASSIFY_ALL,
-    async () => {
+    async (event, request?: { excludeJournal?: boolean }) => {
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
 
       // Get notes without embeddings
-      const notesToProcess = await repos.note.getNotesWithoutEmbeddings(1000);
+      let notesToProcess = await repos.note.getNotesWithoutEmbeddings(1000);
+
+      // Filter out Journal notes if requested
+      if (request?.excludeJournal) {
+        notesToProcess = notesToProcess.filter(
+          (note) => !note.filePath?.startsWith('Journal/')
+        );
+        logger.info(`[TopicHandlers] Excluding Journal notes from classification`);
+      }
+
       const total = notesToProcess.length;
       let processed = 0;
       let failed = 0;
@@ -231,7 +243,7 @@ export function registerTopicHandlers() {
 
           // Send progress updates every 10 notes
           if (processed % 10 === 0) {
-            getEventBus().emit(EVENTS.EMBEDDING_PROGRESS, {
+            eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
               processed,
               total,
               failed,
@@ -255,16 +267,25 @@ export function registerTopicHandlers() {
   // topics:reclassifyAll - Force reclassification of ALL notes (ignores embedding status)
   registerHandler(
     TOPIC_CHANNELS.RECLASSIFY_ALL,
-    async () => {
+    async (event, request?: { excludeJournal?: boolean }) => {
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
 
       // Get only active (non-deleted) notes
-      const allNotes = await repos.note.findAll({
+      let allNotes = await repos.note.findAll({
         where: { isDeleted: false },
         limit: 10000,
       });
+
+      // Filter out Journal notes if requested
+      if (request?.excludeJournal) {
+        allNotes = allNotes.filter(
+          (note) => !note.filePath?.startsWith('Journal/')
+        );
+        logger.info(`[TopicHandlers] Excluding Journal notes from reclassification`);
+      }
+
       const total = allNotes.length;
       let processed = 0;
       let failed = 0;
@@ -282,7 +303,7 @@ export function registerTopicHandlers() {
 
           // Send progress updates every 10 notes
           if (processed % 10 === 0) {
-            getEventBus().emit(EVENTS.EMBEDDING_PROGRESS, {
+            eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
               processed,
               total,
               failed,
