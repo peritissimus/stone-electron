@@ -7,11 +7,12 @@
  * - Topic centroid computation
  */
 
-import { getRepositories } from '../repositories';
-import { getEmbeddingService } from './EmbeddingService';
-import { getMarkdownService } from './MarkdownService';
 import { logger } from '../utils/logger';
 import type { Topic, TopicWithCount, NoteTopicWithDetails } from '../repositories/TopicRepository';
+import type { TopicRepository } from '../repositories/TopicRepository';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { EmbeddingService } from './EmbeddingService';
+import type { MarkdownService } from './MarkdownService';
 
 // Cosine similarity threshold for auto-classification
 const CLASSIFICATION_THRESHOLD = 0.5;
@@ -49,10 +50,18 @@ export interface SimilarNote {
   distance: number;
 }
 
+/**
+ * Dependencies for TopicService
+ */
+export interface TopicServiceDeps {
+  topicRepository: TopicRepository;
+  noteRepository: NoteRepository;
+  embeddingService: EmbeddingService;
+  markdownService: MarkdownService;
+}
+
 export class TopicService {
-  private readonly repos = getRepositories();
-  private readonly embeddingService = getEmbeddingService();
-  private readonly markdownService = getMarkdownService();
+  constructor(private readonly deps: TopicServiceDeps) {}
 
   /**
    * Initialize the topic service (ensures embedding service is ready and seeds topics)
@@ -63,7 +72,7 @@ export class TopicService {
     // Seed predefined topics if they don't exist
     await this.seedPredefinedTopics();
 
-    await this.embeddingService.initialize();
+    await this.deps.embeddingService.initialize();
     logger.info('[TopicService] Ready');
   }
 
@@ -71,13 +80,13 @@ export class TopicService {
    * Seed predefined topics if they don't exist
    */
   private async seedPredefinedTopics(): Promise<void> {
-    const existingTopics = await this.repos.topic.getAll();
+    const existingTopics = await this.deps.topicRepository.getAll();
 
     if (existingTopics.length === 0) {
       logger.info('[TopicService] Seeding predefined topics...');
 
       for (const topicData of PREDEFINED_TOPICS) {
-        await this.repos.topic.create({
+        await this.deps.topicRepository.create({
           id: topicData.id,
           name: topicData.name,
           description: topicData.description,
@@ -91,9 +100,9 @@ export class TopicService {
     } else {
       // Ensure all predefined topics exist (in case new ones were added)
       for (const topicData of PREDEFINED_TOPICS) {
-        const existing = await this.repos.topic.findById(topicData.id);
+        const existing = await this.deps.topicRepository.findById(topicData.id);
         if (!existing) {
-          await this.repos.topic.create({
+          await this.deps.topicRepository.create({
             id: topicData.id,
             name: topicData.name,
             description: topicData.description,
@@ -110,49 +119,49 @@ export class TopicService {
    * Check if the service is ready
    */
   isReady(): boolean {
-    return this.embeddingService.isReady();
+    return this.deps.embeddingService.isReady();
   }
 
   /**
    * Get all topics with note counts
    */
   async getAllTopics(): Promise<TopicWithCount[]> {
-    return this.repos.topic.getAllWithCounts();
+    return this.deps.topicRepository.getAllWithCounts();
   }
 
   /**
    * Get a topic by ID
    */
   async getTopicById(id: string): Promise<Topic | undefined> {
-    return this.repos.topic.findById(id);
+    return this.deps.topicRepository.findById(id);
   }
 
   /**
    * Create a new topic
    */
   async createTopic(data: { name: string; description?: string; color?: string }): Promise<Topic> {
-    return this.repos.topic.create(data);
+    return this.deps.topicRepository.create(data);
   }
 
   /**
    * Update a topic
    */
   async updateTopic(id: string, data: Partial<Topic>): Promise<Topic> {
-    return this.repos.topic.update(id, data);
+    return this.deps.topicRepository.update(id, data);
   }
 
   /**
    * Delete a topic
    */
   async deleteTopic(id: string): Promise<boolean> {
-    return this.repos.topic.deleteWithAssociations(id);
+    return this.deps.topicRepository.deleteWithAssociations(id);
   }
 
   /**
    * Get topics for a note
    */
   async getTopicsForNote(noteId: string): Promise<NoteTopicWithDetails[]> {
-    return this.repos.topic.getTopicsForNote(noteId);
+    return this.deps.topicRepository.getTopicsForNote(noteId);
   }
 
   /**
@@ -162,31 +171,31 @@ export class TopicService {
     logger.info(`[TopicService] Classifying note: ${noteId}`);
 
     // Get note content
-    const note = await this.repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) {
       throw new Error(`Note not found: ${noteId}`);
     }
 
-    const content = await this.repos.note.getContentById(noteId);
+    const content = await this.deps.noteRepository.getContentById(noteId);
     if (!content || content.trim().length === 0) {
       logger.warn(`[TopicService] Note ${noteId} has no content to classify`);
       return [];
     }
 
     // Convert HTML to plain text for embedding
-    const plainText = this.markdownService.htmlToPlainText(content);
+    const plainText = this.deps.markdownService.htmlToPlainText(content);
 
     // Get all topics
-    const allTopics = await this.repos.topic.getAll();
+    const allTopics = await this.deps.topicRepository.getAll();
 
     // Try to get embedding for the note content
     let embedding: number[] | null = null;
     try {
-      embedding = await this.embeddingService.getEmbedding(plainText);
+      embedding = await this.deps.embeddingService.getEmbedding(plainText);
 
       // Try to store embedding in the database (non-fatal if fails)
       try {
-        await this.repos.note.updateEmbedding(noteId, embedding);
+        await this.deps.noteRepository.updateEmbedding(noteId, embedding);
       } catch (embedError) {
         logger.warn(`[TopicService] Failed to store embedding for note ${noteId} (non-fatal):`, embedError);
         // Continue with classification using the embedding in memory
@@ -228,7 +237,7 @@ export class TopicService {
 
     // Assign topics to note
     if (topMatches.length > 0) {
-      await this.repos.topic.setTopicsForNote(
+      await this.deps.topicRepository.setTopicsForNote(
         noteId,
         topMatches.map(m => ({
           topicId: m.topicId,
@@ -246,7 +255,7 @@ export class TopicService {
    * Manually assign a topic to a note
    */
   async assignTopicToNote(noteId: string, topicId: string): Promise<void> {
-    await this.repos.topic.assignToNote(noteId, topicId, {
+    await this.deps.topicRepository.assignToNote(noteId, topicId, {
       confidence: 1,
       isManual: true,
     });
@@ -257,7 +266,7 @@ export class TopicService {
    * Remove a topic from a note
    */
   async removeTopicFromNote(noteId: string, topicId: string): Promise<void> {
-    await this.repos.topic.removeFromNote(noteId, topicId);
+    await this.deps.topicRepository.removeFromNote(noteId, topicId);
     logger.info(`[TopicService] Removed topic ${topicId} from note ${noteId}`);
   }
 
@@ -272,10 +281,10 @@ export class TopicService {
     logger.info(`[TopicService] Semantic search: "${query.substring(0, 50)}..."`);
 
     // Get embedding for the query
-    const queryEmbedding = await this.embeddingService.getEmbedding(query);
+    const queryEmbedding = await this.deps.embeddingService.getEmbedding(query);
 
     // Find similar notes
-    const results = await this.repos.note.findBySimilarity(queryEmbedding, limit);
+    const results = await this.deps.noteRepository.findBySimilarity(queryEmbedding, limit);
 
     return results;
   }
@@ -284,20 +293,20 @@ export class TopicService {
    * Find notes similar to a given note
    */
   async findSimilarNotes(noteId: string, limit = 5): Promise<SimilarNote[]> {
-    const note = await this.repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) {
       throw new Error(`Note not found: ${noteId}`);
     }
 
     // Get note's embedding
-    const embedding = await this.repos.note.getEmbedding(noteId);
+    const embedding = await this.deps.noteRepository.getEmbedding(noteId);
     if (!embedding) {
       logger.warn(`[TopicService] Note ${noteId} has no embedding`);
       return [];
     }
 
     // Find similar notes (excluding self)
-    const results = await this.repos.note.findBySimilarity(embedding, limit + 1);
+    const results = await this.deps.noteRepository.findBySimilarity(embedding, limit + 1);
     return results.filter(r => r.noteId !== noteId).slice(0, limit);
   }
 
@@ -308,7 +317,7 @@ export class TopicService {
     logger.info(`[TopicService] Recomputing centroid for topic: ${topicId}`);
 
     // Get all notes assigned to this topic
-    const noteAssignments = await this.repos.topic.getNotesForTopic(topicId, { limit: 1000 });
+    const noteAssignments = await this.deps.topicRepository.getNotesForTopic(topicId, { limit: 1000 });
 
     if (noteAssignments.length === 0) {
       logger.warn(`[TopicService] Topic ${topicId} has no notes, skipping centroid computation`);
@@ -318,7 +327,7 @@ export class TopicService {
     // Get embeddings for all notes
     const embeddings: number[][] = [];
     for (const { noteId } of noteAssignments) {
-      const embedding = await this.repos.note.getEmbedding(noteId);
+      const embedding = await this.deps.noteRepository.getEmbedding(noteId);
       if (embedding) {
         embeddings.push(embedding);
       }
@@ -354,7 +363,7 @@ export class TopicService {
     // Store centroid (non-fatal if fails - blob storage issues with libsql)
     try {
       const centroidBuffer = this.floatArrayToBuffer(centroid);
-      await this.repos.topic.updateCentroid(topicId, centroidBuffer);
+      await this.deps.topicRepository.updateCentroid(topicId, centroidBuffer);
       logger.info(`[TopicService] Updated centroid for topic ${topicId} (${embeddings.length} notes)`);
     } catch (error) {
       logger.warn(`[TopicService] Failed to store centroid for topic ${topicId} (non-fatal). Keyword classification will be used.`, error);
@@ -368,7 +377,7 @@ export class TopicService {
   async recomputeAllCentroids(): Promise<void> {
     logger.info('[TopicService] Recomputing all topic centroids...');
 
-    const allTopics = await this.repos.topic.getAll();
+    const allTopics = await this.deps.topicRepository.getAll();
 
     for (const topic of allTopics) {
       try {
@@ -385,13 +394,13 @@ export class TopicService {
    * Get notes for a topic
    */
   async getNotesForTopic(topicId: string, options: { limit?: number; offset?: number } = {}) {
-    const noteAssignments = await this.repos.topic.getNotesForTopic(topicId, options);
+    const noteAssignments = await this.deps.topicRepository.getNotesForTopic(topicId, options);
 
     // Get full note details
     const noteIds = noteAssignments.map(a => a.noteId);
     const notes = await Promise.all(
       noteIds.map(async (id) => {
-        const note = await this.repos.note.findById(id);
+        const note = await this.deps.noteRepository.findById(id);
         const assignment = noteAssignments.find(a => a.noteId === id);
         return note ? {
           ...note,
@@ -448,7 +457,7 @@ export class TopicService {
 
     // Assign topics to note
     if (topMatches.length > 0) {
-      await this.repos.topic.setTopicsForNote(
+      await this.deps.topicRepository.setTopicsForNote(
         noteId,
         topMatches.map(m => ({
           topicId: m.topicId,
@@ -513,13 +522,35 @@ export class TopicService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getEmbeddingService } from './EmbeddingService';
+import { getMarkdownService } from './MarkdownService';
+
 let instance: TopicService | null = null;
 
 /**
  * Get or create topic service instance
  */
 export function getTopicService(): TopicService {
-  instance ??= new TopicService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new TopicService({
+      topicRepository: repos.topic,
+      noteRepository: repos.note,
+      embeddingService: getEmbeddingService(),
+      markdownService: getMarkdownService(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create TopicService with custom dependencies (for DI container)
+ */
+export function createTopicService(deps: TopicServiceDeps): TopicService {
+  return new TopicService(deps);
 }

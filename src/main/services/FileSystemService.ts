@@ -5,8 +5,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
-import { getMarkdownService } from './MarkdownService';
 import { logger } from '../utils/logger';
+import type { MarkdownService } from './MarkdownService';
 
 /**
  * Max bytes to read for fast title extraction (enough for frontmatter + first heading)
@@ -35,8 +35,19 @@ export interface FolderStructure {
   children?: FolderStructure[];
 }
 
+/**
+ * Dependencies for FileSystemService
+ */
+export interface FileSystemServiceDeps {
+  markdownService: MarkdownService;
+}
+
 export class FileSystemService {
-  private readonly markdownService = getMarkdownService();
+  private readonly markdownService: MarkdownService;
+
+  constructor(private readonly deps: FileSystemServiceDeps) {
+    this.markdownService = deps.markdownService;
+  }
 
   /**
    * Read a markdown file with frontmatter (fast - only reads head for title/metadata)
@@ -462,13 +473,29 @@ export class FileSystemService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getMarkdownService } from './MarkdownService';
+
 let instance: FileSystemService | null = null;
 
 /**
  * Get or create file system service instance
  */
 export function getFileSystemService(): FileSystemService {
-  instance ??= new FileSystemService();
+  if (!instance) {
+    instance = new FileSystemService({
+      markdownService: getMarkdownService(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create FileSystemService with custom dependencies (for DI container)
+ */
+export function createFileSystemService(deps: FileSystemServiceDeps): FileSystemService {
+  return new FileSystemService(deps);
 }

@@ -4,11 +4,11 @@
  * Handles notebook CRUD, hierarchy, and note counts.
  */
 
-import { getRepositories } from '../repositories';
-import { getEventBus } from './EventBus';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import type { Notebook } from '@shared/types';
+import type { NotebookRepository } from '../repositories/NotebookRepository';
+import type { EventBus } from './EventBus';
 
 export interface CreateNotebookRequest {
   name: string;
@@ -35,9 +35,19 @@ export interface NotebookTreeNode extends Notebook {
 }
 
 /**
+ * Dependencies for NotebookService
+ */
+export interface NotebookServiceDeps {
+  notebookRepository: NotebookRepository;
+  eventBus: EventBus;
+}
+
+/**
  * NotebookService handles notebook operations
  */
-class NotebookService {
+export class NotebookService {
+  constructor(private readonly deps: NotebookServiceDeps) {}
+
   // ==========================================================================
   // Notebook CRUD
   // ==========================================================================
@@ -46,9 +56,7 @@ class NotebookService {
    * Create a new notebook
    */
   async createNotebook(data: CreateNotebookRequest): Promise<NotebookWithCount> {
-    const repos = getRepositories();
-
-    const notebook = await repos.notebook.create({
+    const notebook = await this.deps.notebookRepository.create({
       name: data.name,
       parentId: data.parentId || null,
       icon: data.icon || '📁',
@@ -56,9 +64,9 @@ class NotebookService {
       position: data.position || 0,
     });
 
-    const noteCount = await repos.notebook.getNoteCount(notebook.id);
+    const noteCount = await this.deps.notebookRepository.getNoteCount(notebook.id);
 
-    getEventBus().emit(EVENTS.NOTEBOOK_CREATED, { notebook });
+    this.deps.eventBus.emit(EVENTS.NOTEBOOK_CREATED, { notebook });
 
     logger.info(`[NotebookService] Created notebook: ${notebook.name}`);
 
@@ -69,17 +77,15 @@ class NotebookService {
    * Update a notebook
    */
   async updateNotebook(id: string, data: UpdateNotebookRequest): Promise<Notebook> {
-    const repos = getRepositories();
-
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.icon !== undefined) updateData.icon = data.icon;
     if (data.color !== undefined) updateData.color = data.color;
     if (data.position !== undefined) updateData.position = data.position;
 
-    const notebook = await repos.notebook.update(id, updateData);
+    const notebook = await this.deps.notebookRepository.update(id, updateData);
 
-    getEventBus().emit(EVENTS.NOTEBOOK_UPDATED, { notebook });
+    this.deps.eventBus.emit(EVENTS.NOTEBOOK_UPDATED, { notebook });
 
     logger.info(`[NotebookService] Updated notebook: ${notebook.name}`);
 
@@ -90,12 +96,10 @@ class NotebookService {
    * Delete a notebook
    */
   async deleteNotebook(id: string, deleteNotes: boolean = false): Promise<void> {
-    const repos = getRepositories();
-
     const action = deleteNotes ? 'delete' : 'orphan';
-    await repos.notebook.deleteWithNotes(id, action);
+    await this.deps.notebookRepository.deleteWithNotes(id, action);
 
-    getEventBus().emit(EVENTS.NOTEBOOK_DELETED, { id });
+    this.deps.eventBus.emit(EVENTS.NOTEBOOK_DELETED, { id });
 
     logger.info(`[NotebookService] Deleted notebook: ${id} (notes: ${action})`);
   }
@@ -108,9 +112,7 @@ class NotebookService {
    * Get all notebooks as a flat list
    */
   async getAllFlat(includeCounts: boolean = false): Promise<NotebookWithCount[]> {
-    const repos = getRepositories();
-
-    const notebooks = await repos.notebook.getFlatList();
+    const notebooks = await this.deps.notebookRepository.getFlatList();
 
     if (!includeCounts) {
       return notebooks.map((nb) => ({ ...nb, note_count: 0 }));
@@ -120,7 +122,7 @@ class NotebookService {
     const notebooksWithCounts = await Promise.all(
       notebooks.map(async (nb) => ({
         ...nb,
-        note_count: await repos.notebook.getNoteCount(nb.id),
+        note_count: await this.deps.notebookRepository.getNoteCount(nb.id),
       })),
     );
 
@@ -131,16 +133,21 @@ class NotebookService {
    * Get notebooks as a tree structure
    */
   async getTree(): Promise<NotebookTreeNode[]> {
-    const repos = getRepositories();
-    return repos.notebook.getTree();
+    return this.deps.notebookRepository.getTree();
   }
 
   /**
    * Get note count for a notebook
    */
   async getNoteCount(notebookId: string): Promise<number> {
-    const repos = getRepositories();
-    return repos.notebook.getNoteCount(notebookId);
+    return this.deps.notebookRepository.getNoteCount(notebookId);
+  }
+
+  /**
+   * Find notebook by ID
+   */
+  async findById(id: string): Promise<Notebook | null> {
+    return (await this.deps.notebookRepository.findById(id)) ?? null;
   }
 
   // ==========================================================================
@@ -155,11 +162,9 @@ class NotebookService {
     parentId: string | null,
     position?: number,
   ): Promise<Notebook> {
-    const repos = getRepositories();
+    const notebook = await this.deps.notebookRepository.move(id, parentId, position);
 
-    const notebook = await repos.notebook.move(id, parentId, position);
-
-    getEventBus().emit(EVENTS.NOTEBOOK_UPDATED, { notebook });
+    this.deps.eventBus.emit(EVENTS.NOTEBOOK_UPDATED, { notebook });
 
     logger.info(`[NotebookService] Moved notebook: ${id} → parent: ${parentId}`);
 
@@ -170,15 +175,33 @@ class NotebookService {
    * Sync notebooks with workspace folders
    */
   async syncWithWorkspace(workspaceId: string): Promise<{ created: number; updated: number; errors: string[] }> {
-    const repos = getRepositories();
-    return repos.notebook.syncWithWorkspaceFolders(workspaceId);
+    return this.deps.notebookRepository.syncWithWorkspaceFolders(workspaceId);
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getEventBus } from './EventBus';
+
 let instance: NotebookService | null = null;
 
 export function getNotebookService(): NotebookService {
-  instance ??= new NotebookService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new NotebookService({
+      notebookRepository: repos.notebook,
+      eventBus: getEventBus(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create NotebookService with custom dependencies (for DI container)
+ */
+export function createNotebookService(deps: NotebookServiceDeps): NotebookService {
+  return new NotebookService(deps);
 }

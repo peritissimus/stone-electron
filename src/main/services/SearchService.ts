@@ -4,11 +4,11 @@
  * Handles both traditional text search and vector-based semantic search.
  */
 
-import { getRepositories } from '../repositories';
-import { getNoteService } from './NoteService';
-import { getTopicService } from './TopicService';
 import { logger } from '../utils/logger';
 import type { Note } from '@shared/types';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { NoteService } from './NoteService';
+import type { TopicService } from './TopicService';
 
 export interface SearchResult {
   note: Note;
@@ -22,9 +22,19 @@ export interface SemanticSearchResult {
 }
 
 /**
+ * Dependencies for SearchService
+ */
+export interface SearchServiceDeps {
+  noteRepository: NoteRepository;
+  noteService: NoteService;
+  topicService: TopicService;
+}
+
+/**
  * SearchService handles all search operations
  */
-class SearchService {
+export class SearchService {
+  constructor(private readonly deps: SearchServiceDeps) {}
   // ==========================================================================
   // Full-Text Search
   // ==========================================================================
@@ -33,14 +43,11 @@ class SearchService {
    * Search notes by text (title and content)
    */
   async searchFullText(query: string, limit: number = 50): Promise<SearchResult[]> {
-    const repos = getRepositories();
-    const noteService = getNoteService();
-
     const lowerQuery = query.toLowerCase();
     const matches: SearchResult[] = [];
 
     // Get all active notes
-    const allNotes = await repos.note.findAll({
+    const allNotes = await this.deps.noteRepository.findAll({
       where: { isDeleted: false },
       sort: { field: 'updatedAt', order: 'DESC' },
       limit: limit * 2, // Fetch more to allow for filtering
@@ -49,7 +56,7 @@ class SearchService {
     for (const note of allNotes) {
       if (matches.length >= limit) break;
 
-      const matchResult = await this.evaluateNoteMatch(note, lowerQuery, noteService);
+      const matchResult = await this.evaluateNoteMatch(note, lowerQuery);
       if (matchResult) {
         matches.push(matchResult);
       }
@@ -61,10 +68,9 @@ class SearchService {
   private async evaluateNoteMatch(
     note: Note,
     lowerQuery: string,
-    noteService: ReturnType<typeof getNoteService>,
   ): Promise<SearchResult | null> {
     const titleMatch = note.title?.toLowerCase().includes(lowerQuery) ?? false;
-    const contentMatch = await this.matchesContent(note, lowerQuery, noteService);
+    const contentMatch = await this.matchesContent(note, lowerQuery);
 
     if (!titleMatch && !contentMatch) {
       return null;
@@ -82,14 +88,13 @@ class SearchService {
   private async matchesContent(
     note: Note,
     lowerQuery: string,
-    noteService: ReturnType<typeof getNoteService>,
   ): Promise<boolean> {
     if (!note.filePath || !note.workspaceId) {
       return false;
     }
 
     try {
-      const content = await noteService.getContent(note.id);
+      const content = await this.deps.noteService.getContent(note.id);
       return Boolean(content && content.toLowerCase().includes(lowerQuery));
     } catch (error) {
       logger.debug(`[SearchService] Could not read content for note ${note.id}:`, error);
@@ -101,10 +106,9 @@ class SearchService {
    * Search notes by title only (faster)
    */
   async searchByTitle(query: string, limit: number = 20): Promise<Note[]> {
-    const repos = getRepositories();
     const lowerQuery = query.toLowerCase();
 
-    const allNotes = await repos.note.findAll({
+    const allNotes = await this.deps.noteRepository.findAll({
       where: { isDeleted: false },
       sort: { field: 'updatedAt', order: 'DESC' },
     });
@@ -123,14 +127,12 @@ class SearchService {
    */
   async semanticSearch(query: string, limit: number = 10): Promise<SemanticSearchResult[]> {
     try {
-      const topicService = getTopicService();
-
       // Ensure embedding service is ready
-      if (!topicService.isReady()) {
-        await topicService.initialize();
+      if (!this.deps.topicService.isReady()) {
+        await this.deps.topicService.initialize();
       }
 
-      return await topicService.semanticSearch(query, limit);
+      return await this.deps.topicService.semanticSearch(query, limit);
     } catch (error) {
       logger.error('[SearchService] Semantic search failed:', error);
       return [];
@@ -141,18 +143,16 @@ class SearchService {
    * Find notes similar to a given note
    */
   async findSimilarNotes(noteId: string, limit: number = 5): Promise<SemanticSearchResult[]> {
-    const repos = getRepositories();
-
     try {
       // Get the note's embedding
-      const embedding = await repos.note.getEmbedding(noteId);
+      const embedding = await this.deps.noteRepository.getEmbedding(noteId);
       if (!embedding) {
         logger.debug(`[SearchService] No embedding found for note ${noteId}`);
         return [];
       }
 
       // Find similar notes
-      const results = await repos.note.findBySimilarity(embedding, limit + 1);
+      const results = await this.deps.noteRepository.findBySimilarity(embedding, limit + 1);
 
       // Filter out the source note
       return results
@@ -165,10 +165,31 @@ class SearchService {
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getNoteService } from './NoteService';
+import { getTopicService } from './TopicService';
+
 let instance: SearchService | null = null;
 
 export function getSearchService(): SearchService {
-  instance ??= new SearchService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new SearchService({
+      noteRepository: repos.note,
+      noteService: getNoteService(),
+      topicService: getTopicService(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create SearchService with custom dependencies (for DI container)
+ */
+export function createSearchService(deps: SearchServiceDeps): SearchService {
+  return new SearchService(deps);
 }

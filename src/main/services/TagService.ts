@@ -4,11 +4,12 @@
  * Handles tag CRUD, note associations, and sorting.
  */
 
-import { getRepositories } from '../repositories';
-import { getEventBus } from './EventBus';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../utils/logger';
 import type { Tag } from '@shared/types';
+import type { TagRepository } from '../repositories/TagRepository';
+import type { NoteRepository } from '../repositories/NoteRepository';
+import type { EventBus } from './EventBus';
 
 export interface CreateTagRequest {
   name: string;
@@ -22,9 +23,19 @@ export interface TagWithCount extends Tag {
 export type TagSortOrder = 'name' | 'count' | 'recent';
 
 /**
+ * Dependencies for TagService
+ */
+export interface TagServiceDeps {
+  tagRepository: TagRepository;
+  noteRepository: NoteRepository;
+  eventBus: EventBus;
+}
+
+/**
  * TagService handles tag operations
  */
-class TagService {
+export class TagService {
+  constructor(private readonly deps: TagServiceDeps) {}
   // ==========================================================================
   // Tag CRUD
   // ==========================================================================
@@ -33,20 +44,18 @@ class TagService {
    * Create a new tag
    */
   async createTag(data: CreateTagRequest): Promise<TagWithCount> {
-    const repos = getRepositories();
-
     // Check for duplicates
-    const existing = await repos.tag.findOne({ name: data.name });
+    const existing = await this.deps.tagRepository.findOne({ name: data.name });
     if (existing) {
       throw new Error('Tag with this name already exists');
     }
 
-    const tag = await repos.tag.create({
+    const tag = await this.deps.tagRepository.create({
       name: data.name,
       color: data.color || '#6b7280',
     });
 
-    getEventBus().emit(EVENTS.TAG_CREATED, { tag });
+    this.deps.eventBus.emit(EVENTS.TAG_CREATED, { tag });
 
     logger.info(`[TagService] Created tag: ${tag.name}`);
 
@@ -57,20 +66,18 @@ class TagService {
    * Delete a tag and its associations
    */
   async deleteTag(id: string): Promise<{ affectedNotes: number }> {
-    const repos = getRepositories();
-
-    const tag = await repos.tag.findById(id);
+    const tag = await this.deps.tagRepository.findById(id);
     if (!tag) {
       throw new Error('Tag not found');
     }
 
     // Get affected note count before deletion
-    const allTags = await repos.tag.getAllWithCounts();
+    const allTags = await this.deps.tagRepository.getAllWithCounts();
     const noteCount = allTags.find((t) => t.id === id)?.note_count || 0;
 
-    await repos.tag.deleteWithAssociations(id);
+    await this.deps.tagRepository.deleteWithAssociations(id);
 
-    getEventBus().emit(EVENTS.TAG_DELETED, { id });
+    this.deps.eventBus.emit(EVENTS.TAG_DELETED, { id });
 
     logger.info(`[TagService] Deleted tag: ${tag.name} (affected ${noteCount} notes)`);
 
@@ -85,8 +92,7 @@ class TagService {
    * Get all tags with counts, optionally sorted
    */
   async getAllTags(sort: TagSortOrder = 'name'): Promise<TagWithCount[]> {
-    const repos = getRepositories();
-    const tags = await repos.tag.getAllWithCounts();
+    const tags = await this.deps.tagRepository.getAllWithCounts();
 
     // Sort based on request
     switch (sort) {
@@ -111,8 +117,7 @@ class TagService {
    * Find a tag by ID
    */
   async findById(id: string): Promise<Tag | null> {
-    const repos = getRepositories();
-    const tag = await repos.tag.findById(id);
+    const tag = await this.deps.tagRepository.findById(id);
     return tag ?? null;
   }
 
@@ -120,8 +125,7 @@ class TagService {
    * Find a tag by name
    */
   async findByName(name: string): Promise<Tag | null> {
-    const repos = getRepositories();
-    const tag = await repos.tag.findOne({ name });
+    const tag = await this.deps.tagRepository.findOne({ name });
     return tag ?? null;
   }
 
@@ -133,20 +137,18 @@ class TagService {
    * Add tags to a note
    */
   async addTagsToNote(noteId: string, tagIds: string[]): Promise<Tag[]> {
-    const repos = getRepositories();
-
     // Verify note exists
-    const note = await repos.note.findById(noteId);
+    const note = await this.deps.noteRepository.findById(noteId);
     if (!note) {
       throw new Error('Note not found');
     }
 
     // Add each tag
     for (const tagId of tagIds) {
-      await repos.tag.addToNote(noteId, tagId);
+      await this.deps.tagRepository.addToNote(noteId, tagId);
     }
 
-    const tags = await repos.tag.getTagsForNote(noteId);
+    const tags = await this.deps.tagRepository.getTagsForNote(noteId);
 
     logger.info(`[TagService] Added ${tagIds.length} tags to note ${noteId}`);
 
@@ -157,8 +159,7 @@ class TagService {
    * Remove a tag from a note
    */
   async removeTagFromNote(noteId: string, tagId: string): Promise<void> {
-    const repos = getRepositories();
-    await repos.tag.removeFromNote(noteId, tagId);
+    await this.deps.tagRepository.removeFromNote(noteId, tagId);
 
     logger.info(`[TagService] Removed tag ${tagId} from note ${noteId}`);
   }
@@ -167,25 +168,43 @@ class TagService {
    * Get tags for a note
    */
   async getTagsForNote(noteId: string): Promise<Tag[]> {
-    const repos = getRepositories();
-    return repos.tag.getTagsForNote(noteId);
+    return this.deps.tagRepository.getTagsForNote(noteId);
   }
 
   /**
    * Set all tags for a note (replaces existing)
    */
   async setTagsForNote(noteId: string, tagNames: string[]): Promise<void> {
-    const repos = getRepositories();
-    await repos.tag.setTagsForNote(noteId, tagNames);
+    await this.deps.tagRepository.setTagsForNote(noteId, tagNames);
 
     logger.info(`[TagService] Set ${tagNames.length} tags for note ${noteId}`);
   }
 }
 
-// Singleton instance
+// ==========================================================================
+// Singleton for backward compatibility (IPC handlers)
+// ==========================================================================
+
+import { getRepositories } from '../repositories';
+import { getEventBus } from './EventBus';
+
 let instance: TagService | null = null;
 
 export function getTagService(): TagService {
-  instance ??= new TagService();
+  if (!instance) {
+    const repos = getRepositories();
+    instance = new TagService({
+      tagRepository: repos.tag,
+      noteRepository: repos.note,
+      eventBus: getEventBus(),
+    });
+  }
   return instance;
+}
+
+/**
+ * Create TagService with custom dependencies (for DI container)
+ */
+export function createTagService(deps: TagServiceDeps): TagService {
+  return new TagService(deps);
 }
