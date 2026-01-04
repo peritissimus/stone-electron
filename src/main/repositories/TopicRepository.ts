@@ -145,8 +145,13 @@ export class TopicRepository {
   /**
    * Get all topics with actual note counts
    */
-  async getAllWithCounts(): Promise<TopicWithCount[]> {
+  async getAllWithCounts(options: { excludeJournal?: boolean } = {}): Promise<TopicWithCount[]> {
     const db = getDatabaseManager().getDrizzle();
+
+    // Build the join condition for notes
+    const notesJoinCondition = options.excludeJournal
+      ? sql`${noteTopics.noteId} = ${notes.id} AND ${notes.isDeleted} = 0 AND (${notes.filePath} IS NULL OR ${notes.filePath} NOT LIKE 'Journal/%')`
+      : sql`${noteTopics.noteId} = ${notes.id} AND ${notes.isDeleted} = 0`;
 
     const result = await db
       .select({
@@ -156,13 +161,13 @@ export class TopicRepository {
         color: topics.color,
         isPredefined: topics.isPredefined,
         centroid: topics.centroid,
-        noteCount: sql<number>`COUNT(DISTINCT ${noteTopics.noteId})`,
+        noteCount: sql<number>`COUNT(DISTINCT ${notes.id})`,
         createdAt: topics.createdAt,
         updatedAt: topics.updatedAt,
       })
       .from(topics)
       .leftJoin(noteTopics, eq(topics.id, noteTopics.topicId))
-      .leftJoin(notes, sql`${noteTopics.noteId} = ${notes.id} AND ${notes.isDeleted} = 0`)
+      .leftJoin(notes, notesJoinCondition)
       .groupBy(topics.id)
       .orderBy(desc(topics.isPredefined), asc(topics.name));
 

@@ -125,8 +125,8 @@ export class TopicService {
   /**
    * Get all topics with note counts
    */
-  async getAllTopics(): Promise<TopicWithCount[]> {
-    return this.deps.topicRepository.getAllWithCounts();
+  async getAllTopics(options: { excludeJournal?: boolean } = {}): Promise<TopicWithCount[]> {
+    return this.deps.topicRepository.getAllWithCounts(options);
   }
 
   /**
@@ -394,6 +394,8 @@ export class TopicService {
    * Get notes for a topic
    */
   async getNotesForTopic(topicId: string, options: { limit?: number; offset?: number; excludeJournal?: boolean } = {}) {
+    logger.info(`[TopicService] getNotesForTopic called with topicId=${topicId}, excludeJournal=${options.excludeJournal}`);
+
     const noteAssignments = await this.deps.topicRepository.getNotesForTopic(topicId, options);
 
     // Get full note details
@@ -414,7 +416,9 @@ export class TopicService {
 
     // Filter out journal notes if requested
     if (options.excludeJournal) {
+      const beforeCount = result.length;
       result = result.filter(n => !n.filePath?.startsWith('Journal/'));
+      logger.info(`[TopicService] Filtered journals: ${beforeCount} -> ${result.length} notes`);
     }
 
     return result;

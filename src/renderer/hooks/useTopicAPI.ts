@@ -72,8 +72,8 @@ export function useTopicAPI() {
   /**
    * Load all topics
    */
-  const loadTopics = useCallback(async () => {
-    return loadAll({});
+  const loadTopics = useCallback(async (options?: { excludeJournal?: boolean }) => {
+    return loadAll(options || {});
   }, [loadAll]);
 
   /**

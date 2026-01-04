@@ -26,8 +26,8 @@ export const topicAPI = {
   /**
    * Get all topics
    */
-  getAll: (): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
-    invokeIpc(TOPIC_CHANNELS.GET_ALL, {}),
+  getAll: (options?: { excludeJournal?: boolean }): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
+    invokeIpc(TOPIC_CHANNELS.GET_ALL, options || {}),
 
   /**
    * Get a topic by ID

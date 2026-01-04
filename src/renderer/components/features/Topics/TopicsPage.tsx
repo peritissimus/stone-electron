@@ -130,12 +130,12 @@ export function TopicsPage() {
   useEffect(() => {
     const init = async () => {
       setInitializing(true);
-      await loadTopics();
+      await loadTopics({ excludeJournal });
       await getEmbeddingStatus();
       setInitializing(false);
     };
     init();
-  }, [loadTopics, getEmbeddingStatus]);
+  }, [loadTopics, getEmbeddingStatus, excludeJournal]);
 
   useEffect(() => {
     if (selectedTopicId) {
@@ -170,7 +170,7 @@ export function TopicsPage() {
     if (ready) {
       await reclassifyAllNotes({ excludeJournal });
       await getEmbeddingStatus();
-      await loadTopics();
+      await loadTopics({ excludeJournal });
     }
   }, [initialize, reclassifyAllNotes, getEmbeddingStatus, loadTopics, excludeJournal]);
 
@@ -181,11 +181,11 @@ export function TopicsPage() {
       await createTopic({ name: newTopicName.trim(), color: newTopicColor });
       setShowCreateDialog(false);
       setNewTopicName('');
-      await loadTopics();
+      await loadTopics({ excludeJournal });
     } finally {
       setCreating(false);
     }
-  }, [newTopicName, newTopicColor, createTopic, loadTopics]);
+  }, [newTopicName, newTopicColor, createTopic, loadTopics, excludeJournal]);
 
   const selectedTopic = topics.find((t) => t.id === selectedTopicId);
 

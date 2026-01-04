@@ -42,8 +42,8 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   // topics:getAll - Get all topics with note counts
   registerHandler(
     TOPIC_CHANNELS.GET_ALL,
-    async () => {
-      const topics = await topicService.getAllTopics();
+    async (event, request?: { excludeJournal?: boolean }) => {
+      const topics = await topicService.getAllTopics({ excludeJournal: request?.excludeJournal });
       return { topics };
     }
   );
