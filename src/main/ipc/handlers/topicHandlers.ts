@@ -139,10 +139,11 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   // topics:getNotesByTopic - Get notes assigned to a topic
   registerHandler(
     TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
-    async (event, request: { topicId: string; limit?: number; offset?: number }) => {
+    async (event, request: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean }) => {
       const notes = await topicService.getNotesForTopic(request.topicId, {
         limit: request.limit,
         offset: request.offset,
+        excludeJournal: request.excludeJournal,
       });
       return { notes };
     }
