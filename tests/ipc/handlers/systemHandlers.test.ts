@@ -62,7 +62,7 @@ describe('System IPC Handlers', () => {
       const result = await handler({}, {});
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(['Arial', 'Helvetica', 'Monaco', 'Zapfino']);
+      expect(result.data.fonts).toEqual(['Arial', 'Helvetica', 'Monaco', 'Zapfino']);
     });
 
     it('should return fallback fonts on error', async () => {
@@ -72,9 +72,9 @@ describe('System IPC Handlers', () => {
       const result = await handler({}, {});
 
       expect(result.success).toBe(true);
-      expect(result.data).toContain('Arial');
-      expect(result.data).toContain('Helvetica');
-      expect(result.data).toContain('Monaco');
+      expect(result.data.fonts).toContain('Arial');
+      expect(result.data.fonts).toContain('Helvetica');
+      expect(result.data.fonts).toContain('Monaco');
     });
 
     it('should handle empty font list', async () => {
@@ -84,7 +84,7 @@ describe('System IPC Handlers', () => {
       const result = await handler({}, {});
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([]);
+      expect(result.data.fonts).toEqual([]);
     });
   });
 });

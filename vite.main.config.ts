@@ -70,6 +70,11 @@ export default defineConfig({
         'events',
         'node:events',
         'node:stream',
+        // Transformers.js for embeddings - must be external to avoid 'self is not defined' error
+        '@xenova/transformers',
+        'onnxruntime-node',
+        'onnxruntime-common',
+        'sharp',
       ],
     },
   },

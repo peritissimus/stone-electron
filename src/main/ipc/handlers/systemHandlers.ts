@@ -41,7 +41,7 @@ export function registerSystemHandlers(_container: AwilixContainer<Container>) {
     SYSTEM_CHANNELS.GET_FONTS,
     async () => {
       const fonts = await getSystemFonts();
-      return fonts;
+      return { fonts };
     }
   );
 

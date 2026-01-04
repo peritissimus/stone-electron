@@ -130,12 +130,14 @@ export function TopicsPage() {
   useEffect(() => {
     const init = async () => {
       setInitializing(true);
+      // Initialize first to seed predefined topics if they don't exist
+      await initialize();
       await loadTopics({ excludeJournal });
       await getEmbeddingStatus();
       setInitializing(false);
     };
     init();
-  }, [loadTopics, getEmbeddingStatus, excludeJournal]);
+  }, [initialize, loadTopics, getEmbeddingStatus, excludeJournal]);
 
   useEffect(() => {
     if (selectedTopicId) {
