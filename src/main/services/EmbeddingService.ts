@@ -5,6 +5,12 @@
  * No Python dependency required - works in Electron and standalone mode.
  */
 
+// Polyfill for 'self' - required by @xenova/transformers in Node.js/Electron main process
+// Must be set before importing the library
+if (typeof globalThis.self === 'undefined') {
+  (globalThis as any).self = globalThis;
+}
+
 import { logger } from '../utils/logger';
 
 // Dynamic import for transformers.js to avoid issues with module loading
@@ -38,6 +44,11 @@ export class EmbeddingService {
     try {
       logger.info('[EmbeddingService] Loading embedding model...');
       logger.info(`[EmbeddingService] Model: ${MODEL_NAME}`);
+
+      // Ensure polyfill is set before dynamic import (belt and suspenders)
+      if (typeof globalThis.self === 'undefined') {
+        (globalThis as any).self = globalThis;
+      }
 
       // Dynamic import to handle module loading
       const { pipeline, env } = await import('@xenova/transformers');
