@@ -100,7 +100,7 @@ export function useTopicAPI() {
    * Get notes for a topic
    */
   const getNotesForTopic = useCallback(
-    async (topicId: string, options?: { limit?: number; offset?: number }) => {
+    async (topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }) => {
       setError(null);
       try {
         const response = await topicAPI.getNotesByTopic(topicId, options);

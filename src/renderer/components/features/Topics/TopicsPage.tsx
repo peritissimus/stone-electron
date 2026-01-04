@@ -140,13 +140,13 @@ export function TopicsPage() {
   useEffect(() => {
     if (selectedTopicId) {
       setLoadingNotes(true);
-      getNotesForTopic(selectedTopicId)
+      getNotesForTopic(selectedTopicId, { excludeJournal })
         .then((notes) => setTopicNotes(notes as TopicNote[]))
         .finally(() => setLoadingNotes(false));
     } else {
       setTopicNotes([]);
     }
-  }, [selectedTopicId, getNotesForTopic]);
+  }, [selectedTopicId, getNotesForTopic, excludeJournal]);
 
   useEffect(() => {
     if (!searchInput.trim()) {
@@ -256,7 +256,7 @@ export function TopicsPage() {
       </div>
 
       {/* Search */}
-      <div className="px-4 py-2 border-b border-border/50">
+      <div className="px-4 py-2 border-b border-border/50 space-y-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <Input
@@ -266,6 +266,16 @@ export function TopicsPage() {
             onChange={(e) => setSearchInput(e.target.value)}
             className="h-8 pl-8 text-sm bg-muted/30 border-0"
           />
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="exclude-journal-listing"
+            checked={excludeJournal}
+            onCheckedChange={(checked) => setExcludeJournal(checked === true)}
+          />
+          <Label htmlFor="exclude-journal-listing" className="text-xs text-muted-foreground cursor-pointer">
+            Exclude journals
+          </Label>
         </div>
       </div>
 

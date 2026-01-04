@@ -69,7 +69,7 @@ export const topicAPI = {
    */
   getNotesByTopic: (
     topicId: string,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean }
   ): Promise<IpcResponse<{ notes: unknown[] }>> =>
     invokeIpc(TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, { topicId, ...options }),
 
