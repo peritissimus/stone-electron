@@ -1,176 +1,66 @@
 /**
- * EmbeddingService - Manages Python subprocess for generating text embeddings
+ * EmbeddingService - Generates text embeddings using Transformers.js
  *
- * Uses uv to run the Python embedding server in an isolated environment.
- * Communicates via JSON lines over stdin/stdout.
+ * Uses @xenova/transformers (ONNX Runtime) for pure JavaScript embeddings.
+ * No Python dependency required - works in Electron and standalone mode.
  */
 
-import { spawn, ChildProcess } from 'node:child_process';
-import path from 'node:path';
-import readline from 'node:readline';
 import { logger } from '../utils/logger';
 
-/**
- * Get Electron app if available
- */
-function getElectronApp(): typeof import('electron').app | null {
-  try {
-    const electron = require('electron');
-    if (electron.app && typeof electron.app.isPackaged === 'boolean') {
-      return electron.app;
-    }
-  } catch {
-    // Not in Electron environment
-  }
-  return null;
-}
-
-/**
- * Get the scripts path based on environment
- */
-function getScriptsPath(): string {
-  const electronApp = getElectronApp();
-
-  if (electronApp) {
-    // Electron mode
-    if (electronApp.isPackaged) {
-      return path.join(process.resourcesPath!, 'app.asar.unpacked', 'scripts');
-    }
-    return path.join(electronApp.getAppPath(), 'scripts');
-  }
-
-  // Standalone mode - scripts are relative to project root
-  return path.join(process.cwd(), 'scripts');
-}
-
-interface PendingRequest {
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-  timeout: NodeJS.Timeout;
-}
-
-interface EmbedResponse {
-  ok: boolean;
-  id?: number;
-  embedding?: number[];
-  embeddings?: number[][];
-  model?: string;
-  dims?: number;
-  error?: string;
-}
+// Dynamic import for transformers.js to avoid issues with module loading
+type Pipeline = Awaited<ReturnType<typeof import('@xenova/transformers')['pipeline']>>;
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
-const REQUEST_TIMEOUT_MS = 60000; // 60 seconds for model loading/inference
-const WARMUP_TIMEOUT_MS = 120000; // 2 minutes for initial model download
+const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 
 export class EmbeddingService {
-  private process: ChildProcess | null = null;
-  private rl: readline.Interface | null = null;
-  private readonly pending: Map<number, PendingRequest> = new Map();
-  private requestId = 0;
+  private pipeline: Pipeline | null = null;
   private initialized = false;
-  private initializing = false;
-  private readonly scriptsPath: string;
-
-  constructor() {
-    this.scriptsPath = getScriptsPath();
-  }
+  private initializing: Promise<void> | null = null;
 
   /**
-   * Initialize the embedding service by spawning the Python subprocess
+   * Initialize the embedding service by loading the model
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
+
+    // If already initializing, wait for it
     if (this.initializing) {
-      // Wait for initialization to complete
-      while (this.initializing) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      await this.initializing;
       return;
     }
 
-    this.initializing = true;
-
-    try {
-      logger.info('[EmbeddingService] Starting Python embedding server...');
-      logger.info(`[EmbeddingService] Scripts path: ${this.scriptsPath}`);
-
-      // Spawn Python using uv for isolated environment
-      this.process = spawn('uv', ['run', 'python', 'embedding_server.py'], {
-        cwd: this.scriptsPath,
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          PYTHONUNBUFFERED: '1',
-        },
-      });
-
-      // Handle stderr for debugging
-      this.process.stderr?.on('data', (data: Buffer) => {
-        const message = data.toString().trim();
-        if (message) {
-          // Filter out model download progress which is noisy
-          if (message.includes('Downloading') || message.includes('%|')) {
-            logger.debug(`[EmbeddingService] ${message}`);
-          } else {
-            logger.info(`[EmbeddingService] ${message}`);
-          }
-        }
-      });
-
-      // Handle process exit
-      this.process.on('exit', (code, signal) => {
-        logger.warn(`[EmbeddingService] Python process exited (code=${code}, signal=${signal})`);
-        this.cleanup();
-      });
-
-      this.process.on('error', (error) => {
-        logger.error('[EmbeddingService] Failed to spawn Python process:', error);
-        this.cleanup();
-      });
-
-      // Set up response handler
-      if (this.process.stdout) {
-        this.rl = readline.createInterface({ input: this.process.stdout });
-        this.rl.on('line', (line) => this.handleResponse(line));
-      }
-
-      // Warm up the model with a ping (this may trigger model download)
-      logger.info('[EmbeddingService] Warming up embedding model...');
-      const pingResult = await this.ping(WARMUP_TIMEOUT_MS);
-      logger.info(`[EmbeddingService] Model ready: ${pingResult.model} (${pingResult.dims} dims)`);
-
-      this.initialized = true;
-    } catch (error) {
-      logger.error('[EmbeddingService] Failed to initialize:', error);
-      this.cleanup();
-      throw error;
-    } finally {
-      this.initializing = false;
-    }
+    this.initializing = this.doInitialize();
+    await this.initializing;
   }
 
-  /**
-   * Cleanup subprocess and resources
-   */
-  private cleanup(): void {
-    this.initialized = false;
+  private async doInitialize(): Promise<void> {
+    try {
+      logger.info('[EmbeddingService] Loading embedding model...');
+      logger.info(`[EmbeddingService] Model: ${MODEL_NAME}`);
 
-    // Reject all pending requests
-    for (const [id, pending] of this.pending) {
-      clearTimeout(pending.timeout);
-      pending.reject(new Error('Embedding service terminated'));
-      this.pending.delete(id);
-    }
+      // Dynamic import to handle module loading
+      const { pipeline, env } = await import('@xenova/transformers');
 
-    if (this.rl) {
-      this.rl.close();
-      this.rl = null;
-    }
+      // Configure transformers.js for Node.js environment
+      // Disable browser-specific features
+      env.allowLocalModels = true;
+      env.useBrowserCache = false;
 
-    if (this.process) {
-      this.process.kill();
-      this.process = null;
+      // Create feature extraction pipeline
+      // The model will be downloaded on first use (~25MB for quantized ONNX)
+      this.pipeline = await pipeline('feature-extraction', MODEL_NAME, {
+        quantized: true, // Use quantized model for smaller size and faster inference
+      });
+
+      this.initialized = true;
+      logger.info(`[EmbeddingService] Model ready: ${MODEL_NAME} (${EMBEDDING_DIMS} dims)`);
+    } catch (error) {
+      logger.error('[EmbeddingService] Failed to initialize:', error);
+      this.initialized = false;
+      throw error;
+    } finally {
+      this.initializing = null;
     }
   }
 
@@ -179,17 +69,20 @@ export class EmbeddingService {
    */
   async shutdown(): Promise<void> {
     logger.info('[EmbeddingService] Shutting down...');
-    this.cleanup();
+    this.pipeline = null;
+    this.initialized = false;
   }
 
   /**
-   * Ping the embedding server to check status
+   * Ping the embedding service to check status
    */
-  async ping(timeout = REQUEST_TIMEOUT_MS): Promise<{ model: string; dims: number }> {
-    const response = await this.send({ cmd: 'ping' }, timeout) as EmbedResponse;
+  async ping(): Promise<{ model: string; dims: number }> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
     return {
-      model: response.model || 'unknown',
-      dims: response.dims || EMBEDDING_DIMS,
+      model: MODEL_NAME,
+      dims: EMBEDDING_DIMS,
     };
   }
 
@@ -206,13 +99,27 @@ export class EmbeddingService {
       return new Array(EMBEDDING_DIMS).fill(0);
     }
 
-    const response = await this.send({ cmd: 'embed', text }) as EmbedResponse;
-
-    if (!response.embedding) {
-      throw new Error('No embedding in response');
+    if (!this.pipeline) {
+      throw new Error('Embedding pipeline not initialized');
     }
 
-    return response.embedding;
+    try {
+      // Generate embedding with mean pooling and normalization
+      const output = await this.pipeline(text, {
+        pooling: 'mean',
+        normalize: true,
+      } as any);
+
+      // Extract the embedding array from the tensor
+      // The output is a Tensor with a data property containing Float32Array
+      const tensor = output as { data: Float32Array };
+      const embedding = Array.from(tensor.data);
+
+      return embedding;
+    } catch (error) {
+      logger.error('[EmbeddingService] Failed to generate embedding:', error);
+      throw error;
+    }
   }
 
   /**
@@ -225,6 +132,10 @@ export class EmbeddingService {
 
     if (texts.length === 0) {
       return [];
+    }
+
+    if (!this.pipeline) {
+      throw new Error('Embedding pipeline not initialized');
     }
 
     // Filter out empty texts, keeping track of indices
@@ -243,26 +154,39 @@ export class EmbeddingService {
       return texts.map(() => new Array(EMBEDDING_DIMS).fill(0));
     }
 
-    const response = await this.send({ cmd: 'batch', texts: nonEmptyTexts }) as EmbedResponse;
+    try {
+      // Process texts in batch
+      const outputs = await Promise.all(
+        nonEmptyTexts.map((text) =>
+          this.pipeline!(text, {
+            pooling: 'mean',
+            normalize: true,
+          } as any)
+        )
+      );
 
-    if (!response.embeddings) {
-      throw new Error('No embeddings in response');
+      // Reconstruct full array with zero vectors for empty texts
+      const result: number[][] = texts.map(() => new Array(EMBEDDING_DIMS).fill(0));
+
+      outputs.forEach((output, i) => {
+        const originalIndex = nonEmptyIndices[i];
+        // The output is a Tensor with a data property containing Float32Array
+        const tensor = output as { data: Float32Array };
+        result[originalIndex] = Array.from(tensor.data);
+      });
+
+      return result;
+    } catch (error) {
+      logger.error('[EmbeddingService] Failed to batch embed:', error);
+      throw error;
     }
-
-    // Reconstruct full array with zero vectors for empty texts
-    const result: number[][] = texts.map(() => new Array(EMBEDDING_DIMS).fill(0));
-    nonEmptyIndices.forEach((originalIndex, i) => {
-      result[originalIndex] = response.embeddings![i];
-    });
-
-    return result;
   }
 
   /**
    * Check if the service is ready
    */
   isReady(): boolean {
-    return this.initialized && this.process !== null;
+    return this.initialized && this.pipeline !== null;
   }
 
   /**
@@ -270,63 +194,6 @@ export class EmbeddingService {
    */
   getDimensions(): number {
     return EMBEDDING_DIMS;
-  }
-
-  /**
-   * Send a request to the Python process
-   */
-  private send(data: Record<string, unknown>, timeout = REQUEST_TIMEOUT_MS): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      if (!this.process || !this.process.stdin) {
-        reject(new Error('Embedding service not initialized'));
-        return;
-      }
-
-      const id = ++this.requestId;
-
-      const timeoutHandle = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(`Embedding request timed out after ${timeout}ms`));
-      }, timeout);
-
-      this.pending.set(id, { resolve, reject, timeout: timeoutHandle });
-
-      try {
-        this.process.stdin.write(JSON.stringify({ ...data, id }) + '\n');
-      } catch (error) {
-        clearTimeout(timeoutHandle);
-        this.pending.delete(id);
-        reject(error);
-      }
-    });
-  }
-
-  /**
-   * Handle response from Python process
-   */
-  private handleResponse(line: string): void {
-    try {
-      const data = JSON.parse(line) as EmbedResponse;
-      const responseId = data.id;
-      if (responseId === undefined) {
-        return;
-      }
-
-      const pending = this.pending.get(responseId);
-
-      if (pending) {
-        clearTimeout(pending.timeout);
-        this.pending.delete(responseId);
-
-        if (data.ok) {
-          pending.resolve(data);
-        } else {
-          pending.reject(new Error(data.error || 'Unknown error'));
-        }
-      }
-    } catch (error) {
-      logger.error('[EmbeddingService] Failed to parse response:', error, line);
-    }
   }
 }
 

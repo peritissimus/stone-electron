@@ -393,7 +393,7 @@ export class TopicService {
   /**
    * Get notes for a topic
    */
-  async getNotesForTopic(topicId: string, options: { limit?: number; offset?: number } = {}) {
+  async getNotesForTopic(topicId: string, options: { limit?: number; offset?: number; excludeJournal?: boolean } = {}) {
     const noteAssignments = await this.deps.topicRepository.getNotesForTopic(topicId, options);
 
     // Get full note details
@@ -410,7 +410,14 @@ export class TopicService {
       })
     );
 
-    return notes.filter(n => n !== null);
+    let result = notes.filter(n => n !== null);
+
+    // Filter out journal notes if requested
+    if (options.excludeJournal) {
+      result = result.filter(n => !n.filePath?.startsWith('Journal/'));
+    }
+
+    return result;
   }
 
   /**
