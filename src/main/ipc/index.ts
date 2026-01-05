@@ -14,6 +14,7 @@ import { registerSearchHandlers } from './handlers/searchHandlers'
 import { registerAttachmentHandlers } from './handlers/attachmentHandlers'
 import { registerDatabaseHandlers } from './handlers/databaseHandlers'
 import { registerSystemHandlers } from './handlers/systemHandlers'
+import { registerGitHandlers } from './handlers/gitHandlers'
 import { logger } from '../utils/logger'
 import type { Container } from '../api/container'
 import type { AwilixContainer } from 'awilix'
@@ -41,6 +42,7 @@ export function registerAllIpcHandlers(container: AwilixContainer<Container>): v
   registerSearchHandlers(container)
   registerDatabaseHandlers(container)
   registerSystemHandlers(container)
+  registerGitHandlers(container)
 
   logger.info('[IPC] All handlers registered successfully')
 }

@@ -2,7 +2,7 @@
  * Sidebar Component - Navigation and organization
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -18,7 +18,7 @@ import {
 import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { type Workspace, type Note } from '@shared/types';
-import { House, CaretLeft, Graph, CheckSquare, Tag } from 'phosphor-react';
+import { House, CaretLeft, Graph, CheckSquare, Tag, GitBranch, ArrowsClockwise, Check, Warning } from 'phosphor-react';
 import {
   QuickLink,
   sizeHeightClasses,
@@ -32,8 +32,141 @@ import { FileTree } from '@renderer/components/features/FileSystem';
 import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
 import { cn } from '@renderer/lib/utils';
-import { noteAPI, workspaceAPI } from '@renderer/api';
+import { noteAPI, workspaceAPI, gitAPI, type GitStatus } from '@renderer/api';
 import { events } from '@renderer/lib/events';
+
+/**
+ * Git Sync Button - Quick sync status and action in sidebar
+ */
+function GitSyncButton() {
+  const { activeWorkspaceId } = useWorkspaceStore();
+  const [status, setStatus] = useState<GitStatus | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Load git status
+  const loadStatus = useCallback(async () => {
+    if (!activeWorkspaceId) {
+      setStatus(null);
+      return;
+    }
+
+    try {
+      const response = await gitAPI.getStatus(activeWorkspaceId);
+      if (response.success && response.data) {
+        setStatus(response.data);
+      } else {
+        setStatus(null);
+      }
+    } catch (error) {
+      logger.error('[GitSyncButton] Failed to load status:', error);
+      setStatus(null);
+    }
+  }, [activeWorkspaceId]);
+
+  // Load status on mount and when workspace changes
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  // Refresh status periodically (every 30 seconds)
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+
+    const interval = setInterval(loadStatus, 30000);
+    return () => clearInterval(interval);
+  }, [activeWorkspaceId, loadStatus]);
+
+  // Handle sync
+  const handleSync = async () => {
+    if (!activeWorkspaceId || syncing) return;
+
+    setSyncing(true);
+    try {
+      const response = await gitAPI.sync(activeWorkspaceId);
+      if (response.success) {
+        logger.info('[GitSyncButton] Sync completed');
+        await loadStatus();
+      } else {
+        logger.error('[GitSyncButton] Sync failed:', response.error?.message);
+      }
+    } catch (error) {
+      logger.error('[GitSyncButton] Sync error:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Don't show if no workspace or not a git repo
+  if (!status || !status.isRepo) {
+    return null;
+  }
+
+  // Calculate total changes
+  const totalChanges = status.staged + status.unstaged + status.untracked;
+  const hasRemoteChanges = status.ahead > 0 || status.behind > 0;
+  const hasLocalChanges = totalChanges > 0;
+  const needsSync = hasLocalChanges || hasRemoteChanges;
+
+  return (
+    <div className="px-2 py-1.5 border-t border-border">
+      <button
+        onClick={handleSync}
+        disabled={syncing || !status.hasRemote}
+        className={cn(
+          'flex items-center justify-between w-full px-2 py-1.5 rounded text-xs',
+          'hover:bg-accent/50 transition-colors',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          needsSync && status.hasRemote && 'bg-accent/30'
+        )}
+        title={
+          !status.hasRemote
+            ? 'No remote configured - configure in Settings > Git Sync'
+            : syncing
+              ? 'Syncing...'
+              : 'Sync workspace (commit, pull, push)'
+        }
+      >
+        <div className="flex items-center gap-2">
+          <GitBranch size={14} className="text-muted-foreground" />
+          <span className="text-muted-foreground truncate max-w-[80px]">
+            {status.branch || 'main'}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Local changes indicator */}
+          {hasLocalChanges && (
+            <span className="flex items-center gap-0.5 text-amber-500" title={`${totalChanges} local changes`}>
+              <Warning size={12} weight="fill" />
+              <span>{totalChanges}</span>
+            </span>
+          )}
+
+          {/* Ahead/behind indicators */}
+          {status.hasRemote && status.ahead > 0 && (
+            <span className="text-blue-500" title={`${status.ahead} commits to push`}>
+              ↑{status.ahead}
+            </span>
+          )}
+          {status.hasRemote && status.behind > 0 && (
+            <span className="text-orange-500" title={`${status.behind} commits to pull`}>
+              ↓{status.behind}
+            </span>
+          )}
+
+          {/* Sync status icon */}
+          {syncing ? (
+            <ArrowsClockwise size={14} className="animate-spin text-primary" />
+          ) : needsSync && status.hasRemote ? (
+            <ArrowsClockwise size={14} className="text-primary" />
+          ) : status.hasRemote ? (
+            <Check size={14} className="text-green-500" />
+          ) : null}
+        </div>
+      </button>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
@@ -285,6 +418,9 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto px-1.5 py-1">
         <FileTree />
       </div>
+
+      {/* Git Sync Status */}
+      <GitSyncButton />
 
       {/* ML Status Indicator */}
       <MLStatusIndicator />

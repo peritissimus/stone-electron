@@ -84,14 +84,25 @@ export function useJournalActions() {
   const openOrCreateTodayJournal = async (): Promise<string | null> => {
     const { journalTitle, journalFilename, expectedFilePath } = getTodayJournalInfo();
 
+    // Debug: Log all notes to see what paths are in the store
+    const allNotes = useNoteStore.getState().notes;
+    const journalNotes = allNotes.filter(n => n.filePath?.includes('Journal'));
+
     logger.info('[useJournalActions] Opening/creating today\'s journal', {
       journalFilename,
       journalTitle,
       expectedFilePath,
+      totalNotes: allNotes.length,
+      journalNotesInStore: journalNotes.map(n => ({ id: n.id, filePath: n.filePath })),
     });
 
     // Check if today's journal already exists using normalized path lookup
     const existingJournal = getNoteByFilePath(expectedFilePath);
+    logger.info('[useJournalActions] Lookup result:', {
+      found: !!existingJournal,
+      existingId: existingJournal?.id,
+      existingPath: existingJournal?.filePath
+    });
 
     if (existingJournal) {
       logger.info('[useJournalActions] Opening existing journal', { id: existingJournal.id });
@@ -101,20 +112,30 @@ export function useJournalActions() {
 
     // Create new journal entry
     logger.info('[useJournalActions] Creating new journal entry');
-    const newNote = await createNote({
-      title: journalFilename,
-      content: `# ${journalTitle}\n\n`,
-      folderPath: 'Journal',
-    });
+    try {
+      const newNote = await createNote({
+        title: journalFilename,
+        content: `# ${journalTitle}\n\n`,
+        folderPath: 'Journal',
+      });
 
-    if (newNote) {
-      logger.info('[useJournalActions] Journal created', { id: newNote.id });
-      navigateToNote(newNote.id);
-      return newNote.id;
+      if (newNote) {
+        logger.info('[useJournalActions] Journal created', { id: newNote.id });
+        navigateToNote(newNote.id);
+        return newNote.id;
+      }
+
+      // Check if there's an error in the store
+      const storeError = useNoteStore.getState().error;
+      logger.error('[useJournalActions] Failed to create journal', {
+        storeError,
+        noteWasNull: newNote === null
+      });
+      return null;
+    } catch (error) {
+      logger.error('[useJournalActions] Exception creating journal:', error);
+      return null;
     }
-
-    logger.error('[useJournalActions] Failed to create journal');
-    return null;
   };
 
   /**

@@ -126,6 +126,18 @@ export const SYSTEM_CHANNELS = {
   GET_FONTS: 'system:getFonts',
 } as const;
 
+// Git Operations
+export const GIT_CHANNELS = {
+  GET_STATUS: 'git:getStatus',
+  INIT: 'git:init',
+  COMMIT: 'git:commit',
+  PULL: 'git:pull',
+  PUSH: 'git:push',
+  SYNC: 'git:sync',
+  SET_REMOTE: 'git:setRemote',
+  GET_COMMITS: 'git:getCommits',
+} as const;
+
 // Events
 export const EVENTS = {
   // Workspace events
@@ -200,6 +212,7 @@ export const ALL_CHANNELS = [
   ...Object.values(DATABASE_CHANNELS),
   ...Object.values(SETTINGS_CHANNELS),
   ...Object.values(SYSTEM_CHANNELS),
+  ...Object.values(GIT_CHANNELS),
 ];
 
 // Get all events as an array
