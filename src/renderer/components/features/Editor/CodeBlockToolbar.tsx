@@ -2,7 +2,8 @@
  * Code Block Toolbar - Language selector and diagram toggle for code blocks
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 
 /**
@@ -38,6 +39,7 @@ interface CodeBlockToolbarProps {
   isDiagram?: boolean;
   showCode?: boolean;
   onToggleView?: () => void;
+  codeContent?: string;
 }
 
 export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
@@ -46,7 +48,22 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
   isDiagram = false,
   showCode = false,
   onToggleView,
+  codeContent = '',
 }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    if (!codeContent) return;
+
+    try {
+      await navigator.clipboard.writeText(codeContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  }, [codeContent]);
+
   return (
     <div className="absolute top-2 right-2 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
       {/* Diagram toggle button (Mermaid or FlowDSL) */}
@@ -66,6 +83,23 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
           {showCode ? 'View Diagram' : 'Edit Code'}
         </button>
       )}
+
+      {/* Copy button */}
+      <button
+        type="button"
+        contentEditable={false}
+        onClick={handleCopy}
+        className={cn(
+          'p-1.5 rounded bg-background/90 backdrop-blur-xs',
+          'border border-border text-foreground cursor-pointer',
+          'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
+          'hover:bg-accent transition-colors',
+          copied && 'text-green-600 dark:text-green-400'
+        )}
+        title={copied ? 'Copied!' : 'Copy code'}
+      >
+        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
 
       {/* Language selector dropdown */}
       <select
