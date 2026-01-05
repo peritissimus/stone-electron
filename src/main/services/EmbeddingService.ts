@@ -10,6 +10,7 @@
 import { Worker } from 'worker_threads';
 import path from 'node:path';
 import { logger } from '../utils/logger';
+import { getMLStatusService } from './MLStatusService';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
@@ -46,11 +47,11 @@ export class EmbeddingService {
     if (isDev) {
       // During development, we need to compile the worker on-the-fly
       // or use ts-node. For simplicity, we'll use the built version.
-      return path.join(__dirname, 'workers', 'embedding.worker.js');
+      return path.join(__dirname, 'workers', 'embedding.worker.cjs');
     }
 
     // In packaged app, use the bundled worker
-    return path.join(__dirname, 'workers', 'embedding.worker.js');
+    return path.join(__dirname, 'workers', 'embedding.worker.cjs');
   }
 
   /**
@@ -69,7 +70,10 @@ export class EmbeddingService {
   }
 
   private async doInitialize(): Promise<void> {
+    const mlStatus = getMLStatusService();
+
     try {
+      mlStatus.setServiceStatus('initializing');
       logger.info('[EmbeddingService] Starting worker thread...');
 
       // Spawn worker
@@ -139,8 +143,14 @@ export class EmbeddingService {
       const result = await this.sendMessage<{ model: string; dims: number }>('init', {});
       logger.info(`[EmbeddingService] Model ready: ${result.model} (${result.dims} dims)`);
 
+      mlStatus.setServiceStatus('ready', {
+        model: { name: result.model, dims: result.dims },
+      });
+
       this.initialized = true;
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      mlStatus.setServiceStatus('error', { error: errorMessage });
       logger.error('[EmbeddingService] Failed to initialize:', error);
       this.initialized = false;
       throw error;
@@ -188,6 +198,8 @@ export class EmbeddingService {
     this.initialized = false;
     this.workerReady = false;
     this.pendingRequests.clear();
+
+    getMLStatusService().setServiceStatus('idle');
   }
 
   /**

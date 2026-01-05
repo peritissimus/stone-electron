@@ -50,6 +50,17 @@ vi.mock('../../src/main/utils/logger', () => ({
   },
 }));
 
+// Mock MLStatusService to avoid BrowserWindow dependency
+vi.mock('../../src/main/services/MLStatusService', () => ({
+  getMLStatusService: vi.fn().mockReturnValue({
+    setServiceStatus: vi.fn(),
+    startOperation: vi.fn().mockReturnValue('test-op-id'),
+    updateProgress: vi.fn(),
+    completeOperation: vi.fn(),
+    failOperation: vi.fn(),
+  }),
+}));
+
 import { createEmbeddingService, EmbeddingService } from '../../src/main/services/EmbeddingService';
 
 describe('EmbeddingService', () => {

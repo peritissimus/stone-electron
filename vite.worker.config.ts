@@ -21,7 +21,7 @@ export default defineConfig({
     lib: {
       entry: path.resolve(__dirname, 'src/main/workers/embedding.worker.ts'),
       formats: ['cjs'],
-      fileName: () => 'embedding.worker.js',
+      fileName: () => 'embedding.worker.cjs',
     },
     rollupOptions: {
       external: [
