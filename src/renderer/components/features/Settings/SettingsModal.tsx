@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
-import { Database, HardDrive, Download, CheckCircle, Palette, Info, Keyboard } from 'phosphor-react';
+import { Database, HardDrive, Download, CheckCircle, Palette, Info, Keyboard, GitBranch } from 'phosphor-react';
 import { databaseAPI } from '@renderer/api';
 import { DatabaseStatus } from '@shared/types';
 import { logger } from '@renderer/utils/logger';
@@ -16,6 +16,7 @@ import { Message } from './Message';
 import { FontSettings } from './FontSettings';
 import { FontPreview } from './FontPreview';
 import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
+import { GitSettings } from './GitSettings';
 import {
   Select,
   SelectContent,
@@ -29,7 +30,7 @@ import { ContainerStack, ContainerCenter, Separator } from '@renderer/components
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
-  const [activeTab, setActiveTab] = useState<'database' | 'appearance' | 'shortcuts' | 'about'>('appearance');
+  const [activeTab, setActiveTab] = useState<'database' | 'appearance' | 'shortcuts' | 'git' | 'about'>('appearance');
 
   // Close on Escape key
   useEffect(() => {
@@ -50,6 +51,7 @@ export function SettingsModal() {
   const tabs = [
     { id: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={16} /> },
+    { id: 'git', label: 'Git Sync', icon: <GitBranch size={16} /> },
     { id: 'database', label: 'Database', icon: <Database size={16} /> },
     { id: 'about', label: 'About', icon: <Info size={16} /> },
   ];
@@ -64,6 +66,7 @@ export function SettingsModal() {
     >
       {activeTab === 'appearance' && <AppearanceSettings />}
       {activeTab === 'shortcuts' && <KeyboardShortcutsSettings />}
+      {activeTab === 'git' && <GitSettings />}
       {activeTab === 'database' && <DatabaseSettings />}
       {activeTab === 'about' && <AboutSettings />}
     </TabbedModal>

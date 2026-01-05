@@ -90,12 +90,19 @@ export function useNoteAPI() {
           success: response.success,
           noteId: response.data?.id,
           noteTitle: response.data?.title,
+          error: response.error,
         });
         if (response.success && response.data) {
           addNote(response.data);
           return response.data;
         } else {
-          setError(response.error?.message || 'Failed to create note');
+          const errorMessage = response.error?.message || 'Failed to create note';
+          logger.error('[useNoteAPI.createNote] Failed:', {
+            errorMessage,
+            errorCode: response.error?.code,
+            errorDetails: response.error?.details,
+          });
+          setError(errorMessage);
           return null;
         }
       } catch (error) {
