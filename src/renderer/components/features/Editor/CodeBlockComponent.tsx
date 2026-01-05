@@ -153,6 +153,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           isDiagram={isDiagram}
           showCode={showCode}
           onToggleView={() => setShowCode(!showCode)}
+          codeContent={codeContent}
         />
       </div>
     </NodeViewWrapper>
