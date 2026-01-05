@@ -1,4 +1,4 @@
-CREATE TABLE `note_topics` (
+CREATE TABLE IF NOT EXISTS `note_topics` (
 	`note_id` text NOT NULL,
 	`topic_id` text NOT NULL,
 	`confidence` real DEFAULT 1,
@@ -9,9 +9,9 @@ CREATE TABLE `note_topics` (
 	FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE INDEX `idx_note_topics_note_id` ON `note_topics` (`note_id`);--> statement-breakpoint
-CREATE INDEX `idx_note_topics_topic_id` ON `note_topics` (`topic_id`);--> statement-breakpoint
-CREATE TABLE `topics` (
+CREATE INDEX IF NOT EXISTS `idx_note_topics_note_id` ON `note_topics` (`note_id`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `idx_note_topics_topic_id` ON `note_topics` (`topic_id`);--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS `topics` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
 	`description` text,
@@ -23,7 +23,7 @@ CREATE TABLE `topics` (
 	`updated_at` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `topics_name_unique` ON `topics` (`name`);--> statement-breakpoint
-CREATE INDEX `idx_topics_name` ON `topics` (`name`);--> statement-breakpoint
-CREATE INDEX `idx_topics_is_predefined` ON `topics` (`is_predefined`);--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `topics_name_unique` ON `topics` (`name`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `idx_topics_name` ON `topics` (`name`);--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `idx_topics_is_predefined` ON `topics` (`is_predefined`);--> statement-breakpoint
 ALTER TABLE `notes` ADD `embedding` blob;
