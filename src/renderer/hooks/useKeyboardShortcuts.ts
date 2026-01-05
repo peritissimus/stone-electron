@@ -34,15 +34,26 @@ export const useKeyboardShortcuts = (
     (event: KeyboardEvent) => {
       if (!enabled) return;
 
-      // Don't intercept shortcuts in input fields (except contenteditable)
+      // Don't intercept most shortcuts in input fields (except contenteditable)
       const target = event.target as HTMLElement;
       const tagName = target.tagName.toLowerCase();
-      const isInput = tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+      const isInput = tagName === 'input' || tagName === 'select';
+      const isTextarea = tagName === 'textarea';
 
       // Allow shortcuts in contenteditable (TipTap editor)
       const isEditor = target.getAttribute('contenteditable') === 'true';
 
+      // Allow specific shortcuts in textareas (save, mode toggle)
+      const isSaveShortcut = event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey);
+      const isModeToggle = event.key.toLowerCase() === 'm' && (event.metaKey || event.ctrlKey) && event.shiftKey;
+      const isAllowedInTextarea = isSaveShortcut || isModeToggle;
+
       if (isInput && !isEditor) {
+        return;
+      }
+
+      // For textareas, only allow specific shortcuts
+      if (isTextarea && !isAllowedInTextarea) {
         return;
       }
 
