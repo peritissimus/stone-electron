@@ -2,12 +2,6 @@
  * Stone - Main Process Entry Point
  */
 
-// Polyfill for 'self' - required by @xenova/transformers in Node.js/Electron main process
-// MUST be set before any imports that might load transformers.js
-if (typeof globalThis.self === 'undefined') {
-  (globalThis as any).self = globalThis;
-}
-
 import 'dotenv/config';
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';

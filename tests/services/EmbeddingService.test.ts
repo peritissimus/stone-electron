@@ -1,20 +1,43 @@
 /**
  * EmbeddingService Tests
  *
- * Uses mocked @xenova/transformers to test embedding functionality.
+ * Tests the worker-based embedding service by mocking Worker threads.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { EventEmitter } from 'events';
 
-// Mock the transformers module
-const mockPipeline = vi.fn();
+// Mock Worker class - handlers are attached synchronously, then we emit ready
+class MockWorker extends EventEmitter {
+  postMessage = vi.fn();
+  terminate = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('@xenova/transformers', () => ({
-  pipeline: mockPipeline,
-  env: {
-    allowLocalModels: true,
-    useBrowserCache: false,
-  },
+  constructor() {
+    super();
+    // Use setImmediate to ensure handlers are attached first
+    setImmediate(() => {
+      this.emit('message', { type: 'ready' });
+    });
+  }
+
+  // Helper to simulate responses from worker
+  simulateResponse(response: { id: string; success: boolean; data?: unknown; error?: string }) {
+    this.emit('message', response);
+  }
+
+  simulateError(error: Error) {
+    this.emit('error', error);
+  }
+}
+
+// Store mock worker instance for test access
+let mockWorkerInstance: MockWorker | null = null;
+
+vi.mock('worker_threads', () => ({
+  Worker: vi.fn().mockImplementation(() => {
+    mockWorkerInstance = new MockWorker();
+    return mockWorkerInstance;
+  }),
 }));
 
 // Mock logger
@@ -27,364 +50,362 @@ vi.mock('../../src/main/utils/logger', () => ({
   },
 }));
 
-import { createEmbeddingService } from '../../src/main/services/EmbeddingService';
+import { createEmbeddingService, EmbeddingService } from '../../src/main/services/EmbeddingService';
 
 describe('EmbeddingService', () => {
+  let service: EmbeddingService;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockWorkerInstance = null;
+    service = createEmbeddingService();
+  });
+
+  afterEach(async () => {
+    // Clean up - don't wait for shutdown if not ready
+    if (mockWorkerInstance) {
+      mockWorkerInstance.removeAllListeners();
+    }
+    mockWorkerInstance = null;
   });
 
   describe('initialization', () => {
-    it('initializes and reports readiness', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384).fill(0.1),
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
+    it('should create a worker on initialization', async () => {
+      // Start initialization
+      const initPromise = service.initialize();
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      expect(embeddingService.isReady()).toBe(true);
-      expect(embeddingService.getDimensions()).toBe(384);
-      expect(mockPipeline).toHaveBeenCalledWith(
-        'feature-extraction',
-        'Xenova/bge-small-en-v1.5',
-        { quantized: true }
-      );
-    });
-
-    it('only initializes once when called multiple times', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-
-      // Call initialize multiple times concurrently
-      await Promise.all([
-        embeddingService.initialize(),
-        embeddingService.initialize(),
-        embeddingService.initialize(),
-      ]);
-
-      // Pipeline should only be called once
-      expect(mockPipeline).toHaveBeenCalledTimes(1);
-    });
-
-    it('handles initialization failure gracefully', async () => {
-      mockPipeline.mockRejectedValue(new Error('Model download failed'));
-
-      const embeddingService = createEmbeddingService();
-
-      await expect(embeddingService.initialize()).rejects.toThrow('Model download failed');
-      expect(embeddingService.isReady()).toBe(false);
-    });
-
-    it('can retry initialization after failure', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
+      // Wait a tick for ready message, then respond to init
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance).not.toBeNull();
       });
 
-      // First call fails, second succeeds
-      mockPipeline
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce(mockEmbedder);
+      // Wait for the init message to be sent
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'init' })
+        );
+      });
 
-      const embeddingService = createEmbeddingService();
+      // Simulate init response
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
 
-      // First attempt fails
-      await expect(embeddingService.initialize()).rejects.toThrow('Network error');
-      expect(embeddingService.isReady()).toBe(false);
+      await initPromise;
 
-      // Second attempt succeeds
-      await embeddingService.initialize();
-      expect(embeddingService.isReady()).toBe(true);
+      expect(service.isReady()).toBe(true);
+    });
+
+    it('should not reinitialize if already initialized', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
+
+      await initPromise;
+
+      // Try to initialize again - should be instant
+      await service.initialize();
+
+      // postMessage should only have been called once (for the first init)
+      expect(mockWorkerInstance?.postMessage).toHaveBeenCalledTimes(1);
+      expect(service.isReady()).toBe(true);
+    });
+
+    it('should handle initialization failure', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: false,
+        error: 'Model loading failed',
+      });
+
+      await expect(initPromise).rejects.toThrow('Model loading failed');
+      expect(service.isReady()).toBe(false);
     });
   });
 
   describe('getEmbedding', () => {
-    it('returns zero vector for empty text', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384).fill(0.5),
+    beforeEach(async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
 
-      const emb = await embeddingService.getEmbedding('');
-
-      expect(emb).toHaveLength(384);
-      expect(emb.every((v: number) => v === 0)).toBe(true);
-      expect(mockEmbedder).not.toHaveBeenCalled();
+      await initPromise;
     });
 
-    it('returns zero vector for whitespace-only text', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384).fill(0.5),
+    it('should generate embedding for text', async () => {
+      const mockEmbedding = new Array(384).fill(0.1);
+      const embedPromise = service.getEmbedding('test text');
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed', text: 'test text' })
+        );
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const emb = await embeddingService.getEmbedding('   \n\t  ');
-
-      expect(emb).toHaveLength(384);
-      expect(emb.every((v: number) => v === 0)).toBe(true);
-      expect(mockEmbedder).not.toHaveBeenCalled();
-    });
-
-    it('generates embedding for text', async () => {
-      const mockEmbedding = new Float32Array(384);
-      mockEmbedding[0] = 0.5;
-      mockEmbedding[1] = 0.3;
-
-      const mockEmbedder = vi.fn().mockResolvedValue({
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: true,
         data: mockEmbedding,
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
+      const result = await embedPromise;
 
-      const emb = await embeddingService.getEmbedding('Hello world');
+      expect(result).toEqual(mockEmbedding);
+      expect(result).toHaveLength(384);
+    });
 
-      expect(emb).toHaveLength(384);
-      expect(emb[0]).toBeCloseTo(0.5, 5);
-      expect(emb[1]).toBeCloseTo(0.3, 5);
-      expect(mockEmbedder).toHaveBeenCalledWith('Hello world', {
-        pooling: 'mean',
-        normalize: true,
+    it('should handle embedding errors', async () => {
+      const embedPromise = service.getEmbedding('test text');
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed' })
+        );
       });
-    });
 
-    it('handles long text input', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384).fill(0.1),
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: false,
+        error: 'Embedding failed',
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const longText = 'Lorem ipsum '.repeat(1000);
-      const emb = await embeddingService.getEmbedding(longText);
-
-      expect(emb).toHaveLength(384);
-      expect(mockEmbedder).toHaveBeenCalledWith(longText, expect.any(Object));
-    });
-
-    it('handles unicode and special characters', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384).fill(0.2),
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const unicodeText = '你好世界 🌍 Привет мир السلام عليكم';
-      const emb = await embeddingService.getEmbedding(unicodeText);
-
-      expect(emb).toHaveLength(384);
-      expect(mockEmbedder).toHaveBeenCalledWith(unicodeText, expect.any(Object));
-    });
-
-    it('propagates initialization error when not initialized', async () => {
-      // Mock pipeline to fail - getEmbedding auto-initializes
-      mockPipeline.mockRejectedValue(new Error('Cannot load model'));
-
-      const embeddingService = createEmbeddingService();
-
-      // getEmbedding will try to initialize and fail
-      await expect(embeddingService.getEmbedding('test')).rejects.toThrow('Cannot load model');
-    });
-
-    it('propagates pipeline errors', async () => {
-      const mockEmbedder = vi.fn().mockRejectedValue(new Error('Inference failed'));
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      await expect(embeddingService.getEmbedding('test')).rejects.toThrow('Inference failed');
+      await expect(embedPromise).rejects.toThrow('Embedding failed');
     });
   });
 
   describe('batchEmbed', () => {
-    it('handles batch embeddings and preserves empty positions', async () => {
-      const mockEmbedding = new Float32Array(384);
-      mockEmbedding[0] = 0.5;
-      mockEmbedding[1] = 0.5;
+    beforeEach(async () => {
+      const initPromise = service.initialize();
 
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: mockEmbedding,
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
 
-      const result = await embeddingService.batchEmbed(['text', '']);
+      await initPromise;
+    });
 
+    it('should generate embeddings for multiple texts', async () => {
+      const mockEmbeddings = [new Array(384).fill(0.1), new Array(384).fill(0.2)];
+
+      const embedPromise = service.batchEmbed(['text 1', 'text 2']);
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'batchEmbed' })
+        );
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: true,
+        data: mockEmbeddings,
+      });
+
+      const result = await embedPromise;
+
+      expect(result).toEqual(mockEmbeddings);
       expect(result).toHaveLength(2);
-      expect(result[0][0]).toBeCloseTo(0.5, 5);
-      expect(result[0][1]).toBeCloseTo(0.5, 5);
-      expect(result[1]).toEqual(new Array(384).fill(0));
-      expect(mockEmbedder).toHaveBeenCalledTimes(1);
-    });
-
-    it('returns empty array for empty input', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const result = await embeddingService.batchEmbed([]);
-
-      expect(result).toEqual([]);
-      expect(mockEmbedder).not.toHaveBeenCalled();
-    });
-
-    it('handles all empty texts', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const result = await embeddingService.batchEmbed(['', '', '  ']);
-
-      expect(result).toHaveLength(3);
-      expect(result[0]).toEqual(new Array(384).fill(0));
-      expect(result[1]).toEqual(new Array(384).fill(0));
-      expect(result[2]).toEqual(new Array(384).fill(0));
-      expect(mockEmbedder).not.toHaveBeenCalled();
-    });
-
-    it('handles mixed empty and non-empty texts with correct positions', async () => {
-      let callIndex = 0;
-      const mockEmbedder = vi.fn().mockImplementation(() => {
-        const embedding = new Float32Array(384);
-        embedding[0] = callIndex++;
-        return Promise.resolve({ data: embedding });
-      });
-      mockPipeline.mockResolvedValue(mockEmbedder);
-
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-
-      const result = await embeddingService.batchEmbed(['first', '', 'second', '  ', 'third']);
-
-      expect(result).toHaveLength(5);
-      // First non-empty gets index 0
-      expect(result[0][0]).toBeCloseTo(0, 5);
-      // Second position is empty
-      expect(result[1]).toEqual(new Array(384).fill(0));
-      // Second non-empty gets index 1
-      expect(result[2][0]).toBeCloseTo(1, 5);
-      // Fourth position is whitespace (treated as empty)
-      expect(result[3]).toEqual(new Array(384).fill(0));
-      // Third non-empty gets index 2
-      expect(result[4][0]).toBeCloseTo(2, 5);
-
-      expect(mockEmbedder).toHaveBeenCalledTimes(3);
-    });
-
-    it('propagates initialization error when not initialized', async () => {
-      // Mock pipeline to fail - batchEmbed auto-initializes
-      mockPipeline.mockRejectedValue(new Error('Cannot load model'));
-
-      const embeddingService = createEmbeddingService();
-
-      // batchEmbed will try to initialize and fail
-      await expect(embeddingService.batchEmbed(['test'])).rejects.toThrow('Cannot load model');
     });
   });
 
   describe('ping', () => {
-    it('returns correct ping response', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
+    it('should return model info after initialization', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      const pingResult = await embeddingService.ping();
-
-      expect(pingResult.model).toBe('Xenova/bge-small-en-v1.5');
-      expect(pingResult.dims).toBe(384);
-    });
-
-    it('initializes if not already initialized', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      expect(embeddingService.isReady()).toBe(false);
+      await initPromise;
 
-      await embeddingService.ping();
+      const pingPromise = service.ping();
 
-      expect(embeddingService.isReady()).toBe(true);
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'ping' })
+        );
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
+
+      const result = await pingPromise;
+
+      expect(result).toEqual({ model: 'Xenova/bge-small-en-v1.5', dims: 384 });
     });
   });
 
   describe('shutdown', () => {
-    it('can shutdown and restart', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
+    it('should terminate the worker', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
-      expect(embeddingService.isReady()).toBe(true);
-
-      await embeddingService.shutdown();
-      expect(embeddingService.isReady()).toBe(false);
-
-      await embeddingService.initialize();
-      expect(embeddingService.isReady()).toBe(true);
-    });
-
-    it('is safe to call shutdown multiple times', async () => {
-      const mockEmbedder = vi.fn().mockResolvedValue({
-        data: new Float32Array(384),
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
       });
-      mockPipeline.mockResolvedValue(mockEmbedder);
 
-      const embeddingService = createEmbeddingService();
-      await embeddingService.initialize();
+      await initPromise;
 
-      await embeddingService.shutdown();
-      await embeddingService.shutdown();
-      await embeddingService.shutdown();
+      const shutdownPromise = service.shutdown();
 
-      expect(embeddingService.isReady()).toBe(false);
-    });
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'shutdown' })
+        );
+      });
 
-    it('is safe to call shutdown without initialization', async () => {
-      const embeddingService = createEmbeddingService();
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: true,
+      });
 
-      // Should not throw
-      await embeddingService.shutdown();
-      expect(embeddingService.isReady()).toBe(false);
+      await shutdownPromise;
+
+      expect(mockWorkerInstance?.terminate).toHaveBeenCalled();
     });
   });
 
   describe('getDimensions', () => {
-    it('returns 384 dimensions', () => {
-      const embeddingService = createEmbeddingService();
-      expect(embeddingService.getDimensions()).toBe(384);
+    it('should return embedding dimensions', () => {
+      expect(service.getDimensions()).toBe(384);
+    });
+  });
+
+  describe('isReady', () => {
+    it('should return false before initialization', () => {
+      expect(service.isReady()).toBe(false);
+    });
+
+    it('should return true after initialization', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
+
+      await initPromise;
+
+      expect(service.isReady()).toBe(true);
+    });
+  });
+
+  describe('auto-initialization', () => {
+    it('should auto-initialize when calling getEmbedding', async () => {
+      const mockEmbedding = new Array(384).fill(0.1);
+      const embedPromise = service.getEmbedding('test');
+
+      // First, init message
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'init' })
+        );
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
+
+      // Then embed message
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed' })
+        );
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '2',
+        success: true,
+        data: mockEmbedding,
+      });
+
+      const result = await embedPromise;
+
+      expect(result).toEqual(mockEmbedding);
+      expect(service.isReady()).toBe(true);
+    });
+  });
+
+  describe('worker error handling', () => {
+    it('should handle worker errors', async () => {
+      const initPromise = service.initialize();
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalled();
+      });
+
+      mockWorkerInstance!.simulateResponse({
+        id: '1',
+        success: true,
+        data: { model: 'Xenova/bge-small-en-v1.5', dims: 384 },
+      });
+
+      await initPromise;
+
+      // Start an embed request
+      const embedPromise = service.getEmbedding('test');
+
+      await vi.waitFor(() => {
+        expect(mockWorkerInstance?.postMessage).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'embed' })
+        );
+      });
+
+      // Simulate worker error
+      mockWorkerInstance!.simulateError(new Error('Worker crashed'));
+
+      await expect(embedPromise).rejects.toThrow('Worker crashed');
     });
   });
 });

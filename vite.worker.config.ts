@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite';
 import path from 'path';
 
+/**
+ * Vite config for building the embedding worker
+ * Workers run in their own thread with `self` defined
+ */
 export default defineConfig({
   resolve: {
     alias: {
@@ -12,32 +16,22 @@ export default defineConfig({
   },
   build: {
     target: 'node18',
-    outDir: 'dist/main',
-    emptyOutDir: true,
+    outDir: 'dist/main/workers',
+    emptyOutDir: false,
     lib: {
-      entry: path.resolve(__dirname, 'src/main/index.ts'),
+      entry: path.resolve(__dirname, 'src/main/workers/embedding.worker.ts'),
       formats: ['cjs'],
-      fileName: () => 'index.cjs',
+      fileName: () => 'embedding.worker.js',
     },
     rollupOptions: {
       external: [
-        'electron',
-        '@libsql/client',
-        '@libsql/client/sqlite3',
-        'vectra',
-        'electron-store',
-        'electron-log',
-        'nanoid',
-        'jsdom',
-        'font-list',
+        // Node.js built-ins
+        'worker_threads',
         'path',
         'fs',
         'fs/promises',
         'crypto',
         'os',
-        'child_process',
-        'readline',
-        'vm',
         'url',
         'util',
         'http',
@@ -52,7 +46,6 @@ export default defineConfig({
         'node:fs/promises',
         'node:crypto',
         'node:os',
-        'node:vm',
         'node:url',
         'node:util',
         'node:http',
@@ -62,19 +55,14 @@ export default defineConfig({
         'node:net',
         'node:tls',
         'node:assert',
-        'node:child_process',
-        'node:readline',
-        'worker_threads',
         'node:worker_threads',
-        // Watcher/libs
-        'chokidar',
-        'readdirp',
-        'events',
-        'node:events',
-        'node:stream',
-        // Note: @xenova/transformers is loaded in a worker thread, not in main process
-        // The worker has `self` defined, so no polyfill needed
+        // ONNX runtime - must be external, loaded at runtime
+        'onnxruntime-node',
+        'onnxruntime-web',
+        'onnxruntime-common',
         'sharp',
+        // Transformers.js - must be external for proper ONNX backend selection
+        '@xenova/transformers',
       ],
     },
   },
