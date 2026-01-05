@@ -1,36 +1,64 @@
 /**
- * EmbeddingService - Generates text embeddings using Transformers.js
+ * EmbeddingService - Generates text embeddings using Transformers.js in a worker thread
  *
- * Uses @xenova/transformers (ONNX Runtime) for pure JavaScript embeddings.
- * No Python dependency required - works in Electron and standalone mode.
+ * Uses a worker thread to run @xenova/transformers, which:
+ * 1. Avoids the 'self is not defined' issue (workers have `self`)
+ * 2. Keeps the main Electron process responsive during inference
+ * 3. Isolates heavy ML operations from the UI thread
  */
 
-// Polyfill for 'self' - required by @xenova/transformers in Node.js/Electron main process
-// Must be set before importing the library
-if (typeof globalThis.self === 'undefined') {
-  (globalThis as any).self = globalThis;
-}
-
+import { Worker } from 'worker_threads';
+import path from 'node:path';
 import { logger } from '../utils/logger';
-
-// Dynamic import for transformers.js to avoid issues with module loading
-type Pipeline = Awaited<ReturnType<typeof import('@xenova/transformers')['pipeline']>>;
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 
+interface PendingRequest {
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+}
+
+interface WorkerResponse {
+  id?: string;
+  type?: string;
+  success?: boolean;
+  data?: unknown;
+  error?: string;
+}
+
 export class EmbeddingService {
-  private pipeline: Pipeline | null = null;
+  private worker: Worker | null = null;
+  private pendingRequests: Map<string, PendingRequest> = new Map();
+  private requestId = 0;
   private initialized = false;
   private initializing: Promise<void> | null = null;
+  private workerReady = false;
 
   /**
-   * Initialize the embedding service by loading the model
+   * Get the worker script path (handles both dev and packaged app)
+   */
+  private getWorkerPath(): string {
+    // In development, use the TypeScript source
+    // In production, use the compiled JavaScript
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    if (isDev) {
+      // During development, we need to compile the worker on-the-fly
+      // or use ts-node. For simplicity, we'll use the built version.
+      return path.join(__dirname, 'workers', 'embedding.worker.js');
+    }
+
+    // In packaged app, use the bundled worker
+    return path.join(__dirname, 'workers', 'embedding.worker.js');
+  }
+
+  /**
+   * Initialize the embedding service by spawning the worker
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    // If already initializing, wait for it
     if (this.initializing) {
       await this.initializing;
       return;
@@ -42,30 +70,76 @@ export class EmbeddingService {
 
   private async doInitialize(): Promise<void> {
     try {
-      logger.info('[EmbeddingService] Loading embedding model...');
-      logger.info(`[EmbeddingService] Model: ${MODEL_NAME}`);
+      logger.info('[EmbeddingService] Starting worker thread...');
 
-      // Ensure polyfill is set before dynamic import (belt and suspenders)
-      if (typeof globalThis.self === 'undefined') {
-        (globalThis as any).self = globalThis;
-      }
+      // Spawn worker
+      const workerPath = this.getWorkerPath();
+      logger.info(`[EmbeddingService] Worker path: ${workerPath}`);
 
-      // Dynamic import to handle module loading
-      const { pipeline, env } = await import('@xenova/transformers');
+      this.worker = new Worker(workerPath);
 
-      // Configure transformers.js for Node.js environment
-      // Disable browser-specific features
-      env.allowLocalModels = true;
-      env.useBrowserCache = false;
+      // Wait for worker to be ready
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Worker initialization timeout'));
+        }, 30000);
 
-      // Create feature extraction pipeline
-      // The model will be downloaded on first use (~25MB for quantized ONNX)
-      this.pipeline = await pipeline('feature-extraction', MODEL_NAME, {
-        quantized: true, // Use quantized model for smaller size and faster inference
+        this.worker!.on('message', (msg: WorkerResponse) => {
+          if (msg.type === 'ready') {
+            clearTimeout(timeout);
+            this.workerReady = true;
+            resolve();
+          }
+        });
+
+        this.worker!.on('error', (err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
       });
 
+      // Set up message handler for responses
+      this.worker.on('message', (msg: WorkerResponse) => {
+        if (msg.type === 'ready') return; // Already handled
+
+        const { id, success, data, error } = msg;
+        if (!id) return;
+
+        const pending = this.pendingRequests.get(id);
+        if (pending) {
+          this.pendingRequests.delete(id);
+          if (success) {
+            pending.resolve(data);
+          } else {
+            pending.reject(new Error(error || 'Unknown worker error'));
+          }
+        }
+      });
+
+      this.worker.on('error', (err) => {
+        logger.error('[EmbeddingService] Worker error:', err);
+        // Reject all pending requests
+        for (const [id, pending] of this.pendingRequests) {
+          pending.reject(err);
+          this.pendingRequests.delete(id);
+        }
+      });
+
+      this.worker.on('exit', (code) => {
+        if (code !== 0) {
+          logger.error(`[EmbeddingService] Worker exited with code ${code}`);
+        }
+        this.worker = null;
+        this.initialized = false;
+        this.workerReady = false;
+      });
+
+      // Initialize the model in the worker
+      logger.info('[EmbeddingService] Initializing model in worker...');
+      const result = await this.sendMessage<{ model: string; dims: number }>('init', {});
+      logger.info(`[EmbeddingService] Model ready: ${result.model} (${result.dims} dims)`);
+
       this.initialized = true;
-      logger.info(`[EmbeddingService] Model ready: ${MODEL_NAME} (${EMBEDDING_DIMS} dims)`);
     } catch (error) {
       logger.error('[EmbeddingService] Failed to initialize:', error);
       this.initialized = false;
@@ -76,12 +150,44 @@ export class EmbeddingService {
   }
 
   /**
+   * Send a message to the worker and wait for response
+   */
+  private sendMessage<T>(type: string, payload: Record<string, unknown>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      if (!this.worker || !this.workerReady) {
+        reject(new Error('Worker not ready'));
+        return;
+      }
+
+      const id = String(++this.requestId);
+      this.pendingRequests.set(id, {
+        resolve: resolve as (value: unknown) => void,
+        reject,
+      });
+
+      this.worker.postMessage({ type, id, ...payload });
+    });
+  }
+
+  /**
    * Shutdown the embedding service
    */
   async shutdown(): Promise<void> {
     logger.info('[EmbeddingService] Shutting down...');
-    this.pipeline = null;
+
+    if (this.worker && this.workerReady) {
+      try {
+        await this.sendMessage('shutdown', {});
+      } catch {
+        // Ignore errors during shutdown
+      }
+      await this.worker.terminate();
+    }
+
+    this.worker = null;
     this.initialized = false;
+    this.workerReady = false;
+    this.pendingRequests.clear();
   }
 
   /**
@@ -91,10 +197,8 @@ export class EmbeddingService {
     if (!this.initialized) {
       await this.initialize();
     }
-    return {
-      model: MODEL_NAME,
-      dims: EMBEDDING_DIMS,
-    };
+
+    return this.sendMessage<{ model: string; dims: number }>('ping', {});
   }
 
   /**
@@ -105,32 +209,7 @@ export class EmbeddingService {
       await this.initialize();
     }
 
-    if (!text || text.trim().length === 0) {
-      // Return zero vector for empty text
-      return new Array(EMBEDDING_DIMS).fill(0);
-    }
-
-    if (!this.pipeline) {
-      throw new Error('Embedding pipeline not initialized');
-    }
-
-    try {
-      // Generate embedding with mean pooling and normalization
-      const output = await this.pipeline(text, {
-        pooling: 'mean',
-        normalize: true,
-      } as any);
-
-      // Extract the embedding array from the tensor
-      // The output is a Tensor with a data property containing Float32Array
-      const tensor = output as { data: Float32Array };
-      const embedding = Array.from(tensor.data);
-
-      return embedding;
-    } catch (error) {
-      logger.error('[EmbeddingService] Failed to generate embedding:', error);
-      throw error;
-    }
+    return this.sendMessage<number[]>('embed', { text });
   }
 
   /**
@@ -141,63 +220,14 @@ export class EmbeddingService {
       await this.initialize();
     }
 
-    if (texts.length === 0) {
-      return [];
-    }
-
-    if (!this.pipeline) {
-      throw new Error('Embedding pipeline not initialized');
-    }
-
-    // Filter out empty texts, keeping track of indices
-    const nonEmptyIndices: number[] = [];
-    const nonEmptyTexts: string[] = [];
-
-    texts.forEach((text, i) => {
-      if (text && text.trim().length > 0) {
-        nonEmptyIndices.push(i);
-        nonEmptyTexts.push(text);
-      }
-    });
-
-    if (nonEmptyTexts.length === 0) {
-      // All texts were empty, return zero vectors
-      return texts.map(() => new Array(EMBEDDING_DIMS).fill(0));
-    }
-
-    try {
-      // Process texts in batch
-      const outputs = await Promise.all(
-        nonEmptyTexts.map((text) =>
-          this.pipeline!(text, {
-            pooling: 'mean',
-            normalize: true,
-          } as any)
-        )
-      );
-
-      // Reconstruct full array with zero vectors for empty texts
-      const result: number[][] = texts.map(() => new Array(EMBEDDING_DIMS).fill(0));
-
-      outputs.forEach((output, i) => {
-        const originalIndex = nonEmptyIndices[i];
-        // The output is a Tensor with a data property containing Float32Array
-        const tensor = output as { data: Float32Array };
-        result[originalIndex] = Array.from(tensor.data);
-      });
-
-      return result;
-    } catch (error) {
-      logger.error('[EmbeddingService] Failed to batch embed:', error);
-      throw error;
-    }
+    return this.sendMessage<number[][]>('batchEmbed', { texts });
   }
 
   /**
    * Check if the service is ready
    */
   isReady(): boolean {
-    return this.initialized && this.pipeline !== null;
+    return this.initialized && this.workerReady && this.worker !== null;
   }
 
   /**
