@@ -156,18 +156,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     setRawDirty(true);
   }, []);
 
-  // Handle mode toggle with unsaved changes warning
-  const handleModeToggle = useCallback(() => {
-    const hasUnsavedChanges = editorMode === 'raw' ? rawDirty : isDirty;
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Switch modes anyway? Changes will be preserved but not saved.'
-      );
-      return confirmed;
-    }
-    return true;
-  }, [editorMode, rawDirty, isDirty]);
-
   // Enable image paste/drag-drop upload
   useImageUpload({
     editor,
@@ -205,6 +193,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       await save();
     }
   }, [editorMode, rawDirty, rawMarkdown, activeNoteId, updateNote, save]);
+
+  // Handle mode toggle - auto-save before switching
+  const handleModeToggle = useCallback(async () => {
+    const hasUnsavedChanges = editorMode === 'raw' ? rawDirty : isDirty;
+    if (hasUnsavedChanges) {
+      // Auto-save before switching modes
+      await handleSave();
+      logger.info('[NoteEditor] Auto-saved before mode toggle');
+    }
+    return true;
+  }, [editorMode, rawDirty, isDirty, handleSave]);
 
   // Create sibling note
   const handleCreateSiblingNote = useCallback(async () => {

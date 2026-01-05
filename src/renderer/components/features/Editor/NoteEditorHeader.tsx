@@ -50,7 +50,7 @@ export interface NoteEditorHeaderProps {
   onExportHtml?: () => void;
   onExportPdf?: () => void;
   onExportMarkdown?: () => void;
-  onModeToggle?: () => boolean; // Returns true if mode switch should proceed
+  onModeToggle?: () => Promise<boolean> | boolean; // Returns true if mode switch should proceed
 }
 
 export function NoteEditorHeader({
@@ -72,10 +72,11 @@ export function NoteEditorHeader({
 }: NoteEditorHeaderProps) {
   const { toggleSidebar, sidebarOpen, editorMode, toggleEditorMode } = useUIStore();
 
-  const handleModeToggle = useCallback(() => {
+  const handleModeToggle = useCallback(async () => {
     // If onModeToggle returns false, don't toggle
-    if (onModeToggle && !onModeToggle()) {
-      return;
+    if (onModeToggle) {
+      const shouldProceed = await onModeToggle();
+      if (!shouldProceed) return;
     }
     toggleEditorMode();
   }, [onModeToggle, toggleEditorMode]);
