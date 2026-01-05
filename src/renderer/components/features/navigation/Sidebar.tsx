@@ -30,6 +30,7 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
+import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
 import { cn } from '@renderer/lib/utils';
 import { noteAPI, workspaceAPI } from '@renderer/api';
 import { events } from '@renderer/lib/events';
@@ -284,6 +285,9 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto px-1.5 py-1">
         <FileTree />
       </div>
+
+      {/* ML Status Indicator */}
+      <MLStatusIndicator />
 
       <CreateWorkspaceModal
         isOpen={workspaceModalOpen}

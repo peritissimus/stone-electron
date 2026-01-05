@@ -11,6 +11,7 @@
 import { TOPIC_CHANNELS, EVENTS } from '@shared/constants/ipcChannels';
 import { registerHandler, IpcError } from '../utils';
 import { logger } from '../../utils/logger';
+import { getMLStatusService } from '../../services/MLStatusService';
 import type { Container } from '../../api/container';
 import type { AwilixContainer } from 'awilix';
 
@@ -191,6 +192,8 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   registerHandler(
     TOPIC_CHANNELS.CLASSIFY_NOTE,
     async (event, request: { noteId: string }) => {
+      const mlStatus = getMLStatusService();
+
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
@@ -200,15 +203,27 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
         throw new IpcError('NOT_FOUND', 'Note not found');
       }
 
-      const results = await topicService.classifyNote(request.noteId);
-
-      // Broadcast event
-      eventBus.emit(EVENTS.NOTE_CLASSIFIED, {
-        noteId: request.noteId,
-        topics: results,
+      const operationId = mlStatus.startOperation('classify-note', {
+        message: `Classifying "${note.title}"`,
       });
 
-      return { noteId: request.noteId, topics: results };
+      try {
+        const results = await topicService.classifyNote(request.noteId);
+
+        // Broadcast event
+        eventBus.emit(EVENTS.NOTE_CLASSIFIED, {
+          noteId: request.noteId,
+          topics: results,
+        });
+
+        mlStatus.completeOperation(operationId, { topics: results.length });
+
+        return { noteId: request.noteId, topics: results };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Classification failed';
+        mlStatus.failOperation(operationId, errorMessage);
+        throw error;
+      }
     }
   );
 
@@ -216,6 +231,8 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   registerHandler(
     TOPIC_CHANNELS.CLASSIFY_ALL,
     async (event, request?: { excludeJournal?: boolean }) => {
+      const mlStatus = getMLStatusService();
+
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
@@ -237,31 +254,47 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
 
       logger.info(`[TopicHandlers] Starting bulk classification of ${total} notes`);
 
-      for (const note of notesToProcess) {
-        try {
-          await topicService.classifyNote(note.id);
-          processed++;
+      const operationId = mlStatus.startOperation('classify-all', {
+        totalItems: total,
+        message: 'Classifying notes without embeddings',
+      });
 
-          // Send progress updates every 10 notes
-          if (processed % 10 === 0) {
-            eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
-              processed,
-              total,
-              failed,
-            });
+      try {
+        for (const note of notesToProcess) {
+          try {
+            await topicService.classifyNote(note.id);
+            processed++;
+
+            // Update progress
+            mlStatus.updateProgress(operationId, processed, total, `Processing ${note.title}`);
+
+            // Also emit legacy progress event
+            if (processed % 10 === 0) {
+              eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
+                processed,
+                total,
+                failed,
+              });
+            }
+          } catch (error) {
+            logger.error(`[TopicHandlers] Failed to classify note ${note.id}:`, error);
+            failed++;
           }
-        } catch (error) {
-          logger.error(`[TopicHandlers] Failed to classify note ${note.id}:`, error);
-          failed++;
         }
+
+        // Recompute centroids after bulk classification
+        await topicService.recomputeAllCentroids();
+
+        logger.info(`[TopicHandlers] Bulk classification complete: ${processed}/${total} (${failed} failed)`);
+
+        mlStatus.completeOperation(operationId, { processed, total, failed });
+
+        return { processed, total, failed };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Bulk classification failed';
+        mlStatus.failOperation(operationId, errorMessage);
+        throw error;
       }
-
-      // Recompute centroids after bulk classification
-      await topicService.recomputeAllCentroids();
-
-      logger.info(`[TopicHandlers] Bulk classification complete: ${processed}/${total} (${failed} failed)`);
-
-      return { processed, total, failed };
     }
   );
 
@@ -269,6 +302,8 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   registerHandler(
     TOPIC_CHANNELS.RECLASSIFY_ALL,
     async (event, request?: { excludeJournal?: boolean }) => {
+      const mlStatus = getMLStatusService();
+
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
@@ -294,35 +329,51 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
 
       logger.info(`[TopicHandlers] Starting FULL reclassification of ${total} active notes`);
 
-      for (const note of allNotes) {
-        try {
-          const result = await topicService.classifyNote(note.id);
-          if (result.length === 0) {
-            skipped++; // Empty notes are skipped
-          }
-          processed++;
+      const operationId = mlStatus.startOperation('reclassify-all', {
+        totalItems: total,
+        message: 'Reclassifying all notes',
+      });
 
-          // Send progress updates every 10 notes
-          if (processed % 10 === 0) {
-            eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
-              processed,
-              total,
-              failed,
-              skipped,
-            });
+      try {
+        for (const note of allNotes) {
+          try {
+            const result = await topicService.classifyNote(note.id);
+            if (result.length === 0) {
+              skipped++; // Empty notes are skipped
+            }
+            processed++;
+
+            // Update progress
+            mlStatus.updateProgress(operationId, processed, total, `Processing ${note.title}`);
+
+            // Also emit legacy progress event
+            if (processed % 10 === 0) {
+              eventBus.emit(EVENTS.EMBEDDING_PROGRESS, {
+                processed,
+                total,
+                failed,
+                skipped,
+              });
+            }
+          } catch (error) {
+            logger.error(`[TopicHandlers] Failed to reclassify note ${note.id}:`, error);
+            failed++;
           }
-        } catch (error) {
-          logger.error(`[TopicHandlers] Failed to reclassify note ${note.id}:`, error);
-          failed++;
         }
+
+        // Recompute centroids after reclassification
+        await topicService.recomputeAllCentroids();
+
+        logger.info(`[TopicHandlers] Full reclassification complete: ${processed}/${total} (${failed} failed, ${skipped} skipped empty)`);
+
+        mlStatus.completeOperation(operationId, { processed, total, failed, skipped });
+
+        return { processed, total, failed, skipped };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Reclassification failed';
+        mlStatus.failOperation(operationId, errorMessage);
+        throw error;
       }
-
-      // Recompute centroids after reclassification
-      await topicService.recomputeAllCentroids();
-
-      logger.info(`[TopicHandlers] Full reclassification complete: ${processed}/${total} (${failed} failed, ${skipped} skipped empty)`);
-
-      return { processed, total, failed, skipped };
     }
   );
 
@@ -330,12 +381,25 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   registerHandler(
     TOPIC_CHANNELS.SEMANTIC_SEARCH,
     async (event, request: { query: string; limit?: number }) => {
+      const mlStatus = getMLStatusService();
+
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
 
-      const results = await topicService.semanticSearch(request.query, request.limit || 10);
-      return { results };
+      const operationId = mlStatus.startOperation('semantic-search', {
+        message: `Searching: "${request.query.slice(0, 50)}${request.query.length > 50 ? '...' : ''}"`,
+      });
+
+      try {
+        const results = await topicService.semanticSearch(request.query, request.limit || 10);
+        mlStatus.completeOperation(operationId, { resultCount: results.length });
+        return { results };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Search failed';
+        mlStatus.failOperation(operationId, errorMessage);
+        throw error;
+      }
     }
   );
 
@@ -361,12 +425,25 @@ export function registerTopicHandlers(container: AwilixContainer<Container>) {
   registerHandler(
     TOPIC_CHANNELS.RECOMPUTE_CENTROIDS,
     async () => {
+      const mlStatus = getMLStatusService();
+
       if (!topicService.isReady()) {
         await topicService.initialize();
       }
 
-      await topicService.recomputeAllCentroids();
-      return { success: true };
+      const operationId = mlStatus.startOperation('compute-centroids', {
+        message: 'Recomputing topic centroids',
+      });
+
+      try {
+        await topicService.recomputeAllCentroids();
+        mlStatus.completeOperation(operationId);
+        return { success: true };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Centroid computation failed';
+        mlStatus.failOperation(operationId, errorMessage);
+        throw error;
+      }
     }
   );
 

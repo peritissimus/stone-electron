@@ -177,6 +177,13 @@ export const EVENTS = {
   TOPIC_DELETED: 'topics:deleted',
   NOTE_CLASSIFIED: 'topics:noteClassified',
   EMBEDDING_PROGRESS: 'topics:embeddingProgress',
+
+  // ML Service status events
+  ML_STATUS_CHANGED: 'ml:statusChanged',
+  ML_OPERATION_STARTED: 'ml:operationStarted',
+  ML_OPERATION_PROGRESS: 'ml:operationProgress',
+  ML_OPERATION_COMPLETED: 'ml:operationCompleted',
+  ML_OPERATION_ERROR: 'ml:operationError',
 } as const;
 
 // Get all channels as an array for validation
