@@ -68,12 +68,20 @@ function GitSyncButton() {
     loadStatus();
   }, [loadStatus]);
 
-  // Refresh status periodically (every 30 seconds)
+  // Refresh status on file changes (instead of polling)
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    const interval = setInterval(loadStatus, 30000);
-    return () => clearInterval(interval);
+    // Refresh git status when files change
+    const offCreated = events.onFileCreated(() => loadStatus());
+    const offChanged = events.onFileChanged(() => loadStatus());
+    const offDeleted = events.onFileDeleted(() => loadStatus());
+
+    return () => {
+      offCreated();
+      offChanged();
+      offDeleted();
+    };
   }, [activeWorkspaceId, loadStatus]);
 
   // Handle sync
