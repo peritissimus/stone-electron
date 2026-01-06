@@ -143,11 +143,24 @@ app.on('ready', async () => {
  * Quit when all windows are closed
  */
 app.on('window-all-closed', () => {
-  // Close database before quitting
+  // On macOS, apps typically stay open until explicitly quit
+  // Don't close DB/watchers here - they're needed when window reopens
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
+});
+
+/**
+ * Clean up before quitting
+ */
+app.on('before-quit', () => {
+  logger.info('App quitting, cleaning up...');
+
+  // Close database
   const dbManager = getDatabaseManager();
   dbManager.close();
 
-  // Stop watchers (use container if available)
+  // Stop watchers
   try {
     const container = getContainer();
     container.cradle.fileWatcherService
@@ -155,10 +168,6 @@ app.on('window-all-closed', () => {
       .catch(() => {});
   } catch {
     // Container may not be initialized yet
-  }
-
-  if (process.platform !== 'darwin') {
-    app.quit();
   }
 });
 

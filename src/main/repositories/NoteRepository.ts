@@ -236,7 +236,8 @@ export class NoteRepository {
    * Create a new note
    */
   async create(data: Partial<Note>): Promise<Note> {
-    const id = generateId();
+    // Use provided ID if available, otherwise generate new one
+    const id = data.id || generateId();
     const now = new Date();
     const title = data.title?.trim() || 'Untitled Note';
     const requestedFolder = this.normalizeFolderPath((data as any).folderPath);
