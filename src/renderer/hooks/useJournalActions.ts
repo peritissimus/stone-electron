@@ -115,7 +115,6 @@ export function useJournalActions() {
     try {
       const newNote = await createNote({
         title: journalFilename,
-        content: `# ${journalTitle}\n\n`,
         folderPath: 'Journal',
       });
 
