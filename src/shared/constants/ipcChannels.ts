@@ -138,6 +138,11 @@ export const GIT_CHANNELS = {
   GET_COMMITS: 'git:getCommits',
 } as const;
 
+// Quick Capture Operations
+export const QUICK_CAPTURE_CHANNELS = {
+  APPEND_TO_JOURNAL: 'quickCapture:appendToJournal',
+} as const;
+
 // Events
 export const EVENTS = {
   // Workspace events
@@ -213,6 +218,7 @@ export const ALL_CHANNELS = [
   ...Object.values(SETTINGS_CHANNELS),
   ...Object.values(SYSTEM_CHANNELS),
   ...Object.values(GIT_CHANNELS),
+  ...Object.values(QUICK_CAPTURE_CHANNELS),
 ];
 
 // Get all events as an array
