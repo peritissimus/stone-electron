@@ -3,7 +3,7 @@
  */
 
 import 'dotenv/config';
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
 import { isDev } from './utils/environment';
 import { getDatabaseManager } from './database';
@@ -23,6 +23,7 @@ logger.info(`__dirname: ${__dirname}`);
 logger.info('='.repeat(60));
 
 let mainWindow: BrowserWindow | null = null;
+let quickCaptureWindow: BrowserWindow | null = null;
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
@@ -103,6 +104,60 @@ async function createWindow() {
 }
 
 /**
+ * Create the quick capture floating window
+ */
+function createQuickCaptureWindow() {
+  if (quickCaptureWindow) {
+    quickCaptureWindow.focus();
+    return;
+  }
+
+  const preloadPath = path.join(__dirname, '../preload.cjs');
+
+  quickCaptureWindow = new BrowserWindow({
+    width: 500,
+    height: 140,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    show: false,
+    transparent: process.platform === 'darwin',
+    backgroundColor: process.platform === 'darwin' ? undefined : '#ffffff',
+    vibrancy: process.platform === 'darwin' ? 'popover' : undefined,
+    visualEffectState: 'active',
+    webPreferences: {
+      preload: preloadPath,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+
+  // Load quick capture route
+  if (isDev) {
+    quickCaptureWindow.loadURL('http://localhost:5173/#/quick-capture');
+  } else {
+    const htmlPath = path.join(__dirname, '../renderer/index.html');
+    quickCaptureWindow.loadFile(htmlPath, { hash: '/quick-capture' });
+  }
+
+  quickCaptureWindow.once('ready-to-show', () => {
+    quickCaptureWindow?.show();
+    quickCaptureWindow?.focus();
+  });
+
+  quickCaptureWindow.on('blur', () => {
+    quickCaptureWindow?.close();
+  });
+
+  quickCaptureWindow.on('closed', () => {
+    quickCaptureWindow = null;
+  });
+
+  logger.info('[QuickCapture] Window created');
+}
+
+/**
  * App ready event
  */
 app.on('ready', async () => {
@@ -126,6 +181,19 @@ app.on('ready', async () => {
     // Create window
     await createWindow();
     logger.info('✓ Application window created');
+
+    // Register global shortcut for quick capture
+    const quickCaptureShortcut = 'Alt+Space';
+    const registered = globalShortcut.register(quickCaptureShortcut, () => {
+      logger.info('[QuickCapture] Global shortcut triggered');
+      createQuickCaptureWindow();
+    });
+
+    if (registered) {
+      logger.info(`✓ Global shortcut registered: ${quickCaptureShortcut}`);
+    } else {
+      logger.warn(`✗ Failed to register global shortcut: ${quickCaptureShortcut}`);
+    }
 
     // Start file watcher for all workspaces
     try {
@@ -155,6 +223,9 @@ app.on('window-all-closed', () => {
  */
 app.on('before-quit', () => {
   logger.info('App quitting, cleaning up...');
+
+  // Unregister all global shortcuts
+  globalShortcut.unregisterAll();
 
   // Close database
   const dbManager = getDatabaseManager();

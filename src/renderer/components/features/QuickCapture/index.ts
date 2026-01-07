@@ -1,0 +1,1 @@
+export { QuickCaptureWindow } from './QuickCaptureWindow';

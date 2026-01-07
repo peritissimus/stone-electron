@@ -2,14 +2,21 @@
  * Stone - Main App Component
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MainLayout } from '@renderer/components/composites';
+import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
 import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
 
 export const App: React.FC = () => {
   const theme = useUIStore((state) => state.theme);
   const accentColor = useUIStore((state) => state.accentColor);
   const fontSettings = useUIStore((state) => state.fontSettings);
+
+  // Check if this is the quick capture window
+  const [isQuickCapture] = useState(() => {
+    const hash = window.location.hash;
+    return hash === '#/quick-capture' || hash === '/quick-capture';
+  });
 
   // Apply theme
   useEffect(() => {
@@ -70,6 +77,11 @@ export const App: React.FC = () => {
     root.style.setProperty('--font-mono', fontSettings.monoFont);
     root.style.setProperty('--font-mono-size', `${fontSettings.monoFontSize}px`);
   }, [fontSettings]);
+
+  // Render quick capture window if that's the route
+  if (isQuickCapture) {
+    return <QuickCaptureWindow />;
+  }
 
   return <MainLayout />;
 };
