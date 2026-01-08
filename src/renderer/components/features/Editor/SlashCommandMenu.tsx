@@ -3,7 +3,6 @@
  */
 
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
-import { cn } from '@renderer/lib/utils';
 import {
   TextHOne,
   TextHTwo,
@@ -17,6 +16,7 @@ import {
   Clock,
   TreeStructure,
 } from 'phosphor-react';
+import { CommandMenuItem } from '@renderer/components/composites';
 
 export interface SlashCommandItem {
   title: string;
@@ -87,25 +87,16 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenu
       >
         <div className="p-1">
           {items.map((item, index) => (
-            <button
+            <CommandMenuItem
               key={index}
-              type="button"
+              icon={item.icon}
+              title={item.title}
+              description={item.description}
+              size="spacious"
+              isSelected={index === selectedIndex}
               onClick={() => selectItem(index)}
               onMouseEnter={() => setSelectedIndex(index)}
-              className={cn(
-                'w-full flex items-start gap-3 px-3 py-2.5 rounded-md text-left transition-colors',
-                'hover:bg-accent cursor-pointer',
-                index === selectedIndex && 'bg-accent',
-              )}
-            >
-              <div className="flex-shrink-0 mt-0.5 text-muted-foreground">{item.icon}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-foreground">{item.title}</div>
-                <div className="text-xs text-muted-foreground line-clamp-1">
-                  {item.description}
-                </div>
-              </div>
-            </button>
+            />
           ))}
         </div>
       </div>

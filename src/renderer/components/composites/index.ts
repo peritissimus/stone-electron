@@ -35,6 +35,7 @@ export {
   type ToolbarDividerProps,
 } from './ToolbarButton';
 export { InputModal, type InputModalProps } from './InputModal';
+export { CommandMenuItem, type CommandMenuItemProps } from './CommandMenuItem';
 
 // Layout components
 export { LayoutContainer, type LayoutContainerProps } from './layout/LayoutContainer';
