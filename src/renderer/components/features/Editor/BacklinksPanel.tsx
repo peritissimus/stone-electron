@@ -10,6 +10,7 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { cn } from '@renderer/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { logger } from '@renderer/utils/logger';
+import { ListItem, SectionHeader } from '@renderer/components/composites';
 
 export interface BacklinksPanelProps {
   noteId: string;
@@ -25,37 +26,31 @@ function BacklinkItem({ note, onClick }: BacklinkItemProps) {
     ? note.filePath.slice(0, note.filePath.lastIndexOf('/'))
     : '';
 
+  const timeAgo = note.updatedAt
+    ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
+    : null;
+
   return (
-    <button
+    <ListItem
+      size="normal"
       onClick={onClick}
-      className={cn(
-        'w-full text-left px-3 py-2',
-        'flex items-center gap-2',
-        'rounded-md',
-        'transition-colors',
-        'hover:bg-muted/50',
-        'group'
-      )}
-    >
-      <Link size={14} className="text-muted-foreground shrink-0" weight="bold" />
-      <div className="flex-1 min-w-0">
-        <div className="font-medium text-sm line-clamp-1">{note.title}</div>
-        {folderPath && (
-          <div className="text-xs text-muted-foreground line-clamp-1">
-            {folderPath}
-          </div>
-        )}
-      </div>
-      <div className="text-xs text-muted-foreground shrink-0 hidden group-hover:flex items-center gap-1">
-        <span>Open</span>
-        <ArrowRight size={12} />
-      </div>
-      {note.updatedAt && (
-        <div className="text-xs text-muted-foreground shrink-0 group-hover:hidden">
-          {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
-        </div>
-      )}
-    </button>
+      className="group rounded-md border-none"
+      left={<Link size={14} weight="bold" />}
+      title={note.title}
+      subtitle={folderPath}
+      right={
+        <>
+          <span className="text-xs text-muted-foreground hidden group-hover:flex items-center gap-1">
+            Open <ArrowRight size={12} />
+          </span>
+          {timeAgo && (
+            <span className="text-xs text-muted-foreground group-hover:hidden">
+              {timeAgo}
+            </span>
+          )}
+        </>
+      }
+    />
   );
 }
 
@@ -149,9 +144,12 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
               {/* Backlinks Section */}
               {backlinks.length > 0 && (
                 <div>
-                  <div className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {backlinks.length} {backlinks.length === 1 ? 'note links' : 'notes link'} to this
-                  </div>
+                  <SectionHeader
+                    size="compact"
+                    divided={false}
+                    title={`${backlinks.length} ${backlinks.length === 1 ? 'note links' : 'notes link'} to this`}
+                    className="text-muted-foreground uppercase tracking-wider"
+                  />
                   <div className="space-y-0.5">
                     {backlinks.map((note) => (
                       <BacklinkItem
@@ -167,9 +165,12 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
               {/* Forward Links Section */}
               {forwardLinks.length > 0 && (
                 <div>
-                  <div className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    This note links to {forwardLinks.length} {forwardLinks.length === 1 ? 'note' : 'notes'}
-                  </div>
+                  <SectionHeader
+                    size="compact"
+                    divided={false}
+                    title={`This note links to ${forwardLinks.length} ${forwardLinks.length === 1 ? 'note' : 'notes'}`}
+                    className="text-muted-foreground uppercase tracking-wider"
+                  />
                   <div className="space-y-0.5">
                     {forwardLinks.map((note) => (
                       <BacklinkItem

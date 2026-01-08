@@ -12,6 +12,7 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
+import { ListItem } from '@renderer/components/composites';
 
 interface TodoListProps {
   onTodoClick?: (noteId: string) => void;
@@ -174,25 +175,24 @@ export function TodoList({ onTodoClick }: TodoListProps) {
   return (
     <div className="space-y-2">
       {todos.map((todo) => (
-        <div
+        <ListItem
           key={todo.id}
-          className="flex items-start gap-3 p-3 rounded-lg hover:bg-accent/10 cursor-pointer transition-colors group"
+          size="normal"
           onClick={() => handleTodoClick(todo)}
+          className="rounded-lg border-none group"
+          left={<StateIcon state={todo.state} />}
+          right={
+            <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          }
         >
-          <div className="flex-shrink-0 mt-0.5">
-            <StateIcon state={todo.state} />
+          <div className="flex items-center gap-2 mb-1">
+            <StateLabel state={todo.state} />
+            {todo.noteTitle && (
+              <span className="text-xs text-muted-foreground truncate">{todo.noteTitle}</span>
+            )}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <StateLabel state={todo.state} />
-              {todo.noteTitle && (
-                <span className="text-xs text-muted-foreground truncate">{todo.noteTitle}</span>
-              )}
-            </div>
-            <p className="text-sm line-clamp-2">{todo.text}</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-        </div>
+          <p className="text-sm line-clamp-2">{todo.text}</p>
+        </ListItem>
       ))}
     </div>
   );
