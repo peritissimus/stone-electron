@@ -1,3 +1,10 @@
+/**
+ * Database Schema
+ *
+ * Shared database schema definitions used by both adapters and infrastructure layers.
+ * This is the single source of truth for all table definitions.
+ */
+
 import { sqliteTable, text, integer, index, real, blob, primaryKey } from 'drizzle-orm/sqlite-core';
 
 // Workspaces table

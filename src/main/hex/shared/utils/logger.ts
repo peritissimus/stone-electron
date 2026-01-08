@@ -1,5 +1,8 @@
 /**
- * Logger Utility using electron-log
+ * Shared Logger
+ *
+ * Logger utility for use across all hex layers.
+ * Uses electron-log when available, falls back to console.
  */
 
 import log from 'electron-log';
@@ -14,12 +17,10 @@ try {
     return path.join(userDataPath, 'logs', 'stone.log');
   };
 
-  // Set log level based on environment
-  // Enable debug in both dev and prod for better diagnostics
   log.transports.console.level = 'debug';
   log.transports.file.level = 'debug';
 } catch {
-  // Electron not available (e.g., in scripts), use console-only logging
+  // Electron not available (e.g., in tests or scripts)
   log.transports.file.level = false;
   log.transports.console.level = 'debug';
 }
@@ -28,10 +29,8 @@ try {
 log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}';
 log.transports.console.format = '[{h}:{i}:{s}.{ms}] [{level}] {text}';
 
-// Export logger instance
 export const logger = log;
 
-// Export convenience functions
 export const logInfo = (...args: unknown[]) => logger.info(...args);
 export const logError = (...args: unknown[]) => logger.error(...args);
 export const logWarn = (...args: unknown[]) => logger.warn(...args);

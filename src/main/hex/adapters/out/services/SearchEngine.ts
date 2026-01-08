@@ -5,7 +5,7 @@
  */
 
 import { eq, and, sql, between, inArray, desc, like } from 'drizzle-orm';
-import { notes, noteTags, type Database } from '../../../infrastructure/database';
+import { notes, noteTags, type Database } from '../../../shared/database';
 import type { NoteProps } from '../../../domain/entities';
 import type {
   ISearchEngine,

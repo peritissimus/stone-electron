@@ -34,8 +34,8 @@ import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import { nanoid } from 'nanoid';
-import * as schema from './schema';
-import { logger } from '../utils/logger';
+import * as schema from '../../shared/database';
+import { logger } from '../../shared/utils';
 
 export class DatabaseManager {
   private client: any = null;

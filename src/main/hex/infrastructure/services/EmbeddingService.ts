@@ -9,7 +9,7 @@
 
 import { Worker } from 'worker_threads';
 import path from 'node:path';
-import { logger } from '../../infrastructure/utils/logger';
+import { logger } from '../../shared/utils';
 import { getMLStatusService } from './MLStatusService';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
