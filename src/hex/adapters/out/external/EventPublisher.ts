@@ -24,6 +24,10 @@ export class EventPublisher implements IEventPublisher {
     }
   }
 
+  emit(channel: string, payload: unknown): void {
+    this.eventBus.emit(channel, payload as Record<string, unknown>);
+  }
+
   subscribe<T extends AppDomainEvent>(
     eventType: T['type'],
     handler: EventHandler<T>

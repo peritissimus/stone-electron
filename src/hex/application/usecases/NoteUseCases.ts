@@ -6,6 +6,7 @@
  */
 
 import { generateId } from '@shared/utils/id';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type NoteProps,
@@ -29,6 +30,7 @@ import {
   type IToggleArchiveUseCase,
   NoteNotFoundError,
 } from '../../domain';
+import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 
 // ============================================================================
 // Use Case Implementations
@@ -38,7 +40,8 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor
+    private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly eventPublisher?: IEventPublisher
   ) {}
 
   async execute(request: {
@@ -80,6 +83,9 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     // Save to repository
     await this.noteRepository.save(note);
 
+    // Publish event
+    this.eventPublisher?.emit(EVENTS.NOTE_CREATED, { id: note.id });
+
     return { note: note.toPersistence() };
   }
 }
@@ -88,7 +94,8 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor
+    private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly eventPublisher?: IEventPublisher
   ) {}
 
   async execute(request: {
@@ -130,6 +137,9 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
     }
 
     await this.noteRepository.save(note);
+
+    // Publish event
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: note.id });
 
     return { note: note.toPersistence() };
   }
@@ -222,7 +232,8 @@ export class ListNotesUseCase implements IListNotesUseCase {
 export class DeleteNoteUseCase implements IDeleteNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
+    private readonly eventPublisher?: IEventPublisher
   ) {}
 
   async execute(request: { id: string; permanent?: boolean }): Promise<void> {
@@ -246,11 +257,17 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
       note.delete();
       await this.noteRepository.save(note);
     }
+
+    // Publish event
+    this.eventPublisher?.emit(EVENTS.NOTE_DELETED, { id: request.id });
   }
 }
 
 export class RestoreNoteUseCase implements IRestoreNoteUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<void> {
     const noteProps = await this.noteRepository.findById(request.id);
@@ -261,11 +278,17 @@ export class RestoreNoteUseCase implements IRestoreNoteUseCase {
     const note = NoteEntity.fromPersistence(noteProps);
     note.restore();
     await this.noteRepository.save(note);
+
+    // Publish event (restored = updated)
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
   }
 }
 
 export class MoveNoteUseCase implements IMoveNoteUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string; targetNotebookId: string | null }): Promise<void> {
     const noteProps = await this.noteRepository.findById(request.id);
@@ -276,6 +299,9 @@ export class MoveNoteUseCase implements IMoveNoteUseCase {
     const note = NoteEntity.fromPersistence(noteProps);
     note.moveToNotebook(request.targetNotebookId);
     await this.noteRepository.save(note);
+
+    // Publish event
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
   }
 }
 
@@ -362,7 +388,10 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
 }
 
 export class ToggleFavoriteUseCase implements IToggleFavoriteUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
     const noteProps = await this.noteRepository.findById(request.id);
@@ -374,12 +403,17 @@ export class ToggleFavoriteUseCase implements IToggleFavoriteUseCase {
     note.toggleFavorite();
     await this.noteRepository.save(note);
 
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
+
     return { note: note.toPersistence() };
   }
 }
 
 export class TogglePinUseCase implements ITogglePinUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
     const noteProps = await this.noteRepository.findById(request.id);
@@ -391,12 +425,17 @@ export class TogglePinUseCase implements ITogglePinUseCase {
     note.togglePinned();
     await this.noteRepository.save(note);
 
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
+
     return { note: note.toPersistence() };
   }
 }
 
 export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
     const noteProps = await this.noteRepository.findById(request.id);
@@ -408,6 +447,8 @@ export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
     note.setArchived(!noteProps.isArchived);
     await this.noteRepository.save(note);
 
+    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
+
     return { note: note.toPersistence() };
   }
 }
@@ -416,25 +457,30 @@ export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
 // Factory
 // ============================================================================
 
-export function createNoteUseCases(
-  noteRepository: INoteRepository,
-  fileStorage: IFileStorage,
-  markdownProcessor: IMarkdownProcessor
-): INoteUseCases {
+export interface NoteUseCasesDeps {
+  noteRepository: INoteRepository;
+  fileStorage: IFileStorage;
+  markdownProcessor: IMarkdownProcessor;
+  eventPublisher?: IEventPublisher;
+}
+
+export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
+  const { noteRepository, fileStorage, markdownProcessor, eventPublisher } = deps;
+
   return {
-    createNote: new CreateNoteUseCase(noteRepository, fileStorage, markdownProcessor),
-    updateNote: new UpdateNoteUseCase(noteRepository, fileStorage, markdownProcessor),
+    createNote: new CreateNoteUseCase(noteRepository, fileStorage, markdownProcessor, eventPublisher),
+    updateNote: new UpdateNoteUseCase(noteRepository, fileStorage, markdownProcessor, eventPublisher),
     getNote: new GetNoteUseCase(noteRepository, fileStorage, markdownProcessor),
     listNotes: new ListNotesUseCase(noteRepository),
-    deleteNote: new DeleteNoteUseCase(noteRepository, fileStorage),
-    restoreNote: new RestoreNoteUseCase(noteRepository),
-    moveNote: new MoveNoteUseCase(noteRepository),
+    deleteNote: new DeleteNoteUseCase(noteRepository, fileStorage, eventPublisher),
+    restoreNote: new RestoreNoteUseCase(noteRepository, eventPublisher),
+    moveNote: new MoveNoteUseCase(noteRepository, eventPublisher),
     searchNotes: new SearchNotesUseCase(noteRepository),
     getNoteContent: new GetNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
     saveNoteContent: new SaveNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
     getNoteByPath: new GetNoteByPathUseCase(noteRepository),
-    toggleFavorite: new ToggleFavoriteUseCase(noteRepository),
-    togglePin: new TogglePinUseCase(noteRepository),
-    toggleArchive: new ToggleArchiveUseCase(noteRepository),
+    toggleFavorite: new ToggleFavoriteUseCase(noteRepository, eventPublisher),
+    togglePin: new TogglePinUseCase(noteRepository, eventPublisher),
+    toggleArchive: new ToggleArchiveUseCase(noteRepository, eventPublisher),
   };
 }

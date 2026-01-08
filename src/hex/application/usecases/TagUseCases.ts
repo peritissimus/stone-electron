@@ -5,19 +5,24 @@
  */
 
 import { generateId } from '@shared/utils/id';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   TagEntity,
   type TagProps,
   type ITagRepository,
   TagNotFoundError,
 } from '../../domain';
+import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 
 // ============================================================================
 // Use Case Implementations
 // ============================================================================
 
 export class CreateTagUseCase {
-  constructor(private readonly tagRepository: ITagRepository) {}
+  constructor(
+    private readonly tagRepository: ITagRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { name: string; color?: string }): Promise<{ tag: TagProps }> {
     // Check if tag already exists
@@ -37,12 +42,17 @@ export class CreateTagUseCase {
 
     await this.tagRepository.save(tag);
 
+    this.eventPublisher?.emit(EVENTS.TAG_CREATED, { tag: tag.toPersistence() });
+
     return { tag: tag.toPersistence() };
   }
 }
 
 export class UpdateTagUseCase {
-  constructor(private readonly tagRepository: ITagRepository) {}
+  constructor(
+    private readonly tagRepository: ITagRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: {
     id: string;
@@ -64,6 +74,8 @@ export class UpdateTagUseCase {
     }
 
     await this.tagRepository.save(tag);
+
+    this.eventPublisher?.emit(EVENTS.TAG_UPDATED, { tag: tag.toPersistence() });
 
     return { tag: tag.toPersistence() };
   }
@@ -92,7 +104,10 @@ export class ListTagsUseCase {
 }
 
 export class DeleteTagUseCase {
-  constructor(private readonly tagRepository: ITagRepository) {}
+  constructor(
+    private readonly tagRepository: ITagRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<void> {
     const exists = await this.tagRepository.exists(request.id);
@@ -101,6 +116,8 @@ export class DeleteTagUseCase {
     }
 
     await this.tagRepository.delete(request.id);
+
+    this.eventPublisher?.emit(EVENTS.TAG_DELETED, { id: request.id });
   }
 }
 
@@ -144,13 +161,20 @@ export interface ITagUseCases {
   getNoteTags: GetNoteTagsUseCase;
 }
 
-export function createTagUseCases(tagRepository: ITagRepository): ITagUseCases {
+export interface TagUseCasesDeps {
+  tagRepository: ITagRepository;
+  eventPublisher?: IEventPublisher;
+}
+
+export function createTagUseCases(deps: TagUseCasesDeps): ITagUseCases {
+  const { tagRepository, eventPublisher } = deps;
+
   return {
-    createTag: new CreateTagUseCase(tagRepository),
-    updateTag: new UpdateTagUseCase(tagRepository),
+    createTag: new CreateTagUseCase(tagRepository, eventPublisher),
+    updateTag: new UpdateTagUseCase(tagRepository, eventPublisher),
     getTag: new GetTagUseCase(tagRepository),
     listTags: new ListTagsUseCase(tagRepository),
-    deleteTag: new DeleteTagUseCase(tagRepository),
+    deleteTag: new DeleteTagUseCase(tagRepository, eventPublisher),
     addTagToNote: new AddTagToNoteUseCase(tagRepository),
     removeTagFromNote: new RemoveTagFromNoteUseCase(tagRepository),
     getNoteTags: new GetNoteTagsUseCase(tagRepository),

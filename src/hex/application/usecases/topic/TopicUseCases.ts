@@ -8,9 +8,11 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEmbeddingService } from '../../../domain/ports/out/IEmbeddingService';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { ITopicUseCases } from '../../../domain/ports/in/ITopicUseCases';
 import { SimilarityCalculator } from '../../../domain/services/SimilarityCalculator';
 import { TopicEntity } from '../../../domain/entities/Topic';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../../shared/utils';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -22,6 +24,7 @@ export interface TopicUseCasesDeps {
   fileStorage: IFileStorage;
   embeddingService: IEmbeddingService;
   markdownProcessor: IMarkdownProcessor;
+  eventPublisher?: IEventPublisher;
 }
 
 export interface TopicDTO {
@@ -97,6 +100,8 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
     await this.deps.topicRepository.save(topic);
 
+    this.deps.eventPublisher?.emit(EVENTS.TOPIC_CREATED, { topic: topic.toPersistence() });
+
     return {
       id: topic.id,
       name: topic.name,
@@ -122,6 +127,8 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
     await this.deps.topicRepository.save(topic);
 
+    this.deps.eventPublisher?.emit(EVENTS.TOPIC_UPDATED, { topic: topic.toPersistence() });
+
     const notesForTopic = await this.deps.topicRepository.getNotesForTopic(id);
     const noteCount = notesForTopic.length;
 
@@ -146,6 +153,9 @@ class TopicUseCasesImpl implements ITopicUseCases {
     }
 
     await this.deps.topicRepository.delete(id);
+
+    this.deps.eventPublisher?.emit(EVENTS.TOPIC_DELETED, { id });
+
     logger.info(`[TopicUseCases] Deleted topic ${id}`);
   }
 
@@ -205,6 +215,13 @@ class TopicUseCasesImpl implements ITopicUseCases {
     // Assign topic if confidence is high enough
     if (bestTopic && bestTopic.confidence > 0.5) {
       await topicRepository.assignToNote(noteId, bestTopic.id, { confidence: bestTopic.confidence });
+
+      this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
+        noteId,
+        topicId: bestTopic.id,
+        confidence: bestTopic.confidence,
+      });
+
       return { noteId, topicId: bestTopic.id, confidence: bestTopic.confidence };
     }
 
@@ -213,6 +230,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
   async classifyAllNotes(options?: { force?: boolean }): Promise<{ processed: number; classified: number }> {
     const notes = await this.deps.noteRepository.findAll({ isDeleted: false });
+    const total = notes.length;
     let processed = 0;
     let classified = 0;
 
@@ -221,6 +239,13 @@ class TopicUseCasesImpl implements ITopicUseCases {
         const result = await this.classifyNote(note.id, options?.force || false);
         processed++;
         if (result.topicId) classified++;
+
+        // Emit progress event
+        this.deps.eventPublisher?.emit(EVENTS.EMBEDDING_PROGRESS, {
+          current: processed,
+          total,
+          classified,
+        });
       } catch (error) {
         logger.error(`[TopicUseCases] Failed to classify note ${note.id}:`, error);
       }
@@ -232,11 +257,26 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
   async assignTopicToNote(noteId: string, topicId: string): Promise<void> {
     await this.deps.topicRepository.assignToNote(noteId, topicId, { confidence: 1.0, isManual: true });
+
+    this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
+      noteId,
+      topicId,
+      confidence: 1.0,
+      isManual: true,
+    });
+
     logger.info(`[TopicUseCases] Assigned topic ${topicId} to note ${noteId}`);
   }
 
   async removeTopicFromNote(noteId: string, topicId: string): Promise<void> {
     await this.deps.topicRepository.removeFromNote(noteId, topicId);
+
+    this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
+      noteId,
+      topicId: null,
+      removed: true,
+    });
+
     logger.info(`[TopicUseCases] Removed topic ${topicId} from note ${noteId}`);
   }
 
