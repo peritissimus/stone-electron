@@ -72,7 +72,7 @@ export function useNoteAPI() {
   );
 
   const createNote = useCallback(
-    async (data: { title: string; content: string; folderPath?: string }) => {
+    async (data: { title: string; content?: string; folderPath?: string }) => {
       logger.info('[useNoteAPI.createNote] Called with:', {
         title: data.title,
         folderPath: data.folderPath,
