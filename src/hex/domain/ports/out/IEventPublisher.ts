@@ -216,6 +216,11 @@ export interface IEventPublisher {
   publishAll(events: AppDomainEvent[]): void;
 
   /**
+   * Emit a simple event using channel name from EVENTS constants
+   */
+  emit(channel: string, payload: unknown): void;
+
+  /**
    * Subscribe to events of a specific type
    */
   subscribe<T extends AppDomainEvent>(

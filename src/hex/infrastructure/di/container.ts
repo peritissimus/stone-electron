@@ -252,22 +252,30 @@ export function createContainer(deps: ContainerDeps): Container {
   // ---------------------------------------------------------------------------
   // Layer 4: Use Cases (depend on repositories and services)
   // ---------------------------------------------------------------------------
-  const noteUseCases = createNoteUseCases(
+  const noteUseCases = createNoteUseCases({
     noteRepository,
     fileStorage,
-    markdownProcessor
-  );
+    markdownProcessor,
+    eventPublisher,
+  });
 
-  const notebookUseCases = createNotebookUseCases(notebookRepository);
+  const notebookUseCases = createNotebookUseCases({
+    notebookRepository,
+    eventPublisher,
+  });
 
   const workspaceUseCases = createWorkspaceUseCases({
     workspaceRepository,
     noteRepository,
     fileStorage,
     systemService,
+    eventPublisher,
   });
 
-  const tagUseCases = createTagUseCases(tagRepository);
+  const tagUseCases = createTagUseCases({
+    tagRepository,
+    eventPublisher,
+  });
 
   const searchUseCases = createSearchUseCases(
     noteRepository,
@@ -307,6 +315,7 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
     embeddingService,
     markdownProcessor,
+    eventPublisher,
   });
 
   // Attachment use cases

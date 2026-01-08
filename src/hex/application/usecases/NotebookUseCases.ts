@@ -5,19 +5,24 @@
  */
 
 import { generateId } from '@shared/utils/id';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NotebookEntity,
   type NotebookProps,
   type INotebookRepository,
   NotebookNotFoundError,
 } from '../../domain';
+import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 
 // ============================================================================
 // Use Case Implementations
 // ============================================================================
 
 export class CreateNotebookUseCase {
-  constructor(private readonly notebookRepository: INotebookRepository) {}
+  constructor(
+    private readonly notebookRepository: INotebookRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: {
     name: string;
@@ -39,12 +44,17 @@ export class CreateNotebookUseCase {
 
     await this.notebookRepository.save(notebook);
 
+    this.eventPublisher?.emit(EVENTS.NOTEBOOK_CREATED, { notebook: notebook.toPersistence() });
+
     return { notebook: notebook.toPersistence() };
   }
 }
 
 export class UpdateNotebookUseCase {
-  constructor(private readonly notebookRepository: INotebookRepository) {}
+  constructor(
+    private readonly notebookRepository: INotebookRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: {
     id: string;
@@ -74,6 +84,8 @@ export class UpdateNotebookUseCase {
     }
 
     await this.notebookRepository.save(notebook);
+
+    this.eventPublisher?.emit(EVENTS.NOTEBOOK_UPDATED, { notebook: notebook.toPersistence() });
 
     return { notebook: notebook.toPersistence() };
   }
@@ -117,7 +129,10 @@ export class ListNotebooksUseCase {
 }
 
 export class DeleteNotebookUseCase {
-  constructor(private readonly notebookRepository: INotebookRepository) {}
+  constructor(
+    private readonly notebookRepository: INotebookRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<void> {
     const exists = await this.notebookRepository.exists(request.id);
@@ -126,11 +141,16 @@ export class DeleteNotebookUseCase {
     }
 
     await this.notebookRepository.delete(request.id);
+
+    this.eventPublisher?.emit(EVENTS.NOTEBOOK_DELETED, { id: request.id });
   }
 }
 
 export class MoveNotebookUseCase {
-  constructor(private readonly notebookRepository: INotebookRepository) {}
+  constructor(
+    private readonly notebookRepository: INotebookRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string; targetParentId: string | null }): Promise<void> {
     const notebookProps = await this.notebookRepository.findById(request.id);
@@ -141,6 +161,8 @@ export class MoveNotebookUseCase {
     const notebook = NotebookEntity.fromPersistence(notebookProps);
     notebook.moveTo(request.targetParentId);
     await this.notebookRepository.save(notebook);
+
+    this.eventPublisher?.emit(EVENTS.NOTEBOOK_UPDATED, { notebook: notebook.toPersistence() });
   }
 }
 
@@ -157,13 +179,20 @@ export interface INotebookUseCases {
   moveNotebook: MoveNotebookUseCase;
 }
 
-export function createNotebookUseCases(notebookRepository: INotebookRepository): INotebookUseCases {
+export interface NotebookUseCasesDeps {
+  notebookRepository: INotebookRepository;
+  eventPublisher?: IEventPublisher;
+}
+
+export function createNotebookUseCases(deps: NotebookUseCasesDeps): INotebookUseCases {
+  const { notebookRepository, eventPublisher } = deps;
+
   return {
-    createNotebook: new CreateNotebookUseCase(notebookRepository),
-    updateNotebook: new UpdateNotebookUseCase(notebookRepository),
+    createNotebook: new CreateNotebookUseCase(notebookRepository, eventPublisher),
+    updateNotebook: new UpdateNotebookUseCase(notebookRepository, eventPublisher),
     getNotebook: new GetNotebookUseCase(notebookRepository),
     listNotebooks: new ListNotebooksUseCase(notebookRepository),
-    deleteNotebook: new DeleteNotebookUseCase(notebookRepository),
-    moveNotebook: new MoveNotebookUseCase(notebookRepository),
+    deleteNotebook: new DeleteNotebookUseCase(notebookRepository, eventPublisher),
+    moveNotebook: new MoveNotebookUseCase(notebookRepository, eventPublisher),
   };
 }

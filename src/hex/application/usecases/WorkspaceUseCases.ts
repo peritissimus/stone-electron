@@ -6,6 +6,7 @@
 
 import { generateId } from '@shared/utils/id';
 import path from 'node:path';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   WorkspaceEntity,
   type WorkspaceProps,
@@ -15,6 +16,7 @@ import {
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
 import type { ISystemService } from '../../domain/ports/out/ISystemService';
 import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 import type { NoteProps } from '../../domain/entities';
 
 // ============================================================================
@@ -22,7 +24,10 @@ import type { NoteProps } from '../../domain/entities';
 // ============================================================================
 
 export class CreateWorkspaceUseCase {
-  constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
+  constructor(
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: {
     name: string;
@@ -36,6 +41,8 @@ export class CreateWorkspaceUseCase {
     });
 
     await this.workspaceRepository.save(workspace);
+
+    this.eventPublisher?.emit(EVENTS.WORKSPACE_CREATED, { workspace: workspace.toPersistence() });
 
     return { workspace: workspace.toPersistence() };
   }
@@ -64,7 +71,10 @@ export class ListWorkspacesUseCase {
 }
 
 export class SetActiveWorkspaceUseCase {
-  constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
+  constructor(
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<{ workspace: WorkspaceProps }> {
     const workspaceProps = await this.workspaceRepository.findById(request.id);
@@ -87,6 +97,8 @@ export class SetActiveWorkspaceUseCase {
     workspace.activate();
     await this.workspaceRepository.save(workspace);
 
+    this.eventPublisher?.emit(EVENTS.WORKSPACE_SWITCHED, { workspace: workspace.toPersistence() });
+
     return { workspace: workspace.toPersistence() };
   }
 }
@@ -101,7 +113,10 @@ export class GetActiveWorkspaceUseCase {
 }
 
 export class DeleteWorkspaceUseCase {
-  constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
+  constructor(
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string }): Promise<void> {
     const exists = await this.workspaceRepository.exists(request.id);
@@ -110,11 +125,16 @@ export class DeleteWorkspaceUseCase {
     }
 
     await this.workspaceRepository.delete(request.id);
+
+    this.eventPublisher?.emit(EVENTS.WORKSPACE_DELETED, { id: request.id });
   }
 }
 
 export class UpdateWorkspaceUseCase {
-  constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
+  constructor(
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly eventPublisher?: IEventPublisher
+  ) {}
 
   async execute(request: { id: string; name?: string }): Promise<{ workspace: WorkspaceProps }> {
     const workspaceProps = await this.workspaceRepository.findById(request.id);
@@ -129,6 +149,8 @@ export class UpdateWorkspaceUseCase {
     }
 
     await this.workspaceRepository.save(workspace);
+
+    this.eventPublisher?.emit(EVENTS.WORKSPACE_UPDATED, { workspace: workspace.toPersistence() });
 
     return { workspace: workspace.toPersistence() };
   }
@@ -427,19 +449,20 @@ export interface WorkspaceUseCasesDeps {
   noteRepository: INoteRepository;
   fileStorage: IFileStorage;
   systemService: ISystemService;
+  eventPublisher?: IEventPublisher;
 }
 
 export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspaceUseCases {
-  const { workspaceRepository, noteRepository, fileStorage, systemService } = deps;
+  const { workspaceRepository, noteRepository, fileStorage, systemService, eventPublisher } = deps;
 
   return {
-    createWorkspace: new CreateWorkspaceUseCase(workspaceRepository),
+    createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, eventPublisher),
     getWorkspace: new GetWorkspaceUseCase(workspaceRepository),
     listWorkspaces: new ListWorkspacesUseCase(workspaceRepository),
-    setActiveWorkspace: new SetActiveWorkspaceUseCase(workspaceRepository),
+    setActiveWorkspace: new SetActiveWorkspaceUseCase(workspaceRepository, eventPublisher),
     getActiveWorkspace: new GetActiveWorkspaceUseCase(workspaceRepository),
-    deleteWorkspace: new DeleteWorkspaceUseCase(workspaceRepository),
-    updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository),
+    deleteWorkspace: new DeleteWorkspaceUseCase(workspaceRepository, eventPublisher),
+    updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository, eventPublisher),
     selectFolder: new SelectFolderUseCase(systemService),
     validatePath: new ValidatePathUseCase(systemService),
     createFolder: new CreateFolderUseCase(workspaceRepository, fileStorage),
