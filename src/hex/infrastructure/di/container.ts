@@ -14,6 +14,16 @@ import {
   createWorkspaceUseCases,
   createTagUseCases,
   createSearchUseCases,
+  createTaskUseCases,
+  createGraphUseCases,
+  createVersionUseCases,
+  createTopicUseCases,
+  createAttachmentUseCases,
+  createGitUseCases,
+  createDatabaseUseCases,
+  createQuickCaptureUseCases,
+  createExportUseCases,
+  createSystemUseCases,
 } from '../../application/usecases';
 
 // Adapters - Outbound (Secondary) - Persistence
@@ -22,6 +32,10 @@ import {
   NotebookRepository,
   WorkspaceRepository,
   TagRepository,
+  TopicRepository,
+  AttachmentRepository,
+  VersionRepository,
+  NoteLinkRepository,
 } from '../../adapters/out/persistence';
 
 // Adapters - Outbound (Secondary) - Storage
@@ -32,6 +46,9 @@ import {
   MarkdownProcessor,
   SearchEngine,
   EmbeddingServiceAdapter,
+  ExportService,
+  SystemService,
+  GitService,
 } from '../../adapters/out/services';
 
 // Adapters - Outbound (Secondary) - External
@@ -44,6 +61,26 @@ import {
   WorkspaceIPC,
   TagIPC,
   SearchIPC,
+  registerTaskHandlers,
+  unregisterTaskHandlers,
+  registerTopicHandlers,
+  unregisterTopicHandlers,
+  registerGraphHandlers,
+  unregisterGraphHandlers,
+  registerVersionHandlers,
+  unregisterVersionHandlers,
+  registerAttachmentHandlers,
+  unregisterAttachmentHandlers,
+  registerExportHandlers,
+  unregisterExportHandlers,
+  registerGitHandlers,
+  unregisterGitHandlers,
+  registerDatabaseHandlers,
+  unregisterDatabaseHandlers,
+  registerQuickCaptureHandlers,
+  unregisterQuickCaptureHandlers,
+  registerSystemHandlers,
+  unregisterSystemHandlers,
 } from '../../adapters/in/ipc';
 
 // Domain Ports (for type safety)
@@ -51,12 +88,31 @@ import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
 import type { INotebookRepository } from '../../domain/ports/out/INotebookRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
 import type { ITagRepository } from '../../domain/ports/out/ITagRepository';
+import type { ITopicRepository } from '../../domain/ports/out/ITopicRepository';
+import type { IAttachmentRepository } from '../../domain/ports/out/IAttachmentRepository';
+import type { IVersionRepository } from '../../domain/ports/out/IVersionRepository';
+import type { INoteLinkRepository } from '../../domain/ports/out/INoteLinkRepository';
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 import type { ISearchEngine } from '../../domain/ports/out/ISearchEngine';
 import type { IEmbeddingService } from '../../domain/ports/out/IEmbeddingService';
 import type { IGitOperations } from '../../domain/ports/out/IGitOperations';
+import type { IExportService } from '../../domain/ports/out/IExportService';
+import type { ISystemService } from '../../domain/ports/out/ISystemService';
+import type { IGitService } from '../../domain/ports/out/IGitService';
+
+// Use Case Types
+import type { ITaskUseCases } from '../../domain/ports/in/ITaskUseCases';
+import type { IGraphUseCases } from '../../domain/ports/in/IGraphUseCases';
+import type { IVersionUseCases } from '../../domain/ports/in/IVersionUseCases';
+import type { ITopicUseCases } from '../../domain/ports/in/ITopicUseCases';
+import type { IAttachmentUseCases } from '../../domain/ports/in/IAttachmentUseCases';
+import type { IExportUseCases } from '../../domain/ports/in/IExportUseCases';
+import type { IQuickCaptureUseCases } from '../../domain/ports/in/IQuickCaptureUseCases';
+import type { ISystemUseCases } from '../../domain/ports/in/ISystemUseCases';
+import type { IDatabaseUseCases } from '../../domain/ports/in/IDatabaseUseCases';
+import type { IGitUseCases } from '../../domain/ports/in/IGitUseCases';
 
 // ============================================================================
 // Container Types
@@ -67,26 +123,47 @@ export interface ContainerDeps {
 }
 
 export interface Container {
-  // Ports (interfaces)
+  // Ports - Repositories
   noteRepository: INoteRepository;
   notebookRepository: INotebookRepository;
   workspaceRepository: IWorkspaceRepository;
   tagRepository: ITagRepository;
+  topicRepository: ITopicRepository;
+  attachmentRepository: IAttachmentRepository;
+  versionRepository: IVersionRepository;
+  noteLinkRepository: INoteLinkRepository;
+
+  // Ports - Services
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher: IEventPublisher;
   searchEngine: ISearchEngine;
   embeddingService: IEmbeddingService;
   gitOperations: IGitOperations;
+  exportService: IExportService;
+  systemService: ISystemService;
+  gitService: IGitService;
 
-  // Use Cases
+  // Use Cases - Core
   noteUseCases: ReturnType<typeof createNoteUseCases>;
   notebookUseCases: ReturnType<typeof createNotebookUseCases>;
   workspaceUseCases: ReturnType<typeof createWorkspaceUseCases>;
   tagUseCases: ReturnType<typeof createTagUseCases>;
   searchUseCases: ReturnType<typeof createSearchUseCases>;
 
-  // IPC Adapters
+  // Use Cases - Extended
+  taskUseCases: ITaskUseCases;
+  graphUseCases: IGraphUseCases;
+  versionUseCases: IVersionUseCases;
+  topicUseCases: ITopicUseCases;
+  attachmentUseCases: IAttachmentUseCases;
+  gitUseCases: IGitUseCases;
+  databaseUseCases: IDatabaseUseCases;
+  quickCaptureUseCases: IQuickCaptureUseCases;
+  exportUseCases: IExportUseCases;
+  systemUseCases: ISystemUseCases;
+
+  // IPC Adapters (class-based)
   noteIPC: NoteIPC;
   notebookIPC: NotebookIPC;
   workspaceIPC: WorkspaceIPC;
@@ -95,6 +172,7 @@ export interface Container {
 
   // Helpers
   getWorkspacePath: () => string | null;
+  getDatabaseManager: () => { getStatus: () => Promise<{ path: string; size: number; isOpen: boolean }>; vacuum: () => Promise<void>; checkIntegrity: () => Promise<{ ok: boolean; errors: string[] }> };
 }
 
 // ============================================================================
@@ -121,6 +199,13 @@ export function createContainer(deps: ContainerDeps): Container {
   // Helper function for workspace path
   const getWorkspacePath = () => activeWorkspacePath;
 
+  // Database manager stub (will be replaced with real implementation)
+  const getDatabaseManager = () => ({
+    getStatus: async () => ({ path: '', size: 0, isOpen: true }),
+    vacuum: async () => {},
+    checkIntegrity: async () => ({ ok: true, errors: [] }),
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 1: Infrastructure Services (no dependencies)
   // ---------------------------------------------------------------------------
@@ -128,6 +213,9 @@ export function createContainer(deps: ContainerDeps): Container {
   const markdownProcessor: IMarkdownProcessor = new MarkdownProcessor();
   const eventPublisher: IEventPublisher = new EventPublisher();
   const gitOperations: IGitOperations = new GitOperations();
+  const exportService: IExportService = new ExportService();
+  const systemService: ISystemService = new SystemService();
+  const gitService: IGitService = new GitService();
 
   // ---------------------------------------------------------------------------
   // Layer 2: Repositories (depend on db, some services)
@@ -135,6 +223,10 @@ export function createContainer(deps: ContainerDeps): Container {
   const workspaceRepository: IWorkspaceRepository = new WorkspaceRepository({ db });
   const notebookRepository: INotebookRepository = new NotebookRepository({ db });
   const tagRepository: ITagRepository = new TagRepository({ db });
+  const topicRepository: ITopicRepository = new TopicRepository({ db });
+  const attachmentRepository: IAttachmentRepository = new AttachmentRepository({ db });
+  const versionRepository: IVersionRepository = new VersionRepository({ db });
+  const noteLinkRepository: INoteLinkRepository = new NoteLinkRepository({ db });
 
   const noteRepository: INoteRepository = new NoteRepository({
     db,
@@ -168,7 +260,12 @@ export function createContainer(deps: ContainerDeps): Container {
 
   const notebookUseCases = createNotebookUseCases(notebookRepository);
 
-  const workspaceUseCases = createWorkspaceUseCases(workspaceRepository);
+  const workspaceUseCases = createWorkspaceUseCases({
+    workspaceRepository,
+    noteRepository,
+    fileStorage,
+    systemService,
+  });
 
   const tagUseCases = createTagUseCases(tagRepository);
 
@@ -177,6 +274,80 @@ export function createContainer(deps: ContainerDeps): Container {
     searchEngine,
     embeddingService
   );
+
+  // Task use cases
+  const taskUseCases = createTaskUseCases({
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    markdownProcessor,
+  });
+
+  // Graph use cases
+  const graphUseCases = createGraphUseCases({
+    noteRepository,
+    noteLinkRepository,
+    workspaceRepository,
+    fileStorage,
+  });
+
+  // Version use cases
+  const versionUseCases = createVersionUseCases({
+    noteRepository,
+    versionRepository,
+    workspaceRepository,
+    fileStorage,
+  });
+
+  // Topic use cases
+  const topicUseCases = createTopicUseCases({
+    noteRepository,
+    topicRepository,
+    workspaceRepository,
+    fileStorage,
+    embeddingService,
+    markdownProcessor,
+  });
+
+  // Attachment use cases
+  const attachmentUseCases = createAttachmentUseCases({
+    noteRepository,
+    attachmentRepository,
+    workspaceRepository,
+    fileStorage,
+  });
+
+  // Git use cases
+  const gitUseCases = createGitUseCases({
+    workspaceRepository,
+    gitService,
+  });
+
+  // Database use cases
+  const databaseUseCases = createDatabaseUseCases({
+    getDatabaseManager,
+  });
+
+  // Quick capture use cases
+  const quickCaptureUseCases = createQuickCaptureUseCases({
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+  });
+
+  // Export use cases
+  const exportUseCases = createExportUseCases({
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    markdownProcessor,
+    exportService,
+  });
+
+  // System use cases
+  const systemUseCases = createSystemUseCases({
+    systemService,
+  });
 
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
@@ -191,24 +362,45 @@ export function createContainer(deps: ContainerDeps): Container {
   // Return Container
   // ---------------------------------------------------------------------------
   return {
-    // Ports
+    // Ports - Repositories
     noteRepository,
     notebookRepository,
     workspaceRepository,
     tagRepository,
+    topicRepository,
+    attachmentRepository,
+    versionRepository,
+    noteLinkRepository,
+
+    // Ports - Services
     fileStorage,
     markdownProcessor,
     eventPublisher,
     searchEngine,
     embeddingService,
     gitOperations,
+    exportService,
+    systemService,
+    gitService,
 
-    // Use Cases
+    // Use Cases - Core
     noteUseCases,
     notebookUseCases,
     workspaceUseCases,
     tagUseCases,
     searchUseCases,
+
+    // Use Cases - Extended
+    taskUseCases,
+    graphUseCases,
+    versionUseCases,
+    topicUseCases,
+    attachmentUseCases,
+    gitUseCases,
+    databaseUseCases,
+    quickCaptureUseCases,
+    exportUseCases,
+    systemUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -219,6 +411,7 @@ export function createContainer(deps: ContainerDeps): Container {
 
     // Helpers
     getWorkspacePath,
+    getDatabaseManager,
   };
 }
 
@@ -255,19 +448,62 @@ export function resetContainer(): void {
 export function registerIPCHandlers(): void {
   const container = getContainer();
 
+  // Class-based IPC handlers
   container.noteIPC.registerHandlers();
   container.notebookIPC.registerHandlers();
   container.workspaceIPC.registerHandlers();
   container.tagIPC.registerHandlers();
   container.searchIPC.registerHandlers();
+
+  // Function-based IPC handlers
+  registerTaskHandlers({ taskUseCases: container.taskUseCases });
+  registerTopicHandlers({ topicUseCases: container.topicUseCases });
+  registerGraphHandlers({ graphUseCases: container.graphUseCases });
+  registerVersionHandlers({ versionUseCases: container.versionUseCases });
+  registerAttachmentHandlers({ attachmentUseCases: container.attachmentUseCases });
+  registerExportHandlers({ exportUseCases: container.exportUseCases });
+  registerGitHandlers({
+    getGitStatus: container.gitUseCases.getStatus,
+    initGitRepo: container.gitUseCases.init,
+    gitCommit: container.gitUseCases.commit,
+    gitPull: container.gitUseCases.pull,
+    gitPush: container.gitUseCases.push,
+    gitSync: container.gitUseCases.sync,
+    setGitRemote: container.gitUseCases.setRemote,
+    getGitCommits: container.gitUseCases.getCommits,
+  });
+  registerDatabaseHandlers({
+    getDatabaseStatus: container.databaseUseCases.getStatus,
+    vacuumDatabase: container.databaseUseCases.vacuum,
+    checkDatabaseIntegrity: container.databaseUseCases.checkIntegrity,
+  });
+  registerQuickCaptureHandlers({
+    appendToJournal: container.quickCaptureUseCases.appendToJournal,
+  });
+  registerSystemHandlers({
+    getSystemFonts: container.systemUseCases.getFonts,
+  });
 }
 
 export function unregisterIPCHandlers(): void {
   const container = getContainer();
 
+  // Class-based IPC handlers
   container.noteIPC.unregisterHandlers();
   container.notebookIPC.unregisterHandlers();
   container.workspaceIPC.unregisterHandlers();
   container.tagIPC.unregisterHandlers();
   container.searchIPC.unregisterHandlers();
+
+  // Function-based IPC handlers
+  unregisterTaskHandlers();
+  unregisterTopicHandlers();
+  unregisterGraphHandlers();
+  unregisterVersionHandlers();
+  unregisterAttachmentHandlers();
+  unregisterExportHandlers();
+  unregisterGitHandlers();
+  unregisterDatabaseHandlers();
+  unregisterQuickCaptureHandlers();
+  unregisterSystemHandlers();
 }

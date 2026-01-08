@@ -80,6 +80,38 @@ export class NoteIPC {
       });
     });
 
+    // notes:getByPath - Get note by file path
+    ipcMain.handle(NOTE_CHANNELS.GET_BY_PATH, async (_event, filePath: string) => {
+      return this.handleRequest(async () => {
+        const result = await noteUseCases.getNoteByPath.execute({ filePath });
+        return result.note;
+      });
+    });
+
+    // notes:favorite - Toggle favorite status
+    ipcMain.handle(NOTE_CHANNELS.FAVORITE, async (_event, id: string) => {
+      return this.handleRequest(async () => {
+        const result = await noteUseCases.toggleFavorite.execute({ id });
+        return result.note;
+      });
+    });
+
+    // notes:pin - Toggle pin status
+    ipcMain.handle(NOTE_CHANNELS.PIN, async (_event, id: string) => {
+      return this.handleRequest(async () => {
+        const result = await noteUseCases.togglePin.execute({ id });
+        return result.note;
+      });
+    });
+
+    // notes:archive - Toggle archive status
+    ipcMain.handle(NOTE_CHANNELS.ARCHIVE, async (_event, id: string) => {
+      return this.handleRequest(async () => {
+        const result = await noteUseCases.toggleArchive.execute({ id });
+        return result.note;
+      });
+    });
+
     logger.info('[NoteIPC] Handlers registered');
   }
 
@@ -91,6 +123,10 @@ export class NoteIPC {
     ipcMain.removeHandler(NOTE_CHANNELS.DELETE);
     ipcMain.removeHandler(NOTE_CHANNELS.GET_ALL);
     ipcMain.removeHandler(NOTE_CHANNELS.MOVE);
+    ipcMain.removeHandler(NOTE_CHANNELS.GET_BY_PATH);
+    ipcMain.removeHandler(NOTE_CHANNELS.FAVORITE);
+    ipcMain.removeHandler(NOTE_CHANNELS.PIN);
+    ipcMain.removeHandler(NOTE_CHANNELS.ARCHIVE);
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {

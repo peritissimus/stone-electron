@@ -6,6 +6,7 @@
  * Structure:
  * - entities/       : Domain entities with business rules
  * - value-objects/  : Immutable value objects
+ * - services/       : Pure domain services (no I/O)
  * - errors/         : Domain-specific errors
  * - ports/          : Port interfaces (in/out)
  *
@@ -17,6 +18,9 @@ export * from './entities';
 
 // Value Objects
 export * from './value-objects';
+
+// Domain Services (pure logic)
+export * from './services';
 
 // Errors
 export * from './errors';

@@ -18,3 +18,10 @@ export interface AppendToJournalResponse {
 export interface IAppendToJournalUseCase {
   execute(request: AppendToJournalRequest): Promise<AppendToJournalResponse>;
 }
+
+/**
+ * Aggregated quick capture use cases interface for DI container
+ */
+export interface IQuickCaptureUseCases {
+  appendToJournal(content: string, workspaceId?: string): Promise<{ noteId: string; appended: boolean }>;
+}

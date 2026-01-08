@@ -129,3 +129,17 @@ export interface ISetGitRemoteUseCase {
 export interface IGetGitCommitsUseCase {
   execute(request: GitGetCommitsRequest): Promise<GitGetCommitsResponse>;
 }
+
+/**
+ * Aggregated git use cases interface for DI container
+ */
+export interface IGitUseCases {
+  getStatus: { execute(request: { workspaceId: string }): Promise<GitStatusResponse> };
+  init: { execute(request: { workspaceId: string }): Promise<GitInitResponse> };
+  commit: { execute(request: { workspaceId: string; message?: string }): Promise<GitCommitResponse | null> };
+  pull: { execute(request: { workspaceId: string }): Promise<GitPullResponse> };
+  push: { execute(request: { workspaceId: string }): Promise<GitPushResponse> };
+  sync: { execute(request: { workspaceId: string; message?: string }): Promise<GitSyncResponse> };
+  setRemote: { execute(request: { workspaceId: string; url: string }): Promise<GitSetRemoteResponse> };
+  getCommits: { execute(request: { workspaceId: string; limit?: number }): Promise<GitGetCommitsResponse> };
+}

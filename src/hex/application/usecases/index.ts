@@ -62,3 +62,43 @@ export {
   RebuildSearchIndexUseCase,
   createSearchUseCases,
 } from './SearchUseCases';
+
+// Task Use Cases
+export { createTaskUseCases } from './task';
+export type { TaskUseCasesDeps } from './task';
+
+// Graph Use Cases
+export { createGraphUseCases } from './graph';
+export type { GraphUseCasesDeps } from './graph';
+
+// Version Use Cases
+export { createVersionUseCases } from './version';
+export type { VersionUseCasesDeps } from './version';
+
+// Topic Use Cases
+export { createTopicUseCases } from './topic';
+export type { TopicUseCasesDeps } from './topic';
+
+// Attachment Use Cases
+export { createAttachmentUseCases } from './attachment';
+export type { AttachmentUseCasesDeps } from './attachment';
+
+// Git Use Cases
+export { createGitUseCases } from './git';
+export type { GitUseCasesDeps } from './git';
+
+// Database Use Cases
+export { createDatabaseUseCases } from './database';
+export type { DatabaseUseCasesDeps } from './database';
+
+// Quick Capture Use Cases
+export { createQuickCaptureUseCases } from './quickcapture';
+export type { QuickCaptureUseCasesDeps } from './quickcapture';
+
+// Export Use Cases
+export { createExportUseCases } from './export';
+export type { ExportUseCasesDeps } from './export';
+
+// System Use Cases
+export { createSystemUseCases } from './system';
+export type { SystemUseCasesDeps } from './system';

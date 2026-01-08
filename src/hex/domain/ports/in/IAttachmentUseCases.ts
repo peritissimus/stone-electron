@@ -58,3 +58,49 @@ export interface IGetAttachmentsUseCase {
 export interface IDeleteAttachmentUseCase {
   execute(request: DeleteAttachmentRequest): Promise<void>;
 }
+
+/**
+ * Aggregated attachment use cases interface for DI container
+ */
+export interface IAttachmentUseCases {
+  addAttachment(noteId: string, filePath: string, filename?: string): Promise<{
+    id: string;
+    noteId: string;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    path: string;
+    isImage: boolean;
+    isPdf: boolean;
+    createdAt: Date;
+  }>;
+  deleteAttachment(attachmentId: string, deleteFile?: boolean): Promise<void>;
+  getAttachments(noteId: string): Promise<Array<{
+    id: string;
+    noteId: string;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    path: string;
+    isImage: boolean;
+    isPdf: boolean;
+    createdAt: Date;
+  }>>;
+  uploadImage(noteId: string, imageData: Buffer | string, filename: string, mimeType?: string): Promise<{
+    attachment: {
+      id: string;
+      noteId: string;
+      filename: string;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      path: string;
+      isImage: boolean;
+      isPdf: boolean;
+      createdAt: Date;
+    };
+    markdownLink: string;
+  }>;
+}

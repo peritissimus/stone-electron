@@ -60,6 +60,79 @@ export class WorkspaceIPC {
       });
     });
 
+    // UPDATE - Update workspace name
+    ipcMain.handle(WORKSPACE_CHANNELS.UPDATE, async (_event, request: { id: string; name?: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.updateWorkspace.execute(request);
+        return result.workspace;
+      });
+    });
+
+    // SELECT_FOLDER - Show folder selection dialog
+    ipcMain.handle(WORKSPACE_CHANNELS.SELECT_FOLDER, async () => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.selectFolder.execute();
+        return result;
+      });
+    });
+
+    // VALIDATE_PATH - Validate a folder path exists
+    ipcMain.handle(WORKSPACE_CHANNELS.VALIDATE_PATH, async (_event, request: { folderPath: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.validatePath.execute(request);
+        return result;
+      });
+    });
+
+    // CREATE_FOLDER - Create a new folder in workspace
+    ipcMain.handle(WORKSPACE_CHANNELS.CREATE_FOLDER, async (_event, request: { name: string; parentPath?: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.createFolder.execute(request);
+        return result;
+      });
+    });
+
+    // RENAME_FOLDER - Rename a folder
+    ipcMain.handle(WORKSPACE_CHANNELS.RENAME_FOLDER, async (_event, request: { path: string; name: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.renameFolder.execute(request);
+        return result;
+      });
+    });
+
+    // DELETE_FOLDER - Delete a folder
+    ipcMain.handle(WORKSPACE_CHANNELS.DELETE_FOLDER, async (_event, request: { path: string }) => {
+      return this.handleRequest(async () => {
+        await workspaceUseCases.deleteFolder.execute(request);
+        return { success: true };
+      });
+    });
+
+    // MOVE_FOLDER - Move a folder
+    ipcMain.handle(WORKSPACE_CHANNELS.MOVE_FOLDER, async (_event, request: { sourcePath: string; destinationPath: string | null }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.moveFolder.execute(request);
+        return result;
+      });
+    });
+
+    // SCAN - Scan workspace for markdown files
+    ipcMain.handle(WORKSPACE_CHANNELS.SCAN, async (_event, request: { workspaceId: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.scanWorkspace.execute(request);
+        return result;
+      });
+    });
+
+    // SYNC - Sync workspace with filesystem
+    ipcMain.handle(WORKSPACE_CHANNELS.SYNC, async (_event, request?: { workspaceId?: string }) => {
+      return this.handleRequest(async () => {
+        const result = await workspaceUseCases.syncWorkspace.execute(request);
+        logger.info(`[WorkspaceIPC] Sync completed: ${result.notes.created + result.notes.updated} notes (${result.durationMs}ms)`);
+        return result;
+      });
+    });
+
     logger.info('[WorkspaceIPC] Handlers registered');
   }
 
@@ -69,6 +142,15 @@ export class WorkspaceIPC {
     ipcMain.removeHandler(WORKSPACE_CHANNELS.DELETE);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.SET_ACTIVE);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.GET_ACTIVE);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.UPDATE);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.SELECT_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.VALIDATE_PATH);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.CREATE_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.RENAME_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.DELETE_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.MOVE_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.SCAN);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.SYNC);
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {
