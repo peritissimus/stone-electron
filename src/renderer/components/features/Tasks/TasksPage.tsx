@@ -6,7 +6,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckSquare, Search, FolderOpen, Layers, Filter } from 'lucide-react';
 import { CaretRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { events } from '@renderer/lib/events';
+import { useFileEvents } from '@renderer/hooks/useFileEvents';
+import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useUIStore } from '@renderer/stores/uiStore';
@@ -84,28 +85,34 @@ export function TasksPage() {
     loadTodos();
   }, [loadTodos]);
 
-  // Auto-refresh on note updates (debounced)
+  // Debounced refresh handler
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      loadTodos(false); // Silent refresh without loading state
+    }, 500);
+  }, [loadTodos]);
+
+  // Cleanup debounce timer on unmount
   useEffect(() => {
-    const debouncedRefresh = () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-      refreshTimerRef.current = setTimeout(() => {
-        loadTodos(false); // Silent refresh without loading state
-      }, 500);
-    };
-
-    const offNoteUpdated = events.onNoteUpdated(debouncedRefresh);
-    const offFileChanged = events.onFileChanged(debouncedRefresh);
-
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
-      offNoteUpdated();
-      offFileChanged();
     };
-  }, [loadTodos]);
+  }, []);
+
+  // Auto-refresh on note updates
+  useNoteEvents({
+    onUpdated: debouncedRefresh,
+  });
+
+  // Auto-refresh on file changes
+  useFileEvents({
+    onChanged: debouncedRefresh,
+  });
 
   // Extract unique folders for filter dropdown
   const folders = useMemo(() => {
