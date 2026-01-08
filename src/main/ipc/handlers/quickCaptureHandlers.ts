@@ -71,7 +71,7 @@ export function registerQuickCaptureHandlers(container: AwilixContainer<Containe
         entry,
       });
 
-      return { success: true, noteId: journal.id };
+      return { note: journal };
     }
   );
 
