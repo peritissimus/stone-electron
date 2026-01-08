@@ -23,6 +23,10 @@ import {
   type ISearchNotesUseCase,
   type IGetNoteContentUseCase,
   type ISaveNoteContentUseCase,
+  type IGetNoteByPathUseCase,
+  type IToggleFavoriteUseCase,
+  type ITogglePinUseCase,
+  type IToggleArchiveUseCase,
   NoteNotFoundError,
 } from '../../domain';
 
@@ -344,6 +348,70 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
   }
 }
 
+export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: { filePath: string }): Promise<{ note: NoteProps }> {
+    const noteProps = await this.noteRepository.findByFilePath(request.filePath);
+    if (!noteProps) {
+      throw new NoteNotFoundError(`file:${request.filePath}`);
+    }
+
+    return { note: noteProps };
+  }
+}
+
+export class ToggleFavoriteUseCase implements IToggleFavoriteUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: { id: string }): Promise<{ note: NoteProps }> {
+    const noteProps = await this.noteRepository.findById(request.id);
+    if (!noteProps) {
+      throw new NoteNotFoundError(request.id);
+    }
+
+    const note = NoteEntity.fromPersistence(noteProps);
+    note.toggleFavorite();
+    await this.noteRepository.save(note);
+
+    return { note: note.toPersistence() };
+  }
+}
+
+export class TogglePinUseCase implements ITogglePinUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: { id: string }): Promise<{ note: NoteProps }> {
+    const noteProps = await this.noteRepository.findById(request.id);
+    if (!noteProps) {
+      throw new NoteNotFoundError(request.id);
+    }
+
+    const note = NoteEntity.fromPersistence(noteProps);
+    note.togglePinned();
+    await this.noteRepository.save(note);
+
+    return { note: note.toPersistence() };
+  }
+}
+
+export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: { id: string }): Promise<{ note: NoteProps }> {
+    const noteProps = await this.noteRepository.findById(request.id);
+    if (!noteProps) {
+      throw new NoteNotFoundError(request.id);
+    }
+
+    const note = NoteEntity.fromPersistence(noteProps);
+    note.setArchived(!noteProps.isArchived);
+    await this.noteRepository.save(note);
+
+    return { note: note.toPersistence() };
+  }
+}
+
 // ============================================================================
 // Factory
 // ============================================================================
@@ -364,5 +432,9 @@ export function createNoteUseCases(
     searchNotes: new SearchNotesUseCase(noteRepository),
     getNoteContent: new GetNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
     saveNoteContent: new SaveNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
+    getNoteByPath: new GetNoteByPathUseCase(noteRepository),
+    toggleFavorite: new ToggleFavoriteUseCase(noteRepository),
+    togglePin: new TogglePinUseCase(noteRepository),
+    toggleArchive: new ToggleArchiveUseCase(noteRepository),
   };
 }

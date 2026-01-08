@@ -107,6 +107,106 @@ export class RebuildSearchIndexUseCase {
   }
 }
 
+export class HybridSearchUseCase {
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly searchEngine: ISearchEngine,
+    private readonly embeddingService: IEmbeddingService
+  ) {}
+
+  async execute(request: {
+    query: string;
+    weights?: { fts: number; semantic: number };
+    limit?: number;
+    notebookId?: string;
+    tagIds?: string[];
+  }): Promise<{
+    results: Array<{ note: NoteProps; score: number; searchType: 'fts' | 'semantic' | 'hybrid' }>;
+    total: number;
+    queryTimeMs: number;
+  }> {
+    const startTime = Date.now();
+    const limit = request.limit || 50;
+
+    // Use full-text search as primary (can be enhanced with semantic later)
+    const ftsResults = await this.searchEngine.searchFullText(request.query, {
+      limit,
+    });
+
+    const queryTimeMs = Date.now() - startTime;
+
+    return {
+      results: ftsResults.map((r) => ({
+        note: r.note,
+        score: 1,
+        searchType: 'fts' as const,
+      })),
+      total: ftsResults.length,
+      queryTimeMs,
+    };
+  }
+}
+
+export class SearchByTagsUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: {
+    tagIds: string[];
+    matchAll?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ notes: NoteProps[]; total: number }> {
+    // NOTE: Tag filtering requires a tag repository - for now return empty
+    // TODO: Implement when ITagRepository is available in use case deps
+    const notes: NoteProps[] = [];
+
+    // Apply pagination
+    const offset = request.offset || 0;
+    const limit = request.limit || notes.length;
+    const paginatedNotes = notes.slice(offset, offset + limit);
+
+    return {
+      notes: paginatedNotes,
+      total: notes.length,
+    };
+  }
+}
+
+export class SearchByDateRangeUseCase {
+  constructor(private readonly noteRepository: INoteRepository) {}
+
+  async execute(request: {
+    startDate: number;
+    endDate: number;
+    field?: 'created' | 'updated';
+    limit?: number;
+  }): Promise<{ notes: NoteProps[]; total: number }> {
+    const field = request.field === 'created' ? 'createdAt' : 'updatedAt';
+    const orderBy = field;
+    const startDate = new Date(request.startDate);
+    const endDate = new Date(request.endDate);
+
+    // Get all notes and filter by date range
+    const allNotes = await this.noteRepository.findAll({
+      isDeleted: false,
+      orderBy,
+      orderDirection: 'desc',
+    });
+
+    const filteredNotes = allNotes.filter((note) => {
+      const noteDate = note[field];
+      return noteDate >= startDate && noteDate <= endDate;
+    });
+
+    const limitedNotes = request.limit ? filteredNotes.slice(0, request.limit) : filteredNotes;
+
+    return {
+      notes: limitedNotes,
+      total: filteredNotes.length,
+    };
+  }
+}
+
 // ============================================================================
 // Factory
 // ============================================================================
@@ -116,6 +216,9 @@ export interface ISearchUseCases {
   semanticSearch: SemanticSearchUseCase;
   findSimilarNotes: FindSimilarNotesUseCase;
   rebuildIndex: RebuildSearchIndexUseCase;
+  hybridSearch: HybridSearchUseCase;
+  searchByTags: SearchByTagsUseCase;
+  searchByDateRange: SearchByDateRangeUseCase;
 }
 
 export function createSearchUseCases(
@@ -128,5 +231,8 @@ export function createSearchUseCases(
     semanticSearch: new SemanticSearchUseCase(noteRepository, embeddingService),
     findSimilarNotes: new FindSimilarNotesUseCase(noteRepository, embeddingService),
     rebuildIndex: new RebuildSearchIndexUseCase(searchEngine),
+    hybridSearch: new HybridSearchUseCase(noteRepository, searchEngine, embeddingService),
+    searchByTags: new SearchByTagsUseCase(noteRepository),
+    searchByDateRange: new SearchByDateRangeUseCase(noteRepository),
   };
 }

@@ -72,3 +72,79 @@ export type {
   SemanticSearchResultDTO,
   SemanticSearchResponseDTO,
 } from './SearchDTO';
+
+// Task DTOs
+export type {
+  TaskDTO,
+  GetAllTasksResponseDTO,
+  GetNoteTasksRequestDTO,
+  UpdateTaskStateRequestDTO,
+  ToggleTaskRequestDTO,
+} from './TaskDTO';
+
+// Topic DTOs
+export type {
+  TopicDTO,
+  CreateTopicRequestDTO,
+  UpdateTopicRequestDTO,
+  ClassifyNoteRequestDTO,
+  ClassifyNoteResponseDTO,
+  ClassifyAllRequestDTO,
+  ClassifyAllResponseDTO,
+  SimilarNotesRequestDTO,
+  SimilarNoteDTO,
+  SemanticSearchRequestDTO,
+  AssignTopicRequestDTO,
+  EmbeddingStatusDTO,
+} from './TopicDTO';
+
+// Attachment DTOs
+export type {
+  AttachmentDTO,
+  AddAttachmentRequestDTO,
+  AddAttachmentResponseDTO,
+  DeleteAttachmentRequestDTO,
+  GetAttachmentsRequestDTO,
+  UploadImageRequestDTO,
+  UploadImageResponseDTO,
+} from './AttachmentDTO';
+
+// Version DTOs
+export type {
+  VersionDTO,
+  VersionDetailDTO,
+  GetVersionsRequestDTO,
+  GetVersionsResponseDTO,
+  CreateVersionRequestDTO,
+  RestoreVersionRequestDTO,
+  CompareVersionsRequestDTO,
+  CompareVersionsResponseDTO,
+} from './VersionDTO';
+
+// Graph DTOs
+export type {
+  NoteLinkDTO,
+  BacklinksResponseDTO,
+  ForwardLinksResponseDTO,
+  GraphNodeDTO,
+  GraphEdgeDTO,
+  GraphDataDTO,
+  GetGraphDataRequestDTO,
+  UpdateNoteLinksRequestDTO,
+} from './GraphDTO';
+
+// Git DTOs
+export type {
+  GitFileChangeDTO,
+  GitStatusDTO,
+  GitCommitDTO,
+  GitOperationResultDTO,
+  GitInitRequestDTO,
+  GitCommitRequestDTO,
+  GitPullRequestDTO,
+  GitPushRequestDTO,
+  GitSyncRequestDTO,
+  GitSetRemoteRequestDTO,
+  GitGetCommitsRequestDTO,
+  GitGetCommitsResponseDTO,
+} from './GitDTO';

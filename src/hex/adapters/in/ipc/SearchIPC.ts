@@ -39,12 +39,36 @@ export class SearchIPC {
       });
     });
 
+    ipcMain.handle(SEARCH_CHANNELS.HYBRID, async (_event, request) => {
+      return this.handleRequest(async () => {
+        const result = await searchUseCases.hybridSearch.execute(request);
+        return result;
+      });
+    });
+
+    ipcMain.handle(SEARCH_CHANNELS.BY_TAG, async (_event, request) => {
+      return this.handleRequest(async () => {
+        const result = await searchUseCases.searchByTags.execute(request);
+        return result;
+      });
+    });
+
+    ipcMain.handle(SEARCH_CHANNELS.BY_DATE_RANGE, async (_event, request) => {
+      return this.handleRequest(async () => {
+        const result = await searchUseCases.searchByDateRange.execute(request);
+        return result;
+      });
+    });
+
     logger.info('[SearchIPC] Handlers registered');
   }
 
   unregisterHandlers(): void {
     ipcMain.removeHandler(SEARCH_CHANNELS.FULL_TEXT);
     ipcMain.removeHandler(SEARCH_CHANNELS.SEMANTIC);
+    ipcMain.removeHandler(SEARCH_CHANNELS.HYBRID);
+    ipcMain.removeHandler(SEARCH_CHANNELS.BY_TAG);
+    ipcMain.removeHandler(SEARCH_CHANNELS.BY_DATE_RANGE);
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {

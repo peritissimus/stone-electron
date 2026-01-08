@@ -44,3 +44,12 @@ export interface IVacuumDatabaseUseCase {
 export interface ICheckDatabaseIntegrityUseCase {
   execute(request: IntegrityCheckRequest): Promise<IntegrityCheckResponse>;
 }
+
+/**
+ * Aggregated database use cases interface for DI container
+ */
+export interface IDatabaseUseCases {
+  getStatus(): Promise<{ path: string; size: number; isOpen: boolean }>;
+  vacuum(): Promise<void>;
+  checkIntegrity(): Promise<{ ok: boolean; errors: string[] }>;
+}

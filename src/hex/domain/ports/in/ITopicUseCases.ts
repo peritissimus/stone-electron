@@ -203,3 +203,81 @@ export interface IGetEmbeddingStatusUseCase {
 export interface IInitializeTopicsUseCase {
   execute(): Promise<{ success: boolean; ready: boolean }>;
 }
+
+/**
+ * Aggregated topic use cases interface for DI container
+ */
+export interface ITopicUseCases {
+  initialize(): Promise<void>;
+  getAllTopics(): Promise<Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    color: string;
+    isPredefined: boolean;
+    noteCount: number;
+  }>>;
+  getTopicById(id: string): Promise<{
+    id: string;
+    name: string;
+    description: string | null;
+    color: string;
+    isPredefined: boolean;
+    noteCount: number;
+  } | null>;
+  createTopic(data: { name: string; description?: string; color?: string }): Promise<{
+    id: string;
+    name: string;
+    description: string | null;
+    color: string;
+    isPredefined: boolean;
+    noteCount: number;
+  }>;
+  updateTopic(id: string, data: { name?: string; description?: string; color?: string }): Promise<{
+    id: string;
+    name: string;
+    description: string | null;
+    color: string;
+    isPredefined: boolean;
+    noteCount: number;
+  }>;
+  deleteTopic(id: string): Promise<void>;
+  classifyNote(noteId: string, force?: boolean): Promise<{
+    noteId: string;
+    topicId: string | null;
+    confidence: number;
+  }>;
+  classifyAllNotes(options?: { force?: boolean }): Promise<{ processed: number; classified: number }>;
+  assignTopicToNote(noteId: string, topicId: string): Promise<void>;
+  removeTopicFromNote(noteId: string, topicId: string): Promise<void>;
+  getSimilarNotes(noteId: string, limit?: number): Promise<Array<{
+    noteId: string;
+    noteTitle: string;
+    similarity: number;
+  }>>;
+  semanticSearch(query: string, limit?: number): Promise<Array<{
+    noteId: string;
+    noteTitle: string;
+    similarity: number;
+  }>>;
+  recomputeCentroids(): Promise<void>;
+  getEmbeddingStatus(): Promise<{
+    totalNotes: number;
+    notesWithEmbeddings: number;
+    isReady: boolean;
+  }>;
+  getNotesForTopic(topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }): Promise<Array<{
+    noteId: string;
+    confidence: number;
+    isManual: boolean;
+  }>>;
+  getTopicsForNote(noteId: string): Promise<Array<{
+    noteId: string;
+    topicId: string;
+    confidence: number;
+    isManual: boolean;
+    createdAt: Date;
+    topicName: string;
+    topicColor: string;
+  }>>;
+}

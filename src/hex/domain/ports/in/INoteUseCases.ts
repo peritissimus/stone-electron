@@ -108,6 +108,34 @@ export interface ISaveNoteContentUseCase {
 }
 
 /**
+ * Get note by file path
+ */
+export interface IGetNoteByPathUseCase {
+  execute(request: { filePath: string }): Promise<{ note: NoteProps }>;
+}
+
+/**
+ * Toggle favorite status
+ */
+export interface IToggleFavoriteUseCase {
+  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+}
+
+/**
+ * Toggle pin status
+ */
+export interface ITogglePinUseCase {
+  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+}
+
+/**
+ * Toggle archive status
+ */
+export interface IToggleArchiveUseCase {
+  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+}
+
+/**
  * Aggregated Note Use Cases
  */
 export interface INoteUseCases {
@@ -121,4 +149,8 @@ export interface INoteUseCases {
   searchNotes: ISearchNotesUseCase;
   getNoteContent: IGetNoteContentUseCase;
   saveNoteContent: ISaveNoteContentUseCase;
+  getNoteByPath: IGetNoteByPathUseCase;
+  toggleFavorite: IToggleFavoriteUseCase;
+  togglePin: ITogglePinUseCase;
+  toggleArchive: IToggleArchiveUseCase;
 }

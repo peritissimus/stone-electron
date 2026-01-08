@@ -16,3 +16,7 @@ export * from './IGitUseCases';
 export * from './IDatabaseUseCases';
 export * from './ISystemUseCases';
 export * from './IQuickCaptureUseCases';
+export * from './ITaskUseCases';
+export * from './IGraphUseCases';
+export * from './IVersionUseCases';
+export * from './IExportUseCases';
