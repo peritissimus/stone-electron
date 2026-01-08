@@ -15,8 +15,9 @@ import {
   Clock,
 } from 'phosphor-react';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { gitAPI, type GitStatus, type GitCommit } from '@renderer/api';
+import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { logger } from '@renderer/utils/logger';
+import type { GitStatus, GitCommit } from '@renderer/api';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';
@@ -30,10 +31,21 @@ export function GitSettings() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
-  const [status, setStatus] = useState<GitStatus | null>(null);
-  const [commits, setCommits] = useState<GitCommit[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const {
+    status,
+    commits,
+    loading,
+    syncing,
+    getStatus,
+    getCommits,
+    init,
+    setRemote,
+    commit,
+    pull,
+    push,
+    sync,
+  } = useGitAPI();
+
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [remoteUrl, setRemoteUrl] = useState('');
   const [showRemoteInput, setShowRemoteInput] = useState(false);
@@ -42,27 +54,15 @@ export function GitSettings() {
   const loadStatus = useCallback(async () => {
     if (!activeWorkspaceId) return;
 
-    setLoading(true);
-    try {
-      const response = await gitAPI.getStatus(activeWorkspaceId);
-      if (response.success && response.data) {
-        setStatus(response.data);
-        setRemoteUrl(response.data.remoteUrl || '');
-
-        // Load commits if repo exists
-        if (response.data.isRepo) {
-          const commitsResponse = await gitAPI.getCommits(activeWorkspaceId, 5);
-          if (commitsResponse.success && commitsResponse.data) {
-            setCommits(commitsResponse.data.commits);
-          }
-        }
+    const gitStatus = await getStatus(activeWorkspaceId);
+    if (gitStatus) {
+      setRemoteUrl(gitStatus.remoteUrl || '');
+      // Load commits if repo exists
+      if (gitStatus.isRepo) {
+        await getCommits(activeWorkspaceId, 5);
       }
-    } catch (error) {
-      logger.error('[GitSettings] Failed to load status:', error);
-    } finally {
-      setLoading(false);
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, getStatus, getCommits]);
 
   useEffect(() => {
     loadStatus();
@@ -72,20 +72,13 @@ export function GitSettings() {
   const handleInit = async () => {
     if (!activeWorkspaceId) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.init(activeWorkspaceId);
-      if (response.success) {
-        setMessage({ type: 'success', text: 'Git repository initialized' });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.error?.message || 'Failed to initialize' });
-      }
-    } catch (error) {
+    const success = await init(activeWorkspaceId);
+    if (success) {
+      setMessage({ type: 'success', text: 'Git repository initialized' });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Failed to initialize repository' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -93,21 +86,14 @@ export function GitSettings() {
   const handleSetRemote = async () => {
     if (!activeWorkspaceId || !remoteUrl.trim()) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.setRemote(activeWorkspaceId, remoteUrl.trim());
-      if (response.success) {
-        setMessage({ type: 'success', text: 'Remote URL configured' });
-        setShowRemoteInput(false);
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.error?.message || 'Failed to set remote' });
-      }
-    } catch (error) {
+    const success = await setRemote(activeWorkspaceId, remoteUrl.trim());
+    if (success) {
+      setMessage({ type: 'success', text: 'Remote URL configured' });
+      setShowRemoteInput(false);
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Failed to set remote URL' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -115,20 +101,13 @@ export function GitSettings() {
   const handleSync = async () => {
     if (!activeWorkspaceId) return;
 
-    setSyncing(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.sync(activeWorkspaceId);
-      if (response.success && response.data) {
-        setMessage({ type: 'success', text: 'Workspace synced successfully' });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.data?.error || response.error?.message || 'Sync failed' });
-      }
-    } catch (error) {
+    const result = await sync(activeWorkspaceId);
+    if (result) {
+      setMessage({ type: 'success', text: 'Workspace synced successfully' });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Sync failed' });
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -136,24 +115,17 @@ export function GitSettings() {
   const handleCommit = async () => {
     if (!activeWorkspaceId) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.commit(activeWorkspaceId);
-      if (response.success && response.data) {
-        if (response.data.hash) {
-          setMessage({ type: 'success', text: `Committed: ${response.data.hash}` });
-        } else {
-          setMessage({ type: 'success', text: response.data.message || 'No changes to commit' });
-        }
-        await loadStatus();
+    const result = await commit(activeWorkspaceId);
+    if (result) {
+      if (result.hash) {
+        setMessage({ type: 'success', text: `Committed: ${result.hash}` });
       } else {
-        setMessage({ type: 'error', text: response.data?.error || 'Commit failed' });
+        setMessage({ type: 'success', text: result.message || 'No changes to commit' });
       }
-    } catch (error) {
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Commit failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -161,20 +133,13 @@ export function GitSettings() {
   const handlePull = async () => {
     if (!activeWorkspaceId) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.pull(activeWorkspaceId);
-      if (response.success && response.data) {
-        setMessage({ type: 'success', text: 'Pulled latest changes' });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.data?.error || 'Pull failed' });
-      }
-    } catch (error) {
+    const result = await pull(activeWorkspaceId);
+    if (result) {
+      setMessage({ type: 'success', text: 'Pulled latest changes' });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Pull failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -182,20 +147,13 @@ export function GitSettings() {
   const handlePush = async () => {
     if (!activeWorkspaceId) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await gitAPI.push(activeWorkspaceId);
-      if (response.success && response.data) {
-        setMessage({ type: 'success', text: 'Pushed changes to remote' });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.data?.error || 'Push failed' });
-      }
-    } catch (error) {
+    const result = await push(activeWorkspaceId);
+    if (result) {
+      setMessage({ type: 'success', text: 'Pushed changes to remote' });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Push failed' });
-    } finally {
-      setLoading(false);
     }
   };
 

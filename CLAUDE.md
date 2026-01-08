@@ -828,6 +828,66 @@ pnpm  typecheck         # Check for TypeScript errors
 - `notes:get` - Returns metadata only (no content)
 - `notes:getContent` - Returns content from file (lazy load)
 - `notes:update` - Accepts content, writes to file only (not DB)
+
+### Layer Architecture
+
+The renderer follows a layered architecture pattern:
+
+```
+Component → Hook (use*API) → API → IPC → Main Process
+                ↓
+              Store
+```
+
+**Layer Responsibilities:**
+
+| Layer | Location | Responsibility | Imports |
+|-------|----------|----------------|---------|
+| **Components** | `components/**/*.tsx` | Render UI, read stores, trigger hooks | Stores + Hooks |
+| **Hooks** | `hooks/use*API.ts` | Orchestrate API calls + store updates | API + Stores |
+| **Stores** | `stores/*.ts` | Hold state, computed selectors | Types only |
+| **API** | `api/*.ts` | Pure IPC wrappers, no React | `invokeIpc` + types |
+
+**Rules:**
+- Components should **NEVER** import from `@renderer/api` directly
+- Components read state from **stores**, mutate via **hooks**
+- Hooks call **API**, then update **stores** on success/failure
+- Stores hold state only - **NO** data fetching or side effects
+- API layer is pure functions - **NO** React, **NO** state
+
+### Layer Architecture Violations - ✅ ALL FIXED
+
+**Audit Date:** 2025-01-08
+**Fixed Date:** 2025-01-08
+
+All layer architecture violations have been resolved. Components now use hooks instead of direct API imports.
+
+#### Fixes Applied
+
+**New Hooks Created:**
+- `src/renderer/hooks/useGitAPI.ts` - Git operations (getStatus, getCommits, init, setRemote, commit, pull, push, sync)
+- `src/renderer/hooks/useDatabaseAPI.ts` - Database operations (getStatus, backup, vacuum, checkIntegrity)
+- `src/renderer/hooks/useSystemAPI.ts` - System operations (getFonts)
+- `src/renderer/hooks/useQuickCaptureAPI.ts` - Quick capture (appendToJournal)
+- `src/renderer/api/quickCaptureAPI.ts` - API layer for quick capture
+
+**Methods Added to Existing Hooks:**
+- `useNoteAPI`: Added `getAllTodos()`, `updateTaskState()`, `loadNoteByPath()`
+- `useWorkspaceAPI`: Added `selectFolder()`, `createWorkspace()`
+
+**Components Fixed:**
+| Component | Change |
+|-----------|--------|
+| `Sidebar.tsx` | Replaced `gitAPI`, `noteAPI`, `workspaceAPI` → `useGitAPI`, `useNoteAPI`, `useWorkspaceAPI` |
+| `SettingsModal.tsx` | Replaced `databaseAPI` → `useDatabaseAPI` |
+| `GitSettings.tsx` | Replaced `gitAPI` → `useGitAPI` |
+| `TodoList.tsx` | Replaced `noteAPI.getAllTodos` → `useNoteAPI().getAllTodos` |
+| `TasksPage.tsx` | Replaced `noteAPI` → `useNoteAPI` |
+| `FontPicker.tsx` | Replaced `systemAPI` → `useSystemAPI` |
+| `CreateWorkspaceModal.tsx` | Replaced `workspaceAPI` → `useWorkspaceAPI` |
+| `FileTree.tsx` | Replaced `noteAPI.getByPath` → `useNoteAPI().loadNoteByPath` |
+| `QuickCaptureWindow.tsx` | Replaced `window.electron.invoke` → `useQuickCaptureAPI` |
+
 ### File Watcher and Sync Behavior
 
 To reduce redundant scans and log noise during autosave, the sync flow is adjusted:

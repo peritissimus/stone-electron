@@ -10,7 +10,7 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { ContainerStack, ContainerFlex } from '@renderer/components/base/ui';
 import { Label, Text } from '@renderer/components/base/ui/text';
-import { workspaceAPI } from '@renderer/api';
+import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 
 interface CreateWorkspaceModalProps {
   isOpen: boolean;
@@ -28,6 +28,7 @@ export function CreateWorkspaceModal({
   const [name, setName] = useState('');
   const [folderPath, setFolderPath] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { selectFolder } = useWorkspaceAPI();
 
   useEffect(() => {
     if (isOpen) {
@@ -44,13 +45,11 @@ export function CreateWorkspaceModal({
 
   const handleBrowse = async () => {
     try {
-      const response = await workspaceAPI.selectFolder();
+      const result = await selectFolder();
 
-      if (response.success && response.data?.folderPath && !response.data.canceled) {
-        setFolderPath(response.data.folderPath);
+      if (result?.folderPath && !result.canceled) {
+        setFolderPath(result.folderPath);
         setError(null);
-      } else if (response.error) {
-        setError(response.error.message || 'Failed to select folder');
       }
     } catch (e) {
       setError('Failed to open folder picker');
