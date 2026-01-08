@@ -40,18 +40,9 @@ export class EmbeddingService {
    * Get the worker script path (handles both dev and packaged app)
    */
   private getWorkerPath(): string {
-    // In development, use the TypeScript source
-    // In production, use the compiled JavaScript
-    const isDev = process.env.NODE_ENV !== 'production';
-
-    if (isDev) {
-      // During development, we need to compile the worker on-the-fly
-      // or use ts-node. For simplicity, we'll use the built version.
-      return path.join(__dirname, 'workers', 'embedding.worker.cjs');
-    }
-
-    // In packaged app, use the bundled worker
-    return path.join(__dirname, 'workers', 'embedding.worker.cjs');
+    // Worker is in ../workers/ relative to services/
+    // Both dev and production use the same relative path
+    return path.join(__dirname, '..', 'workers', 'embedding.worker.cjs');
   }
 
   /**
