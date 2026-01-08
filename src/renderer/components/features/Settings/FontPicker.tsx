@@ -5,10 +5,9 @@
 
 import { useState, useEffect } from 'react';
 import { Check, CaretDown } from 'phosphor-react';
-import { systemAPI } from '@renderer/api';
+import { useSystemAPI } from '@renderer/hooks/useSystemAPI';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
-import { logger } from '@renderer/utils/logger';
 import {
   Command,
   CommandEmpty,
@@ -27,26 +26,11 @@ interface FontPickerProps {
 
 export function FontPicker({ value, onValueChange, placeholder = 'Select font...' }: FontPickerProps) {
   const [open, setOpen] = useState(false);
-  const [fonts, setFonts] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { fonts, loading, getFonts } = useSystemAPI();
 
   useEffect(() => {
-    loadFonts();
-  }, []);
-
-  const loadFonts = async () => {
-    try {
-      setLoading(true);
-      const response = await systemAPI.getFonts();
-      if (response.success && response.data) {
-        setFonts(response.data.fonts);
-      }
-    } catch (error) {
-      logger.error('Failed to load fonts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    getFonts();
+  }, [getFonts]);
 
   // Extract font family name from font stack
   const getDisplayName = (fontStack: string): string => {

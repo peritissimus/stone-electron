@@ -51,3 +51,6 @@ export { settingsAPI, databaseAPI, systemAPI } from './settingsAPI';
 // Git API
 export { gitAPI } from './gitAPI';
 export type { GitStatus, GitCommitResult, GitSyncResult, GitCommit } from './gitAPI';
+
+// Quick Capture API
+export { quickCaptureAPI } from './quickCaptureAPI';

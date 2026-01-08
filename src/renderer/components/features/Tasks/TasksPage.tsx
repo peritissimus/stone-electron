@@ -10,8 +10,8 @@ import { events } from '@renderer/lib/events';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
-import { noteAPI } from '@renderer/api';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Input } from '@renderer/components/base/ui/input';
 import {
@@ -60,6 +60,7 @@ export function TasksPage() {
   const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { getAllTodos, updateTaskState } = useNoteAPI();
 
   // Debounce timer ref for auto-refresh
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,16 +68,16 @@ export function TasksPage() {
   const loadTodos = useCallback(async (showLoadingState = true) => {
     try {
       if (showLoadingState) setLoading(true);
-      const response = await noteAPI.getAllTodos();
-      if (response.success && response.data) {
-        setTodos(response.data);
+      const data = await getAllTodos();
+      if (Array.isArray(data)) {
+        setTodos(data);
       }
     } catch (error) {
       logger.error('[TasksPage] Failed to load todos', { error });
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, []);
+  }, [getAllTodos]);
 
   // Initial load
   useEffect(() => {
@@ -261,14 +262,14 @@ export function TasksPage() {
           ),
         );
 
-        const response = await noteAPI.updateTaskState(todo.noteId, taskIndex, newState);
+        const success = await updateTaskState(todo.noteId, taskIndex, newState);
 
-        if (!response.success) {
+        if (!success) {
           // Revert on error
           setTodos((prev) =>
             prev.map((t) => (t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t)),
           );
-          logger.error('[TasksPage] Failed to update task state', { error: response.error });
+          logger.error('[TasksPage] Failed to update task state');
         }
       } catch (error) {
         // Revert on error
@@ -280,7 +281,7 @@ export function TasksPage() {
         setTogglingTodoId(null);
       }
     },
-    [],
+    [updateTaskState],
   );
 
   if (loading) {

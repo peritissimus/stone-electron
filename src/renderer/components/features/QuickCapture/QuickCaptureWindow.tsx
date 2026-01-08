@@ -3,11 +3,12 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
 
 export function QuickCaptureWindow() {
   const [text, setText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { appendToJournal, isSubmitting } = useQuickCaptureAPI();
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 50);
@@ -15,17 +16,8 @@ export function QuickCaptureWindow() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!text.trim() || isSubmitting) return;
-    setIsSubmitting(true);
-
-    try {
-      const response = await window.electron.invoke('quickCapture:appendToJournal', {
-        text: text.trim(),
-      });
-      if (response.success) window.close();
-    } catch {
-      setIsSubmitting(false);
-    }
+    const note = await appendToJournal(text);
+    if (note) window.close();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

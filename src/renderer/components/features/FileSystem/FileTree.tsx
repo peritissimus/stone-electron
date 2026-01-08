@@ -34,7 +34,6 @@ import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/utils/logger';
 import { normalizePath, getParentPath, getDisplayName } from '@renderer/utils/path';
-import { noteAPI } from '@renderer/api';
 
 interface FileTreeFileProps {
   node: StoreFileTreeNode;
@@ -56,6 +55,8 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   const notesByPath = useNoteStore((state) => state.notesByPath);
   const note = notesByPath.get(normalizedPath);
 
+  const { loadNoteByPath } = useNoteAPI();
+
   // Active state based on whether this note is the currently active note
   const isActive = note?.id === activeNoteId;
 
@@ -65,7 +66,7 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   const parentPath = getParentPath(normalizedPath);
   const folderForSelection = parentPath || null;
 
-  const handleOpen = () => {
+  const handleOpen = async () => {
     logger.info('[FileTree] Opening file', {
       normalizedPath,
       folderForSelection,
@@ -86,26 +87,18 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
       });
       setActiveNote(cachedNote.id);
     } else {
-      // Note not in store - load it directly via API (Obsidian-style)
-      logger.info('[FileTree] Note not in cache, loading via API', { normalizedPath });
-      noteAPI
-        .getByPath(normalizedPath)
-        .then((response) => {
-          if (response.success && response.data) {
-            logger.info('[FileTree] Loaded note via API', {
-              noteId: response.data.id,
-              noteTitle: response.data.title,
-            });
-            // Add to store and set as active
-            useNoteStore.getState().addNote(response.data);
-            setActiveNote(response.data.id);
-          } else {
-            logger.warn('[FileTree] No note found for file path', { normalizedPath });
-          }
-        })
-        .catch((error) => {
-          logger.error('[FileTree] Failed to load note by path', { normalizedPath, error });
+      // Note not in store - load it via hook (Obsidian-style)
+      logger.info('[FileTree] Note not in cache, loading via hook', { normalizedPath });
+      const loadedNote = await loadNoteByPath(normalizedPath);
+      if (loadedNote) {
+        logger.info('[FileTree] Loaded note via hook', {
+          noteId: loadedNote.id,
+          noteTitle: loadedNote.title,
         });
+        setActiveNote(loadedNote.id);
+      } else {
+        logger.warn('[FileTree] No note found for file path', { normalizedPath });
+      }
     }
   };
 

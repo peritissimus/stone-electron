@@ -9,9 +9,9 @@ import { CheckSquare, Square, ArrowRight } from 'lucide-react';
 import { TodoItem } from '@shared/types';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
-import { noteAPI } from '@renderer/api';
 
 interface TodoListProps {
   onTodoClick?: (noteId: string) => void;
@@ -95,6 +95,7 @@ export function TodoList({ onTodoClick }: TodoListProps) {
   const [loading, setLoading] = useState(true);
   const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { getAllTodos } = useNoteAPI();
 
   useEffect(() => {
     loadTodos();
@@ -103,10 +104,10 @@ export function TodoList({ onTodoClick }: TodoListProps) {
   const loadTodos = async () => {
     try {
       setLoading(true);
-      const response = await noteAPI.getAllTodos();
-      if (response.success && response.data) {
+      const data = await getAllTodos();
+      if (Array.isArray(data)) {
         // Filter out completed todos and sort by state priority
-        const activeTodos = response.data.filter((todo) => !todo.checked);
+        const activeTodos = data.filter((todo) => !todo.checked);
         const sortedTodos = activeTodos.sort((a, b) => {
           const priority: Record<string, number> = { doing: 0, waiting: 1, todo: 2, hold: 3, idea: 4, done: 5, canceled: 6 };
           const aPriority = priority[a.state] ?? 7;

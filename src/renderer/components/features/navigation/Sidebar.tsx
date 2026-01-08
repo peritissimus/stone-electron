@@ -26,13 +26,13 @@ import {
 } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
 import { cn } from '@renderer/lib/utils';
-import { noteAPI, workspaceAPI, gitAPI, type GitStatus } from '@renderer/api';
 import { events } from '@renderer/lib/events';
 
 /**
@@ -40,28 +40,13 @@ import { events } from '@renderer/lib/events';
  */
 function GitSyncButton() {
   const { activeWorkspaceId } = useWorkspaceStore();
-  const [status, setStatus] = useState<GitStatus | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const { status, syncing, getStatus, sync } = useGitAPI();
 
   // Load git status
   const loadStatus = useCallback(async () => {
-    if (!activeWorkspaceId) {
-      setStatus(null);
-      return;
-    }
-
-    try {
-      const response = await gitAPI.getStatus(activeWorkspaceId);
-      if (response.success && response.data) {
-        setStatus(response.data);
-      } else {
-        setStatus(null);
-      }
-    } catch (error) {
-      logger.error('[GitSyncButton] Failed to load status:', error);
-      setStatus(null);
-    }
-  }, [activeWorkspaceId]);
+    if (!activeWorkspaceId) return;
+    await getStatus(activeWorkspaceId);
+  }, [activeWorkspaceId, getStatus]);
 
   // Load status on mount and when workspace changes
   useEffect(() => {
@@ -88,19 +73,10 @@ function GitSyncButton() {
   const handleSync = async () => {
     if (!activeWorkspaceId || syncing) return;
 
-    setSyncing(true);
-    try {
-      const response = await gitAPI.sync(activeWorkspaceId);
-      if (response.success) {
-        logger.info('[GitSyncButton] Sync completed');
-        await loadStatus();
-      } else {
-        logger.error('[GitSyncButton] Sync failed:', response.error?.message);
-      }
-    } catch (error) {
-      logger.error('[GitSyncButton] Sync error:', error);
-    } finally {
-      setSyncing(false);
+    const result = await sync(activeWorkspaceId);
+    if (result) {
+      logger.info('[GitSyncButton] Sync completed');
+      await loadStatus();
     }
   };
 
@@ -178,8 +154,8 @@ function GitSyncButton() {
 
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
-  const { loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
-  const { loadNotes } = useNoteAPI();
+  const { loadWorkspaces, setActiveWorkspace, createWorkspace } = useWorkspaceAPI();
+  const { loadNotes, loadNoteById } = useNoteAPI();
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
@@ -231,14 +207,10 @@ export function Sidebar() {
       // Update note in store if it exists
       const note = getNoteByFilePath(payload.path);
       if (note) {
-        // Fetch updated note details
-        try {
-          const response = await noteAPI.getById(note.id);
-          if (response.success && response.data) {
-            updateNoteByPath(payload.path, response.data);
-          }
-        } catch (error) {
-          logger.error('[Sidebar] Error fetching updated note:', error);
+        // Fetch updated note details using hook
+        const updatedNote = await loadNoteById(note.id);
+        if (updatedNote) {
+          updateNoteByPath(payload.path, updatedNote);
         }
       }
     };
@@ -288,7 +260,7 @@ export function Sidebar() {
       offWorkspaceUpdated();
       offNoteUpdated();
     };
-  }, [activeFolder, loadFileTree, loadNotes]);
+  }, [activeFolder, loadFileTree, loadNotes, loadNoteById]);
 
   const handleCreateWorkspace = async ({
     name,
@@ -299,16 +271,14 @@ export function Sidebar() {
   }) => {
     setIsWorkspaceModalProcessing(true);
     try {
-      const response = await workspaceAPI.create({ name, path: folderPath });
+      const createdWorkspace = await createWorkspace({ name, path: folderPath });
 
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || 'Failed to create workspace');
+      if (!createdWorkspace) {
+        throw new Error('Failed to create workspace');
       }
 
-      const createdWorkspace = response.data;
       logger.info('Workspace created:', createdWorkspace.name);
 
-      await loadWorkspaces();
       if (createdWorkspace.id) {
         await setActiveWorkspace(createdWorkspace.id);
       }
