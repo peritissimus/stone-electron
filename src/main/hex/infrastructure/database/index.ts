@@ -1,15 +1,13 @@
 /**
  * Database Module Exports
+ *
+ * Re-exports database types and schema from shared module.
+ * Provides DatabaseManager for this infrastructure layer.
  */
 
-import type { LibSQLDatabase } from 'drizzle-orm/libsql';
-import type * as schema from './schema';
+// Re-export shared database types and schema
+export * from '../../shared/database';
+export type { Database } from '../../shared/database';
 
-/**
- * Database type used throughout the application.
- * This provides a single source of truth for the Drizzle database type.
- */
-export type Database = LibSQLDatabase<typeof schema>;
-
+// Export infrastructure-specific DatabaseManager
 export { DatabaseManager, getDatabaseManager } from './DatabaseManager';
-export * from './schema';

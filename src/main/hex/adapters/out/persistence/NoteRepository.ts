@@ -5,7 +5,7 @@
  */
 
 import { eq, and, desc, asc, isNull, like, sql } from 'drizzle-orm';
-import { notes, type Database } from '../../../infrastructure/database';
+import { notes, type Database } from '../../../shared/database';
 import type { NoteEntity, NoteProps } from '../../../domain/entities';
 import type {
   INoteRepository,

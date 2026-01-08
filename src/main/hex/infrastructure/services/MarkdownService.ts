@@ -4,7 +4,7 @@
 
 import TurndownService from 'turndown';
 import { marked } from 'marked';
-import { logger } from '../../infrastructure/utils/logger';
+import { logger } from '../../shared/utils';
 
 /**
  * LRU cache entry for markdown parsing

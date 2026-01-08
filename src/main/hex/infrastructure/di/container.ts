@@ -5,7 +5,7 @@
  * This is the composition root where all dependencies are resolved.
  */
 
-import type { Database } from '../database';
+import type { Database } from '../../shared/database';
 
 // Application Layer - Use Cases
 import {
