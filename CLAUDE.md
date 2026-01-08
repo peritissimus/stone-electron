@@ -837,6 +837,8 @@ The renderer follows a layered architecture pattern:
 Component → Hook (use*API) → API → IPC → Main Process
                 ↓
               Store
+
+Component → Hook (use*Events) → events lib → window.electron.on
 ```
 
 **Layer Responsibilities:**
@@ -844,15 +846,19 @@ Component → Hook (use*API) → API → IPC → Main Process
 | Layer | Location | Responsibility | Imports |
 |-------|----------|----------------|---------|
 | **Components** | `components/**/*.tsx` | Render UI, read stores, trigger hooks | Stores + Hooks |
-| **Hooks** | `hooks/use*API.ts` | Orchestrate API calls + store updates | API + Stores |
+| **API Hooks** | `hooks/use*API.ts` | Orchestrate API calls + store updates | API + Stores |
+| **Event Hooks** | `hooks/use*Events.ts` | Subscribe to IPC events | `events` lib |
 | **Stores** | `stores/*.ts` | Hold state, computed selectors | Types only |
 | **API** | `api/*.ts` | Pure IPC wrappers, no React | `invokeIpc` + types |
+| **Events lib** | `lib/events.ts` | Wrapper around `window.electron.on` | Types only |
 
 **Rules:**
 - Components should **NEVER** import from `@renderer/api` directly
+- Components should **NEVER** import from `@renderer/lib/events` directly
 - Components read state from **stores**, mutate via **hooks**
 - Hooks call **API**, then update **stores** on success/failure
-- Stores hold state only - **NO** data fetching or side effects
+- Event hooks subscribe via **events lib** abstraction
+- Stores hold state only - **NO** data fetching, **NO** event subscriptions
 - API layer is pure functions - **NO** React, **NO** state
 
 ### Layer Architecture Violations - ✅ ALL FIXED
@@ -864,12 +870,18 @@ All layer architecture violations have been resolved. Components now use hooks i
 
 #### Fixes Applied
 
-**New Hooks Created:**
+**New API Hooks Created:**
 - `src/renderer/hooks/useGitAPI.ts` - Git operations (getStatus, getCommits, init, setRemote, commit, pull, push, sync)
 - `src/renderer/hooks/useDatabaseAPI.ts` - Database operations (getStatus, backup, vacuum, checkIntegrity)
 - `src/renderer/hooks/useSystemAPI.ts` - System operations (getFonts)
 - `src/renderer/hooks/useQuickCaptureAPI.ts` - Quick capture (appendToJournal)
 - `src/renderer/api/quickCaptureAPI.ts` - API layer for quick capture
+
+**New Event Subscription Hooks Created:**
+- `src/renderer/hooks/useFileEvents.ts` - File system events (onCreated, onChanged, onDeleted)
+- `src/renderer/hooks/useNoteEvents.ts` - Note events (onCreated, onUpdated, onDeleted, onVersionRestored)
+- `src/renderer/hooks/useWorkspaceEvents.ts` - Workspace events (onCreated, onUpdated, onDeleted, onSwitched, onScanned)
+- `src/renderer/hooks/useMLEvents.ts` - ML service events (onStatusChanged, onOperationStarted, onOperationProgress, onOperationCompleted, onOperationError)
 
 **Methods Added to Existing Hooks:**
 - `useNoteAPI`: Added `getAllTodos()`, `updateTaskState()`, `loadNoteByPath()`
@@ -878,15 +890,17 @@ All layer architecture violations have been resolved. Components now use hooks i
 **Components Fixed:**
 | Component | Change |
 |-----------|--------|
-| `Sidebar.tsx` | Replaced `gitAPI`, `noteAPI`, `workspaceAPI` → `useGitAPI`, `useNoteAPI`, `useWorkspaceAPI` |
+| `Sidebar.tsx` | Replaced `gitAPI`, `noteAPI`, `workspaceAPI` → `useGitAPI`, `useNoteAPI`, `useWorkspaceAPI`; Replaced `events` → `useFileEvents`, `useNoteEvents`, `useWorkspaceEvents` |
 | `SettingsModal.tsx` | Replaced `databaseAPI` → `useDatabaseAPI` |
 | `GitSettings.tsx` | Replaced `gitAPI` → `useGitAPI` |
 | `TodoList.tsx` | Replaced `noteAPI.getAllTodos` → `useNoteAPI().getAllTodos` |
-| `TasksPage.tsx` | Replaced `noteAPI` → `useNoteAPI` |
+| `TasksPage.tsx` | Replaced `noteAPI` → `useNoteAPI`; Replaced `events` → `useFileEvents`, `useNoteEvents` |
 | `FontPicker.tsx` | Replaced `systemAPI` → `useSystemAPI` |
 | `CreateWorkspaceModal.tsx` | Replaced `workspaceAPI` → `useWorkspaceAPI` |
 | `FileTree.tsx` | Replaced `noteAPI.getByPath` → `useNoteAPI().loadNoteByPath` |
 | `QuickCaptureWindow.tsx` | Replaced `window.electron.invoke` → `useQuickCaptureAPI` |
+| `mlStatusStore.ts` | Removed `subscribeToMLStatusEvents()` - events now handled by `useMLEventsSync` hook |
+| `MLStatusIndicator.tsx` | Replaced `subscribeToMLStatusEvents()` → `useMLEventsSync` hook |
 
 ### File Watcher and Sync Behavior
 

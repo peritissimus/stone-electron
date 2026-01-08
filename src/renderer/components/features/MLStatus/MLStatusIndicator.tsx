@@ -2,10 +2,10 @@
  * ML Status Indicator - Shows embedding service and operation status
  */
 
-import { useEffect } from 'react';
-import { Brain, CircleNotch, Check, Warning, Lightning } from 'phosphor-react';
+import { Brain, CircleNotch, Warning } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
-import { useMLStatusStore, subscribeToMLStatusEvents } from '@renderer/stores/mlStatusStore';
+import { useMLStatusStore } from '@renderer/stores/mlStatusStore';
+import { useMLEventsSync } from '@renderer/hooks/useMLEvents';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@renderer/components/base/ui/tooltip';
 
 // Operation type labels for display
@@ -27,11 +27,8 @@ export function MLStatusIndicator() {
   const isRunning = useMLStatusStore((state) => state.isRunning);
   const getProgressPercent = useMLStatusStore((state) => state.getProgressPercent);
 
-  // Subscribe to ML status events on mount
-  useEffect(() => {
-    const unsubscribe = subscribeToMLStatusEvents();
-    return () => unsubscribe();
-  }, []);
+  // Subscribe to ML status events
+  useMLEventsSync();
 
   // Always show the indicator - provides visibility into ML status
 

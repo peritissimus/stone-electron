@@ -5,8 +5,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
 
+const DRAFT_KEY = 'quick-capture-draft';
+
 export function QuickCaptureWindow() {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => {
+    // Restore draft on mount
+    return localStorage.getItem(DRAFT_KEY) || '';
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { appendToJournal, isSubmitting } = useQuickCaptureAPI();
 
@@ -15,9 +20,22 @@ export function QuickCaptureWindow() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Save draft on text change
+  useEffect(() => {
+    if (text.trim()) {
+      localStorage.setItem(DRAFT_KEY, text);
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [text]);
+
   const handleSubmit = async () => {
     const note = await appendToJournal(text);
-    if (note) window.close();
+    if (note) {
+      // Clear draft on successful save
+      localStorage.removeItem(DRAFT_KEY);
+      window.close();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
