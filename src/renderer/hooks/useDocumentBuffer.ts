@@ -13,6 +13,7 @@ import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 import { deleteDraft } from '@renderer/utils/draftStorage';
 import { noteAPI } from '@renderer/api';
+import { events } from '@renderer/lib/events';
 
 interface UseDocumentBufferOptions {
   noteId: string | null;
@@ -109,6 +110,42 @@ export function useDocumentBuffer({
       editor.off('update', handleUpdate);
     };
   }, [editor, noteId, updateBuffer]);
+
+  // Listen for external note updates (e.g., from quick capture)
+  // and reload content if the current note was updated
+  useEffect(() => {
+    if (!noteId || !editor) return;
+
+    const unsubscribe = events.onNoteUpdated((payload: unknown) => {
+      const data = payload as { id?: string };
+      if (data?.id !== noteId) return;
+
+      // Skip if we're currently saving (to avoid reload loop)
+      if (loadingNotes.has(noteId)) return;
+
+      logger.info('[useDocumentBuffer] External update detected, reloading:', noteId);
+
+      // Clear buffer and reload from file
+      const { removeBuffer } = useDocumentBufferStore.getState();
+      removeBuffer(noteId);
+
+      loadingNotes.add(noteId);
+      noteAPI.getContent(noteId).then((response) => {
+        if (response.success && response.data) {
+          editor.commands.setContent(response.data.content);
+          const jsonContent = editor.getJSON();
+          setBuffer(noteId, jsonContent);
+          logger.info('[useDocumentBuffer] Reloaded content from external update');
+        }
+      }).catch((error) => {
+        logger.error('[useDocumentBuffer] Failed to reload after external update:', error);
+      }).finally(() => {
+        loadingNotes.delete(noteId);
+      });
+    });
+
+    return unsubscribe;
+  }, [noteId, editor, setBuffer]);
 
   // Save current note to file
   const save = useCallback(async (): Promise<boolean> => {

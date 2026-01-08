@@ -33,7 +33,6 @@ export function registerQuickCaptureHandlers(container: AwilixContainer<Containe
 
       const today = new Date();
       const journalFilename = format(today, 'yyyy-MM-dd');
-      const journalTitle = format(today, 'MMMM d, yyyy');
       const journalPath = `Journal/${journalFilename}.md`;
       const timestamp = format(today, 'h:mm a');
 
@@ -50,7 +49,6 @@ export function registerQuickCaptureHandlers(container: AwilixContainer<Containe
         logger.info('[QuickCapture] Creating new journal entry');
         journal = await noteService.createNote({
           title: journalFilename,
-          content: `# ${journalTitle}\n\n`,
           folderPath: 'Journal',
         });
       }

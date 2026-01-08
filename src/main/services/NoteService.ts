@@ -136,6 +136,9 @@ export class NoteService {
 
     // Update note timestamp
     await this.deps.noteRepository.update(noteId, { updatedAt: new Date() });
+
+    // Emit event so editor can refresh if this note is open
+    this.emitNoteUpdated(noteId);
   }
 
   // ==========================================================================
