@@ -3,28 +3,38 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
+import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
+
+const DRAFT_KEY = 'quick-capture-draft';
 
 export function QuickCaptureWindow() {
-  const [text, setText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [text, setText] = useState(() => {
+    // Restore draft on mount
+    return localStorage.getItem(DRAFT_KEY) || '';
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { appendToJournal, isSubmitting } = useQuickCaptureAPI();
 
   useEffect(() => {
     const timer = setTimeout(() => textareaRef.current?.focus(), 50);
     return () => clearTimeout(timer);
   }, []);
 
-  const handleSubmit = async () => {
-    if (!text.trim() || isSubmitting) return;
-    setIsSubmitting(true);
+  // Save draft on text change
+  useEffect(() => {
+    if (text.trim()) {
+      localStorage.setItem(DRAFT_KEY, text);
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [text]);
 
-    try {
-      const response = await window.electron.invoke('quickCapture:appendToJournal', {
-        text: text.trim(),
-      });
-      if (response.success) window.close();
-    } catch {
-      setIsSubmitting(false);
+  const handleSubmit = async () => {
+    const note = await appendToJournal(text);
+    if (note) {
+      // Clear draft on successful save
+      localStorage.removeItem(DRAFT_KEY);
+      window.close();
     }
   };
 

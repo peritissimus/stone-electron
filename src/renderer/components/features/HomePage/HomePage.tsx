@@ -8,7 +8,7 @@ import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { TodoList } from './TodoList';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { IconButton, ListItem, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 
 interface RecentNoteProps {
@@ -21,55 +21,52 @@ interface RecentNoteProps {
   onClick: (id: string) => void;
 }
 
+// Format relative date
+const formatDate = (dateInput: Date | string) => {
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+
+  if (hours < 1) {
+    const minutes = Math.floor(diff / (1000 * 60));
+    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+  }
+  if (hours < 24) {
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 7) {
+    return days === 1 ? 'yesterday' : `${days} days ago`;
+  }
+  return date.toLocaleDateString();
+};
+
+// Extract folder path from file path
+const getFolderPath = (filePath: string | null) => {
+  if (!filePath) return null;
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const lastSlash = normalizedPath.lastIndexOf('/');
+  return lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : null;
+};
+
 const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
-  const formatDate = (dateInput: Date | string) => {
-    const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-
-    if (hours < 1) {
-      const minutes = Math.floor(diff / (1000 * 60));
-      return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
-    }
-    if (hours < 24) {
-      return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
-    }
-    const days = Math.floor(hours / 24);
-    if (days < 7) {
-      return days === 1 ? 'yesterday' : `${days} days ago`;
-    }
-    return date.toLocaleDateString();
-  };
-
-  // Extract folder path from file path
-  const getFolderPath = (filePath: string | null) => {
-    if (!filePath) return null;
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    const lastSlash = normalizedPath.lastIndexOf('/');
-    return lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : null;
-  };
-
   const folderPath = getFolderPath(note.filePath);
 
   return (
-    <div
-      className="flex items-center justify-between p-3 rounded-lg hover:bg-accent/10 cursor-pointer transition-colors group"
+    <ListItem
+      size="normal"
       onClick={() => onClick(note.id)}
-    >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="font-medium truncate group-hover:text-primary transition-colors">
-            {note.title || 'Untitled'}
-          </p>
-          {folderPath && <p className="text-xs text-muted-foreground truncate">{folderPath}</p>}
-        </div>
-      </div>
-      <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-        {formatDate(note.updatedAt)}
-      </span>
-    </div>
+      className="rounded-lg border-none"
+      left={<FileText className="w-4 h-4" />}
+      title={note.title || 'Untitled'}
+      subtitle={folderPath}
+      right={
+        <span className="text-xs text-muted-foreground">
+          {formatDate(note.updatedAt)}
+        </span>
+      }
+    />
   );
 };
 

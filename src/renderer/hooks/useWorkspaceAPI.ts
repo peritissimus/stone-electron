@@ -64,5 +64,41 @@ export function useWorkspaceAPI() {
     [loadWorkspaces],
   );
 
-  return { syncWorkspace, loadWorkspaces, setActiveWorkspace };
+  const selectFolder = useCallback(async () => {
+    try {
+      const response = await workspaceAPI.selectFolder();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to select folder');
+      return null;
+    }
+  }, [setError]);
+
+  const createWorkspace = useCallback(
+    async (data: { name: string; path: string }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await workspaceAPI.create(data);
+        if (response.success && response.data) {
+          await loadWorkspaces();
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to create workspace');
+          return null;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to create workspace');
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadWorkspaces, setLoading, setError],
+  );
+
+  return { syncWorkspace, loadWorkspaces, setActiveWorkspace, selectFolder, createWorkspace };
 }

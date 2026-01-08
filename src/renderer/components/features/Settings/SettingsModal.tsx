@@ -5,9 +5,8 @@
 import { useState, useEffect } from 'react';
 import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
 import { Database, HardDrive, Download, CheckCircle, Palette, Info, Keyboard, GitBranch } from 'phosphor-react';
-import { databaseAPI } from '@renderer/api';
+import { useDatabaseAPI } from '@renderer/hooks/useDatabaseAPI';
 import { DatabaseStatus } from '@shared/types';
-import { logger } from '@renderer/utils/logger';
 import { TabbedModal } from '@renderer/components/composites';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
@@ -74,90 +73,61 @@ export function SettingsModal() {
 }
 
 function DatabaseSettings() {
-  const [status, setStatus] = useState<DatabaseStatus | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const { getStatus, backup, vacuum, checkIntegrity, loading } = useDatabaseAPI();
 
   useEffect(() => {
     loadStatus();
   }, []);
 
   const loadStatus = async () => {
-    try {
-      const response = await databaseAPI.getStatus();
-      if (response.success && response.data) {
-        setStatus(response.data);
-      } else {
-        setStatus(null);
-      }
-    } catch (error) {
-      logger.error('Failed to load database status:', error);
-    }
+    const status = await getStatus();
+    setDbStatus(status);
   };
 
   const handleBackup = async () => {
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await databaseAPI.backup();
-      if (response.success && response.data) {
-        setMessage({
-          type: 'success',
-          text: `Backup created successfully (${(response.data.size / 1024 / 1024).toFixed(2)} MB)`,
-        });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.error?.message || 'Backup failed' });
-      }
-    } catch (error) {
+    const result = await backup();
+    if (result) {
+      setMessage({
+        type: 'success',
+        text: `Backup created successfully (${(result.size / 1024 / 1024).toFixed(2)} MB)`,
+      });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Backup failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleVacuum = async () => {
     if (!confirm('This will optimize the database and may take a few moments. Continue?')) return;
 
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await databaseAPI.vacuum();
-      if (response.success && response.data) {
-        const freedMB = (response.data.freed_bytes / 1024 / 1024).toFixed(2);
-        setMessage({ type: 'success', text: `Database optimized. Freed ${freedMB} MB` });
-        await loadStatus();
-      } else {
-        setMessage({ type: 'error', text: response.error?.message || 'Optimization failed' });
-      }
-    } catch (error) {
+    const result = await vacuum();
+    if (result) {
+      const freedMB = (result.freed_bytes / 1024 / 1024).toFixed(2);
+      setMessage({ type: 'success', text: `Database optimized. Freed ${freedMB} MB` });
+      await loadStatus();
+    } else {
       setMessage({ type: 'error', text: 'Optimization failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCheckIntegrity = async () => {
-    setLoading(true);
     setMessage(null);
-    try {
-      const response = await databaseAPI.checkIntegrity();
-      if (response.success && response.data) {
-        if (response.data.ok) {
-          setMessage({ type: 'success', text: 'Database integrity check passed' });
-        } else {
-          setMessage({
-            type: 'error',
-            text: `Integrity check failed: ${response.data.errors.join(', ')}`,
-          });
-        }
+    const result = await checkIntegrity();
+    if (result) {
+      if (result.ok) {
+        setMessage({ type: 'success', text: 'Database integrity check passed' });
       } else {
-        setMessage({ type: 'error', text: response.error?.message || 'Integrity check failed' });
+        setMessage({
+          type: 'error',
+          text: `Integrity check failed: ${result.errors.join(', ')}`,
+        });
       }
-    } catch (error) {
+    } else {
       setMessage({ type: 'error', text: 'Integrity check failed' });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -165,12 +135,12 @@ function DatabaseSettings() {
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   };
 
-  const statusItems = status
+  const statusItems = dbStatus
     ? [
-        { label: 'Database Size', value: formatBytes(status.databaseSize) },
-        { label: 'Notes', value: status.noteCount },
-        { label: 'Notebooks', value: status.notebookCount },
-        { label: 'Tags', value: status.tagCount },
+        { label: 'Database Size', value: formatBytes(dbStatus.databaseSize) },
+        { label: 'Notes', value: dbStatus.noteCount },
+        { label: 'Notebooks', value: dbStatus.notebookCount },
+        { label: 'Tags', value: dbStatus.tagCount },
       ]
     : [];
 
@@ -178,7 +148,7 @@ function DatabaseSettings() {
     <SettingsSection title="Database Management">
       <ContainerStack gap="lg">
         {/* Status */}
-        {status && <StatusCard items={statusItems} />}
+        {dbStatus && <StatusCard items={statusItems} />}
 
         {/* Message */}
         {message && <Message type={message.type} text={message.text} />}

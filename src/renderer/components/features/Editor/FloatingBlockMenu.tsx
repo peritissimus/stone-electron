@@ -4,15 +4,9 @@
 
 import React, { useState } from 'react';
 import { Editor } from '@tiptap/react';
-import { Plus, DotsSixVertical } from 'phosphor-react';
-import { cn } from '@renderer/lib/utils';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@renderer/components/base/ui/dropdown-menu';
-import {
+  Plus,
+  DotsSixVertical,
   TextHOne,
   TextHTwo,
   TextHThree,
@@ -24,6 +18,14 @@ import {
   Check,
   TextT,
 } from 'phosphor-react';
+import { cn } from '@renderer/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/components/base/ui/dropdown-menu';
+import { CommandMenuItem } from '@renderer/components/composites';
 
 export interface FloatingBlockMenuProps {
   editor: Editor;
@@ -165,84 +167,35 @@ export function FloatingBlockMenu({ editor }: FloatingBlockMenuProps) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[260px]">
-          <DropdownMenuItem onClick={() => addBlock('paragraph')} className="gap-3 py-2">
-            <TextT size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Text</div>
-              <div className="text-xs text-muted-foreground">Just start writing</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('paragraph')}>
+            <CommandMenuItem asChild icon={<TextT size={18} />} title="Text" description="Just start writing" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('heading1')} className="gap-3 py-2">
-            <TextHOne size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Heading 1</div>
-              <div className="text-xs text-muted-foreground">Large section heading</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('heading1')}>
+            <CommandMenuItem asChild icon={<TextHOne size={18} />} title="Heading 1" description="Large section heading" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('heading2')} className="gap-3 py-2">
-            <TextHTwo size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Heading 2</div>
-              <div className="text-xs text-muted-foreground">Medium section heading</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('heading2')}>
+            <CommandMenuItem asChild icon={<TextHTwo size={18} />} title="Heading 2" description="Medium section heading" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('heading3')} className="gap-3 py-2">
-            <TextHThree size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Heading 3</div>
-              <div className="text-xs text-muted-foreground">Small section heading</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('heading3')}>
+            <CommandMenuItem asChild icon={<TextHThree size={18} />} title="Heading 3" description="Small section heading" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('bulletList')} className="gap-3 py-2">
-            <List size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Bullet List</div>
-              <div className="text-xs text-muted-foreground">Simple bullet list</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('bulletList')}>
+            <CommandMenuItem asChild icon={<List size={18} />} title="Bullet List" description="Simple bullet list" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('orderedList')} className="gap-3 py-2">
-            <ListNumbers size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Numbered List</div>
-              <div className="text-xs text-muted-foreground">List with numbering</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('orderedList')}>
+            <CommandMenuItem asChild icon={<ListNumbers size={18} />} title="Numbered List" description="List with numbering" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('taskList')} className="gap-3 py-2">
-            <Check size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">To-do List</div>
-              <div className="text-xs text-muted-foreground">Track tasks</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('taskList')}>
+            <CommandMenuItem asChild icon={<Check size={18} />} title="To-do List" description="Track tasks" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('codeBlock')} className="gap-3 py-2">
-            <Code size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Code Block</div>
-              <div className="text-xs text-muted-foreground">Syntax highlighting</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('codeBlock')}>
+            <CommandMenuItem asChild icon={<Code size={18} />} title="Code Block" description="Syntax highlighting" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('blockquote')} className="gap-3 py-2">
-            <Quotes size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Quote</div>
-              <div className="text-xs text-muted-foreground">Capture a quote</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('blockquote')}>
+            <CommandMenuItem asChild icon={<Quotes size={18} />} title="Quote" description="Capture a quote" size="spacious" />
           </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => addBlock('divider')} className="gap-3 py-2">
-            <Minus size={18} className="text-muted-foreground flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">Divider</div>
-              <div className="text-xs text-muted-foreground">Visual separator</div>
-            </div>
+          <DropdownMenuItem onClick={() => addBlock('divider')}>
+            <CommandMenuItem asChild icon={<Minus size={18} />} title="Divider" description="Visual separator" size="spacious" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
