@@ -26,42 +26,29 @@ import {
 } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
 import { cn } from '@renderer/lib/utils';
-import { noteAPI, workspaceAPI, gitAPI, type GitStatus } from '@renderer/api';
-import { events } from '@renderer/lib/events';
+import { useFileEvents } from '@renderer/hooks/useFileEvents';
+import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
+import { useWorkspaceEvents } from '@renderer/hooks/useWorkspaceEvents';
 
 /**
  * Git Sync Button - Quick sync status and action in sidebar
  */
 function GitSyncButton() {
   const { activeWorkspaceId } = useWorkspaceStore();
-  const [status, setStatus] = useState<GitStatus | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const { status, syncing, getStatus, sync } = useGitAPI();
 
   // Load git status
   const loadStatus = useCallback(async () => {
-    if (!activeWorkspaceId) {
-      setStatus(null);
-      return;
-    }
-
-    try {
-      const response = await gitAPI.getStatus(activeWorkspaceId);
-      if (response.success && response.data) {
-        setStatus(response.data);
-      } else {
-        setStatus(null);
-      }
-    } catch (error) {
-      logger.error('[GitSyncButton] Failed to load status:', error);
-      setStatus(null);
-    }
-  }, [activeWorkspaceId]);
+    if (!activeWorkspaceId) return;
+    await getStatus(activeWorkspaceId);
+  }, [activeWorkspaceId, getStatus]);
 
   // Load status on mount and when workspace changes
   useEffect(() => {
@@ -69,38 +56,20 @@ function GitSyncButton() {
   }, [loadStatus]);
 
   // Refresh status on file changes (instead of polling)
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
-
-    // Refresh git status when files change
-    const offCreated = events.onFileCreated(() => loadStatus());
-    const offChanged = events.onFileChanged(() => loadStatus());
-    const offDeleted = events.onFileDeleted(() => loadStatus());
-
-    return () => {
-      offCreated();
-      offChanged();
-      offDeleted();
-    };
-  }, [activeWorkspaceId, loadStatus]);
+  useFileEvents({
+    onCreated: activeWorkspaceId ? loadStatus : undefined,
+    onChanged: activeWorkspaceId ? loadStatus : undefined,
+    onDeleted: activeWorkspaceId ? loadStatus : undefined,
+  });
 
   // Handle sync
   const handleSync = async () => {
     if (!activeWorkspaceId || syncing) return;
 
-    setSyncing(true);
-    try {
-      const response = await gitAPI.sync(activeWorkspaceId);
-      if (response.success) {
-        logger.info('[GitSyncButton] Sync completed');
-        await loadStatus();
-      } else {
-        logger.error('[GitSyncButton] Sync failed:', response.error?.message);
-      }
-    } catch (error) {
-      logger.error('[GitSyncButton] Sync error:', error);
-    } finally {
-      setSyncing(false);
+    const result = await sync(activeWorkspaceId);
+    if (result) {
+      logger.info('[GitSyncButton] Sync completed');
+      await loadStatus();
     }
   };
 
@@ -178,8 +147,8 @@ function GitSyncButton() {
 
 export function Sidebar() {
   const { loadFileTree } = useFileTreeAPI();
-  const { loadWorkspaces, setActiveWorkspace } = useWorkspaceAPI();
-  const { loadNotes } = useNoteAPI();
+  const { loadWorkspaces, setActiveWorkspace, createWorkspace } = useWorkspaceAPI();
+  const { loadNotes, loadNoteById } = useNoteAPI();
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
@@ -191,104 +160,92 @@ export function Sidebar() {
     loadWorkspaces();
   }, [loadWorkspaces]);
 
-  // Listen to workspace file changes with targeted updates
-  useEffect(() => {
-    const { addFileToTree, removeFileFromTree, updateFileInTree } = useFileTreeStore.getState();
-    const {
-      updateNoteByPath,
-      removeNoteByPath,
-      getNoteByFilePath,
-      updateNote: updateNoteInStore,
-    } = useNoteStore.getState();
+  // File event handlers
+  const handleFileCreated = useCallback(async (payload: unknown) => {
+    const { addFileToTree } = useFileTreeStore.getState();
+    const data = payload as { workspaceId: string; path: string };
+    logger.debug('[Sidebar] FILE_CREATED:', data.path);
 
-    // Handler for file created
-    const handleFileCreated = async (...args: unknown[]) => {
-      const payload = args[0] as { workspaceId: string; path: string };
-      logger.debug('[Sidebar] FILE_CREATED:', payload.path);
+    // Add to tree optimistically
+    const segments = data.path.split('/');
+    const name = segments[segments.length - 1].replace(/\.md$/, '');
+    addFileToTree(data.path, {
+      name,
+      path: data.path,
+      type: 'file',
+    });
 
-      // Add to tree optimistically
-      const segments = payload.path.split('/');
-      const name = segments[segments.length - 1].replace(/\.md$/, '');
-      addFileToTree(payload.path, {
-        name,
-        path: payload.path,
-        type: 'file',
-      });
+    // Reload notes for the current folder to pick up the new note
+    if (activeFolder) {
+      await loadNotes({ folderPath: activeFolder });
+    } else {
+      await loadNotes();
+    }
+  }, [activeFolder, loadNotes]);
 
-      // Reload notes for the current folder to pick up the new note
-      if (activeFolder) {
-        await loadNotes({ folderPath: activeFolder });
-      } else {
-        await loadNotes();
+  const handleFileChanged = useCallback(async (payload: unknown) => {
+    const { updateNoteByPath, getNoteByFilePath } = useNoteStore.getState();
+    const data = payload as { workspaceId: string; path: string };
+    logger.debug('[Sidebar] FILE_CHANGED:', data.path);
+
+    // Update note in store if it exists
+    const note = getNoteByFilePath(data.path);
+    if (note) {
+      const updatedNote = await loadNoteById(note.id);
+      if (updatedNote) {
+        updateNoteByPath(data.path, updatedNote);
       }
-    };
+    }
+  }, [loadNoteById]);
 
-    // Handler for file changed
-    const handleFileChanged = async (...args: unknown[]) => {
-      const payload = args[0] as { workspaceId: string; path: string };
-      logger.debug('[Sidebar] FILE_CHANGED:', payload.path);
+  const handleFileDeleted = useCallback((payload: unknown) => {
+    const { removeFileFromTree } = useFileTreeStore.getState();
+    const { removeNoteByPath } = useNoteStore.getState();
+    const data = payload as { workspaceId: string; path: string };
+    logger.debug('[Sidebar] FILE_DELETED:', data.path);
 
-      // Update note in store if it exists
-      const note = getNoteByFilePath(payload.path);
-      if (note) {
-        // Fetch updated note details
-        try {
-          const response = await noteAPI.getById(note.id);
-          if (response.success && response.data) {
-            updateNoteByPath(payload.path, response.data);
-          }
-        } catch (error) {
-          logger.error('[Sidebar] Error fetching updated note:', error);
-        }
-      }
-    };
+    removeFileFromTree(data.path);
+    removeNoteByPath(data.path);
+  }, []);
 
-    // Handler for file deleted
-    const handleFileDeleted = (...args: unknown[]) => {
-      const payload = args[0] as { workspaceId: string; path: string };
-      logger.debug('[Sidebar] FILE_DELETED:', payload.path);
+  // Subscribe to file events
+  useFileEvents({
+    onCreated: handleFileCreated,
+    onChanged: handleFileChanged,
+    onDeleted: handleFileDeleted,
+  });
 
-      // Remove from tree and notes
-      removeFileFromTree(payload.path);
-      removeNoteByPath(payload.path);
-    };
-
-    // Handler for full workspace sync (fallback for complex operations)
-    const handleWorkspaceUpdated = async () => {
-      logger.debug('[Sidebar] WORKSPACE_UPDATED - full refresh');
-      await loadFileTree();
-      if (activeFolder) {
-        await loadNotes({ folderPath: activeFolder });
-      } else {
-        await loadNotes();
-      }
-    };
-
-    // Handler for note updated (to catch file path changes from title updates)
-    const handleNoteUpdated = (...args: unknown[]) => {
-      const payload = args[0] as { note: Note };
-      logger.debug('[Sidebar] NOTE_UPDATED:', payload.note);
-
-      // Update note in store
-      if (payload.note) {
-        updateNoteInStore(payload.note);
-      }
-    };
-
-    const offCreated = events.onFileCreated(handleFileCreated);
-    const offChanged = events.onFileChanged(handleFileChanged);
-    const offDeleted = events.onFileDeleted(handleFileDeleted);
-    const offWorkspaceUpdated = events.onWorkspaceUpdated(handleWorkspaceUpdated);
-    const offNoteUpdated = events.onNoteUpdated(handleNoteUpdated);
-
-    return () => {
-      offCreated();
-      offChanged();
-      offDeleted();
-      offWorkspaceUpdated();
-      offNoteUpdated();
-    };
+  // Workspace event handler
+  const handleWorkspaceUpdated = useCallback(async () => {
+    logger.debug('[Sidebar] WORKSPACE_UPDATED - full refresh');
+    await loadFileTree();
+    if (activeFolder) {
+      await loadNotes({ folderPath: activeFolder });
+    } else {
+      await loadNotes();
+    }
   }, [activeFolder, loadFileTree, loadNotes]);
+
+  // Subscribe to workspace events
+  useWorkspaceEvents({
+    onUpdated: handleWorkspaceUpdated,
+  });
+
+  // Note event handler
+  const handleNoteUpdated = useCallback((payload: unknown) => {
+    const { updateNote: updateNoteInStore } = useNoteStore.getState();
+    const data = payload as { note: Note };
+    logger.debug('[Sidebar] NOTE_UPDATED:', data.note);
+
+    if (data.note) {
+      updateNoteInStore(data.note);
+    }
+  }, []);
+
+  // Subscribe to note events
+  useNoteEvents({
+    onUpdated: handleNoteUpdated,
+  });
 
   const handleCreateWorkspace = async ({
     name,
@@ -299,16 +256,14 @@ export function Sidebar() {
   }) => {
     setIsWorkspaceModalProcessing(true);
     try {
-      const response = await workspaceAPI.create({ name, path: folderPath });
+      const createdWorkspace = await createWorkspace({ name, path: folderPath });
 
-      if (!response.success || !response.data) {
-        throw new Error(response.error?.message || 'Failed to create workspace');
+      if (!createdWorkspace) {
+        throw new Error('Failed to create workspace');
       }
 
-      const createdWorkspace = response.data;
       logger.info('Workspace created:', createdWorkspace.name);
 
-      await loadWorkspaces();
       if (createdWorkspace.id) {
         await setActiveWorkspace(createdWorkspace.id);
       }

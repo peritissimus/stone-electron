@@ -14,7 +14,6 @@ import type {
   MLOperationCompletedPayload,
   MLOperationErrorPayload,
 } from '@shared/types/mlStatus';
-import { EVENTS } from '@shared/constants/ipcChannels';
 
 const MAX_RECENT_OPERATIONS = 10;
 
@@ -145,51 +144,3 @@ export const useMLStatusStore = create<MLStatusState>((set, get) => ({
   },
 }));
 
-/**
- * Subscribe to ML status events from main process
- * Call this once during app initialization
- */
-export function subscribeToMLStatusEvents(): () => void {
-  const unsubscribers: (() => void)[] = [];
-  const store = useMLStatusStore.getState();
-
-  // Service status changes
-  unsubscribers.push(
-    window.electron.on(EVENTS.ML_STATUS_CHANGED, (payload) => {
-      store.setServiceStatus(payload as MLStatusChangedPayload);
-    })
-  );
-
-  // Operation started
-  unsubscribers.push(
-    window.electron.on(EVENTS.ML_OPERATION_STARTED, (payload) => {
-      store.startOperation(payload as MLOperationStartedPayload);
-    })
-  );
-
-  // Operation progress
-  unsubscribers.push(
-    window.electron.on(EVENTS.ML_OPERATION_PROGRESS, (payload) => {
-      store.updateProgress(payload as MLOperationProgressPayload);
-    })
-  );
-
-  // Operation completed
-  unsubscribers.push(
-    window.electron.on(EVENTS.ML_OPERATION_COMPLETED, (payload) => {
-      store.completeOperation(payload as MLOperationCompletedPayload);
-    })
-  );
-
-  // Operation error
-  unsubscribers.push(
-    window.electron.on(EVENTS.ML_OPERATION_ERROR, (payload) => {
-      store.failOperation(payload as MLOperationErrorPayload);
-    })
-  );
-
-  // Return cleanup function
-  return () => {
-    unsubscribers.forEach((unsub) => unsub());
-  };
-}

@@ -6,12 +6,13 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { CheckSquare, Search, FolderOpen, Layers, Filter } from 'lucide-react';
 import { CaretRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { events } from '@renderer/lib/events';
+import { useFileEvents } from '@renderer/hooks/useFileEvents';
+import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
-import { noteAPI } from '@renderer/api';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Input } from '@renderer/components/base/ui/input';
 import {
@@ -60,6 +61,7 @@ export function TasksPage() {
   const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { getAllTodos, updateTaskState } = useNoteAPI();
 
   // Debounce timer ref for auto-refresh
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,44 +69,50 @@ export function TasksPage() {
   const loadTodos = useCallback(async (showLoadingState = true) => {
     try {
       if (showLoadingState) setLoading(true);
-      const response = await noteAPI.getAllTodos();
-      if (response.success && response.data) {
-        setTodos(response.data);
+      const data = await getAllTodos();
+      if (Array.isArray(data)) {
+        setTodos(data);
       }
     } catch (error) {
       logger.error('[TasksPage] Failed to load todos', { error });
     } finally {
       if (showLoadingState) setLoading(false);
     }
-  }, []);
+  }, [getAllTodos]);
 
   // Initial load
   useEffect(() => {
     loadTodos();
   }, [loadTodos]);
 
-  // Auto-refresh on note updates (debounced)
+  // Debounced refresh handler
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      loadTodos(false); // Silent refresh without loading state
+    }, 500);
+  }, [loadTodos]);
+
+  // Cleanup debounce timer on unmount
   useEffect(() => {
-    const debouncedRefresh = () => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
-      }
-      refreshTimerRef.current = setTimeout(() => {
-        loadTodos(false); // Silent refresh without loading state
-      }, 500);
-    };
-
-    const offNoteUpdated = events.onNoteUpdated(debouncedRefresh);
-    const offFileChanged = events.onFileChanged(debouncedRefresh);
-
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
-      offNoteUpdated();
-      offFileChanged();
     };
-  }, [loadTodos]);
+  }, []);
+
+  // Auto-refresh on note updates
+  useNoteEvents({
+    onUpdated: debouncedRefresh,
+  });
+
+  // Auto-refresh on file changes
+  useFileEvents({
+    onChanged: debouncedRefresh,
+  });
 
   // Extract unique folders for filter dropdown
   const folders = useMemo(() => {
@@ -261,14 +269,14 @@ export function TasksPage() {
           ),
         );
 
-        const response = await noteAPI.updateTaskState(todo.noteId, taskIndex, newState);
+        const success = await updateTaskState(todo.noteId, taskIndex, newState);
 
-        if (!response.success) {
+        if (!success) {
           // Revert on error
           setTodos((prev) =>
             prev.map((t) => (t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t)),
           );
-          logger.error('[TasksPage] Failed to update task state', { error: response.error });
+          logger.error('[TasksPage] Failed to update task state');
         }
       } catch (error) {
         // Revert on error
@@ -280,7 +288,7 @@ export function TasksPage() {
         setTogglingTodoId(null);
       }
     },
-    [],
+    [updateTaskState],
   );
 
   if (loading) {

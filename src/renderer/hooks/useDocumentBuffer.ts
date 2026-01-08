@@ -9,10 +9,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Editor, JSONContent } from '@tiptap/react';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
+import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 import { logger } from '@renderer/utils/logger';
 import { deleteDraft } from '@renderer/utils/draftStorage';
 import { noteAPI } from '@renderer/api';
+import { useNoteStore } from '@renderer/stores/noteStore';
 
 interface UseDocumentBufferOptions {
   noteId: string | null;
@@ -109,6 +112,77 @@ export function useDocumentBuffer({
       editor.off('update', handleUpdate);
     };
   }, [editor, noteId, updateBuffer]);
+
+  // Debounce reload to prevent double-triggering from NOTE_UPDATED + FILE_CHANGED
+  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reload content from file when external update detected
+  const reloadFromFile = useCallback(() => {
+    if (!noteId || !editor) return;
+    if (loadingNotes.has(noteId)) return;
+
+    // Debounce: cancel pending reload and schedule new one
+    if (reloadTimerRef.current) {
+      clearTimeout(reloadTimerRef.current);
+    }
+
+    reloadTimerRef.current = setTimeout(async () => {
+      if (loadingNotes.has(noteId)) return;
+
+      logger.info('[useDocumentBuffer] External update detected, reloading:', noteId);
+
+      const { removeBuffer } = useDocumentBufferStore.getState();
+      removeBuffer(noteId);
+
+      loadingNotes.add(noteId);
+      try {
+        const response = await noteAPI.getContent(noteId);
+        if (response.success && response.data) {
+          editor.commands.setContent(response.data.content);
+          const jsonContent = editor.getJSON();
+          setBuffer(noteId, jsonContent);
+          logger.info('[useDocumentBuffer] Reloaded content from external update');
+        }
+      } catch (error) {
+        logger.error('[useDocumentBuffer] Failed to reload after external update:', error);
+      } finally {
+        loadingNotes.delete(noteId);
+      }
+    }, 100); // 100ms debounce
+  }, [noteId, editor, setBuffer]);
+
+  // Cleanup reload timer on unmount
+  useEffect(() => {
+    return () => {
+      if (reloadTimerRef.current) {
+        clearTimeout(reloadTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Listen for NOTE_UPDATED events (e.g., from quick capture)
+  useNoteEvents({
+    onUpdated: useCallback((payload: unknown) => {
+      const data = payload as { id?: string };
+      if (data?.id === noteId) {
+        reloadFromFile();
+      }
+    }, [noteId, reloadFromFile]),
+  });
+
+  // Listen for FILE_CHANGED events (external file modifications)
+  useFileEvents({
+    onChanged: useCallback((payload: unknown) => {
+      if (!noteId) return;
+      const data = payload as { workspaceId?: string; path?: string };
+      // Get current note's file path and check if it matches
+      const notes = useNoteStore.getState().notes;
+      const currentNote = notes.find(n => n.id === noteId);
+      if (currentNote?.filePath && data?.path && currentNote.filePath.endsWith(data.path)) {
+        reloadFromFile();
+      }
+    }, [noteId, reloadFromFile]),
+  });
 
   // Save current note to file
   const save = useCallback(async (): Promise<boolean> => {

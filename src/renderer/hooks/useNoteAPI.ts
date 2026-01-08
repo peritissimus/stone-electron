@@ -72,7 +72,7 @@ export function useNoteAPI() {
   );
 
   const createNote = useCallback(
-    async (data: { title: string; content: string; folderPath?: string }) => {
+    async (data: { title: string; content?: string; folderPath?: string }) => {
       logger.info('[useNoteAPI.createNote] Called with:', {
         title: data.title,
         folderPath: data.folderPath,
@@ -290,6 +290,26 @@ export function useNoteAPI() {
     [updateNote, setError],
   );
 
+  const loadNoteByPath = useCallback(
+    async (path: string) => {
+      setError(null);
+      try {
+        const response = await noteAPI.getByPath(path);
+        if (response.success && response.data) {
+          addNote(response.data);
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to load note');
+          return null;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to load note');
+        return null;
+      }
+    },
+    [addNote, setError],
+  );
+
   const getBacklinks = useCallback(async (noteId: string) => {
     try {
       const response = await noteAPI.getBacklinks(noteId);
@@ -407,6 +427,37 @@ export function useNoteAPI() {
     }
   }, []);
 
+  const getAllTodos = useCallback(async () => {
+    try {
+      const response = await noteAPI.getAllTodos();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return [];
+    } catch (error) {
+      logger.error('[useNoteAPI.getAllTodos] Error:', error);
+      return [];
+    }
+  }, []);
+
+  const updateTaskState = useCallback(async (noteId: string, taskIndex: number, newState: string) => {
+    setError(null);
+    try {
+      const response = await noteAPI.updateTaskState(noteId, taskIndex, newState);
+      if (response.success) {
+        logger.info('[useNoteAPI.updateTaskState] Task state updated', { noteId, taskIndex, newState });
+        return true;
+      } else {
+        setError(response.error?.message || 'Failed to update task state');
+        return false;
+      }
+    } catch (error) {
+      logger.error('[useNoteAPI.updateTaskState] Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to update task state');
+      return false;
+    }
+  }, [setError]);
+
   return {
     loadNotes,
     createNote,
@@ -418,6 +469,7 @@ export function useNoteAPI() {
     getVersions,
     restoreVersion,
     loadNoteById,
+    loadNoteByPath,
     getBacklinks,
     getForwardLinks,
     getGraphData,
@@ -425,5 +477,7 @@ export function useNoteAPI() {
     exportHtml,
     exportPdf,
     exportMarkdown,
+    getAllTodos,
+    updateTaskState,
   };
 }
