@@ -89,7 +89,11 @@ class TopicUseCasesImpl implements ITopicUseCases {
     };
   }
 
-  async createTopic(data: { name: string; description?: string; color?: string }): Promise<TopicDTO> {
+  async createTopic(data: {
+    name: string;
+    description?: string;
+    color?: string;
+  }): Promise<TopicDTO> {
     const topic = TopicEntity.create({
       id: crypto.randomUUID(),
       name: data.name,
@@ -112,7 +116,10 @@ class TopicUseCasesImpl implements ITopicUseCases {
     };
   }
 
-  async updateTopic(id: string, data: { name?: string; description?: string; color?: string }): Promise<TopicDTO> {
+  async updateTopic(
+    id: string,
+    data: { name?: string; description?: string; color?: string },
+  ): Promise<TopicDTO> {
     const topicProps = await this.deps.topicRepository.findById(id);
     if (!topicProps) {
       throw new Error(`Topic not found: ${id}`);
@@ -160,7 +167,14 @@ class TopicUseCasesImpl implements ITopicUseCases {
   }
 
   async classifyNote(noteId: string, force: boolean = false): Promise<ClassifyResult> {
-    const { noteRepository, topicRepository, workspaceRepository, fileStorage, embeddingService, markdownProcessor } = this.deps;
+    const {
+      noteRepository,
+      topicRepository,
+      workspaceRepository,
+      fileStorage,
+      embeddingService,
+      markdownProcessor,
+    } = this.deps;
 
     const note = await noteRepository.findById(noteId);
     if (!note) {
@@ -204,8 +218,15 @@ class TopicUseCasesImpl implements ITopicUseCases {
     for (const topic of topics) {
       if (topic.centroid) {
         // Convert Uint8Array centroid back to Float32Array then to number[]
-        const centroidFloat32 = new Float32Array(topic.centroid.buffer, topic.centroid.byteOffset, topic.centroid.byteLength / 4);
-        const similarity = SimilarityCalculator.cosineSimilarity(embedding, Array.from(centroidFloat32));
+        const centroidFloat32 = new Float32Array(
+          topic.centroid.buffer,
+          topic.centroid.byteOffset,
+          topic.centroid.byteLength / 4,
+        );
+        const similarity = SimilarityCalculator.cosineSimilarity(
+          embedding,
+          Array.from(centroidFloat32),
+        );
         if (!bestTopic || similarity > bestTopic.confidence) {
           bestTopic = { id: topic.id, confidence: similarity };
         }
@@ -214,7 +235,9 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
     // Assign topic if confidence is high enough
     if (bestTopic && bestTopic.confidence > 0.5) {
-      await topicRepository.assignToNote(noteId, bestTopic.id, { confidence: bestTopic.confidence });
+      await topicRepository.assignToNote(noteId, bestTopic.id, {
+        confidence: bestTopic.confidence,
+      });
 
       this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
         noteId,
@@ -228,8 +251,16 @@ class TopicUseCasesImpl implements ITopicUseCases {
     return { noteId, topicId: null, confidence: bestTopic?.confidence || 0 };
   }
 
-  async classifyAllNotes(options?: { force?: boolean }): Promise<{ processed: number; classified: number }> {
-    const notes = await this.deps.noteRepository.findAll({ isDeleted: false });
+  async classifyAllNotes(options?: {
+    force?: boolean;
+  }): Promise<{ processed: number; classified: number }> {
+    const activeWorkspace = await this.deps.workspaceRepository.findActive();
+    if (!activeWorkspace) return { processed: 0, classified: 0 };
+
+    const notes = await this.deps.noteRepository.findAll({
+      workspaceId: activeWorkspace.id,
+      isDeleted: false,
+    });
     const total = notes.length;
     let processed = 0;
     let classified = 0;
@@ -256,7 +287,10 @@ class TopicUseCasesImpl implements ITopicUseCases {
   }
 
   async assignTopicToNote(noteId: string, topicId: string): Promise<void> {
-    await this.deps.topicRepository.assignToNote(noteId, topicId, { confidence: 1.0, isManual: true });
+    await this.deps.topicRepository.assignToNote(noteId, topicId, {
+      confidence: 1.0,
+      isManual: true,
+    });
 
     this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
       noteId,
@@ -281,12 +315,19 @@ class TopicUseCasesImpl implements ITopicUseCases {
   }
 
   async getSimilarNotes(noteId: string, limit: number = 10): Promise<SimilarNote[]> {
+    const note = await this.deps.noteRepository.findById(noteId);
+    if (!note) return [];
+
     const embedding = await this.deps.noteRepository.getEmbedding(noteId);
     if (!embedding) {
       return [];
     }
 
-    const similarNotes = await this.deps.noteRepository.findBySimilarity(embedding, limit + 1);
+    const similarNotes = await this.deps.noteRepository.findBySimilarity(
+      embedding,
+      limit + 1,
+      note.workspaceId || undefined,
+    );
 
     // Filter out the query note and map to result
     // distance is typically 0-2 for cosine, convert to similarity (1 - distance/2)
@@ -308,9 +349,16 @@ class TopicUseCasesImpl implements ITopicUseCases {
   }
 
   async semanticSearch(query: string, limit: number = 10): Promise<SimilarNote[]> {
+    const activeWorkspace = await this.deps.workspaceRepository.findActive();
+    if (!activeWorkspace) return [];
+
     const embeddingFloat32 = await this.deps.embeddingService.generateEmbedding(query);
     const embedding = Array.from(embeddingFloat32);
-    const results = await this.deps.noteRepository.findBySimilarity(embedding, limit);
+    const results = await this.deps.noteRepository.findBySimilarity(
+      embedding,
+      limit,
+      activeWorkspace.id,
+    );
 
     const notes: SimilarNote[] = [];
     for (const result of results) {
@@ -344,7 +392,10 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
       if (embeddings.length > 0) {
         const centroid = SimilarityCalculator.calculateCentroid(embeddings);
-        await this.deps.topicRepository.updateCentroid(topicProps.id, new Uint8Array(new Float32Array(centroid).buffer));
+        await this.deps.topicRepository.updateCentroid(
+          topicProps.id,
+          new Uint8Array(new Float32Array(centroid).buffer),
+        );
       }
     }
 
@@ -356,7 +407,19 @@ class TopicUseCasesImpl implements ITopicUseCases {
     notesWithEmbeddings: number;
     isReady: boolean;
   }> {
-    const notes = await this.deps.noteRepository.findAll({ isDeleted: false });
+    const activeWorkspace = await this.deps.workspaceRepository.findActive();
+    if (!activeWorkspace) {
+      return {
+        totalNotes: 0,
+        notesWithEmbeddings: 0,
+        isReady: await this.deps.embeddingService.isReady(),
+      };
+    }
+
+    const notes = await this.deps.noteRepository.findAll({
+      workspaceId: activeWorkspace.id,
+      isDeleted: false,
+    });
     let withEmbeddings = 0;
 
     for (const note of notes) {
@@ -371,24 +434,31 @@ class TopicUseCasesImpl implements ITopicUseCases {
     };
   }
 
-  async getNotesForTopic(topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }): Promise<Array<{
-    noteId: string;
-    confidence: number;
-    isManual: boolean;
-  }>> {
+  async getNotesForTopic(
+    topicId: string,
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
+  ): Promise<
+    Array<{
+      noteId: string;
+      confidence: number;
+      isManual: boolean;
+    }>
+  > {
     const notesForTopic = await this.deps.topicRepository.getNotesForTopic(topicId, options);
     return notesForTopic;
   }
 
-  async getTopicsForNote(noteId: string): Promise<Array<{
-    noteId: string;
-    topicId: string;
-    confidence: number;
-    isManual: boolean;
-    createdAt: Date;
-    topicName: string;
-    topicColor: string;
-  }>> {
+  async getTopicsForNote(noteId: string): Promise<
+    Array<{
+      noteId: string;
+      topicId: string;
+      confidence: number;
+      isManual: boolean;
+      createdAt: Date;
+      topicName: string;
+      topicColor: string;
+    }>
+  > {
     const topicsForNote = await this.deps.topicRepository.getTopicsForNote(noteId);
     return topicsForNote;
   }

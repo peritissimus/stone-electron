@@ -20,7 +20,7 @@ import {
 export class FullTextSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly searchEngine: ISearchEngine
+    private readonly searchEngine: ISearchEngine,
   ) {}
 
   async execute(request: {
@@ -40,7 +40,7 @@ export class FullTextSearchUseCase {
 export class SemanticSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbeddingService
+    private readonly embeddingService: IEmbeddingService,
   ) {}
 
   async execute(request: {
@@ -61,7 +61,8 @@ export class SemanticSearchUseCase {
     // Find similar notes
     const results = await this.noteRepository.findBySimilarity(
       embeddingArray,
-      request.limit || 10
+      request.limit || 10,
+      request.workspaceId,
     );
 
     return { results };
@@ -71,7 +72,7 @@ export class SemanticSearchUseCase {
 export class FindSimilarNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbeddingService
+    private readonly embeddingService: IEmbeddingService,
   ) {}
 
   async execute(request: {
@@ -85,10 +86,17 @@ export class FindSimilarNotesUseCase {
       return { results: [] };
     }
 
+    // Get note to find its workspace
+    const note = await this.noteRepository.findById(request.noteId);
+    if (!note) {
+      return { results: [] };
+    }
+
     // Find similar notes (excluding the source note)
     const allResults = await this.noteRepository.findBySimilarity(
       embedding,
-      (request.limit || 5) + 1
+      (request.limit || 5) + 1,
+      note.workspaceId || undefined,
     );
 
     const results = allResults
@@ -111,13 +119,14 @@ export class HybridSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly searchEngine: ISearchEngine,
-    private readonly embeddingService: IEmbeddingService
+    private readonly embeddingService: IEmbeddingService,
   ) {}
 
   async execute(request: {
     query: string;
     weights?: { fts: number; semantic: number };
     limit?: number;
+    workspaceId?: string;
     notebookId?: string;
     tagIds?: string[];
   }): Promise<{
@@ -130,6 +139,7 @@ export class HybridSearchUseCase {
 
     // Use full-text search as primary (can be enhanced with semantic later)
     const ftsResults = await this.searchEngine.searchFullText(request.query, {
+      workspaceId: request.workspaceId,
       limit,
     });
 
@@ -178,6 +188,7 @@ export class SearchByDateRangeUseCase {
   async execute(request: {
     startDate: number;
     endDate: number;
+    workspaceId?: string;
     field?: 'created' | 'updated';
     limit?: number;
   }): Promise<{ notes: NoteProps[]; total: number }> {
@@ -186,8 +197,9 @@ export class SearchByDateRangeUseCase {
     const startDate = new Date(request.startDate);
     const endDate = new Date(request.endDate);
 
-    // Get all notes and filter by date range
+    // Get all notes for workspace and filter by date range
     const allNotes = await this.noteRepository.findAll({
+      workspaceId: request.workspaceId,
       isDeleted: false,
       orderBy,
       orderDirection: 'desc',
@@ -224,7 +236,7 @@ export interface ISearchUseCases {
 export function createSearchUseCases(
   noteRepository: INoteRepository,
   searchEngine: ISearchEngine,
-  embeddingService: IEmbeddingService
+  embeddingService: IEmbeddingService,
 ): ISearchUseCases {
   return {
     fullTextSearch: new FullTextSearchUseCase(noteRepository, searchEngine),

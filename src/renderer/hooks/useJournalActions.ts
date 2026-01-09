@@ -86,14 +86,14 @@ export function useJournalActions() {
 
     // Debug: Log all notes to see what paths are in the store
     const allNotes = useNoteStore.getState().notes;
-    const journalNotes = allNotes.filter(n => n.filePath?.includes('Journal'));
+    const journalNotes = allNotes.filter((n) => n.filePath?.includes('Journal'));
 
-    logger.info('[useJournalActions] Opening/creating today\'s journal', {
+    logger.info("[useJournalActions] Opening/creating today's journal", {
       journalFilename,
       journalTitle,
       expectedFilePath,
       totalNotes: allNotes.length,
-      journalNotesInStore: journalNotes.map(n => ({ id: n.id, filePath: n.filePath })),
+      journalNotesInStore: journalNotes.map((n) => ({ id: n.id, filePath: n.filePath })),
     });
 
     // Check if today's journal already exists using normalized path lookup
@@ -101,7 +101,7 @@ export function useJournalActions() {
     logger.info('[useJournalActions] Lookup result:', {
       found: !!existingJournal,
       existingId: existingJournal?.id,
-      existingPath: existingJournal?.filePath
+      existingPath: existingJournal?.filePath,
     });
 
     if (existingJournal) {
@@ -113,8 +113,10 @@ export function useJournalActions() {
     // Create new journal entry
     logger.info('[useJournalActions] Creating new journal entry');
     try {
+      const { journalTitle } = getTodayJournalInfo();
       const newNote = await createNote({
         title: journalFilename,
+        content: `# ${journalTitle}\n\n`,
         folderPath: 'Journal',
       });
 
@@ -128,7 +130,7 @@ export function useJournalActions() {
       const storeError = useNoteStore.getState().error;
       logger.error('[useJournalActions] Failed to create journal', {
         storeError,
-        noteWasNull: newNote === null
+        noteWasNull: newNote === null,
       });
       return null;
     } catch (error) {
@@ -144,7 +146,7 @@ export function useJournalActions() {
   const openOrCreateYesterdayJournal = async (): Promise<string | null> => {
     const { journalTitle, journalFilename, expectedFilePath } = getYesterdayJournalInfo();
 
-    logger.info('[useJournalActions] Opening/creating yesterday\'s journal', {
+    logger.info("[useJournalActions] Opening/creating yesterday's journal", {
       journalFilename,
       journalTitle,
       expectedFilePath,
@@ -161,20 +163,25 @@ export function useJournalActions() {
 
     // Create new journal entry
     logger.info('[useJournalActions] Creating new journal entry for yesterday');
-    const newNote = await createNote({
-      title: journalFilename,
-      content: `# ${journalTitle}\n\n`,
-      folderPath: 'Journal',
-    });
+    try {
+      const newNote = await createNote({
+        title: journalFilename,
+        content: `# ${journalTitle}\n\n`,
+        folderPath: 'Journal',
+      });
 
-    if (newNote) {
-      logger.info('[useJournalActions] Yesterday\'s journal created', { id: newNote.id });
-      navigateToNote(newNote.id);
-      return newNote.id;
+      if (newNote) {
+        logger.info("[useJournalActions] Yesterday's journal created", { id: newNote.id });
+        navigateToNote(newNote.id);
+        return newNote.id;
+      }
+
+      logger.error("[useJournalActions] Failed to create yesterday's journal");
+      return null;
+    } catch (error) {
+      logger.error("[useJournalActions] Exception creating yesterday's journal:", error);
+      return null;
     }
-
-    logger.error('[useJournalActions] Failed to create yesterday\'s journal');
-    return null;
   };
 
   /**

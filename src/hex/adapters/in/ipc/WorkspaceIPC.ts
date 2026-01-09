@@ -25,18 +25,37 @@ export class WorkspaceIPC {
   registerHandlers(): void {
     const { workspaceUseCases } = this.deps;
 
-    ipcMain.handle(WORKSPACE_CHANNELS.CREATE, async (_event, request) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.createWorkspace.execute(request);
-        return result.workspace;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.CREATE,
+      async (_event, request: { name: string; path?: string; folderPath?: string }) => {
+        return this.handleRequest(async () => {
+          // Handle both 'path' (from renderer) and 'folderPath' (from use case)
+          const folderPath = request.folderPath || request.path;
+          if (!folderPath) {
+            throw new Error('Folder path is required');
+          }
+          const result = await workspaceUseCases.createWorkspace.execute({
+            name: request.name,
+            folderPath,
+          });
+          return result.workspace;
+        });
+      },
+    );
 
     ipcMain.handle(WORKSPACE_CHANNELS.GET_ALL, async () => {
-      return this.handleRequest(async () => {
+      logger.info('[IPC] workspaces:getAll CALLED');
+      try {
         const result = await workspaceUseCases.listWorkspaces.execute();
-        return result.workspaces;
-      });
+        logger.info('[IPC] workspaces:getAll result:', result.workspaces.length, 'workspaces');
+        if (result.workspaces.length > 0) {
+          logger.info('[IPC] workspaces:getAll first workspace:', JSON.stringify(result.workspaces[0]));
+        }
+        return { success: true, data: { workspaces: result.workspaces } };
+      } catch (error) {
+        logger.error('[IPC] workspaces:getAll ERROR:', error);
+        return { success: false, error: { code: 'INTERNAL_ERROR', message: String(error) } };
+      }
     });
 
     ipcMain.handle(WORKSPACE_CHANNELS.DELETE, async (_event, id: string) => {
@@ -54,19 +73,27 @@ export class WorkspaceIPC {
     });
 
     ipcMain.handle(WORKSPACE_CHANNELS.GET_ACTIVE, async () => {
-      return this.handleRequest(async () => {
+      logger.info('[IPC] workspaces:getActive CALLED');
+      try {
         const result = await workspaceUseCases.getActiveWorkspace.execute();
-        return result.workspace;
-      });
+        logger.info('[IPC] workspaces:getActive result:', result.workspace?.id || 'null');
+        return { success: true, data: { workspace: result.workspace } };
+      } catch (error) {
+        logger.error('[IPC] workspaces:getActive ERROR:', error);
+        return { success: false, error: { code: 'INTERNAL_ERROR', message: String(error) } };
+      }
     });
 
     // UPDATE - Update workspace name
-    ipcMain.handle(WORKSPACE_CHANNELS.UPDATE, async (_event, request: { id: string; name?: string }) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.updateWorkspace.execute(request);
-        return result.workspace;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.UPDATE,
+      async (_event, request: { id: string; name?: string }) => {
+        return this.handleRequest(async () => {
+          const result = await workspaceUseCases.updateWorkspace.execute(request);
+          return result.workspace;
+        });
+      },
+    );
 
     // SELECT_FOLDER - Show folder selection dialog
     ipcMain.handle(WORKSPACE_CHANNELS.SELECT_FOLDER, async () => {
@@ -77,28 +104,37 @@ export class WorkspaceIPC {
     });
 
     // VALIDATE_PATH - Validate a folder path exists
-    ipcMain.handle(WORKSPACE_CHANNELS.VALIDATE_PATH, async (_event, request: { folderPath: string }) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.validatePath.execute(request);
-        return result;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.VALIDATE_PATH,
+      async (_event, request: { folderPath: string }) => {
+        return this.handleRequest(async () => {
+          const result = await workspaceUseCases.validatePath.execute(request);
+          return result;
+        });
+      },
+    );
 
     // CREATE_FOLDER - Create a new folder in workspace
-    ipcMain.handle(WORKSPACE_CHANNELS.CREATE_FOLDER, async (_event, request: { name: string; parentPath?: string }) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.createFolder.execute(request);
-        return result;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.CREATE_FOLDER,
+      async (_event, request: { name: string; parentPath?: string }) => {
+        return this.handleRequest(async () => {
+          const result = await workspaceUseCases.createFolder.execute(request);
+          return result;
+        });
+      },
+    );
 
     // RENAME_FOLDER - Rename a folder
-    ipcMain.handle(WORKSPACE_CHANNELS.RENAME_FOLDER, async (_event, request: { path: string; name: string }) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.renameFolder.execute(request);
-        return result;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.RENAME_FOLDER,
+      async (_event, request: { path: string; name: string }) => {
+        return this.handleRequest(async () => {
+          const result = await workspaceUseCases.renameFolder.execute(request);
+          return result;
+        });
+      },
+    );
 
     // DELETE_FOLDER - Delete a folder
     ipcMain.handle(WORKSPACE_CHANNELS.DELETE_FOLDER, async (_event, request: { path: string }) => {
@@ -109,12 +145,15 @@ export class WorkspaceIPC {
     });
 
     // MOVE_FOLDER - Move a folder
-    ipcMain.handle(WORKSPACE_CHANNELS.MOVE_FOLDER, async (_event, request: { sourcePath: string; destinationPath: string | null }) => {
-      return this.handleRequest(async () => {
-        const result = await workspaceUseCases.moveFolder.execute(request);
-        return result;
-      });
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.MOVE_FOLDER,
+      async (_event, request: { sourcePath: string; destinationPath: string | null }) => {
+        return this.handleRequest(async () => {
+          const result = await workspaceUseCases.moveFolder.execute(request);
+          return result;
+        });
+      },
+    );
 
     // SCAN - Scan workspace for markdown files
     ipcMain.handle(WORKSPACE_CHANNELS.SCAN, async (_event, request: { workspaceId: string }) => {
@@ -128,7 +167,9 @@ export class WorkspaceIPC {
     ipcMain.handle(WORKSPACE_CHANNELS.SYNC, async (_event, request?: { workspaceId?: string }) => {
       return this.handleRequest(async () => {
         const result = await workspaceUseCases.syncWorkspace.execute(request);
-        logger.info(`[WorkspaceIPC] Sync completed: ${result.notes.created + result.notes.updated} notes (${result.durationMs}ms)`);
+        logger.info(
+          `[WorkspaceIPC] Sync completed: ${result.notes.created + result.notes.updated} notes (${result.durationMs}ms)`,
+        );
         return result;
       });
     });

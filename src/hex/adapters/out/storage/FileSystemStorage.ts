@@ -72,10 +72,11 @@ export class FileSystemStorage implements IFileStorage {
   async glob(pattern: string, basePath: string): Promise<string[]> {
     const matches = await globModule(pattern, {
       cwd: basePath,
-      absolute: true,
+      absolute: false, // Return relative paths
       nodir: true,
     });
-    return matches;
+    // Normalize to posix-style paths
+    return matches.map(p => p.replace(/\\/g, '/'));
   }
 
   async getFileInfo(filePath: string): Promise<FileInfo | null> {

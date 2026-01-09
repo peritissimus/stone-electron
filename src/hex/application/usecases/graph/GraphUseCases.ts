@@ -93,14 +93,23 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
     depth?: number;
     includeOrphans?: boolean;
   }): Promise<GraphData> {
-    const { noteRepository, noteLinkRepository } = this.deps;
+    const { noteRepository, noteLinkRepository, workspaceRepository } = this.deps;
     const { centerNoteId, depth = 2, includeOrphans = false } = options || {};
 
     const nodes: Map<string, GraphNode> = new Map();
     const edges: GraphEdge[] = [];
 
-    // Get all notes
-    const allNotes = await noteRepository.findAll({ isDeleted: false });
+    // Get active workspace
+    const activeWorkspace = await workspaceRepository.findActive();
+    if (!activeWorkspace) {
+      return { nodes: [], edges: [] };
+    }
+
+    // Get all notes for active workspace only
+    const allNotes = await noteRepository.findAll({
+      workspaceId: activeWorkspace.id,
+      isDeleted: false,
+    });
     const allLinks = await noteLinkRepository.findAll();
 
     // Build link counts
@@ -122,9 +131,7 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
         const { id, d } = queue.shift()!;
         if (d >= depth) continue;
 
-        const noteLinks = allLinks.filter(
-          (l) => l.sourceNoteId === id || l.targetNoteId === id
-        );
+        const noteLinks = allLinks.filter((l) => l.sourceNoteId === id || l.targetNoteId === id);
 
         for (const link of noteLinks) {
           const otherId = link.sourceNoteId === id ? link.targetNoteId : link.sourceNoteId;
@@ -194,12 +201,16 @@ class UpdateNoteLinksUseCase implements IUpdateNoteLinksUseCase {
     await noteLinkRepository.deleteFromNote(noteId);
 
     // Find target notes by title and create links
-    for (const title of referencedTitles) {
-      const targetNotes = await noteRepository.findAll({ isDeleted: false });
+    const activeWorkspace = await this.deps.workspaceRepository.findActive();
+    if (!activeWorkspace) return;
 
-      const targetNote = targetNotes.find(
-        (n) => n.title?.toLowerCase() === title.toLowerCase()
-      );
+    for (const title of referencedTitles) {
+      const targetNotes = await noteRepository.findAll({
+        workspaceId: activeWorkspace.id,
+        isDeleted: false,
+      });
+
+      const targetNote = targetNotes.find((n) => n.title?.toLowerCase() === title.toLowerCase());
 
       if (targetNote && targetNote.id !== noteId) {
         const linkEntity = NoteLinkEntity.create({
@@ -211,7 +222,9 @@ class UpdateNoteLinksUseCase implements IUpdateNoteLinksUseCase {
       }
     }
 
-    logger.info(`[GraphUseCases] Updated links for note ${noteId}: ${referencedTitles.length} references`);
+    logger.info(
+      `[GraphUseCases] Updated links for note ${noteId}: ${referencedTitles.length} references`,
+    );
   }
 }
 

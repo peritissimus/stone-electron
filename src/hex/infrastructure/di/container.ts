@@ -24,6 +24,7 @@ import {
   createQuickCaptureUseCases,
   createExportUseCases,
   createSystemUseCases,
+  createSettingsUseCases,
 } from '../../application/usecases';
 
 // Adapters - Outbound (Secondary) - Persistence
@@ -36,6 +37,7 @@ import {
   AttachmentRepository,
   VersionRepository,
   NoteLinkRepository,
+  SettingsRepository,
 } from '../../adapters/out/persistence';
 
 // Adapters - Outbound (Secondary) - Storage
@@ -49,6 +51,7 @@ import {
   ExportService,
   SystemService,
   GitService,
+  FileWatcherService,
 } from '../../adapters/out/services';
 
 // Adapters - Outbound (Secondary) - External
@@ -81,6 +84,8 @@ import {
   unregisterQuickCaptureHandlers,
   registerSystemHandlers,
   unregisterSystemHandlers,
+  registerSettingsHandlers,
+  unregisterSettingsHandlers,
 } from '../../adapters/in/ipc';
 
 // Domain Ports (for type safety)
@@ -101,6 +106,7 @@ import type { IGitOperations } from '../../domain/ports/out/IGitOperations';
 import type { IExportService } from '../../domain/ports/out/IExportService';
 import type { ISystemService } from '../../domain/ports/out/ISystemService';
 import type { IGitService } from '../../domain/ports/out/IGitService';
+import type { ISettingsRepository } from '../../domain/ports/out/ISettingsRepository';
 
 // Use Case Types
 import type { ITaskUseCases } from '../../domain/ports/in/ITaskUseCases';
@@ -113,6 +119,7 @@ import type { IQuickCaptureUseCases } from '../../domain/ports/in/IQuickCaptureU
 import type { ISystemUseCases } from '../../domain/ports/in/ISystemUseCases';
 import type { IDatabaseUseCases } from '../../domain/ports/in/IDatabaseUseCases';
 import type { IGitUseCases } from '../../domain/ports/in/IGitUseCases';
+import type { ISettingsUseCases } from '../../domain/ports/in/ISettingsUseCases';
 
 // ============================================================================
 // Container Types
@@ -132,6 +139,7 @@ export interface Container {
   attachmentRepository: IAttachmentRepository;
   versionRepository: IVersionRepository;
   noteLinkRepository: INoteLinkRepository;
+  settingsRepository: ISettingsRepository;
 
   // Ports - Services
   fileStorage: IFileStorage;
@@ -143,6 +151,7 @@ export interface Container {
   exportService: IExportService;
   systemService: ISystemService;
   gitService: IGitService;
+  fileWatcherService: FileWatcherService;
 
   // Use Cases - Core
   noteUseCases: ReturnType<typeof createNoteUseCases>;
@@ -162,6 +171,7 @@ export interface Container {
   quickCaptureUseCases: IQuickCaptureUseCases;
   exportUseCases: IExportUseCases;
   systemUseCases: ISystemUseCases;
+  settingsUseCases: ISettingsUseCases;
 
   // IPC Adapters (class-based)
   noteIPC: NoteIPC;
@@ -172,7 +182,11 @@ export interface Container {
 
   // Helpers
   getWorkspacePath: () => string | null;
-  getDatabaseManager: () => { getStatus: () => Promise<{ path: string; size: number; isOpen: boolean }>; vacuum: () => Promise<void>; checkIntegrity: () => Promise<{ ok: boolean; errors: string[] }> };
+  getDatabaseManager: () => {
+    getStatus: () => Promise<{ path: string; size: number; isOpen: boolean }>;
+    vacuum: () => Promise<void>;
+    checkIntegrity: () => Promise<{ ok: boolean; errors: string[] }>;
+  };
 }
 
 // ============================================================================
@@ -227,12 +241,20 @@ export function createContainer(deps: ContainerDeps): Container {
   const attachmentRepository: IAttachmentRepository = new AttachmentRepository({ db });
   const versionRepository: IVersionRepository = new VersionRepository({ db });
   const noteLinkRepository: INoteLinkRepository = new NoteLinkRepository({ db });
+  const settingsRepository: ISettingsRepository = new SettingsRepository({ db });
 
   const noteRepository: INoteRepository = new NoteRepository({
     db,
     fileStorage,
     markdownProcessor,
     getWorkspacePath,
+  });
+
+  const fileWatcherService = new FileWatcherService({
+    workspaceRepository,
+    noteRepository,
+    notebookRepository,
+    eventPublisher,
   });
 
   // ---------------------------------------------------------------------------
@@ -254,6 +276,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // ---------------------------------------------------------------------------
   const noteUseCases = createNoteUseCases({
     noteRepository,
+    workspaceRepository,
     fileStorage,
     markdownProcessor,
     eventPublisher,
@@ -277,11 +300,7 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
   });
 
-  const searchUseCases = createSearchUseCases(
-    noteRepository,
-    searchEngine,
-    embeddingService
-  );
+  const searchUseCases = createSearchUseCases(noteRepository, searchEngine, embeddingService);
 
   // Task use cases
   const taskUseCases = createTaskUseCases({
@@ -358,6 +377,11 @@ export function createContainer(deps: ContainerDeps): Container {
     systemService,
   });
 
+  // Settings use cases
+  const settingsUseCases = createSettingsUseCases({
+    settingsRepository,
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
   // ---------------------------------------------------------------------------
@@ -380,6 +404,7 @@ export function createContainer(deps: ContainerDeps): Container {
     attachmentRepository,
     versionRepository,
     noteLinkRepository,
+    settingsRepository,
 
     // Ports - Services
     fileStorage,
@@ -391,6 +416,7 @@ export function createContainer(deps: ContainerDeps): Container {
     exportService,
     systemService,
     gitService,
+    fileWatcherService,
 
     // Use Cases - Core
     noteUseCases,
@@ -410,6 +436,7 @@ export function createContainer(deps: ContainerDeps): Container {
     quickCaptureUseCases,
     exportUseCases,
     systemUseCases,
+    settingsUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -468,7 +495,10 @@ export function registerIPCHandlers(): void {
   registerTaskHandlers({ taskUseCases: container.taskUseCases });
   registerTopicHandlers({ topicUseCases: container.topicUseCases });
   registerGraphHandlers({ graphUseCases: container.graphUseCases });
-  registerVersionHandlers({ versionUseCases: container.versionUseCases });
+  registerVersionHandlers({
+    versionUseCases: container.versionUseCases,
+    noteUseCases: container.noteUseCases,
+  });
   registerAttachmentHandlers({ attachmentUseCases: container.attachmentUseCases });
   registerExportHandlers({ exportUseCases: container.exportUseCases });
   registerGitHandlers({
@@ -482,15 +512,19 @@ export function registerIPCHandlers(): void {
     getGitCommits: container.gitUseCases.getCommits,
   });
   registerDatabaseHandlers({
-    getDatabaseStatus: container.databaseUseCases.getStatus,
-    vacuumDatabase: container.databaseUseCases.vacuum,
-    checkDatabaseIntegrity: container.databaseUseCases.checkIntegrity,
+    getDatabaseStatus: () => container.databaseUseCases.getStatus(),
+    vacuumDatabase: () => container.databaseUseCases.vacuum(),
+    checkDatabaseIntegrity: () => container.databaseUseCases.checkIntegrity(),
   });
   registerQuickCaptureHandlers({
-    appendToJournal: container.quickCaptureUseCases.appendToJournal,
+    appendToJournal: (content: string, workspaceId?: string) =>
+      container.quickCaptureUseCases.appendToJournal(content, workspaceId),
   });
   registerSystemHandlers({
-    getSystemFonts: container.systemUseCases.getFonts,
+    getSystemFonts: () => container.systemUseCases.getFonts(),
+  });
+  registerSettingsHandlers({
+    settingsUseCases: container.settingsUseCases,
   });
 }
 
@@ -515,4 +549,5 @@ export function unregisterIPCHandlers(): void {
   unregisterDatabaseHandlers();
   unregisterQuickCaptureHandlers();
   unregisterSystemHandlers();
+  unregisterSettingsHandlers();
 }

@@ -8,3 +8,4 @@ export { EmbeddingServiceAdapter, type EmbeddingServiceDeps } from './EmbeddingS
 export { ExportService } from './ExportService';
 export { SystemService } from './SystemService';
 export { GitService } from './GitService';
+export { FileWatcherService } from './FileWatcherService';

@@ -16,10 +16,12 @@ export interface QuickCaptureIPCDeps {
 export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
   const { appendToJournal } = deps;
 
-  ipcMain.handle(CHANNELS.APPEND_TO_JOURNAL, async (_, text: string, workspaceId?: string) => {
+  ipcMain.handle(CHANNELS.APPEND_TO_JOURNAL, async (_, request: { text?: string; content?: string; workspaceId?: string }) => {
     try {
+      // Accept both 'text' and 'content' for flexibility
+      const text = request.text || request.content || '';
       logger.info('[IPC] quickCapture:appendToJournal', { textLength: text.length });
-      const result = await appendToJournal(text, workspaceId);
+      const result = await appendToJournal(text, request.workspaceId);
       return { success: true, data: result };
     } catch (error) {
       logger.error('[IPC] quickCapture:appendToJournal error:', error);

@@ -35,10 +35,7 @@ export class SearchEngine implements ISearchEngine {
     const searchQuery = query.replace(/[^\w\s]/g, ' ').trim();
 
     // Build conditions for search
-    const conditions: any[] = [
-      eq(notes.isDeleted, false),
-      like(notes.title, `%${searchQuery}%`),
-    ];
+    const conditions: any[] = [eq(notes.isDeleted, false), like(notes.title, `%${searchQuery}%`)];
 
     if (options?.workspaceId) {
       conditions.push(eq(notes.workspaceId, options.workspaceId));
@@ -76,7 +73,7 @@ export class SearchEngine implements ISearchEngine {
 
   async searchHybrid(
     query: string,
-    options?: SearchOptions & { weights?: { fts: number; semantic: number } }
+    options?: SearchOptions & { weights?: { fts: number; semantic: number } },
   ): Promise<SearchResult[]> {
     const weights = options?.weights ?? { fts: 0.7, semantic: 0.3 };
     const limit = options?.limit ?? 50;
@@ -133,7 +130,7 @@ export class SearchEngine implements ISearchEngine {
 
   async searchByTags(
     tagIds: string[],
-    options?: SearchOptions & { matchAll?: boolean }
+    options?: SearchOptions & { matchAll?: boolean },
   ): Promise<NoteProps[]> {
     if (tagIds.length === 0) {
       return [];
@@ -141,6 +138,7 @@ export class SearchEngine implements ISearchEngine {
 
     const limit = options?.limit ?? 50;
     const matchAll = options?.matchAll ?? false;
+    const workspaceId = options?.workspaceId;
 
     if (matchAll) {
       // Notes that have ALL the specified tags
@@ -154,11 +152,12 @@ export class SearchEngine implements ISearchEngine {
       const noteIds = result.map((r) => r.noteId);
       const notesResult: NoteProps[] = [];
 
-      for (const noteId of noteIds.slice(0, limit)) {
+      for (const noteId of noteIds) {
         const note = await this.deps.noteRepository.findById(noteId);
-        if (note && !note.isDeleted) {
+        if (note && !note.isDeleted && (!workspaceId || note.workspaceId === workspaceId)) {
           notesResult.push(note);
         }
+        if (notesResult.length >= limit) break;
       }
 
       return notesResult;
@@ -167,16 +166,17 @@ export class SearchEngine implements ISearchEngine {
       const result = await this.deps.db
         .selectDistinct({ noteId: noteTags.noteId })
         .from(noteTags)
-        .where(inArray(noteTags.tagId, tagIds))
-        .limit(limit);
+        .where(inArray(noteTags.tagId, tagIds));
 
+      const noteIds = result.map((r) => r.noteId);
       const notesResult: NoteProps[] = [];
 
-      for (const { noteId } of result) {
+      for (const noteId of noteIds) {
         const note = await this.deps.noteRepository.findById(noteId);
-        if (note && !note.isDeleted) {
+        if (note && !note.isDeleted && (!workspaceId || note.workspaceId === workspaceId)) {
           notesResult.push(note);
         }
+        if (notesResult.length >= limit) break;
       }
 
       return notesResult;
@@ -188,15 +188,19 @@ export class SearchEngine implements ISearchEngine {
     const field = options.field ?? 'updated';
     const dateColumn = field === 'created' ? notes.createdAt : notes.updatedAt;
 
+    const conditions: any[] = [
+      eq(notes.isDeleted, false),
+      between(dateColumn, options.startDate, options.endDate),
+    ];
+
+    if (options.workspaceId) {
+      conditions.push(eq(notes.workspaceId, options.workspaceId));
+    }
+
     const result = await this.deps.db
       .select()
       .from(notes)
-      .where(
-        and(
-          eq(notes.isDeleted, false),
-          between(dateColumn, options.startDate, options.endDate)
-        )
-      )
+      .where(and(...conditions))
       .orderBy(desc(dateColumn))
       .limit(limit);
 
@@ -207,7 +211,7 @@ export class SearchEngine implements ISearchEngine {
     // FTS5 tables need raw SQL - using db.run for direct SQL
     // This is a stub - actual implementation would use raw SQL
     await this.deps.db.run(
-      sql`INSERT OR REPLACE INTO notes_fts (note_id, title, content) VALUES (${noteId}, ${title}, ${content})`
+      sql`INSERT OR REPLACE INTO notes_fts (note_id, title, content) VALUES (${noteId}, ${title}, ${content})`,
     );
   }
 

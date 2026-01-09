@@ -16,7 +16,7 @@ import type {
 import { logger } from '../../../shared/utils';
 
 const CHANNELS = {
-  STATUS: 'git:status',
+  GET_STATUS: 'git:getStatus',
   INIT: 'git:init',
   COMMIT: 'git:commit',
   PULL: 'git:pull',
@@ -49,13 +49,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     getGitCommits,
   } = deps;
 
-  ipcMain.handle(CHANNELS.STATUS, async (_, workspaceId: string) => {
+  ipcMain.handle(CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
     try {
-      logger.info('[IPC] git:status', { workspaceId });
+      logger.info('[IPC] git:getStatus', { workspaceId });
       const status = await getGitStatus.execute({ workspaceId });
       return { success: true, data: status };
     } catch (error) {
-      logger.error('[IPC] git:status error:', error);
+      logger.error('[IPC] git:getStatus error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -63,7 +63,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.INIT, async (_, workspaceId: string) => {
+  ipcMain.handle(CHANNELS.INIT, async (_, { workspaceId }: { workspaceId: string }) => {
     try {
       logger.info('[IPC] git:init', { workspaceId });
       const result = await initGitRepo.execute({ workspaceId });
@@ -79,7 +79,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.COMMIT,
-    async (_, workspaceId: string, message?: string) => {
+    async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
       try {
         logger.info('[IPC] git:commit', { workspaceId, message });
         const result = await gitCommit.execute({ workspaceId, message });
@@ -103,7 +103,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     }
   );
 
-  ipcMain.handle(CHANNELS.PULL, async (_, workspaceId: string) => {
+  ipcMain.handle(CHANNELS.PULL, async (_, { workspaceId }: { workspaceId: string }) => {
     try {
       logger.info('[IPC] git:pull', { workspaceId });
       const result = await gitPull.execute({ workspaceId });
@@ -117,7 +117,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.PUSH, async (_, workspaceId: string) => {
+  ipcMain.handle(CHANNELS.PUSH, async (_, { workspaceId }: { workspaceId: string }) => {
     try {
       logger.info('[IPC] git:push', { workspaceId });
       const result = await gitPush.execute({ workspaceId });
@@ -133,7 +133,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.SYNC,
-    async (_, workspaceId: string, message?: string) => {
+    async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
       try {
         logger.info('[IPC] git:sync', { workspaceId, message });
         const result = await gitSync.execute({ workspaceId, message });
@@ -150,7 +150,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.SET_REMOTE,
-    async (_, workspaceId: string, url: string) => {
+    async (_, { workspaceId, url }: { workspaceId: string; url: string }) => {
       try {
         logger.info('[IPC] git:setRemote', { workspaceId, url });
         const result = await setGitRemote.execute({ workspaceId, url });
@@ -167,16 +167,18 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.GET_COMMITS,
-    async (_, workspaceId: string, limit?: number) => {
+    async (_, { workspaceId, limit }: { workspaceId: string; limit?: number }) => {
       try {
         logger.info('[IPC] git:getCommits', { workspaceId, limit });
         const result = await getGitCommits.execute({ workspaceId, limit });
         return {
           success: true,
-          data: result.commits.map((c) => ({
-            ...c,
-            date: c.date.toISOString(),
-          })),
+          data: {
+            commits: result.commits.map((c) => ({
+              ...c,
+              date: c.date.toISOString(),
+            })),
+          },
         };
       } catch (error) {
         logger.error('[IPC] git:getCommits error:', error);

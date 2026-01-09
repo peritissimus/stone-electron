@@ -9,11 +9,25 @@ import type { NoteEditorHandle } from '@renderer/components/features/Editor/Note
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
 
 // Lazy load heavy components - NoteEditor pulls in entire TipTap stack
-const NoteEditor = lazy(() => import('@renderer/components/features/Editor/NoteEditor').then(m => ({ default: m.NoteEditor })));
-const HomePage = lazy(() => import('@renderer/components/features/HomePage/HomePage').then(m => ({ default: m.HomePage })));
-const TasksPage = lazy(() => import('@renderer/components/features/Tasks/TasksPage').then(m => ({ default: m.TasksPage })));
-const GraphPage = lazy(() => import('@renderer/components/features/Graph/GraphPage').then(m => ({ default: m.GraphPage })));
-const TopicsPage = lazy(() => import('@renderer/components/features/Topics/TopicsPage').then(m => ({ default: m.TopicsPage })));
+const NoteEditor = lazy(() =>
+  import('@renderer/components/features/Editor/NoteEditor').then((m) => ({
+    default: m.NoteEditor,
+  })),
+);
+const HomePage = lazy(() =>
+  import('@renderer/components/features/HomePage/HomePage').then((m) => ({ default: m.HomePage })),
+);
+const TasksPage = lazy(() =>
+  import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
+);
+const GraphPage = lazy(() =>
+  import('@renderer/components/features/Graph/GraphPage').then((m) => ({ default: m.GraphPage })),
+);
+const TopicsPage = lazy(() =>
+  import('@renderer/components/features/Topics/TopicsPage').then((m) => ({
+    default: m.TopicsPage,
+  })),
+);
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -27,10 +41,26 @@ import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
 
 // Lazy load components not needed on initial render
-const SettingsModal = lazy(() => import('@renderer/components/features/Settings/SettingsModal').then(m => ({ default: m.SettingsModal })));
-const CommandCenter = lazy(() => import('@renderer/components/features/CommandCenter/CommandCenter').then(m => ({ default: m.CommandCenter })));
-const DraftRecoveryDialog = lazy(() => import('@renderer/components/features/Recovery/DraftRecoveryDialog').then(m => ({ default: m.DraftRecoveryDialog })));
-const FindReplaceModal = lazy(() => import('@renderer/components/features/FindReplace/FindReplaceModal').then(m => ({ default: m.FindReplaceModal })));
+const SettingsModal = lazy(() =>
+  import('@renderer/components/features/Settings/SettingsModal').then((m) => ({
+    default: m.SettingsModal,
+  })),
+);
+const CommandCenter = lazy(() =>
+  import('@renderer/components/features/CommandCenter/CommandCenter').then((m) => ({
+    default: m.CommandCenter,
+  })),
+);
+const DraftRecoveryDialog = lazy(() =>
+  import('@renderer/components/features/Recovery/DraftRecoveryDialog').then((m) => ({
+    default: m.DraftRecoveryDialog,
+  })),
+);
+const FindReplaceModal = lazy(() =>
+  import('@renderer/components/features/FindReplace/FindReplaceModal').then((m) => ({
+    default: m.FindReplaceModal,
+  })),
+);
 
 // Minimal loading skeletons for fast LCP
 const EditorSkeleton = () => (
@@ -135,12 +165,16 @@ export function MainLayout() {
 
       // Load workspace first (required for other operations)
       await loadWorkspaces();
-      logger.info(`[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+      logger.info(
+        `[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`,
+      );
 
       // Then load everything else in PARALLEL
       const [, , notesResult] = await Promise.all([
         loadFileTree().then(() => {
-          logger.info(`[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+          logger.info(
+            `[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`,
+          );
         }),
         loadTags().then(() => {
           logger.info(`[MainLayout] Tags loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
@@ -157,7 +191,9 @@ export function MainLayout() {
         setShowRecoveryDialog(true);
       }
 
-      logger.info(`[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`);
+      logger.info(
+        `[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`,
+      );
       // Mark bootstrap as complete
       setBootstrapComplete(true);
     };
@@ -174,7 +210,7 @@ export function MainLayout() {
       } else {
         initialJournalOpenedRef.current = true;
         // Open journal immediately - no delay needed
-        logger.info('[MainLayout] Auto-opening today\'s journal');
+        logger.info("[MainLayout] Auto-opening today's journal");
         openOrCreateTodayJournal().finally(() => {
           setInitialJournalAttempted(true);
         });

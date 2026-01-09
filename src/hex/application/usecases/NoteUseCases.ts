@@ -6,6 +6,7 @@
  */
 
 import { generateId } from '@shared/utils/id';
+import path from 'node:path';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
@@ -31,6 +32,7 @@ import {
   NoteNotFoundError,
 } from '../../domain';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
 
 // ============================================================================
 // Use Case Implementations
@@ -39,9 +41,10 @@ import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 export class CreateNoteUseCase implements ICreateNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly markdownProcessor: IMarkdownProcessor,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -54,31 +57,46 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
   }): Promise<{ note: NoteProps }> {
     const id = request.id || generateId();
 
-    // Create domain entity
+    // Get active workspace for file path resolution
+    const workspace = await this.workspaceRepository.findActive();
+    if (!workspace) {
+      throw new Error('No active workspace');
+    }
+
+    // Create domain entity with workspace
     const note = NoteEntity.create({
       id,
       title: request.title,
       notebookId: request.notebookId,
-      workspaceId: request.workspaceId,
+      workspaceId: request.workspaceId || workspace.id,
     });
 
-    // Determine file path
-    let filePath = request.folderPath;
-    if (!filePath && request.workspaceId) {
-      const sanitizedTitle = (request.title || 'Untitled')
-        .replace(/[<>:"/\\|?*]/g, '')
-        .trim();
-      filePath = `${sanitizedTitle}.md`;
-    }
+    // Determine folder path (default to 'Personal' like legacy)
+    const folderPath = request.folderPath || 'Personal';
 
-    if (filePath) {
-      note.updateFilePath(filePath);
+    // Generate timestamp-based filename like legacy: YYYY-MM-DD-HHMMSS-RRR.md
+    const now = new Date();
+    const timestamp = now
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[-:T]/g, '')
+      .replace(/(\d{8})(\d{6})/, '$1-$2');
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    const filename = `${timestamp}-${random}.md`;
 
-      // Write initial content to file
-      const content = request.content || '';
-      const markdown = this.markdownProcessor.htmlToMarkdown(content);
-      await this.fileStorage.write(filePath, markdown);
-    }
+    // Construct relative path: folderPath/filename.md
+    const relativePath = `${folderPath}/${filename}`;
+    note.updateFilePath(relativePath);
+
+    // Construct absolute path for file operations
+    const absolutePath = path.join(workspace.folderPath, relativePath);
+
+    // Write initial content to file
+    const content = request.content || '';
+    const markdown = this.markdownProcessor.htmlToMarkdown(content);
+    await this.fileStorage.write(absolutePath, markdown);
 
     // Save to repository
     await this.noteRepository.save(note);
@@ -93,9 +111,10 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
 export class UpdateNoteUseCase implements IUpdateNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly markdownProcessor: IMarkdownProcessor,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -132,8 +151,17 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
 
     // Update content if provided
     if (request.content !== undefined && note.filePath) {
+      // Get workspace for file path resolution
+      const workspaceId = note.workspaceId || (await this.workspaceRepository.findActive())?.id;
+      const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
+
+      if (!workspace) {
+        throw new Error('Workspace not found for note');
+      }
+
+      const absolutePath = path.join(workspace.folderPath, note.filePath);
       const markdown = this.markdownProcessor.htmlToMarkdown(request.content);
-      await this.fileStorage.write(note.filePath, markdown);
+      await this.fileStorage.write(absolutePath, markdown);
     }
 
     await this.noteRepository.save(note);
@@ -148,8 +176,9 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
 export class GetNoteUseCase implements IGetNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor
+    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: {
@@ -163,10 +192,18 @@ export class GetNoteUseCase implements IGetNoteUseCase {
 
     let content: string | undefined;
     if (request.includeContent && noteProps.filePath) {
-      const exists = await this.fileStorage.exists(noteProps.filePath);
-      if (exists) {
-        const markdown = await this.fileStorage.read(noteProps.filePath);
-        content = await this.markdownProcessor.markdownToHtml(markdown);
+      // Get workspace for file path resolution
+      const workspaceId =
+        noteProps.workspaceId || (await this.workspaceRepository.findActive())?.id;
+      const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
+
+      if (workspace) {
+        const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+        const exists = await this.fileStorage.exists(absolutePath);
+        if (exists) {
+          const markdown = await this.fileStorage.read(absolutePath);
+          content = await this.markdownProcessor.markdownToHtml(markdown);
+        }
       }
     }
 
@@ -175,7 +212,10 @@ export class GetNoteUseCase implements IGetNoteUseCase {
 }
 
 export class ListNotesUseCase implements IListNotesUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+  ) {}
 
   async execute(request: {
     workspaceId?: string;
@@ -186,6 +226,8 @@ export class ListNotesUseCase implements IListNotesUseCase {
     orderBy?: 'createdAt' | 'updatedAt' | 'title';
     orderDirection?: 'asc' | 'desc';
   }): Promise<{ notes: NoteProps[]; total: number }> {
+    // Use active workspace if workspaceId not provided
+    const workspaceId = request.workspaceId || (await this.workspaceRepository.findActive())?.id;
     const filter = request.filter || 'all';
 
     let notes: NoteProps[];
@@ -193,24 +235,24 @@ export class ListNotesUseCase implements IListNotesUseCase {
 
     switch (filter) {
       case 'favorites':
-        notes = await this.noteRepository.findFavorites(request.workspaceId);
+        notes = await this.noteRepository.findFavorites(workspaceId);
         total = notes.length;
         break;
       case 'pinned':
-        notes = await this.noteRepository.findPinned(request.workspaceId);
+        notes = await this.noteRepository.findPinned(workspaceId);
         total = notes.length;
         break;
       case 'archived':
-        notes = await this.noteRepository.findArchived(request.workspaceId);
+        notes = await this.noteRepository.findArchived(workspaceId);
         total = notes.length;
         break;
       case 'trash':
-        notes = await this.noteRepository.findDeleted(request.workspaceId);
+        notes = await this.noteRepository.findDeleted(workspaceId);
         total = notes.length;
         break;
       default:
         notes = await this.noteRepository.findAll({
-          workspaceId: request.workspaceId,
+          workspaceId: workspaceId,
           notebookId: request.notebookId,
           isDeleted: false,
           limit: request.limit,
@@ -219,7 +261,7 @@ export class ListNotesUseCase implements IListNotesUseCase {
           orderDirection: request.orderDirection,
         });
         total = await this.noteRepository.count({
-          workspaceId: request.workspaceId,
+          workspaceId: workspaceId,
           notebookId: request.notebookId,
           isDeleted: false,
         });
@@ -232,8 +274,9 @@ export class ListNotesUseCase implements IListNotesUseCase {
 export class DeleteNoteUseCase implements IDeleteNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string; permanent?: boolean }): Promise<void> {
@@ -245,9 +288,17 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
     if (request.permanent) {
       // Permanent delete - remove file and database record
       if (noteProps.filePath) {
-        const exists = await this.fileStorage.exists(noteProps.filePath);
-        if (exists) {
-          await this.fileStorage.delete(noteProps.filePath);
+        // Get workspace for file path resolution
+        const workspaceId =
+          noteProps.workspaceId || (await this.workspaceRepository.findActive())?.id;
+        const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
+
+        if (workspace) {
+          const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+          const exists = await this.fileStorage.exists(absolutePath);
+          if (exists) {
+            await this.fileStorage.delete(absolutePath);
+          }
         }
       }
       await this.noteRepository.delete(request.id);
@@ -266,7 +317,7 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
 export class RestoreNoteUseCase implements IRestoreNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<void> {
@@ -287,7 +338,7 @@ export class RestoreNoteUseCase implements IRestoreNoteUseCase {
 export class MoveNoteUseCase implements IMoveNoteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string; targetNotebookId: string | null }): Promise<void> {
@@ -306,16 +357,20 @@ export class MoveNoteUseCase implements IMoveNoteUseCase {
 }
 
 export class SearchNotesUseCase implements ISearchNotesUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+  ) {}
 
   async execute(request: {
     query: string;
     workspaceId?: string;
     limit?: number;
   }): Promise<{ notes: NoteProps[]; total: number }> {
+    const workspaceId = request.workspaceId || (await this.workspaceRepository.findActive())?.id;
     const notes = await this.noteRepository.searchByTitle({
       query: request.query,
-      workspaceId: request.workspaceId,
+      workspaceId,
       limit: request.limit,
     });
 
@@ -326,8 +381,9 @@ export class SearchNotesUseCase implements ISearchNotesUseCase {
 export class GetNoteContentUseCase implements IGetNoteContentUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor
+    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: { id: string }): Promise<{ content: string }> {
@@ -340,12 +396,21 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
       return { content: '' };
     }
 
-    const exists = await this.fileStorage.exists(noteProps.filePath);
+    // Get workspace for file path resolution
+    const workspaceId = noteProps.workspaceId || (await this.workspaceRepository.findActive())?.id;
+    const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
+
+    if (!workspace) {
+      return { content: '' };
+    }
+
+    const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+    const exists = await this.fileStorage.exists(absolutePath);
     if (!exists) {
       return { content: '' };
     }
 
-    const markdown = await this.fileStorage.read(noteProps.filePath);
+    const markdown = await this.fileStorage.read(absolutePath);
     const html = await this.markdownProcessor.markdownToHtml(markdown);
 
     return { content: html };
@@ -355,8 +420,9 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
 export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor
+    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: { id: string; content: string }): Promise<void> {
@@ -369,18 +435,31 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
       throw new Error('Note has no file path');
     }
 
+    // Get workspace for file path resolution
+    const workspaceId = noteProps.workspaceId || (await this.workspaceRepository.findActive())?.id;
+    const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
+
+    if (!workspace) {
+      throw new Error('Workspace not found for note');
+    }
+
+    const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
     const markdown = this.markdownProcessor.htmlToMarkdown(request.content);
-    await this.fileStorage.write(noteProps.filePath, markdown);
+    await this.fileStorage.write(absolutePath, markdown);
   }
 }
 
 export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+  ) {}
 
-  async execute(request: { filePath: string }): Promise<{ note: NoteProps }> {
-    const noteProps = await this.noteRepository.findByFilePath(request.filePath);
+  async execute(request: { filePath: string; workspaceId?: string }): Promise<{ note: NoteProps }> {
+    const workspaceId = request.workspaceId || (await this.workspaceRepository.findActive())?.id;
+    const noteProps = await this.noteRepository.findByFilePath(request.filePath, workspaceId);
     if (!noteProps) {
-      throw new NoteNotFoundError(`file:${request.filePath}`);
+      throw new NoteNotFoundError(`file:${request.filePath} (workspace:${workspaceId})`);
     }
 
     return { note: noteProps };
@@ -390,7 +469,7 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
 export class ToggleFavoriteUseCase implements IToggleFavoriteUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
@@ -412,7 +491,7 @@ export class ToggleFavoriteUseCase implements IToggleFavoriteUseCase {
 export class TogglePinUseCase implements ITogglePinUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
@@ -434,7 +513,7 @@ export class TogglePinUseCase implements ITogglePinUseCase {
 export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<{ note: NoteProps }> {
@@ -459,26 +538,60 @@ export class ToggleArchiveUseCase implements IToggleArchiveUseCase {
 
 export interface NoteUseCasesDeps {
   noteRepository: INoteRepository;
+  workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher?: IEventPublisher;
 }
 
 export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
-  const { noteRepository, fileStorage, markdownProcessor, eventPublisher } = deps;
+  const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, eventPublisher } =
+    deps;
 
   return {
-    createNote: new CreateNoteUseCase(noteRepository, fileStorage, markdownProcessor, eventPublisher),
-    updateNote: new UpdateNoteUseCase(noteRepository, fileStorage, markdownProcessor, eventPublisher),
-    getNote: new GetNoteUseCase(noteRepository, fileStorage, markdownProcessor),
-    listNotes: new ListNotesUseCase(noteRepository),
-    deleteNote: new DeleteNoteUseCase(noteRepository, fileStorage, eventPublisher),
+    createNote: new CreateNoteUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+      eventPublisher,
+    ),
+    updateNote: new UpdateNoteUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+      eventPublisher,
+    ),
+    getNote: new GetNoteUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+    ),
+    listNotes: new ListNotesUseCase(noteRepository, workspaceRepository),
+    deleteNote: new DeleteNoteUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      eventPublisher,
+    ),
     restoreNote: new RestoreNoteUseCase(noteRepository, eventPublisher),
     moveNote: new MoveNoteUseCase(noteRepository, eventPublisher),
-    searchNotes: new SearchNotesUseCase(noteRepository),
-    getNoteContent: new GetNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
-    saveNoteContent: new SaveNoteContentUseCase(noteRepository, fileStorage, markdownProcessor),
-    getNoteByPath: new GetNoteByPathUseCase(noteRepository),
+    searchNotes: new SearchNotesUseCase(noteRepository, workspaceRepository),
+    getNoteContent: new GetNoteContentUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+    ),
+    saveNoteContent: new SaveNoteContentUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+    ),
+    getNoteByPath: new GetNoteByPathUseCase(noteRepository, workspaceRepository),
     toggleFavorite: new ToggleFavoriteUseCase(noteRepository, eventPublisher),
     togglePin: new TogglePinUseCase(noteRepository, eventPublisher),
     toggleArchive: new ToggleArchiveUseCase(noteRepository, eventPublisher),

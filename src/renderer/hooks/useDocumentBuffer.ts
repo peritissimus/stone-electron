@@ -37,15 +37,8 @@ export function useDocumentBuffer({
   editor,
 }: UseDocumentBufferOptions): UseDocumentBufferResult {
   const { updateNote } = useNoteAPI();
-  const {
-    getBuffer,
-    setBuffer,
-    updateBuffer,
-    markClean,
-    isDirty,
-    getDirtyBuffers,
-    hasBuffer,
-  } = useDocumentBufferStore();
+  const { getBuffer, setBuffer, updateBuffer, markClean, isDirty, getDirtyBuffers, hasBuffer } =
+    useDocumentBufferStore();
 
   const isLoadingRef = useRef(false);
 
@@ -54,13 +47,17 @@ export function useDocumentBuffer({
     if (!noteId || !editor) return;
 
     const loadContent = async () => {
+      console.log('heyyy');
       // Check if already in buffer
       const existingBuffer = getBuffer(noteId);
+      console.log(existingBuffer);
       if (existingBuffer) {
         logger.debug('[useDocumentBuffer] Loading from buffer:', noteId);
         editor.commands.setContent(existingBuffer.content);
         return;
       }
+
+      console.log('dope');
 
       // Prevent duplicate loads
       if (loadingNotes.has(noteId)) return;
@@ -70,6 +67,7 @@ export function useDocumentBuffer({
       try {
         logger.debug('[useDocumentBuffer] Loading from file:', noteId);
         const response = await noteAPI.getContent(noteId);
+        console.log(response);
 
         if (response.success && response.data) {
           const htmlContent = response.data.content;
@@ -162,26 +160,32 @@ export function useDocumentBuffer({
 
   // Listen for NOTE_UPDATED events (e.g., from quick capture)
   useNoteEvents({
-    onUpdated: useCallback((payload: unknown) => {
-      const data = payload as { id?: string };
-      if (data?.id === noteId) {
-        reloadFromFile();
-      }
-    }, [noteId, reloadFromFile]),
+    onUpdated: useCallback(
+      (payload: unknown) => {
+        const data = payload as { id?: string };
+        if (data?.id === noteId) {
+          reloadFromFile();
+        }
+      },
+      [noteId, reloadFromFile],
+    ),
   });
 
   // Listen for FILE_CHANGED events (external file modifications)
   useFileEvents({
-    onChanged: useCallback((payload: unknown) => {
-      if (!noteId) return;
-      const data = payload as { workspaceId?: string; path?: string };
-      // Get current note's file path and check if it matches
-      const notes = useNoteStore.getState().notes;
-      const currentNote = notes.find(n => n.id === noteId);
-      if (currentNote?.filePath && data?.path && currentNote.filePath.endsWith(data.path)) {
-        reloadFromFile();
-      }
-    }, [noteId, reloadFromFile]),
+    onChanged: useCallback(
+      (payload: unknown) => {
+        if (!noteId) return;
+        const data = payload as { workspaceId?: string; path?: string };
+        // Get current note's file path and check if it matches
+        const notes = useNoteStore.getState().notes;
+        const currentNote = notes.find((n) => n.id === noteId);
+        if (currentNote?.filePath && data?.path && currentNote.filePath.endsWith(data.path)) {
+          reloadFromFile();
+        }
+      },
+      [noteId, reloadFromFile],
+    ),
   });
 
   // Save current note to file

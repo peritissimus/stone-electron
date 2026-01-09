@@ -108,11 +108,16 @@ export class NoteRepository implements INoteRepository {
     return result.map((row) => this.toNoteProps(row));
   }
 
-  async findByFilePath(filePath: string): Promise<NoteProps | null> {
+  async findByFilePath(filePath: string, workspaceId?: string): Promise<NoteProps | null> {
+    const conditions = [eq(notes.filePath, filePath)];
+    if (workspaceId) {
+      conditions.push(eq(notes.workspaceId, workspaceId));
+    }
+
     const result = await this.deps.db
       .select()
       .from(notes)
-      .where(eq(notes.filePath, filePath))
+      .where(and(...conditions))
       .limit(1);
 
     return result[0] ? this.toNoteProps(result[0]) : null;
@@ -359,8 +364,15 @@ export class NoteRepository implements INoteRepository {
   async findBySimilarity(
     embedding: number[],
     limit: number,
+    workspaceId?: string,
   ): Promise<Array<{ noteId: string; title: string; distance: number }>> {
-    // Get all notes with embeddings
+    // Build query conditions
+    const conditions: any[] = [eq(notes.isDeleted, false)];
+    if (workspaceId) {
+      conditions.push(eq(notes.workspaceId, workspaceId));
+    }
+
+    // Get notes with embeddings matching conditions
     const allNotes = await this.deps.db
       .select({
         id: notes.id,
@@ -368,7 +380,7 @@ export class NoteRepository implements INoteRepository {
         embedding: notes.embedding,
       })
       .from(notes)
-      .where(eq(notes.isDeleted, false));
+      .where(and(...conditions));
 
     const results: Array<{ noteId: string; title: string; distance: number }> = [];
 
