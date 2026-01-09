@@ -1,10 +1,14 @@
 /**
- * EmbeddingService - Generates text embeddings using Transformers.js in a worker thread
+ * EmbeddingWorkerService - Generates text embeddings using Transformers.js in a worker thread
  *
  * Uses a worker thread to run @xenova/transformers, which:
  * 1. Avoids the 'self is not defined' issue (workers have `self`)
  * 2. Keeps the main Electron process responsive during inference
  * 3. Isolates heavy ML operations from the UI thread
+ *
+ * Note: This is the infrastructure-level ML implementation.
+ * The adapter in adapters/out/services/EmbeddingService.ts implements the IEmbeddingService port.
+ * This worker service can be injected into that adapter when ML functionality is enabled.
  */
 
 import { Worker } from 'worker_threads';
@@ -28,7 +32,7 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class EmbeddingService {
+export class EmbeddingWorkerService {
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -245,19 +249,19 @@ export class EmbeddingService {
 // Singleton for backward compatibility (IPC handlers)
 // ==========================================================================
 
-let instance: EmbeddingService | null = null;
+let instance: EmbeddingWorkerService | null = null;
 
 /**
- * Get or create embedding service instance
+ * Get or create embedding worker service instance
  */
-export function getEmbeddingService(): EmbeddingService {
-  instance ??= new EmbeddingService();
+export function getEmbeddingWorkerService(): EmbeddingWorkerService {
+  instance ??= new EmbeddingWorkerService();
   return instance;
 }
 
 /**
- * Create EmbeddingService instance (for DI container)
+ * Create EmbeddingWorkerService instance (for DI container)
  */
-export function createEmbeddingService(): EmbeddingService {
-  return new EmbeddingService();
+export function createEmbeddingWorkerService(): EmbeddingWorkerService {
+  return new EmbeddingWorkerService();
 }

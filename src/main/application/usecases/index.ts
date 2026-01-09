@@ -2,6 +2,7 @@
  * Application Use Cases Index
  *
  * Export all use case implementations and factories.
+ * All use cases are organized flat at this level for consistency.
  */
 
 // Note Use Cases
@@ -68,45 +69,34 @@ export {
 } from './SearchUseCases';
 
 // Task Use Cases
-export { createTaskUseCases } from './task';
-export type { TaskUseCasesDeps } from './task';
+export { createTaskUseCases, type TaskUseCasesDeps } from './TaskUseCases';
 
 // Graph Use Cases
-export { createGraphUseCases } from './graph';
-export type { GraphUseCasesDeps } from './graph';
+export { createGraphUseCases, type GraphUseCasesDeps } from './GraphUseCases';
 
 // Version Use Cases
-export { createVersionUseCases } from './version';
-export type { VersionUseCasesDeps } from './version';
+export { createVersionUseCases, type VersionUseCasesDeps } from './VersionUseCases';
 
 // Topic Use Cases
-export { createTopicUseCases } from './topic';
-export type { TopicUseCasesDeps } from './topic';
+export { createTopicUseCases, type TopicUseCasesDeps } from './TopicUseCases';
 
 // Attachment Use Cases
-export { createAttachmentUseCases } from './attachment';
-export type { AttachmentUseCasesDeps } from './attachment';
+export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './AttachmentUseCases';
 
 // Git Use Cases
-export { createGitUseCases } from './git';
-export type { GitUseCasesDeps } from './git';
+export { createGitUseCases, type GitUseCasesDeps } from './GitUseCases';
 
 // Database Use Cases
-export { createDatabaseUseCases } from './database';
-export type { DatabaseUseCasesDeps } from './database';
+export { createDatabaseUseCases, type DatabaseUseCasesDeps } from './DatabaseUseCases';
 
 // Quick Capture Use Cases
-export { createQuickCaptureUseCases } from './quickcapture';
-export type { QuickCaptureUseCasesDeps } from './quickcapture';
+export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './QuickCaptureUseCases';
 
 // Export Use Cases
-export { createExportUseCases } from './export';
-export type { ExportUseCasesDeps } from './export';
+export { createExportUseCases, type ExportUseCasesDeps } from './ExportUseCases';
 
 // System Use Cases
-export { createSystemUseCases } from './system';
-export type { SystemUseCasesDeps } from './system';
+export { createSystemUseCases, type SystemUseCasesDeps } from './SystemUseCases';
 
 // Settings Use Cases
-export { createSettingsUseCases } from './settings';
-export type { SettingsUseCasesDeps } from './settings';
+export { createSettingsUseCases, type SettingsUseCasesDeps } from './SettingsUseCases';

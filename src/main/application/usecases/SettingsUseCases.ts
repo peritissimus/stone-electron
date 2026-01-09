@@ -2,9 +2,9 @@
  * Settings Use Cases - Key-value settings management
  */
 
-import type { ISettingsRepository } from '../../../domain/ports/out/ISettingsRepository';
-import type { ISettingsUseCases, SettingDTO } from '../../../domain/ports/in/ISettingsUseCases';
-import { logger } from '../../../shared/utils';
+import type { ISettingsRepository } from '../../domain/ports/out/ISettingsRepository';
+import type { ISettingsUseCases, SettingDTO } from '../../domain/ports/in/ISettingsUseCases';
+import { logger } from '../../shared/utils';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;

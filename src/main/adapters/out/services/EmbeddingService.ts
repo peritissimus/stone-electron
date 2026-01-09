@@ -18,7 +18,7 @@ export interface EmbeddingServiceDeps {
   markdownProcessor: IMarkdownProcessor;
 }
 
-export class EmbeddingServiceAdapter implements IEmbeddingService {
+export class EmbeddingService implements IEmbeddingService {
   private ready = false;
 
   constructor(private readonly deps: EmbeddingServiceDeps) {}

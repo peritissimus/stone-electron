@@ -2,8 +2,8 @@
  * Git Use Cases - Version control operations
  */
 
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IGitService } from '../../../domain/ports/out/IGitService';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IGitService } from '../../domain/ports/out/IGitService';
 import type {
   IGitUseCases,
   GitStatusResponse,
@@ -14,8 +14,8 @@ import type {
   GitSyncResponse,
   GitSetRemoteResponse,
   GitGetCommitsResponse,
-} from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
+} from '../../domain/ports/in/IGitUseCases';
+import { logger } from '../../shared/utils';
 
 export interface GitUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;

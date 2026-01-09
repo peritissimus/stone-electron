@@ -13,6 +13,7 @@ import type {
   INoteRepository,
   INotebookRepository,
   IEventPublisher,
+  IFileWatcher,
 } from '../../../domain';
 
 type WatchEntry = {
@@ -30,7 +31,7 @@ export interface FileWatcherServiceDeps {
   eventPublisher: IEventPublisher;
 }
 
-export class FileWatcherService {
+export class FileWatcherService implements IFileWatcher {
   private readonly watchers = new Map<string, WatchEntry>();
   private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
   private started = false;

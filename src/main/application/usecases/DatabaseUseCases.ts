@@ -2,8 +2,8 @@
  * Database Use Cases - Database management operations
  */
 
-import type { IDatabaseUseCases } from '../../../domain/ports/in/IDatabaseUseCases';
-import { logger } from '../../../shared/utils';
+import type { IDatabaseUseCases } from '../../domain/ports/in/IDatabaseUseCases';
+import { logger } from '../../shared/utils';
 
 export interface DatabaseUseCasesDeps {
   getDatabaseManager: () => {

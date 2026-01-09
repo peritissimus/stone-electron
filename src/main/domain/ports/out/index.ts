@@ -31,3 +31,4 @@ export type {
   GitCommit as GitServiceCommit,
 } from './IGitService';
 export * from './ISettingsRepository';
+export * from './IFileWatcher';
