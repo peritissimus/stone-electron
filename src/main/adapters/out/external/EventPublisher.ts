@@ -10,7 +10,7 @@ import type {
   IEventPublisher,
   AppDomainEvent,
   EventHandler,
-} from '../../../domain/ports/out/IEventPublisher';
+} from '../../../domain';
 
 // Singleton event emitter
 const eventEmitter = new EventEmitter();

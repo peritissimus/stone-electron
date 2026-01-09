@@ -5,13 +5,14 @@
  */
 
 import { eq, and, isNull, sql } from 'drizzle-orm';
-import { notebooks, notes, type Database } from '../../../shared/database';
-import type { NotebookEntity, NotebookProps } from '../../../domain/entities';
+import { notebooks, notes, type Database } from '../../../shared';
 import type {
+  NotebookEntity,
+  NotebookProps,
   INotebookRepository,
   NotebookFindOptions,
   NotebookWithCount,
-} from '../../../domain/ports/out/INotebookRepository';
+} from '../../../domain';
 
 export interface NotebookRepositoryDeps {
   db: Database;

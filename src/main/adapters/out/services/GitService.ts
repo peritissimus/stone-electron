@@ -4,12 +4,12 @@
 
 import type {
   IGitService,
-  GitStatus,
-  GitCommit,
+  GitServiceStatus as GitStatus,
+  GitServiceCommit as GitCommit,
   GitOperationResult,
   GitFileChange,
-} from '../../../domain/ports/out/IGitService';
-import { logger } from '../../../shared/utils';
+} from '../../../domain';
+import { logger } from '../../../shared';
 
 // Dynamically import simple-git when needed
 let simpleGit: any = null;

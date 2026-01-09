@@ -6,8 +6,8 @@ import type {
   ISystemService,
   FilePickerOptions,
   FolderPickerOptions,
-} from '../../../domain/ports/out/ISystemService';
-import { logger } from '../../../shared/utils';
+} from '../../../domain';
+import { logger } from '../../../shared';
 
 // Conditionally import Electron modules
 let dialog: any = null;

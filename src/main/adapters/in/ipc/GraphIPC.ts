@@ -3,8 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { IGraphUseCases } from '../../../domain/ports/in/IGraphUseCases';
-import { logger } from '../../../shared/utils';
+import type { IGraphUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   GET_BACKLINKS: 'notes:getBacklinks',

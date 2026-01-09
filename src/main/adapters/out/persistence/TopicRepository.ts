@@ -3,10 +3,13 @@
  */
 
 import { eq, and, desc } from 'drizzle-orm';
-import type { Database } from '../../../shared/database';
-import { topics, noteTopics } from '../../../shared/database/schema';
-import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { TopicProps, TopicEntity, TopicWithCount } from '../../../domain/entities';
+import { topics, noteTopics, type Database } from '../../../shared';
+import type {
+  ITopicRepository,
+  TopicProps,
+  TopicEntity,
+  TopicWithCount,
+} from '../../../domain';
 
 export interface TopicRepositoryDeps {
   db: Database;

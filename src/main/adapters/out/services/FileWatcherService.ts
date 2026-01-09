@@ -6,12 +6,14 @@
 import chokidar, { FSWatcher } from 'chokidar';
 import path from 'node:path';
 import { EVENTS } from '../../../../shared/constants/ipcChannels';
-import { logger } from '../../../shared/utils/logger';
-import type { WorkspaceProps } from '../../../domain/entities';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { INotebookRepository } from '../../../domain/ports/out/INotebookRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import { logger } from '../../../shared';
+import type {
+  WorkspaceProps,
+  IWorkspaceRepository,
+  INoteRepository,
+  INotebookRepository,
+  IEventPublisher,
+} from '../../../domain';
 
 type WatchEntry = {
   watcher: FSWatcher;

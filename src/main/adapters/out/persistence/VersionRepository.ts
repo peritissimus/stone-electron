@@ -3,10 +3,13 @@
  */
 
 import { eq, desc, asc } from 'drizzle-orm';
-import type { Database } from '../../../shared/database';
-import { noteVersions } from '../../../shared/database/schema';
-import type { IVersionRepository } from '../../../domain/ports/out/IVersionRepository';
-import type { VersionProps, VersionEntity, VersionSummary } from '../../../domain/entities';
+import { noteVersions, type Database } from '../../../shared';
+import type {
+  IVersionRepository,
+  VersionProps,
+  VersionEntity,
+  VersionSummary,
+} from '../../../domain';
 
 export interface VersionRepositoryDeps {
   db: Database;

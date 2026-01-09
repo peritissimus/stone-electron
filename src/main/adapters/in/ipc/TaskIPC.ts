@@ -3,9 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { ITaskUseCases } from '../../../domain/ports/in/ITaskUseCases';
-import type { TaskState } from '../../../domain/services/TaskExtractor';
-import { logger } from '../../../shared/utils';
+import type { ITaskUseCases, TaskState } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   GET_ALL: 'notes:getAllTodos',

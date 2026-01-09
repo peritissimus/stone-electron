@@ -5,17 +5,17 @@
  */
 
 import { eq, and, sql, between, inArray, desc, like } from 'drizzle-orm';
-import { notes, noteTags, type Database } from '../../../shared/database';
-import type { NoteProps } from '../../../domain/entities';
+import { notes, noteTags, type Database } from '../../../shared';
 import type {
+  NoteProps,
   ISearchEngine,
   SearchResult,
   SemanticSearchResult,
   SearchOptions,
   DateRangeOptions,
-} from '../../../domain/ports/out/ISearchEngine';
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IEmbeddingService } from '../../../domain/ports/out/IEmbeddingService';
+  INoteRepository,
+  IEmbeddingService,
+} from '../../../domain';
 
 export interface SearchEngineDeps {
   db: Database;

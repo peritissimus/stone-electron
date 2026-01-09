@@ -6,8 +6,8 @@
 
 import { ipcMain } from 'electron';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { INoteUseCases } from '../../../domain/ports/in/INoteUseCases';
-import { logger } from '../../../shared/utils/logger';
+import type { INoteUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 export interface NoteIPCDeps {
   noteUseCases: INoteUseCases;

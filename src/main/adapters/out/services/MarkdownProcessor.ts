@@ -4,12 +4,12 @@
  * Implements IMarkdownProcessor port using the infrastructure MarkdownService.
  */
 
-import { getMarkdownService } from '../../../infrastructure/services/MarkdownService';
+import { getMarkdownService } from '../../../infrastructure';
 import type {
   IMarkdownProcessor,
   MarkdownMetadata,
   ParsedMarkdown,
-} from '../../../domain/ports/out/IMarkdownProcessor';
+} from '../../../domain';
 
 export class MarkdownProcessor implements IMarkdownProcessor {
   private readonly service = getMarkdownService();

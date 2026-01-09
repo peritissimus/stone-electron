@@ -6,8 +6,8 @@
 
 import { ipcMain } from 'electron';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ISearchUseCases } from '../../../application/usecases/SearchUseCases';
-import { logger } from '../../../shared/utils/logger';
+import type { ISearchUseCases } from '../../../application';
+import { logger } from '../../../shared';
 
 export interface SearchIPCDeps {
   searchUseCases: ISearchUseCases;

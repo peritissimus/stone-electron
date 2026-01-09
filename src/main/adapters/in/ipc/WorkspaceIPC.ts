@@ -6,8 +6,8 @@
 
 import { ipcMain } from 'electron';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { IWorkspaceUseCases } from '../../../application/usecases/WorkspaceUseCases';
-import { logger } from '../../../shared/utils/logger';
+import type { IWorkspaceUseCases } from '../../../application';
+import { logger } from '../../../shared';
 
 export interface WorkspaceIPCDeps {
   workspaceUseCases: IWorkspaceUseCases;

@@ -3,8 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { ITopicUseCases } from '../../../domain/ports/in/ITopicUseCases';
-import { logger } from '../../../shared/utils';
+import type { ITopicUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   INITIALIZE: 'topics:initialize',

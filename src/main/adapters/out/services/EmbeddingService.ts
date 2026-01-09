@@ -9,9 +9,9 @@ import type {
   IEmbeddingService,
   ClassificationResult,
   SimilarNote,
-} from '../../../domain/ports/out/IEmbeddingService';
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+  INoteRepository,
+  IMarkdownProcessor,
+} from '../../../domain';
 
 export interface EmbeddingServiceDeps {
   noteRepository: INoteRepository;

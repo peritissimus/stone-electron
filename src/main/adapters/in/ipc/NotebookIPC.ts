@@ -6,8 +6,8 @@
 
 import { ipcMain } from 'electron';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
-import type { INotebookUseCases } from '../../../application/usecases/NotebookUseCases';
-import { logger } from '../../../shared/utils/logger';
+import type { INotebookUseCases } from '../../../application';
+import { logger } from '../../../shared';
 
 export interface NotebookIPCDeps {
   notebookUseCases: INotebookUseCases;

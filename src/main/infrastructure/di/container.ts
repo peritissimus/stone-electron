@@ -5,7 +5,44 @@
  * This is the composition root where all dependencies are resolved.
  */
 
-import type { Database } from '../../shared/database';
+// Shared Layer
+import type { Database } from '../../shared';
+
+// Domain Layer - Ports
+import type {
+  // Outbound Ports (Repositories)
+  INoteRepository,
+  INotebookRepository,
+  IWorkspaceRepository,
+  ITagRepository,
+  ITopicRepository,
+  IAttachmentRepository,
+  IVersionRepository,
+  INoteLinkRepository,
+  ISettingsRepository,
+  // Outbound Ports (Services)
+  IFileStorage,
+  IMarkdownProcessor,
+  IEventPublisher,
+  ISearchEngine,
+  IEmbeddingService,
+  IGitOperations,
+  IExportService,
+  ISystemService,
+  IGitService,
+  // Inbound Ports (Use Cases)
+  ITaskUseCases,
+  IGraphUseCases,
+  IVersionUseCases,
+  ITopicUseCases,
+  IAttachmentUseCases,
+  IExportUseCases,
+  IQuickCaptureUseCases,
+  ISystemUseCases,
+  IDatabaseUseCases,
+  IGitUseCases,
+  ISettingsUseCases,
+} from '../../domain';
 
 // Application Layer - Use Cases
 import {
@@ -25,40 +62,11 @@ import {
   createExportUseCases,
   createSystemUseCases,
   createSettingsUseCases,
-} from '../../application/usecases';
+} from '../../application';
 
-// Adapters - Outbound (Secondary) - Persistence
+// Adapters Layer
 import {
-  NoteRepository,
-  NotebookRepository,
-  WorkspaceRepository,
-  TagRepository,
-  TopicRepository,
-  AttachmentRepository,
-  VersionRepository,
-  NoteLinkRepository,
-  SettingsRepository,
-} from '../../adapters/out/persistence';
-
-// Adapters - Outbound (Secondary) - Storage
-import { FileSystemStorage } from '../../adapters/out/storage';
-
-// Adapters - Outbound (Secondary) - Services
-import {
-  MarkdownProcessor,
-  SearchEngine,
-  EmbeddingServiceAdapter,
-  ExportService,
-  SystemService,
-  GitService,
-  FileWatcherService,
-} from '../../adapters/out/services';
-
-// Adapters - Outbound (Secondary) - External
-import { GitOperations, EventPublisher } from '../../adapters/out/external';
-
-// Adapters - Inbound (Primary) - IPC
-import {
+  // Inbound (Primary) - IPC
   NoteIPC,
   NotebookIPC,
   WorkspaceIPC,
@@ -86,40 +94,30 @@ import {
   unregisterSystemHandlers,
   registerSettingsHandlers,
   unregisterSettingsHandlers,
-} from '../../adapters/in/ipc';
-
-// Domain Ports (for type safety)
-import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
-import type { INotebookRepository } from '../../domain/ports/out/INotebookRepository';
-import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
-import type { ITagRepository } from '../../domain/ports/out/ITagRepository';
-import type { ITopicRepository } from '../../domain/ports/out/ITopicRepository';
-import type { IAttachmentRepository } from '../../domain/ports/out/IAttachmentRepository';
-import type { IVersionRepository } from '../../domain/ports/out/IVersionRepository';
-import type { INoteLinkRepository } from '../../domain/ports/out/INoteLinkRepository';
-import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
-import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
-import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
-import type { ISearchEngine } from '../../domain/ports/out/ISearchEngine';
-import type { IEmbeddingService } from '../../domain/ports/out/IEmbeddingService';
-import type { IGitOperations } from '../../domain/ports/out/IGitOperations';
-import type { IExportService } from '../../domain/ports/out/IExportService';
-import type { ISystemService } from '../../domain/ports/out/ISystemService';
-import type { IGitService } from '../../domain/ports/out/IGitService';
-import type { ISettingsRepository } from '../../domain/ports/out/ISettingsRepository';
-
-// Use Case Types
-import type { ITaskUseCases } from '../../domain/ports/in/ITaskUseCases';
-import type { IGraphUseCases } from '../../domain/ports/in/IGraphUseCases';
-import type { IVersionUseCases } from '../../domain/ports/in/IVersionUseCases';
-import type { ITopicUseCases } from '../../domain/ports/in/ITopicUseCases';
-import type { IAttachmentUseCases } from '../../domain/ports/in/IAttachmentUseCases';
-import type { IExportUseCases } from '../../domain/ports/in/IExportUseCases';
-import type { IQuickCaptureUseCases } from '../../domain/ports/in/IQuickCaptureUseCases';
-import type { ISystemUseCases } from '../../domain/ports/in/ISystemUseCases';
-import type { IDatabaseUseCases } from '../../domain/ports/in/IDatabaseUseCases';
-import type { IGitUseCases } from '../../domain/ports/in/IGitUseCases';
-import type { ISettingsUseCases } from '../../domain/ports/in/ISettingsUseCases';
+  // Outbound (Secondary) - Persistence
+  NoteRepository,
+  NotebookRepository,
+  WorkspaceRepository,
+  TagRepository,
+  TopicRepository,
+  AttachmentRepository,
+  VersionRepository,
+  NoteLinkRepository,
+  SettingsRepository,
+  // Outbound (Secondary) - Storage
+  FileSystemStorage,
+  // Outbound (Secondary) - Services
+  MarkdownProcessor,
+  SearchEngine,
+  EmbeddingServiceAdapter,
+  ExportService,
+  SystemService,
+  GitService,
+  FileWatcherService,
+  // Outbound (Secondary) - External
+  GitOperations,
+  EventPublisher,
+} from '../../adapters';
 
 // ============================================================================
 // Container Types
