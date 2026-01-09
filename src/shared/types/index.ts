@@ -27,7 +27,7 @@ import {
   noteVersions,
   topics,
   noteTopics,
-} from '@main/database/schema';
+} from '../../main/shared/database/schema';
 
 // IDs
 export type UUID = string & { readonly __brand: 'UUID' };

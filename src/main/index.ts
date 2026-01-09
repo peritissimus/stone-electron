@@ -1,15 +1,23 @@
 /**
  * Stone - Main Process Entry Point
+ *
+ * Minimal entry point that bootstraps the hex architecture.
  */
 
 import 'dotenv/config';
 import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
-import { isDev } from './utils/environment';
-import { getDatabaseManager } from './database';
-import { registerAllIpcHandlers } from './ipc';
-import { logger } from './utils/logger';
-import { getContainer } from './api/container';
+
+// Import from main architecture
+import { logger } from './shared/utils/logger';
+import { isDev } from './infrastructure/utils/environment';
+import { getDatabaseManager } from './infrastructure/database';
+import {
+  initializeContainer,
+  registerIPCHandlers,
+  unregisterIPCHandlers,
+  getContainer,
+} from './infrastructure/di/container';
 
 // Log startup
 logger.info('='.repeat(60));
@@ -43,7 +51,7 @@ async function createWindow() {
     const preloadPath = path.join(__dirname, '../preload.cjs');
     logger.info(`Preload path: ${preloadPath}`);
 
-    // Determine icon path based on platform and environment
+    // Determine icon path based on platform
     let iconPath: string | undefined;
     if (process.platform === 'linux') {
       iconPath = path.join(__dirname, '../../build/icon.png');
@@ -77,13 +85,11 @@ async function createWindow() {
     // Load the app
     if (isDev) {
       logger.info('Loading dev server at http://localhost:5173');
-      // In development, load from Vite dev server
       await mainWindow.loadURL('http://localhost:5173');
       mainWindow.webContents.openDevTools();
     } else {
       const htmlPath = path.join(__dirname, '../renderer/index.html');
       logger.info(`Loading production build from: ${htmlPath}`);
-      // In production, load from built files
       await mainWindow.loadFile(htmlPath);
     }
 
@@ -168,15 +174,18 @@ app.on('ready', async () => {
     await dbManager.initialize();
     logger.info('✓ Database initialized');
 
-    // Initialize DI container
-    logger.info('🔄 Initializing DI container...');
-    const container = getContainer();
-    logger.info('✓ DI container initialized');
+    // Initialize hex DI container
+    logger.info('🔄 Initializing hex DI container...');
+    const container = initializeContainer({
+      db: dbManager.getDrizzle(),
+      dbManager: dbManager,
+    });
+    logger.info('✓ Hex DI container initialized');
 
-    // Register IPC handlers
-    logger.info('🔄 Registering IPC handlers...');
-    registerAllIpcHandlers(container);
-    logger.info('✓ IPC handlers registered');
+    // Register hex IPC handlers
+    logger.info('🔄 Registering hex IPC handlers...');
+    registerIPCHandlers();
+    logger.info('✓ Hex IPC handlers registered');
 
     // Create window
     await createWindow();
@@ -197,7 +206,7 @@ app.on('ready', async () => {
 
     // Start file watcher for all workspaces
     try {
-      await container.cradle.fileWatcherService.start();
+      await container.fileWatcherService.start();
     } catch (e) {
       logger.error('Failed to start file watcher:', e);
     }
@@ -211,8 +220,6 @@ app.on('ready', async () => {
  * Quit when all windows are closed
  */
 app.on('window-all-closed', () => {
-  // On macOS, apps typically stay open until explicitly quit
-  // Don't close DB/watchers here - they're needed when window reopens
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -227,16 +234,25 @@ app.on('before-quit', () => {
   // Unregister all global shortcuts
   globalShortcut.unregisterAll();
 
+  // Unregister IPC handlers
+  try {
+    unregisterIPCHandlers();
+  } catch {
+    // Container may not be initialized yet
+  }
+
   // Close database
-  const dbManager = getDatabaseManager();
-  dbManager.close();
+  try {
+    const dbManager = getDatabaseManager();
+    dbManager.close();
+  } catch {
+    // May not be initialized
+  }
 
   // Stop watchers
   try {
     const container = getContainer();
-    container.cradle.fileWatcherService
-      .stopAll()
-      .catch(() => {});
+    container.fileWatcherService.stopAll().catch(() => {});
   } catch {
     // Container may not be initialized yet
   }
@@ -249,9 +265,4 @@ app.on('activate', async () => {
   if (mainWindow === null) {
     await createWindow();
   }
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught Exception:', error);
 });
