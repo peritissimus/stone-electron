@@ -1,38 +1,42 @@
-# Stone - Development Guide for Claude
+## Complete Architecture Rules — Full Stack Electron App
 
 ---
 
-### 1. Layer Definitions
+# PART 1: BACKEND (Main Process — Hexagonal Architecture)
+
+---
+
+## 1. Layer Definitions
 
 ```
-src/hex/
-├── domain/            # Core business logic
+src/main/
+├── domain/            # Core business logic (ZERO deps)
 ├── application/       # Use cases (orchestration)
 ├── adapters/          # External world connections
 ├── infrastructure/    # Bootstrap & wiring
 └── shared/            # Cross-cutting utilities
 ```
 
-| Layer              | Purpose                    | Contains                                        |
-| ------------------ | -------------------------- | ----------------------------------------------- |
-| **Domain**         | Business logic & contracts | Entities, Value Objects, Domain Services, Ports |
-| **Application**    | Orchestration              | Use Cases, DTOs                                 |
-| **Adapters**       | Connect to real world      | In (IPC, HTTP) / Out (DB, APIs)                 |
-| **Infrastructure** | Wire everything            | DI Container, Config, DB setup                  |
-| **Shared**         | Neutral utilities          | Logger, Schema, Types                           |
+| Layer              | Purpose                    | Contains                                                |
+| ------------------ | -------------------------- | ------------------------------------------------------- |
+| **Domain**         | Business logic & contracts | Entities, Value Objects, Domain Services, Ports, Errors |
+| **Application**    | Orchestration              | Use Cases, DTOs                                         |
+| **Adapters**       | Connect to real world      | In (IPC, HTTP) / Out (DB, APIs, Services)               |
+| **Infrastructure** | Wire everything            | DI Container, Config, DB setup, Workers                 |
+| **Shared**         | Neutral utilities          | Schema, Logger, Types                                   |
 
 ---
 
-### 2. Dependency Rule
+## 2. Dependency Rule
 
 ```
 ALLOWED IMPORTS (→ means "can import")
 
-domain/          → NOTHING (zero external deps)
+domain/          → NOTHING
 application/     → domain/
 adapters/        → domain/, application/
 infrastructure/  → Everything
-shared/          → NOTHING (or only external libs)
+shared/          → NOTHING (only external libs)
 
 FORBIDDEN IMPORTS (✗)
 
@@ -40,8 +44,6 @@ domain/          ✗ application/, adapters/, infrastructure/
 application/     ✗ adapters/, infrastructure/
 adapters/        ✗ infrastructure/
 ```
-
-**Visual:**
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -55,7 +57,7 @@ adapters/        ✗ infrastructure/
 │              (imports domain)                   │
 ├─────────────────────────────────────────────────┤
 │                   DOMAIN                        │
-│              (imports nothing)                  │
+│              (imports NOTHING)                  │
 └─────────────────────────────────────────────────┘
 
         Dependencies point INWARD only
@@ -63,48 +65,49 @@ adapters/        ✗ infrastructure/
 
 ---
 
-### 3. Domain Layer Rules
+## 3. Domain Layer Rules
 
 ```
 domain/
-├── entities/           # Business objects with behavior
+├── entities/           # Business objects with identity
 ├── value-objects/      # Immutable, identity-less values
-├── services/           # Pure business logic
+├── services/           # Pure business logic (no I/O)
 ├── errors/             # Domain-specific errors
 └── ports/
-    ├── in/             # What app CAN DO (interfaces)
-    └── out/            # What app NEEDS (interfaces)
+    ├── in/             # What app CAN DO
+    └── out/            # What app NEEDS
 ```
 
-| Component           | Rules                                                   |
-| ------------------- | ------------------------------------------------------- |
-| **Entities**        | Have identity, mutable, contain business logic          |
-| **Value Objects**   | No identity, immutable, validated on creation           |
-| **Domain Services** | Pure functions, no external deps, business calculations |
-| **Ports/In**        | Interfaces that USE CASES implement                     |
-| **Ports/Out**       | Interfaces that ADAPTERS implement                      |
+| Component           | Rules                                                              |
+| ------------------- | ------------------------------------------------------------------ |
+| **Entities**        | Have identity (ID), mutable, contain business behavior             |
+| **Value Objects**   | No identity, immutable, validated on creation, comparable by value |
+| **Domain Services** | Pure functions, no external deps, business calculations only       |
+| **Domain Errors**   | Business rule violations, extend base DomainError                  |
+| **Ports/In**        | Interfaces that USE CASES implement                                |
+| **Ports/Out**       | Interfaces that ADAPTERS implement                                 |
 
 **Domain MUST:**
 
 - Be pure (no side effects in entities/value objects/services)
 - Have zero external imports (no npm packages)
 - Define all contracts (ports) for external needs
+- Contain all business rules and validations
 
 **Domain MUST NOT:**
 
 - Import from any other layer
-- Contain infrastructure concerns (DB, HTTP, etc.)
-- Know how it's being used (IPC vs HTTP vs CLI)
+- Contain infrastructure concerns (DB, HTTP, IPC)
+- Know how it's being used
+- Have any I/O operations
 
 ---
 
-### 4. Port Rules
+## 4. Port Rules
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         PORTS                                   │
-├─────────────────────────────────┬───────────────────────────────┤
-│           IN                    │            OUT                │
+┌─────────────────────────────────┬───────────────────────────────┐
+│           IN PORT               │           OUT PORT            │
 ├─────────────────────────────────┼───────────────────────────────┤
 │ "What can the app DO?"          │ "What does the app NEED?"     │
 ├─────────────────────────────────┼───────────────────────────────┤
@@ -115,8 +118,7 @@ domain/
 │ Examples:                       │ Examples:                     │
 │ • INoteUseCases                 │ • INoteRepository             │
 │ • IAuthUseCases                 │ • IFileStorage                │
-│ • INotebookUseCases             │ • IEmailService               │
-│                                 │ • ISearchEngine               │
+│ • ISearchUseCases               │ • IEmbeddingService           │
 └─────────────────────────────────┴───────────────────────────────┘
 ```
 
@@ -125,61 +127,74 @@ domain/
 - Ports are ALWAYS interfaces (never concrete classes)
 - Ports live in `domain/ports/`
 - Ports define the contract, not the implementation
-- Naming: `I{Name}` prefix (e.g., `INoteRepository`)
+- Naming: `I{Name}` prefix
 
 ---
 
-### 5. Application Layer Rules
+## 5. Application Layer Rules
 
 ```
 application/
-├── usecases/          # Use case implementations
+├── usecases/          # Use case implementations (grouped by feature)
 └── dto/               # Data transfer objects
 ```
 
-| Component     | Rules                                               |
-| ------------- | --------------------------------------------------- |
-| **Use Cases** | Implement IN ports, orchestrate business operations |
-| **DTOs**      | Simple data structures for input/output             |
+| Component     | Rules                                                 |
+| ------------- | ----------------------------------------------------- |
+| **Use Cases** | Implement IN ports, orchestrate domain + OUT ports    |
+| **DTOs**      | Simple data structures, no behavior, for input/output |
 
 **Use Cases MUST:**
 
 - Implement an IN port interface
-- Receive OUT ports via constructor (dependency injection)
+- Receive OUT ports via constructor (DI)
 - Orchestrate domain logic + external calls
 - Represent a single user action/intent
+- Be the BRIDGE between IN and OUT ports
 
 **Use Cases MUST NOT:**
 
 - Contain business rules (delegate to domain)
-- Know about delivery mechanism (HTTP, IPC, etc.)
+- Know about delivery mechanism (HTTP, IPC)
 - Import from adapters or infrastructure
+- Have multiple responsibilities
 
-**Use Case vs Domain Service:**
+---
+
+## 6. Use Case vs Domain Service
 
 | Question                      | Use Case | Domain Service |
 | ----------------------------- | -------- | -------------- |
 | User can directly request it? | ✅ Yes   | ❌ No          |
-| Has side effects?             | ✅ Yes   | ❌ No          |
+| Has side effects (DB, API)?   | ✅ Yes   | ❌ No          |
 | Orchestrates multiple things? | ✅ Yes   | ❌ No          |
-| Pure calculation?             | ❌ No    | ✅ Yes         |
+| Pure calculation/logic?       | ❌ No    | ✅ Yes         |
+| Needs external dependencies?  | ✅ Yes   | ❌ No          |
+
+**Examples:**
+
+| Domain Service                    | Used By Use Case         |
+| --------------------------------- | ------------------------ |
+| `NoteScorer.calculateRelevance()` | `SearchNotesUseCase`     |
+| `TaskExtractor.extract()`         | `GetAllTasksUseCase`     |
+| `SimilarityCalculator.cosine()`   | `GetSimilarNotesUseCase` |
 
 ---
 
-### 6. Adapter Rules
+## 7. Adapter Rules
 
 ```
 adapters/
 ├── in/                # Driving adapters (receive requests)
 │   ├── ipc/           # Electron IPC handlers
-│   ├── http/          # REST/GraphQL controllers
-│   └── cli/           # Command line interface
+│   ├── http/          # REST/GraphQL (if needed)
+│   └── cli/           # Command line (if needed)
 │
 └── out/               # Driven adapters (external systems)
-    ├── persistence/   # Database implementations
+    ├── persistence/   # Database repositories
     ├── storage/       # File system
-    ├── external/      # Third-party APIs
-    └── search/        # Search engines
+    ├── services/      # External service implementations
+    └── external/      # Third-party APIs
 ```
 
 | Adapter Type | Direction     | Purpose                      | Implements               |
@@ -191,8 +206,8 @@ adapters/
 
 - IN adapters call use cases (via IN port interface)
 - OUT adapters implement OUT port interfaces
-- Adapters handle all translation (HTTP → DTO, Entity → SQL)
-- Adapters are swappable (that's the point)
+- Adapters handle all translation (IPC → DTO, Entity → SQL row)
+- Adapters are swappable
 
 **Adapters MUST:**
 
@@ -208,37 +223,38 @@ adapters/
 
 ---
 
-### 7. Infrastructure Layer Rules
+## 8. Infrastructure Layer Rules
 
 ```
 infrastructure/
 ├── di/                # Dependency injection container
 ├── database/          # DB connection, migrations
 ├── config/            # App configuration
-└── workers/           # Background workers
+├── workers/           # Background workers
+└── electron/          # Electron-specific utilities
 ```
 
 **Infrastructure MUST:**
 
 - Wire all dependencies together
-- Be the only place that instantiates adapters
+- Be the only place that instantiates concrete adapters
 - Handle app bootstrap/shutdown
+- Manage technical cross-cutting concerns
 
 **Infrastructure CAN:**
 
 - Import from any layer
-- Know about concrete implementations
+- Know about all concrete implementations
 
 ---
 
-### 8. Shared Layer Rules
+## 9. Shared Layer Rules
 
 ```
 shared/
 ├── database/          # Drizzle schema (neutral zone)
-├── logger/            # Logging utility
-├── types/             # Shared TypeScript types
-└── utils/             # Generic utilities
+├── utils/             # Logger, helpers
+└── types/             # Shared enums, result types
 ```
 
 **Shared MUST:**
@@ -251,74 +267,70 @@ shared/
 
 - Import from domain, application, adapters, or infrastructure
 - Contain domain concepts
+- Be a dumping ground
 
 ---
 
-### 9. Service Placement Rules
+## 10. Service Placement Decision
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│              WHERE DOES THIS SERVICE GO?                        │
-└─────────────────────────────────┬───────────────────────────────┘
-                                  │
-                                  ▼
-                    Does it need external deps?
-                    (APIs, libraries, DB, filesystem)
-                                  │
-                    ┌─────────────┴─────────────┐
-                    │                           │
-                    ▼                           ▼
-                   NO                          YES
-                    │                           │
-                    ▼                           ▼
-           domain/services/          domain/ports/out/ (interface)
-           (concrete class)                    +
-                                     adapters/out/ (implementation)
+Does it need external deps? (APIs, libraries, DB, filesystem)
+                │
+    ┌───────────┴───────────┐
+    │                       │
+   NO                      YES
+    │                       │
+    ▼                       ▼
+domain/services/     domain/ports/out/ (interface)
+(concrete class)            +
+                     adapters/out/ (implementation)
 ```
 
-| Service Type            | External Deps | Location                     |
-| ----------------------- | ------------- | ---------------------------- |
-| `NoteScorer`            | ❌            | `domain/services/`           |
-| `SlugGenerator`         | ❌            | `domain/services/`           |
-| `PriceCalculator`       | ❌            | `domain/services/`           |
-| `ClassificationService` | ✅ OpenAI     | `ports/out` + `adapters/out` |
-| `MarkdownProcessor`     | ✅ unified    | `ports/out` + `adapters/out` |
-| `SearchEngine`          | ✅ MiniSearch | `ports/out` + `adapters/out` |
-| `EmbeddingService`      | ✅ API        | `ports/out` + `adapters/out` |
+| Service                | External Deps | Location                     |
+| ---------------------- | ------------- | ---------------------------- |
+| `TaskExtractor`        | ❌            | `domain/services/`           |
+| `LinkExtractor`        | ❌            | `domain/services/`           |
+| `SimilarityCalculator` | ❌            | `domain/services/`           |
+| `MarkdownProcessor`    | ✅ unified    | `ports/out` + `adapters/out` |
+| `EmbeddingService`     | ✅ ML model   | `ports/out` + `adapters/out` |
+| `GitService`           | ✅ simple-git | `ports/out` + `adapters/out` |
 
 ---
 
-### 10. Naming Conventions
+## 11. Naming Conventions (Backend)
 
-| Type               | Convention                    | Example                                                |
-| ------------------ | ----------------------------- | ------------------------------------------------------ |
-| **Entity**         | PascalCase, noun              | `Note`, `Notebook`, `User`                             |
-| **Value Object**   | PascalCase, noun              | `NoteId`, `Email`, `Money`                             |
-| **Port Interface** | `I` + PascalCase              | `INoteRepository`, `INoteUseCases`                     |
-| **Use Case**       | PascalCase + `UseCases`       | `NoteUseCases`, `AuthUseCases`                         |
-| **Adapter**        | Implementation + Adapter/Impl | `DrizzleNoteRepository`, `OpenAIClassificationService` |
-| **DTO**            | PascalCase + `DTO`            | `CreateNoteDTO`, `NoteResponseDTO`                     |
-| **Domain Error**   | PascalCase + `Error`          | `NoteNotFoundError`, `InvalidEmailError`               |
+| Type           | Convention              | Example                 |
+| -------------- | ----------------------- | ----------------------- |
+| Entity         | PascalCase noun         | `Note`, `Notebook`      |
+| Value Object   | PascalCase noun         | `NoteId`, `FilePath`    |
+| Port Interface | `I` + PascalCase        | `INoteRepository`       |
+| Use Case       | PascalCase + `UseCases` | `NoteUseCases`          |
+| Domain Service | PascalCase              | `TaskExtractor`         |
+| Adapter        | Descriptive + type      | `DrizzleNoteRepository` |
+| DTO            | PascalCase + `DTO`      | `CreateNoteDTO`         |
+| Domain Error   | PascalCase + `Error`    | `NoteNotFoundError`     |
 
 ---
 
-### 11. Dependency Injection Rules
+## 12. Dependency Injection Rules
 
 ```typescript
 // infrastructure/di/container.ts
 
-export function createContainer(db: Database, config: Config) {
-  // 1. Domain services (no deps - can instantiate directly)
-  const noteScorer = new NoteScorer();
+export function createContainer(db: Database) {
+  // ORDER MATTERS:
+
+  // 1. Domain services (no deps)
+  const taskExtractor = new TaskExtractor();
 
   // 2. OUT adapters (implement OUT ports)
   const noteRepo = new DrizzleNoteRepository(db);
-  const classifier = new OpenAIClassificationService(config.apiKey);
+  const markdownProcessor = new UnifiedMarkdownProcessor();
 
-  // 3. Use cases (receive OUT ports via constructor)
-  const noteUseCases = new NoteUseCases(noteRepo, classifier, noteScorer);
+  // 3. Use cases (implement IN ports, receive OUT ports)
+  const noteUseCases = new NoteUseCases(noteRepo, markdownProcessor);
 
-  // 4. IN adapters (receive use cases via constructor)
+  // 4. IN adapters (receive use cases)
   const noteIPC = new NoteIPC(noteUseCases);
 
   return { noteIPC };
@@ -330,62 +342,27 @@ export function createContainer(db: Database, config: Config) {
 - Instantiation order: Domain Services → OUT Adapters → Use Cases → IN Adapters
 - Only infrastructure creates concrete instances
 - Dependencies flow via constructor injection
-- Use interfaces, not concrete classes
+- Always inject interfaces, never concrete classes
 
 ---
 
-### 12. Testing Rules
+## 13. Testing Rules (Backend)
 
-| Layer            | Test Type   | Mocking Strategy                   |
-| ---------------- | ----------- | ---------------------------------- |
-| **Domain**       | Unit        | No mocks needed (pure)             |
-| **Application**  | Unit        | Mock OUT ports                     |
-| **Adapters/In**  | Integration | Mock use cases                     |
-| **Adapters/Out** | Integration | Real DB/service or test containers |
-| **Full Flow**    | E2E         | No mocks                           |
-
-```typescript
-// Testing use case - mock OUT ports only
-describe('NoteUseCases', () => {
-  it('creates note', async () => {
-    const mockRepo: INoteRepository = {
-      save: vi.fn(),
-      findById: vi.fn(),
-    };
-
-    const useCases = new NoteUseCases(mockRepo);
-    await useCases.createNote({ title: 'Test', content: 'Hello' });
-
-    expect(mockRepo.save).toHaveBeenCalled();
-  });
-});
-```
+| Layer        | Test Type   | Mocking Strategy           |
+| ------------ | ----------- | -------------------------- |
+| Domain       | Unit        | No mocks (pure)            |
+| Application  | Unit        | Mock OUT ports             |
+| Adapters/In  | Integration | Mock use cases             |
+| Adapters/Out | Integration | Real DB or test containers |
+| Full Flow    | E2E         | No mocks                   |
 
 ---
 
-### 13. File/Folder Rules
+## 14. Development Order (Backend)
 
 ```
-✅ DO:
-- One entity/class per file
-- Index files for clean exports
-- Group by feature within layers
-- Keep related things close
-
-❌ DON'T:
-- Create deeply nested folders
-- Put multiple entities in one file
-- Create circular dependencies
-- Mix concerns in single file
-```
-
----
-
-### 14. Development Order
-
-```
-PHASE 1: Domain (Define WHAT)
-─────────────────────────────
+PHASE 1: Domain
+─────────────────
 1. Entities
 2. Value Objects
 3. Domain Errors
@@ -393,54 +370,482 @@ PHASE 1: Domain (Define WHAT)
 5. Ports/In (what you offer)
 6. Domain Services (if any)
 
-PHASE 2: Application (Define HOW)
-─────────────────────────────────
+PHASE 2: Application
+─────────────────────
 7. DTOs
 8. Use Cases
 
-PHASE 3: Adapters (Connect to REAL WORLD)
-─────────────────────────────────────────
+PHASE 3: Adapters
+──────────────────
 9. Out Adapters (DB, APIs)
-10. In Adapters (IPC, HTTP)
+10. In Adapters (IPC)
 
-PHASE 4: Infrastructure (WIRE it up)
-────────────────────────────────────
+PHASE 4: Infrastructure
+────────────────────────
 11. DI Container
 12. Database setup
 13. Config
-14. Entry point (main.ts)
+14. Entry point
 ```
 
 ---
 
-### 15. Quick Decision Reference
-
-| When Adding...  | Create In Order                                                                       |
-| --------------- | ------------------------------------------------------------------------------------- |
-| New Entity      | `entities/` → `ports/out` (repo) → `ports/in` (use cases) → `usecases/` → `adapters/` |
-| New Feature     | `ports/in` (interface) → `usecases/` (impl) → `adapters/in` (expose)                  |
-| New Integration | `ports/out` (interface) → `adapters/out` (impl) → wire in DI                          |
-| New Calculation | `domain/services/` (if pure)                                                          |
+# PART 2: FRONTEND (Renderer Process — React)
 
 ---
 
-### 16. Anti-Patterns to Avoid
-
-| Anti-Pattern                   | Problem                   | Solution                      |
-| ------------------------------ | ------------------------- | ----------------------------- |
-| Domain imports adapter         | Breaks dependency rule    | Use ports                     |
-| Business logic in adapter      | Logic scattered           | Move to domain/use case       |
-| Use case knows about HTTP      | Coupled to delivery       | Use DTOs                      |
-| Concrete classes in use case   | Hard to test/swap         | Inject interfaces             |
-| God use case                   | Too many responsibilities | Split into focused use cases  |
-| Anemic domain                  | Entities are just data    | Add behavior to entities      |
-| Shared becoming dumping ground | Unclear boundaries        | Be strict about what's shared |
-
----
-
-### 17. The Golden Rules
+## 15. Frontend Layer Definitions
 
 ```
+src/renderer/
+├── api/               # IPC calls to main process
+├── stores/            # State management (Zustand)
+├── hooks/             # React hooks
+├── components/        # UI components
+├── pages/             # Route-level components
+├── types/             # Frontend-specific types
+└── utils/             # Frontend utilities
+```
+
+| Layer          | Purpose           | Contains                                      |
+| -------------- | ----------------- | --------------------------------------------- |
+| **API**        | IPC communication | Thin wrappers around `window.electron.invoke` |
+| **Stores**     | State management  | Zustand stores, actions, state                |
+| **Hooks**      | React integration | Lifecycle, side effects, combine stores       |
+| **Components** | UI rendering      | Presentational + container components         |
+| **Pages**      | Route views       | Top-level page components                     |
+| **Types**      | Frontend types    | UI-specific interfaces                        |
+| **Utils**      | Helpers           | Formatters, constants                         |
+
+---
+
+## 16. Frontend Dependency Rule
+
+```
+ALLOWED:
+
+Components   → Hooks
+Hooks        → Stores, API
+Stores       → API
+API          → IPC (window.electron)
+
+FORBIDDEN:
+
+Components   ✗ Stores (directly)
+Components   ✗ API (directly)
+Stores       ✗ React hooks
+API          ✗ State management
+```
+
+```
+┌─────────────────────────────────────────────────┐
+│               COMPONENTS                        │
+│              (uses hooks)                       │
+├─────────────────────────────────────────────────┤
+│                  HOOKS                          │
+│          (uses stores + api)                    │
+├─────────────────────────────────────────────────┤
+│                 STORES                          │
+│              (uses api)                         │
+├─────────────────────────────────────────────────┤
+│                   API                           │
+│             (uses IPC)                          │
+└─────────────────────────────────────────────────┘
+
+        Data flows DOWN, Actions flow UP
+```
+
+---
+
+## 17. API Layer Rules
+
+```typescript
+// renderer/api/noteApi.ts
+```
+
+**API Layer MUST:**
+
+- Be thin wrappers around IPC calls
+- Return promises
+- Handle IPC channel names
+- Type inputs and outputs
+
+**API Layer MUST NOT:**
+
+- Hold state
+- Contain business logic
+- Transform data (beyond serialization)
+- Know about React
+
+**Structure:**
+
+```typescript
+export const noteApi = {
+  create: (input) => window.electron.invoke('note:create', input),
+  getById: (id) => window.electron.invoke('note:getById', id),
+  getAll: () => window.electron.invoke('note:getAll'),
+  update: (input) => window.electron.invoke('note:update', input),
+  delete: (id) => window.electron.invoke('note:delete', id),
+
+  // Event subscriptions
+  onCreated: (cb) => window.electron.on('note:created', cb),
+  onUpdated: (cb) => window.electron.on('note:updated', cb),
+};
+```
+
+---
+
+## 18. Store Layer Rules
+
+```typescript
+// renderer/stores/noteStore.ts
+```
+
+**Stores MUST:**
+
+- Hold application state
+- Provide actions that call API
+- Update state after API calls
+- Be the single source of truth
+- Handle loading/error states
+
+**Stores MUST NOT:**
+
+- Use React hooks
+- Import from components
+- Know about UI/rendering
+- Contain UI-only state (use separate uiStore)
+
+**Structure:**
+
+```typescript
+interface NoteState {
+  // State
+  notes: Note[];
+  activeNoteId: string | null;
+  isLoading: boolean;
+  error: string | null;
+
+  // Actions
+  fetchNotes: () => Promise<void>;
+  createNote: (input) => Promise<Note>;
+  updateNote: (input) => Promise<void>;
+  deleteNote: (id) => Promise<void>;
+  setActiveNote: (id) => void;
+
+  // Event handlers (for main process events)
+  _onNoteCreated: (note) => void;
+  _onNoteUpdated: (note) => void;
+}
+```
+
+---
+
+## 19. Hooks Layer Rules
+
+```typescript
+// renderer/hooks/useNotes.ts
+```
+
+**Hooks MUST:**
+
+- Combine store state + actions
+- Handle React lifecycle (useEffect)
+- Subscribe to main process events
+- Provide clean interface to components
+
+**Hooks MUST NOT:**
+
+- Call API directly (go through store)
+- Contain business logic
+- Render anything
+
+**Types of Hooks:**
+
+| Hook Type    | Purpose             | Example                        |
+| ------------ | ------------------- | ------------------------------ |
+| Data hooks   | Fetch + return data | `useNotes()`, `useNote(id)`    |
+| Action hooks | Provide actions     | `useNoteActions()`             |
+| Filter hooks | Derived data        | `useNotebookNotes(notebookId)` |
+| UI hooks     | UI behavior         | `useKeyboardShortcuts()`       |
+
+**Structure:**
+
+```typescript
+export function useNotes() {
+  const store = useNoteStore();
+
+  // Lifecycle
+  useEffect(() => {
+    store.fetchNotes();
+  }, []);
+
+  // Event subscriptions
+  useEffect(() => {
+    const unsub = noteApi.onCreated(store._onNoteCreated);
+    return () => unsub();
+  }, []);
+
+  return {
+    notes: store.notes,
+    isLoading: store.isLoading,
+    createNote: store.createNote,
+    // ...
+  };
+}
+```
+
+---
+
+## 20. Component Layer Rules
+
+```
+components/
+├── common/            # Shared UI (Button, Modal, Input)
+├── notes/             # Note-specific components
+├── notebooks/         # Notebook-specific components
+├── sidebar/           # Sidebar components
+└── layout/            # Layout components
+```
+
+**Components MUST:**
+
+- Use hooks for data/actions
+- Be focused on rendering
+- Handle user interactions
+- Be composable
+
+**Components MUST NOT:**
+
+- Import from stores directly
+- Import from API directly
+- Contain business logic
+- Make IPC calls
+
+**Component Types:**
+
+| Type           | Purpose                 | Data Source         |
+| -------------- | ----------------------- | ------------------- |
+| Presentational | Pure UI, receives props | Props only          |
+| Container      | Connects to hooks       | Hooks               |
+| Page           | Route-level             | Hooks + composition |
+
+---
+
+## 21. Frontend Data Flow
+
+```
+User Action
+     │
+     ▼
+┌──────────────┐
+│  Component   │  onClick={() => createNote(input)}
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│    Hook      │  useNotes().createNote()
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│    Store     │  noteStore.createNote()
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│     API      │  noteApi.create()
+└──────┬───────┘
+       │
+       ▼
+═══════════════════════ IPC ═══════════════════════
+       │
+       ▼
+┌──────────────┐
+│  Adapter/In  │  NoteIPC
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│   Use Case   │  NoteUseCases.createNote()
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Adapter/Out │  DrizzleNoteRepository.save()
+└──────────────┘
+```
+
+---
+
+## 22. Naming Conventions (Frontend)
+
+| Type      | Convention                   | Example                     |
+| --------- | ---------------------------- | --------------------------- |
+| API       | camelCase + `Api`            | `noteApi`, `searchApi`      |
+| Store     | `use` + PascalCase + `Store` | `useNoteStore`              |
+| Hook      | `use` + PascalCase           | `useNotes`, `useSearch`     |
+| Component | PascalCase                   | `NoteList`, `NoteEditor`    |
+| Page      | PascalCase + `Page`          | `NotesPage`, `SettingsPage` |
+| Type      | PascalCase                   | `NoteListProps`             |
+
+---
+
+## 23. State Management Rules
+
+**What goes WHERE:**
+
+| State Type      | Location         | Example                  |
+| --------------- | ---------------- | ------------------------ |
+| Server data     | Feature stores   | `noteStore.notes`        |
+| Active/selected | Feature stores   | `noteStore.activeNoteId` |
+| Loading/error   | Feature stores   | `noteStore.isLoading`    |
+| UI-only state   | `uiStore`        | `uiStore.sidebarOpen`    |
+| Form state      | Local `useState` | Input values             |
+| Derived data    | Selectors/hooks  | `useNotebookNotes()`     |
+
+**Store Separation:**
+
+```
+stores/
+├── noteStore.ts         # Notes data + actions
+├── notebookStore.ts     # Notebooks data + actions
+├── workspaceStore.ts    # Workspace data + actions
+├── searchStore.ts       # Search state + actions
+└── uiStore.ts           # UI-only state (modals, sidebar)
+```
+
+---
+
+# PART 3: SHARED (Between Processes)
+
+---
+
+## 24. Shared Layer Rules
+
+```
+src/shared/
+├── types/              # Shared interfaces/types
+│   ├── note.ts         # Note, CreateNoteInput, etc.
+│   ├── notebook.ts
+│   └── index.ts
+│
+└── constants/          # Shared constants
+    └── channels.ts     # IPC channel names
+```
+
+**Shared MUST:**
+
+- Contain types used by BOTH main and renderer
+- Contain IPC channel name constants
+- Be serializable (no classes, only interfaces)
+
+**Shared MUST NOT:**
+
+- Contain implementation
+- Import from main or renderer
+- Contain React or Electron specific code
+
+---
+
+## 25. IPC Channel Rules
+
+```typescript
+// shared/constants/channels.ts
+
+export const NOTE_CHANNELS = {
+  CREATE: 'note:create',
+  GET_BY_ID: 'note:getById',
+  GET_ALL: 'note:getAll',
+  UPDATE: 'note:update',
+  DELETE: 'note:delete',
+  // Events (main → renderer)
+  CREATED: 'note:created',
+  UPDATED: 'note:updated',
+  DELETED: 'note:deleted',
+} as const;
+```
+
+**Rules:**
+
+- Single source of truth for channel names
+- Use in both main (IPC handlers) and renderer (API)
+- Naming: `feature:action` pattern
+- Events use past tense: `note:created`
+
+---
+
+# PART 4: COMPLETE STRUCTURE
+
+---
+
+## 26. Full Project Structure
+
+```
+src/
+│
+├── main/                            # MAIN PROCESS
+│   ├── index.ts                     # Electron main entry
+│   │
+│   ├── domain/
+│   │   ├── entities/
+│   │   ├── value-objects/
+│   │   ├── services/
+│   │   ├── errors/
+│   │   └── ports/
+│   │       ├── in/
+│   │       └── out/
+│   │
+│   ├── application/
+│   │   ├── usecases/
+│   │   └── dto/
+│   │
+│   ├── adapters/
+│   │   ├── in/
+│   │   │   └── ipc/
+│   │   └── out/
+│   │       ├── persistence/
+│   │       ├── storage/
+│   │       └── services/
+│   │
+│   ├── infrastructure/
+│   │   ├── di/
+│   │   ├── database/
+│   │   ├── config/
+│   │   └── workers/
+│   │
+│   └── shared/
+│       ├── database/
+│       ├── utils/
+│       └── types/
+│
+├── renderer/                        # RENDERER PROCESS
+│   ├── index.tsx                    # React entry
+│   ├── App.tsx
+│   │
+│   ├── api/                         # IPC client
+│   ├── stores/                      # Zustand stores
+│   ├── hooks/                       # React hooks
+│   ├── components/                  # UI components
+│   ├── pages/                       # Route pages
+│   ├── types/                       # Frontend types
+│   └── utils/                       # Frontend utils
+│
+├── shared/                          # SHARED
+│   ├── types/                       # Shared types (DTOs)
+│   └── constants/                   # IPC channels
+│
+└── preload/                         # PRELOAD
+    └── index.ts                     # window.electron exposure
+```
+
+---
+
+## 27. The Golden Rules
+
+```
+BACKEND (Hexagonal):
+
 1. DEPENDENCIES POINT INWARD
    Infrastructure → Adapters → Application → Domain
 
@@ -450,19 +855,87 @@ PHASE 4: Infrastructure (WIRE it up)
 3. PORTS ARE CONTRACTS
    IN = what app does, OUT = what app needs
 
-4. ADAPTERS ARE SWAPPABLE
-   Change DB, API, or UI without touching domain
+4. USE CASES ARE THE BRIDGE
+   They implement IN ports and use OUT ports
 
-5. USE CASES ORCHESTRATE
-   They coordinate, domain decides
+5. ADAPTERS ARE SWAPPABLE
+   Change DB, API, or delivery without touching domain
 
-6. INFRASTRUCTURE WIRES
-   Only place that knows all concrete implementations
 
-7. TEST FROM INSIDE OUT
-   Domain (unit) → Application (unit) → Adapters (integration) → E2E
+FRONTEND (React):
+
+6. COMPONENTS USE HOOKS
+   Never access stores or API directly
+
+7. HOOKS COMBINE STORES + LIFECYCLE
+   They're the glue between React and state
+
+8. STORES OWN STATE + ACTIONS
+   Single source of truth, call API
+
+9. API IS THIN
+   Just IPC wrappers, no logic
+
+
+BOTH:
+
+10. SHARED IS MINIMAL
+    Only types and constants used by both
+
+11. IPC IS THE BOUNDARY
+    Main ↔ Renderer communication via channels
+
+12. SINGLE RESPONSIBILITY
+    Each file/class does one thing well
 ```
 
 ---
 
-This is the complete rulebook. Print it, reference it, internalize it. 🎯
+## 28. Quick Decision Reference
+
+| Need To...               | Backend Location                           | Frontend Location |
+| ------------------------ | ------------------------------------------ | ----------------- |
+| Add entity               | `domain/entities/`                         | —                 |
+| Add business rule        | `domain/services/` or entity               | —                 |
+| Add external integration | `ports/out/` + `adapters/out/`             | —                 |
+| Add user action          | `ports/in/` + `usecases/` + `adapters/in/` | —                 |
+| Add IPC handler          | `adapters/in/ipc/`                         | `api/`            |
+| Add state                | —                                          | `stores/`         |
+| Add React behavior       | —                                          | `hooks/`          |
+| Add UI                   | —                                          | `components/`     |
+| Share types              | `shared/types/`                            | `shared/types/`   |
+
+---
+
+## 29. Anti-Patterns to Avoid
+
+| Anti-Pattern                   | Layer    | Solution                      |
+| ------------------------------ | -------- | ----------------------------- |
+| Domain imports adapter         | Backend  | Use ports                     |
+| Business logic in adapter      | Backend  | Move to domain/use case       |
+| Use case knows IPC/HTTP        | Backend  | Use DTOs                      |
+| Component calls API directly   | Frontend | Use hooks                     |
+| Component imports store        | Frontend | Use hooks                     |
+| Store uses React hooks         | Frontend | Keep store pure               |
+| Logic in API layer             | Frontend | Move to store                 |
+| Shared contains implementation | Shared   | Only types/constants          |
+| God use case                   | Backend  | Split by responsibility       |
+| God component                  | Frontend | Split into smaller components |
+
+---
+
+## 30. Testing Strategy
+
+| Layer        | Test Type   | What to Mock        |
+| ------------ | ----------- | ------------------- |
+| Domain       | Unit        | Nothing             |
+| Application  | Unit        | OUT ports           |
+| Adapters/In  | Integration | Use cases           |
+| Adapters/Out | Integration | DB (test container) |
+| API          | Unit        | IPC                 |
+| Stores       | Unit        | API                 |
+| Hooks        | Unit        | Stores              |
+| Components   | Unit        | Hooks               |
+| E2E          | E2E         | Nothing             |
+
+---
