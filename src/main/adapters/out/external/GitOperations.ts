@@ -10,7 +10,7 @@ import type {
   GitStatus,
   GitCommit,
   GitSyncResult,
-} from '../../../domain/ports/out/IGitOperations';
+} from '../../../domain';
 
 export class GitOperations implements IGitOperations {
   private getGit(workspacePath: string): SimpleGit {

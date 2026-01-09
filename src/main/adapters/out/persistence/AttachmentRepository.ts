@@ -3,10 +3,12 @@
  */
 
 import { eq, and } from 'drizzle-orm';
-import type { Database } from '../../../shared/database';
-import { attachments } from '../../../shared/database/schema';
-import type { IAttachmentRepository } from '../../../domain/ports/out/IAttachmentRepository';
-import type { AttachmentProps, AttachmentEntity } from '../../../domain/entities';
+import { attachments, type Database } from '../../../shared';
+import type {
+  IAttachmentRepository,
+  AttachmentProps,
+  AttachmentEntity,
+} from '../../../domain';
 
 export interface AttachmentRepositoryDeps {
   db: Database;

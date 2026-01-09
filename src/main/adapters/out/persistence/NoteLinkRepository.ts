@@ -3,10 +3,14 @@
  */
 
 import { eq, and, or } from 'drizzle-orm';
-import type { Database } from '../../../shared/database';
-import { noteLinks, notes } from '../../../shared/database/schema';
-import type { INoteLinkRepository } from '../../../domain/ports/out/INoteLinkRepository';
-import type { NoteLinkProps, NoteLinkEntity, LinkCount, NoteProps } from '../../../domain/entities';
+import { noteLinks, notes, type Database } from '../../../shared';
+import type {
+  INoteLinkRepository,
+  NoteLinkProps,
+  NoteLinkEntity,
+  LinkCount,
+  NoteProps,
+} from '../../../domain';
 
 export interface NoteLinkRepositoryDeps {
   db: Database;

@@ -4,8 +4,8 @@
 
 import { ipcMain } from 'electron';
 import { SETTINGS_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ISettingsUseCases } from '../../../domain/ports/in/ISettingsUseCases';
-import { logger } from '../../../shared/utils';
+import type { ISettingsUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 export interface SettingsIPCDeps {
   settingsUseCases: ISettingsUseCases;

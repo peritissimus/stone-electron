@@ -6,8 +6,8 @@
 
 import { ipcMain } from 'electron';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ITagUseCases } from '../../../application/usecases/TagUseCases';
-import { logger } from '../../../shared/utils/logger';
+import type { ITagUseCases } from '../../../application';
+import { logger } from '../../../shared';
 
 export interface TagIPCDeps {
   tagUseCases: ITagUseCases;

@@ -2,8 +2,8 @@
  * Export Service Adapter - Renders notes to various export formats
  */
 
-import type { IExportService, PdfOptions, HtmlOptions } from '../../../domain/ports/out/IExportService';
-import { logger } from '../../../shared/utils';
+import type { IExportService, PdfOptions, HtmlOptions } from '../../../domain';
+import { logger } from '../../../shared';
 
 /**
  * Export Service implementation

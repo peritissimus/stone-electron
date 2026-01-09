@@ -5,15 +5,16 @@
  */
 
 import { eq, and, desc, asc, isNull, like, sql } from 'drizzle-orm';
-import { notes, type Database } from '../../../shared/database';
-import type { NoteEntity, NoteProps } from '../../../domain/entities';
+import { notes, type Database } from '../../../shared';
 import type {
+  NoteEntity,
+  NoteProps,
   INoteRepository,
   NoteFindOptions,
   NoteSearchOptions,
-} from '../../../domain/ports/out/INoteRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+  IFileStorage,
+  IMarkdownProcessor,
+} from '../../../domain';
 
 export interface NoteRepositoryDeps {
   db: Database;

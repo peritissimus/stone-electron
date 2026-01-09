@@ -3,9 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { IVersionUseCases } from '../../../domain/ports/in/IVersionUseCases';
-import type { INoteUseCases } from '../../../domain/ports/in/INoteUseCases';
-import { logger } from '../../../shared/utils';
+import type { IVersionUseCases, INoteUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   GET_VERSIONS: 'notes:getVersions',

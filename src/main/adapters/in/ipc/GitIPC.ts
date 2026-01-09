@@ -12,8 +12,8 @@ import type {
   IGitSyncUseCase,
   ISetGitRemoteUseCase,
   IGetGitCommitsUseCase,
-} from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
+} from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   GET_STATUS: 'git:getStatus',

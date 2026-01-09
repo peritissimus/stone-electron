@@ -3,8 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { IExportUseCases, ExportOptions } from '../../../domain/ports/in/IExportUseCases';
-import { logger } from '../../../shared/utils';
+import type { IExportUseCases, ExportOptions } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   EXPORT_HTML: 'notes:exportHtml',

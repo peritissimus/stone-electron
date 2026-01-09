@@ -28,6 +28,7 @@ export {
   DeleteNotebookUseCase,
   MoveNotebookUseCase,
   createNotebookUseCases,
+  type INotebookUseCases,
 } from './NotebookUseCases';
 
 // Workspace Use Cases
@@ -39,6 +40,7 @@ export {
   GetActiveWorkspaceUseCase,
   DeleteWorkspaceUseCase,
   createWorkspaceUseCases,
+  type IWorkspaceUseCases,
 } from './WorkspaceUseCases';
 
 // Tag Use Cases
@@ -52,6 +54,7 @@ export {
   RemoveTagFromNoteUseCase,
   GetNoteTagsUseCase,
   createTagUseCases,
+  type ITagUseCases,
 } from './TagUseCases';
 
 // Search Use Cases
@@ -61,6 +64,7 @@ export {
   FindSimilarNotesUseCase,
   RebuildSearchIndexUseCase,
   createSearchUseCases,
+  type ISearchUseCases,
 } from './SearchUseCases';
 
 // Task Use Cases

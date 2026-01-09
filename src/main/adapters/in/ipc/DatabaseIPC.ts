@@ -4,7 +4,7 @@
 
 import { ipcMain } from 'electron';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
-import { logger } from '../../../shared/utils';
+import { logger } from '../../../shared';
 
 export interface DatabaseIPCDeps {
   getDatabaseStatus: () => Promise<{ path: string; size: number; isOpen: boolean }>;

@@ -3,8 +3,8 @@
  */
 
 import { ipcMain } from 'electron';
-import type { IAttachmentUseCases } from '../../../domain/ports/in/IAttachmentUseCases';
-import { logger } from '../../../shared/utils';
+import type { IAttachmentUseCases } from '../../../domain';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   ADD: 'attachments:add',

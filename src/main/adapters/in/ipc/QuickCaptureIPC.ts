@@ -3,7 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { logger } from '../../../shared/utils';
+import { logger } from '../../../shared';
 
 const CHANNELS = {
   APPEND_TO_JOURNAL: 'quickCapture:appendToJournal',

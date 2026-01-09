@@ -5,8 +5,8 @@
  */
 
 import { eq } from 'drizzle-orm';
-import { settings, type Database } from '../../../shared/database';
-import type { ISettingsRepository, SettingProps } from '../../../domain/ports/out/ISettingsRepository';
+import { settings, type Database } from '../../../shared';
+import type { ISettingsRepository, SettingProps } from '../../../domain';
 
 export interface SettingsRepositoryDeps {
   db: Database;

@@ -8,7 +8,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { watch, type FSWatcher } from 'chokidar';
 import { glob as globModule } from 'glob';
-import type { IFileStorage, FileInfo } from '../../../domain/ports/out/IFileStorage';
+import type { IFileStorage, FileInfo } from '../../../domain';
 
 export class FileSystemStorage implements IFileStorage {
   async read(filePath: string): Promise<string> {
