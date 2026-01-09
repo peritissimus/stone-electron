@@ -2,13 +2,13 @@
  * Attachment Use Cases - File attachment management
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IAttachmentRepository } from '../../../domain/ports/out/IAttachmentRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IAttachmentUseCases } from '../../../domain/ports/in/IAttachmentUseCases';
-import { AttachmentEntity } from '../../../domain/entities/Attachment';
-import { logger } from '../../../shared/utils';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IAttachmentRepository } from '../../domain/ports/out/IAttachmentRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IAttachmentUseCases } from '../../domain/ports/in/IAttachmentUseCases';
+import { AttachmentEntity } from '../../domain/entities/Attachment';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 import crypto from 'node:crypto';
 

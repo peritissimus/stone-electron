@@ -1,18 +1,15 @@
 /**
  * Infrastructure Services
+ *
+ * Note: MarkdownService has been moved to adapters/out/services/MarkdownProcessor
+ * following hexagonal architecture (adapters contain external library implementations)
  */
 
 export {
-  MarkdownService,
-  getMarkdownService,
-  createMarkdownService,
-} from './MarkdownService';
-
-export {
-  EmbeddingService,
-  getEmbeddingService,
-  createEmbeddingService,
-} from './EmbeddingService';
+  EmbeddingWorkerService,
+  getEmbeddingWorkerService,
+  createEmbeddingWorkerService,
+} from './EmbeddingWorkerService';
 
 export {
   getMLStatusService,

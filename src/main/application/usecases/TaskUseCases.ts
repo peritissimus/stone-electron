@@ -2,10 +2,10 @@
  * Task Use Cases - Orchestration for task/todo operations
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
 import type {
   ITaskUseCases,
   IGetAllTasksUseCase,
@@ -13,10 +13,10 @@ import type {
   IUpdateTaskStateUseCase,
   IToggleTaskUseCase,
   TaskItem,
-} from '../../../domain/ports/in/ITaskUseCases';
-import { TaskExtractor, type TaskState } from '../../../domain/services/TaskExtractor';
-import { NoteEntity } from '../../../domain/entities/Note';
-import { logger } from '../../../shared/utils';
+} from '../../domain/ports/in/ITaskUseCases';
+import { TaskExtractor, type TaskState } from '../../domain/services/TaskExtractor';
+import { NoteEntity } from '../../domain/entities/Note';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 
 /**

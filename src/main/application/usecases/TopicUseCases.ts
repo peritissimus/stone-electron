@@ -2,18 +2,18 @@
  * Topic Use Cases - ML-based topic classification
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IEmbeddingService } from '../../../domain/ports/out/IEmbeddingService';
-import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
-import type { ITopicUseCases } from '../../../domain/ports/in/ITopicUseCases';
-import { SimilarityCalculator } from '../../../domain/services/SimilarityCalculator';
-import { TopicEntity } from '../../../domain/entities/Topic';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { ITopicRepository } from '../../domain/ports/out/ITopicRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IEmbeddingService } from '../../domain/ports/out/IEmbeddingService';
+import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
+import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
+import type { ITopicUseCases } from '../../domain/ports/in/ITopicUseCases';
+import { SimilarityCalculator } from '../../domain/services/SimilarityCalculator';
+import { TopicEntity } from '../../domain/entities/Topic';
 import { EVENTS } from '@shared/constants/ipcChannels';
-import { logger } from '../../../shared/utils';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 import crypto from 'node:crypto';
 

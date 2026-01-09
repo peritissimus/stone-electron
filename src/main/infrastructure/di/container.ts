@@ -109,7 +109,7 @@ import {
   // Outbound (Secondary) - Services
   MarkdownProcessor,
   SearchEngine,
-  EmbeddingServiceAdapter,
+  EmbeddingService,
   ExportService,
   SystemService,
   GitService,
@@ -284,7 +284,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // ---------------------------------------------------------------------------
   // Layer 3: Domain Services (depend on repositories)
   // ---------------------------------------------------------------------------
-  const embeddingService: IEmbeddingService = new EmbeddingServiceAdapter({
+  const embeddingService: IEmbeddingService = new EmbeddingService({
     noteRepository,
     markdownProcessor,
   });

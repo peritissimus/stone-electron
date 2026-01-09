@@ -2,10 +2,10 @@
  * Version Use Cases - Note version history management
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IVersionRepository } from '../../../domain/ports/out/IVersionRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IVersionRepository } from '../../domain/ports/out/IVersionRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
 import type {
   IVersionUseCases,
   IGetVersionsUseCase,
@@ -13,10 +13,10 @@ import type {
   IRestoreVersionUseCase,
   IGetVersionUseCase,
   VersionSnapshot,
-} from '../../../domain/ports/in/IVersionUseCases';
-import { VersionEntity } from '../../../domain/entities/Version';
-import { NoteEntity } from '../../../domain/entities/Note';
-import { logger } from '../../../shared/utils';
+} from '../../domain/ports/in/IVersionUseCases';
+import { VersionEntity } from '../../domain/entities/Version';
+import { NoteEntity } from '../../domain/entities/Note';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 
 export interface VersionUseCasesDeps {

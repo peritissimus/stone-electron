@@ -2,11 +2,11 @@
  * Export Use Cases - Note export to various formats
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
-import type { IExportService } from '../../../domain/ports/out/IExportService';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
+import type { IExportService } from '../../domain/ports/out/IExportService';
 import type {
   IExportUseCases,
   IExportHtmlUseCase,
@@ -14,8 +14,8 @@ import type {
   IExportMarkdownUseCase,
   ExportOptions,
   ExportResult,
-} from '../../../domain/ports/in/IExportUseCases';
-import { logger } from '../../../shared/utils';
+} from '../../domain/ports/in/IExportUseCases';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 
 export interface ExportUseCasesDeps {

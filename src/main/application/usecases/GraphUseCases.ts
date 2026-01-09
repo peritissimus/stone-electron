@@ -2,10 +2,10 @@
  * Graph Use Cases - Link analysis and graph visualization
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { INoteLinkRepository } from '../../../domain/ports/out/INoteLinkRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { INoteLinkRepository } from '../../domain/ports/out/INoteLinkRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
 import type {
   IGraphUseCases,
   IGetBacklinksUseCase,
@@ -16,10 +16,10 @@ import type {
   GraphData,
   GraphNode,
   GraphEdge,
-} from '../../../domain/ports/in/IGraphUseCases';
-import { LinkExtractor } from '../../../domain/services/LinkExtractor';
-import { NoteLinkEntity } from '../../../domain/entities';
-import { logger } from '../../../shared/utils';
+} from '../../domain/ports/in/IGraphUseCases';
+import { LinkExtractor } from '../../domain/services/LinkExtractor';
+import { NoteLinkEntity } from '../../domain/entities';
+import { logger } from '../../shared/utils';
 
 export interface GraphUseCasesDeps {
   noteRepository: INoteRepository;

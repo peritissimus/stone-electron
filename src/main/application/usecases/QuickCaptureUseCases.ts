@@ -2,12 +2,12 @@
  * Quick Capture Use Cases - Fast note capture (journal append)
  */
 
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IQuickCaptureUseCases } from '../../../domain/ports/in/IQuickCaptureUseCases';
-import { NoteEntity } from '../../../domain/entities/Note';
-import { logger } from '../../../shared/utils';
+import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
+import type { IQuickCaptureUseCases } from '../../domain/ports/in/IQuickCaptureUseCases';
+import { NoteEntity } from '../../domain/entities/Note';
+import { logger } from '../../shared/utils';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
