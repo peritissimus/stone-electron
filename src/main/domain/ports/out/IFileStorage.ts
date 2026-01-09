@@ -17,8 +17,9 @@ export interface FileInfo {
 export interface IFileStorage {
   /**
    * Read file content as string
+   * Returns null if file doesn't exist or is empty
    */
-  read(filePath: string): Promise<string>;
+  read(filePath: string): Promise<string | null>;
 
   /**
    * Write content to a file

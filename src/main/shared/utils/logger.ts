@@ -8,18 +8,22 @@
 import log from 'electron-log';
 import path from 'node:path';
 
-// Configure log file location - only if electron is available
-let app: any = null;
+// Configure log file location - only if electron app is available
+let app: typeof import('electron').app | undefined;
 try {
   app = require('electron').app;
+} catch {
+  // Electron not available
+}
+
+if (app?.getPath) {
   log.transports.file.resolvePathFn = () => {
-    const userDataPath = app.getPath('userData');
+    const userDataPath = app!.getPath('userData');
     return path.join(userDataPath, 'logs', 'stone.log');
   };
-
   log.transports.console.level = 'debug';
   log.transports.file.level = 'debug';
-} catch {
+} else {
   // Electron not available (e.g., in tests or scripts)
   log.transports.file.level = false;
   log.transports.console.level = 'debug';

@@ -33,7 +33,7 @@ export interface FileWatcherServiceDeps {
 
 export class FileWatcherService implements IFileWatcher {
   private readonly watchers = new Map<string, WatchEntry>();
-  private readonly debounceTimers = new Map<string, NodeJS.Timeout>();
+  private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private started = false;
 
   constructor(private readonly deps: FileWatcherServiceDeps) {}

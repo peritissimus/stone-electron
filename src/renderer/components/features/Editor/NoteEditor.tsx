@@ -299,17 +299,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
   // Handle note link clicks to navigate to linked notes
   useEffect(() => {
-    const handleNoteLinkClick = (event: CustomEvent<{ noteId: string; title: string }>) => {
-      const { noteId } = event.detail;
+    const handleNoteLinkClick = (event: Event) => {
+      const { noteId } = (event as CustomEvent<{ noteId: string; title: string }>).detail;
       if (noteId && noteId !== activeNoteId) {
         logger.info('[NoteEditor] Navigating to linked note:', noteId);
         setActiveNote(noteId);
       }
     };
 
-    document.addEventListener('note-link-click', handleNoteLinkClick as EventListener);
+    document.addEventListener('note-link-click', handleNoteLinkClick);
     return () => {
-      document.removeEventListener('note-link-click', handleNoteLinkClick as EventListener);
+      document.removeEventListener('note-link-click', handleNoteLinkClick);
     };
   }, [activeNoteId, setActiveNote]);
 

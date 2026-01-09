@@ -4,6 +4,7 @@
  * Replaces: style={{ paddingLeft: "..." }} and other manual spacing
  */
 
+import React from 'react';
 import { spacerSizeClasses } from './tokens';
 
 export interface SpacerProps {

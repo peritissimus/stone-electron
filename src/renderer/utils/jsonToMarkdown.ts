@@ -36,14 +36,16 @@ function processNode(node: ProseMirrorNode): string {
   if (!type) return '';
 
   switch (type) {
-    case 'heading':
+    case 'heading': {
       const level = attrs?.level || 1;
       const headingText = content ? processNodes(content) : '';
       return '\n' + '#'.repeat(level) + ' ' + headingText + '\n\n';
+    }
 
-    case 'paragraph':
+    case 'paragraph': {
       const paraText = content ? processNodes(content) : '';
       return paraText + '\n\n';
+    }
 
     case 'text':
       return applyMarks(text || '', node.marks || []);
@@ -69,14 +71,16 @@ function processNode(node: ProseMirrorNode): string {
     case 'listItem':
       return processListItems(content || [], '');
 
-    case 'codeBlock':
+    case 'codeBlock': {
       const language = attrs?.language || '';
       const codeContent = content ? processNodes(content) : '';
       return '\n```' + language + '\n' + codeContent + '\n```\n\n';
+    }
 
-    case 'blockquote':
+    case 'blockquote': {
       const quoteContent = content ? processNodes(content) : '';
       return '\n> ' + quoteContent.replace(/\n/g, '\n> ') + '\n\n';
+    }
 
     case 'table':
       return processTable(content || []);
@@ -85,16 +89,18 @@ function processNode(node: ProseMirrorNode): string {
       return processTableRow(content || []);
 
     case 'tableCell':
-    case 'tableHeader':
+    case 'tableHeader': {
       const cellContent = content ? processNodes(content) : '';
       return '| ' + cellContent + ' ';
+    }
 
-    case 'noteLink':
+    case 'noteLink': {
       // Convert note link node to [[note name]] syntax
       const noteTitle = attrs?.title || 'Unknown';
       return `[[${noteTitle}]]`;
+    }
 
-    case 'image':
+    case 'image': {
       // Convert image node to markdown image syntax
       const src = attrs?.src || '';
       const alt = attrs?.alt || '';
@@ -112,6 +118,7 @@ function processNode(node: ProseMirrorNode): string {
         return `![${alt}](${imagePath} "${title}")\n\n`;
       }
       return `![${alt}](${imagePath})\n\n`;
+    }
 
     default:
       // For unknown node types, try to process content
@@ -147,10 +154,11 @@ function applyMarks(text: string, marks: ProseMirrorMark[]): string {
       case 'highlight':
         result = '==' + result + '==';
         break;
-      case 'link':
+      case 'link': {
         const href = mark.attrs?.href || '';
         result = '[' + result + '](' + href + ')';
         break;
+      }
     }
   }
 
@@ -282,9 +290,10 @@ function processNodeForTable(node: ProseMirrorNode): string {
   if (!type) return '';
 
   switch (type) {
-    case 'paragraph':
+    case 'paragraph': {
       const paraText = content ? processNodesForTable(content) : '';
       return paraText ? paraText.trim() + ' ' : '';
+    }
 
     case 'text':
       return applyMarks(text || '', node.marks || []);
@@ -293,13 +302,14 @@ function processNodeForTable(node: ProseMirrorNode): string {
       // In table cells, convert hard breaks to spaces instead of newlines
       return ' ';
 
-    case 'heading':
+    case 'heading': {
       // In table cells, treat headings as plain text
       const headingText = content ? processNodesForTable(content) : '';
       return headingText;
+    }
 
     case 'bulletList':
-    case 'orderedList':
+    case 'orderedList': {
       // In table cells, flatten lists to comma-separated text
       const listItems = content || [];
       const listTexts = listItems
@@ -317,29 +327,33 @@ function processNodeForTable(node: ProseMirrorNode): string {
         })
         .filter((text) => text.length > 0);
       return listTexts.join(', ');
+    }
 
     case 'listItem':
       // Handled by bulletList/orderedList above
       return processNodesForTable(content || []);
 
-    case 'codeBlock':
+    case 'codeBlock': {
       // In table cells, treat code blocks as inline code
       const codeContent = content ? processNodesForTable(content) : '';
       return '`' + codeContent.replace(/\n/g, ' ') + '`';
+    }
 
-    case 'blockquote':
+    case 'blockquote': {
       // In table cells, treat blockquotes as plain text
       const quoteContent = content ? processNodesForTable(content) : '';
       return quoteContent;
+    }
 
     case 'horizontalRule':
       // Skip horizontal rules in table cells
       return '';
 
-    case 'noteLink':
+    case 'noteLink': {
       // Note links in table cells
       const tableCellNoteTitle = node.attrs?.title || 'Unknown';
       return `[[${tableCellNoteTitle}]]`;
+    }
 
     default:
       // For other node types, process content recursively

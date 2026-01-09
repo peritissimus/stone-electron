@@ -322,6 +322,9 @@ export class NoteRepository implements INoteRepository {
     }
 
     const markdown = await this.deps.fileStorage.read(fullPath);
+    if (!markdown) {
+      return null;
+    }
     const html = await this.deps.markdownProcessor.markdownToHtml(markdown);
     return html;
   }
