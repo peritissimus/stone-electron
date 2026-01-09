@@ -3,7 +3,7 @@
  *
  * Implements: specs/components.ts#NoteHeaderProps
  */
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Star,
   PushPin,

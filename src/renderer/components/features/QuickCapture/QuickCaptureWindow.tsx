@@ -2,7 +2,7 @@
  * QuickCaptureWindow - Floating window for quick journal capture
  */
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
 
 const DRAFT_KEY = 'quick-capture-draft';

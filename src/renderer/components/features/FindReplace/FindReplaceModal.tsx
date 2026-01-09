@@ -2,7 +2,7 @@
  * FindReplaceModal - Find and replace panel for the editor
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { X, MagnifyingGlass, ArrowUp, ArrowDown, TextAa } from 'phosphor-react';
 import type { Editor } from '@tiptap/react';
@@ -67,18 +67,18 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
       if (e.key === 'Escape') {
         e.preventDefault();
         handleClose();
+      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
+        e.preventDefault();
+        handleReplaceAll();
+      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleReplace();
       } else if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
         handleFindNext();
       } else if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         handleFindPrevious();
-      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        handleReplace();
-      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.shiftKey) {
-        e.preventDefault();
-        handleReplaceAll();
       }
     },
     [editor]

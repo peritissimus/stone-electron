@@ -2,6 +2,7 @@
  * ML Status Indicator - Shows embedding service and operation status
  */
 
+import React from 'react';
 import { Brain, CircleNotch, Warning } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 import { useMLStatusStore } from '@renderer/stores/mlStatusStore';

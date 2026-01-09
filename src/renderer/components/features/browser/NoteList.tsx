@@ -4,7 +4,7 @@
  * Implements: specs/components.ts#NoteListProps
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
@@ -202,7 +202,7 @@ export function NoteList() {
     };
   }, [notesByPath, sortBy, sortOrder]);
 
-  const renderNodes = (nodes: FileTreeNode[], level = 0): JSX.Element[] => {
+  const renderNodes = (nodes: FileTreeNode[], level = 0): React.ReactElement[] => {
     if (!nodes || nodes.length === 0) return [];
 
     return sortNodes(nodes).map((node) => {

@@ -7,6 +7,7 @@
  * 3. Clickable links that navigate to the linked note
  */
 
+import React from 'react';
 import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import { ReactRenderer } from '@tiptap/react';

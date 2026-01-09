@@ -4,6 +4,7 @@
  * Implements: specs/components.ts#FolderItemProps
  */
 
+import React from 'react';
 import { Button } from '@renderer/components/base/ui/button';
 import { Text } from '@renderer/components/base/ui/text';
 import { TreeItem } from '@renderer/components/composites';

@@ -202,7 +202,9 @@ export class GetNoteUseCase implements IGetNoteUseCase {
         const exists = await this.fileStorage.exists(absolutePath);
         if (exists) {
           const markdown = await this.fileStorage.read(absolutePath);
-          content = await this.markdownProcessor.markdownToHtml(markdown);
+          if (markdown) {
+            content = await this.markdownProcessor.markdownToHtml(markdown);
+          }
         }
       }
     }
@@ -411,6 +413,9 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
     }
 
     const markdown = await this.fileStorage.read(absolutePath);
+    if (!markdown) {
+      return { content: '' };
+    }
     const html = await this.markdownProcessor.markdownToHtml(markdown);
 
     return { content: html };

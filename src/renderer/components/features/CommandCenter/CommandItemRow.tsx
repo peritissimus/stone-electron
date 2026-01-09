@@ -4,6 +4,7 @@
  * Implements: specs/components.ts#CommandItemRowProps
  */
 
+import React from 'react';
 import { ArrowRight } from 'phosphor-react';
 
 export interface CommandItem {
