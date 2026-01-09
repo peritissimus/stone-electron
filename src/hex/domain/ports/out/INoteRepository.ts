@@ -53,7 +53,7 @@ export interface INoteRepository {
   /**
    * Find note by file path
    */
-  findByFilePath(filePath: string): Promise<NoteProps | null>;
+  findByFilePath(filePath: string, workspaceId?: string): Promise<NoteProps | null>;
 
   /**
    * Save a note (create or update)
@@ -133,6 +133,7 @@ export interface INoteRepository {
    */
   findBySimilarity(
     embedding: number[],
-    limit: number
+    limit: number,
+    workspaceId?: string,
   ): Promise<Array<{ noteId: string; title: string; distance: number }>>;
 }

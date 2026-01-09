@@ -38,8 +38,16 @@ class GetAllTasksUseCase implements IGetAllTasksUseCase {
   async execute(): Promise<TaskItem[]> {
     const { noteRepository, workspaceRepository, fileStorage, markdownProcessor } = this.deps;
 
-    // Get all non-deleted notes
+    // Get active workspace
+    const activeWorkspace = await workspaceRepository.findActive();
+    if (!activeWorkspace) {
+      logger.warn('[TaskUseCases] No active workspace found');
+      return [];
+    }
+
+    // Get non-deleted notes for active workspace only
     const notes = await noteRepository.findAll({
+      workspaceId: activeWorkspace.id,
       isDeleted: false,
     });
 
@@ -189,7 +197,7 @@ class ToggleTaskUseCase implements IToggleTaskUseCase {
   constructor(
     private deps: TaskUseCasesDeps,
     private getNoteTasks: IGetNoteTasksUseCase,
-    private updateTaskState: IUpdateTaskStateUseCase
+    private updateTaskState: IUpdateTaskStateUseCase,
   ) {}
 
   async execute(noteId: string, taskIndex: number): Promise<void> {

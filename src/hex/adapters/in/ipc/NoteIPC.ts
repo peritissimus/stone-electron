@@ -32,17 +32,17 @@ export class NoteIPC {
       });
     });
 
-    ipcMain.handle(NOTE_CHANNELS.GET, async (_event, id: string) => {
+    ipcMain.handle(NOTE_CHANNELS.GET, async (_event, { id }: { id: string }) => {
       return this.handleRequest(async () => {
-        const result = await noteUseCases.getNote.execute({ id, includeContent: false });
+        const result = await noteUseCases.getNote.execute({ id, includeContent: true });
         return result.note;
       });
     });
 
-    ipcMain.handle(NOTE_CHANNELS.GET_CONTENT, async (_event, id: string) => {
+    ipcMain.handle(NOTE_CHANNELS.GET_CONTENT, async (_event, { id }: { id: string }) => {
       return this.handleRequest(async () => {
         const result = await noteUseCases.getNoteContent.execute({ id });
-        return result.content;
+        return { content: result.content };
       });
     });
 
@@ -59,12 +59,15 @@ export class NoteIPC {
       });
     });
 
-    ipcMain.handle(NOTE_CHANNELS.DELETE, async (_event, id: string, permanent?: boolean) => {
-      return this.handleRequest(async () => {
-        await noteUseCases.deleteNote.execute({ id, permanent });
-        return { success: true };
-      });
-    });
+    ipcMain.handle(
+      NOTE_CHANNELS.DELETE,
+      async (_event, { id, permanent }: { id: string; permanent?: boolean }) => {
+        return this.handleRequest(async () => {
+          await noteUseCases.deleteNote.execute({ id, permanent });
+          return { success: true };
+        });
+      },
+    );
 
     ipcMain.handle(NOTE_CHANNELS.GET_ALL, async (_event, request) => {
       return this.handleRequest(async () => {
@@ -73,31 +76,55 @@ export class NoteIPC {
       });
     });
 
-    ipcMain.handle(NOTE_CHANNELS.MOVE, async (_event, id: string, targetNotebookId: string | null) => {
-      return this.handleRequest(async () => {
-        await noteUseCases.moveNote.execute({ id, targetNotebookId });
-        return { success: true };
-      });
-    });
+    ipcMain.handle(
+      NOTE_CHANNELS.MOVE,
+      async (
+        _event,
+        {
+          id,
+          targetPath,
+          targetNotebookId,
+        }: { id: string; targetPath?: string; targetNotebookId?: string | null },
+      ) => {
+        return this.handleRequest(async () => {
+          // Frontend sends targetPath, use it as targetNotebookId if targetNotebookId not provided
+          await noteUseCases.moveNote.execute({
+            id,
+            targetNotebookId: targetNotebookId ?? targetPath ?? null,
+          });
+          // Fetch and return the moved note
+          const result = await noteUseCases.getNote.execute({ id, includeContent: false });
+          return result.note;
+        });
+      },
+    );
 
     // notes:getByPath - Get note by file path
-    ipcMain.handle(NOTE_CHANNELS.GET_BY_PATH, async (_event, filePath: string) => {
-      return this.handleRequest(async () => {
-        const result = await noteUseCases.getNoteByPath.execute({ filePath });
-        return result.note;
-      });
-    });
+    ipcMain.handle(
+      NOTE_CHANNELS.GET_BY_PATH,
+      async (_event, { path, filePath }: { path?: string; filePath?: string }) => {
+        return this.handleRequest(async () => {
+          const result = await noteUseCases.getNoteByPath.execute({
+            filePath: filePath ?? path ?? '',
+          });
+          return result.note;
+        });
+      },
+    );
 
     // notes:favorite - Toggle favorite status
-    ipcMain.handle(NOTE_CHANNELS.FAVORITE, async (_event, id: string) => {
-      return this.handleRequest(async () => {
-        const result = await noteUseCases.toggleFavorite.execute({ id });
-        return result.note;
-      });
-    });
+    ipcMain.handle(
+      NOTE_CHANNELS.FAVORITE,
+      async (_event, { id }: { id: string; favorite?: boolean }) => {
+        return this.handleRequest(async () => {
+          const result = await noteUseCases.toggleFavorite.execute({ id });
+          return result.note;
+        });
+      },
+    );
 
     // notes:pin - Toggle pin status
-    ipcMain.handle(NOTE_CHANNELS.PIN, async (_event, id: string) => {
+    ipcMain.handle(NOTE_CHANNELS.PIN, async (_event, { id }: { id: string; pinned?: boolean }) => {
       return this.handleRequest(async () => {
         const result = await noteUseCases.togglePin.execute({ id });
         return result.note;
@@ -105,12 +132,15 @@ export class NoteIPC {
     });
 
     // notes:archive - Toggle archive status
-    ipcMain.handle(NOTE_CHANNELS.ARCHIVE, async (_event, id: string) => {
-      return this.handleRequest(async () => {
-        const result = await noteUseCases.toggleArchive.execute({ id });
-        return result.note;
-      });
-    });
+    ipcMain.handle(
+      NOTE_CHANNELS.ARCHIVE,
+      async (_event, { id }: { id: string; archived?: boolean }) => {
+        return this.handleRequest(async () => {
+          const result = await noteUseCases.toggleArchive.execute({ id });
+          return result.note;
+        });
+      },
+    );
 
     logger.info('[NoteIPC] Handlers registered');
   }

@@ -32,8 +32,9 @@ export class TagIPC {
       });
     });
 
-    ipcMain.handle(TAG_CHANNELS.DELETE, async (_event, id: string) => {
+    ipcMain.handle(TAG_CHANNELS.DELETE, async (_event, request: { id: string } | string) => {
       return this.handleRequest(async () => {
+        const id = typeof request === 'string' ? request : request.id;
         await tagUseCases.deleteTag.execute({ id });
         return { success: true };
       });
@@ -42,20 +43,26 @@ export class TagIPC {
     ipcMain.handle(TAG_CHANNELS.GET_ALL, async () => {
       return this.handleRequest(async () => {
         const result = await tagUseCases.listTags.execute();
-        return result.tags;
+        return { tags: result.tags };
       });
     });
 
-    ipcMain.handle(TAG_CHANNELS.ADD_TO_NOTE, async (_event, noteId: string, tagId: string) => {
+    ipcMain.handle(TAG_CHANNELS.ADD_TO_NOTE, async (_event, request: { noteId: string; tagId: string; tagIds?: string[] }) => {
       return this.handleRequest(async () => {
-        await tagUseCases.addTagToNote.execute({ noteId, tagId });
-        return { success: true };
+        // Handle both single tagId and array of tagIds
+        const tagIds = request.tagIds || [request.tagId];
+        for (const tagId of tagIds) {
+          await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
+        }
+        // Return updated tags list
+        const result = await tagUseCases.listTags.execute();
+        return { tags: result.tags };
       });
     });
 
-    ipcMain.handle(TAG_CHANNELS.REMOVE_FROM_NOTE, async (_event, noteId: string, tagId: string) => {
+    ipcMain.handle(TAG_CHANNELS.REMOVE_FROM_NOTE, async (_event, request: { noteId: string; tagId: string }) => {
       return this.handleRequest(async () => {
-        await tagUseCases.removeTagFromNote.execute({ noteId, tagId });
+        await tagUseCases.removeTagFromNote.execute({ noteId: request.noteId, tagId: request.tagId });
         return { success: true };
       });
     });

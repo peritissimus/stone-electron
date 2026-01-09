@@ -20,3 +20,4 @@ export * from './ITaskUseCases';
 export * from './IGraphUseCases';
 export * from './IVersionUseCases';
 export * from './IExportUseCases';
+export * from './ISettingsUseCases';

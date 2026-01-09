@@ -47,13 +47,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(CHANNELS.GET_ALL, async () => {
     try {
       const topics = await topicUseCases.getAllTopics();
-      return { success: true, data: topics };
+      return { success: true, data: { topics } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
 
-  ipcMain.handle(CHANNELS.GET_BY_ID, async (_, id: string) => {
+  ipcMain.handle(CHANNELS.GET_BY_ID, async (_, { id }: { id: string }) => {
     try {
       const topic = await topicUseCases.getTopicById(id);
       return { success: true, data: topic };
@@ -72,7 +72,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.UPDATE, async (_, id: string, data: { name?: string; description?: string; color?: string }) => {
+  ipcMain.handle(CHANNELS.UPDATE, async (_, { id, ...data }: { id: string; name?: string; description?: string; color?: string }) => {
     try {
       logger.info('[IPC] topics:update', { id, data });
       const topic = await topicUseCases.updateTopic(id, data);
@@ -82,7 +82,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.DELETE, async (_, id: string) => {
+  ipcMain.handle(CHANNELS.DELETE, async (_, { id }: { id: string }) => {
     try {
       logger.info('[IPC] topics:delete', { id });
       await topicUseCases.deleteTopic(id);
@@ -92,7 +92,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.ASSIGN_TO_NOTE, async (_, noteId: string, topicId: string) => {
+  ipcMain.handle(CHANNELS.ASSIGN_TO_NOTE, async (_, { noteId, topicId }: { noteId: string; topicId: string }) => {
     try {
       logger.info('[IPC] topics:assignToNote', { noteId, topicId });
       await topicUseCases.assignTopicToNote(noteId, topicId);
@@ -102,7 +102,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.REMOVE_FROM_NOTE, async (_, noteId: string, topicId: string) => {
+  ipcMain.handle(CHANNELS.REMOVE_FROM_NOTE, async (_, { noteId, topicId }: { noteId: string; topicId: string }) => {
     try {
       logger.info('[IPC] topics:removeFromNote', { noteId, topicId });
       await topicUseCases.removeTopicFromNote(noteId, topicId);
@@ -112,7 +112,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.CLASSIFY_NOTE, async (_, noteId: string, force?: boolean) => {
+  ipcMain.handle(CHANNELS.CLASSIFY_NOTE, async (_, { noteId, force }: { noteId: string; force?: boolean }) => {
     try {
       logger.info('[IPC] topics:classifyNote', { noteId, force });
       const result = await topicUseCases.classifyNote(noteId, force);
@@ -142,19 +142,19 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.SEMANTIC_SEARCH, async (_, query: string, limit?: number) => {
+  ipcMain.handle(CHANNELS.SEMANTIC_SEARCH, async (_, { query, limit }: { query: string; limit?: number }) => {
     try {
       const results = await topicUseCases.semanticSearch(query, limit);
-      return { success: true, data: results };
+      return { success: true, data: { results } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
 
-  ipcMain.handle(CHANNELS.GET_SIMILAR_NOTES, async (_, noteId: string, limit?: number) => {
+  ipcMain.handle(CHANNELS.GET_SIMILAR_NOTES, async (_, { noteId, limit }: { noteId: string; limit?: number }) => {
     try {
-      const results = await topicUseCases.getSimilarNotes(noteId, limit);
-      return { success: true, data: results };
+      const similar = await topicUseCases.getSimilarNotes(noteId, limit);
+      return { success: true, data: { similar } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
@@ -179,26 +179,28 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.GET_NOTES_BY_TOPIC, async (_, topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }) => {
+  ipcMain.handle(CHANNELS.GET_NOTES_BY_TOPIC, async (_, { topicId, ...options }: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean }) => {
     try {
       logger.info('[IPC] topics:getNotesByTopic', { topicId, options });
       const notes = await topicUseCases.getNotesForTopic(topicId, options);
-      return { success: true, data: notes };
+      return { success: true, data: { notes } };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   });
 
-  ipcMain.handle(CHANNELS.GET_TOPICS_FOR_NOTE, async (_, noteId: string) => {
+  ipcMain.handle(CHANNELS.GET_TOPICS_FOR_NOTE, async (_, { noteId }: { noteId: string }) => {
     try {
       logger.info('[IPC] topics:getTopicsForNote', { noteId });
       const topics = await topicUseCases.getTopicsForNote(noteId);
       return {
         success: true,
-        data: topics.map((t) => ({
-          ...t,
-          createdAt: t.createdAt.toISOString(),
-        })),
+        data: {
+          topics: topics.map((t) => ({
+            ...t,
+            createdAt: t.createdAt.toISOString(),
+          })),
+        },
       };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

@@ -48,7 +48,14 @@ export function useWorkspaceAPI() {
         setError(error instanceof Error ? error.message : 'Failed to switch workspace');
       }
     },
-    [loadWorkspaces, setActiveWorkspaceId, setActiveFolder, setSelectedFile, setActiveNote, setError],
+    [
+      loadWorkspaces,
+      setActiveWorkspaceId,
+      setActiveFolder,
+      setSelectedFile,
+      setActiveNote,
+      setError,
+    ],
   );
 
   const syncWorkspace = useCallback(

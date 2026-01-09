@@ -30,3 +30,4 @@ export type {
   GitStatus as GitServiceStatus,
   GitCommit as GitServiceCommit,
 } from './IGitService';
+export * from './ISettingsRepository';

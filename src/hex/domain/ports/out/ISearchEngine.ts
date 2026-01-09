@@ -35,6 +35,7 @@ export interface SearchOptions {
 export interface DateRangeOptions {
   startDate: Date;
   endDate: Date;
+  workspaceId?: string;
   field?: 'created' | 'updated';
   limit?: number;
 }
@@ -55,7 +56,7 @@ export interface ISearchEngine {
    */
   searchHybrid(
     query: string,
-    options?: SearchOptions & { weights?: { fts: number; semantic: number } }
+    options?: SearchOptions & { weights?: { fts: number; semantic: number } },
   ): Promise<SearchResult[]>;
 
   /**
@@ -63,7 +64,7 @@ export interface ISearchEngine {
    */
   searchByTags(
     tagIds: string[],
-    options?: SearchOptions & { matchAll?: boolean }
+    options?: SearchOptions & { matchAll?: boolean },
   ): Promise<NoteProps[]>;
 
   /**

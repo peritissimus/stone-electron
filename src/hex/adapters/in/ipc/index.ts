@@ -80,3 +80,10 @@ export {
   unregisterSystemHandlers,
   type SystemIPCDeps,
 } from './SystemIPC';
+
+// Settings
+export {
+  registerSettingsHandlers,
+  unregisterSettingsHandlers,
+  type SettingsIPCDeps,
+} from './SettingsIPC';

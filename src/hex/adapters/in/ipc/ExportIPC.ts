@@ -21,10 +21,10 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.EXPORT_HTML,
-    async (_, noteId: string, options?: ExportOptions) => {
+    async (_, { id, options }: { id: string; options?: ExportOptions }) => {
       try {
-        logger.info('[IPC] notes:exportHtml', { noteId, options });
-        const result = await exportUseCases.exportHtml.execute(noteId, options);
+        logger.info('[IPC] notes:exportHtml', { noteId: id, options });
+        const result = await exportUseCases.exportHtml.execute(id, options);
         return {
           success: true,
           data: {
@@ -45,10 +45,10 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.EXPORT_PDF,
-    async (_, noteId: string, options?: ExportOptions) => {
+    async (_, { id, options }: { id: string; options?: ExportOptions }) => {
       try {
-        logger.info('[IPC] notes:exportPdf', { noteId, options });
-        const result = await exportUseCases.exportPdf.execute(noteId, options);
+        logger.info('[IPC] notes:exportPdf', { noteId: id, options });
+        const result = await exportUseCases.exportPdf.execute(id, options);
         return {
           success: true,
           data: {
@@ -73,10 +73,10 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.EXPORT_MARKDOWN,
-    async (_, noteId: string, options?: ExportOptions) => {
+    async (_, { id, options }: { id: string; options?: ExportOptions }) => {
       try {
-        logger.info('[IPC] notes:exportMarkdown', { noteId, options });
-        const result = await exportUseCases.exportMarkdown.execute(noteId, options);
+        logger.info('[IPC] notes:exportMarkdown', { noteId: id, options });
+        const result = await exportUseCases.exportMarkdown.execute(id, options);
         return {
           success: true,
           data: {

@@ -154,3 +154,10 @@ export const noteTopics = sqliteTable('note_topics', {
   index('idx_note_topics_note_id').on(table.noteId),
   index('idx_note_topics_topic_id').on(table.topicId),
 ]);
+
+// Settings table - key-value store for app settings
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});

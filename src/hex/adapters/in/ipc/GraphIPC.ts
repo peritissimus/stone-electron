@@ -19,11 +19,11 @@ export interface GraphIPCDeps {
 export function registerGraphHandlers(deps: GraphIPCDeps): void {
   const { graphUseCases } = deps;
 
-  ipcMain.handle(CHANNELS.GET_BACKLINKS, async (_, noteId: string) => {
+  ipcMain.handle(CHANNELS.GET_BACKLINKS, async (_, { id }: { id: string }) => {
     try {
-      logger.info('[IPC] notes:getBacklinks', { noteId });
-      const backlinks = await graphUseCases.getBacklinks.execute(noteId);
-      return { success: true, data: backlinks };
+      logger.info('[IPC] notes:getBacklinks', { id });
+      const notes = await graphUseCases.getBacklinks.execute(id);
+      return { success: true, data: { notes } };
     } catch (error) {
       logger.error('[IPC] notes:getBacklinks error:', error);
       return {
@@ -33,11 +33,11 @@ export function registerGraphHandlers(deps: GraphIPCDeps): void {
     }
   });
 
-  ipcMain.handle(CHANNELS.GET_FORWARD_LINKS, async (_, noteId: string) => {
+  ipcMain.handle(CHANNELS.GET_FORWARD_LINKS, async (_, { id }: { id: string }) => {
     try {
-      logger.info('[IPC] notes:getForwardLinks', { noteId });
-      const forwardLinks = await graphUseCases.getForwardLinks.execute(noteId);
-      return { success: true, data: forwardLinks };
+      logger.info('[IPC] notes:getForwardLinks', { id });
+      const notes = await graphUseCases.getForwardLinks.execute(id);
+      return { success: true, data: { notes } };
     } catch (error) {
       logger.error('[IPC] notes:getForwardLinks error:', error);
       return {

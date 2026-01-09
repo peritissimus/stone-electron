@@ -22,7 +22,7 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.ADD,
-    async (_, noteId: string, filePath: string, filename?: string) => {
+    async (_, { noteId, filePath, filename }: { noteId: string; filePath: string; filename?: string }) => {
       try {
         logger.info('[IPC] attachments:add', { noteId, filePath });
         const attachment = await attachmentUseCases.addAttachment(noteId, filePath, filename);
@@ -45,10 +45,10 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
 
   ipcMain.handle(
     CHANNELS.DELETE,
-    async (_, attachmentId: string, deleteFile?: boolean) => {
+    async (_, { id, deleteFile }: { id: string; deleteFile?: boolean }) => {
       try {
-        logger.info('[IPC] attachments:delete', { attachmentId, deleteFile });
-        await attachmentUseCases.deleteAttachment(attachmentId, deleteFile);
+        logger.info('[IPC] attachments:delete', { attachmentId: id, deleteFile });
+        await attachmentUseCases.deleteAttachment(id, deleteFile);
         return { success: true };
       } catch (error) {
         logger.error('[IPC] attachments:delete error:', error);
@@ -60,15 +60,17 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
     }
   );
 
-  ipcMain.handle(CHANNELS.GET_ALL, async (_, noteId: string) => {
+  ipcMain.handle(CHANNELS.GET_ALL, async (_, { noteId }: { noteId: string }) => {
     try {
       const attachments = await attachmentUseCases.getAttachments(noteId);
       return {
         success: true,
-        data: attachments.map((a) => ({
-          ...a,
-          createdAt: a.createdAt.toISOString(),
-        })),
+        data: {
+          attachments: attachments.map((a) => ({
+            ...a,
+            createdAt: a.createdAt.toISOString(),
+          })),
+        },
       };
     } catch (error) {
       logger.error('[IPC] attachments:getAll error:', error);
@@ -83,10 +85,7 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
     CHANNELS.UPLOAD_IMAGE,
     async (
       _,
-      noteId: string,
-      imageData: string,
-      filename: string,
-      mimeType?: string
+      { noteId, imageData, filename, mimeType }: { noteId: string; imageData: string; filename: string; mimeType?: string }
     ) => {
       try {
         logger.info('[IPC] attachments:uploadImage', { noteId, filename });
@@ -99,11 +98,11 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
         return {
           success: true,
           data: {
+            url: result.markdownLink,
             attachment: {
               ...result.attachment,
               createdAt: result.attachment.createdAt.toISOString(),
             },
-            markdownLink: result.markdownLink,
           },
         };
       } catch (error) {

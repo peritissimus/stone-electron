@@ -102,3 +102,7 @@ export type { ExportUseCasesDeps } from './export';
 // System Use Cases
 export { createSystemUseCases } from './system';
 export type { SystemUseCasesDeps } from './system';
+
+// Settings Use Cases
+export { createSettingsUseCases } from './settings';
+export type { SettingsUseCasesDeps } from './settings';

@@ -39,24 +39,28 @@ export class NotebookIPC {
       });
     });
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.DELETE, async (_event, id: string) => {
+    ipcMain.handle(NOTEBOOK_CHANNELS.DELETE, async (_event, request: { id: string; delete_notes?: boolean }) => {
       return this.handleRequest(async () => {
-        await notebookUseCases.deleteNotebook.execute({ id });
-        return { success: true };
+        await notebookUseCases.deleteNotebook.execute({ id: request.id, deleteNotes: request.delete_notes });
+        return undefined;
       });
     });
 
     ipcMain.handle(NOTEBOOK_CHANNELS.GET_ALL, async (_event, request) => {
       return this.handleRequest(async () => {
         const result = await notebookUseCases.listNotebooks.execute(request || {});
-        return result.notebooks;
+        return { notebooks: result.notebooks };
       });
     });
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.MOVE, async (_event, id: string, targetParentId: string | null) => {
+    ipcMain.handle(NOTEBOOK_CHANNELS.MOVE, async (_event, request: { id: string; parent_id?: string; position?: number }) => {
       return this.handleRequest(async () => {
-        await notebookUseCases.moveNotebook.execute({ id, targetParentId });
-        return { success: true };
+        await notebookUseCases.moveNotebook.execute({
+          id: request.id,
+          targetParentId: request.parent_id ?? null,
+          position: request.position
+        });
+        return undefined;
       });
     });
 
