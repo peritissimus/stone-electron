@@ -64,6 +64,10 @@ export default defineConfig({
         'node:assert',
         'node:child_process',
         'node:readline',
+        'node:buffer',
+        'node:string_decoder',
+        'buffer',
+        'string_decoder',
         'worker_threads',
         'node:worker_threads',
         // Watcher/libs
@@ -72,6 +76,9 @@ export default defineConfig({
         'events',
         'node:events',
         'node:stream',
+        'simple-git',
+        'minipass',
+        'glob',
         // Note: @xenova/transformers is loaded in a worker thread, not in main process
         // The worker has `self` defined, so no polyfill needed
         'sharp',
