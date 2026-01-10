@@ -321,6 +321,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     fileStorage,
     systemService,
+    markdownProcessor,
     eventPublisher,
   });
 
