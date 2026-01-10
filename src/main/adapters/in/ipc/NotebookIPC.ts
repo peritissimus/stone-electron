@@ -40,13 +40,16 @@ export class NotebookIPC {
       });
     });
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.DELETE, async (_event, request: { id: string; delete_notes?: boolean }) => {
-      return this.handleRequest(async () => {
-        // Note: delete_notes is not currently supported by the use case
-        await notebookUseCases.deleteNotebook.execute({ id: request.id });
-        return undefined;
-      });
-    });
+    ipcMain.handle(
+      NOTEBOOK_CHANNELS.DELETE,
+      async (_event, request: { id: string; delete_notes?: boolean }) => {
+        return this.handleRequest(async () => {
+          // Note: delete_notes is not currently supported by the use case
+          await notebookUseCases.deleteNotebook.execute({ id: request.id });
+          return undefined;
+        });
+      },
+    );
 
     ipcMain.handle(NOTEBOOK_CHANNELS.GET_ALL, async (_event, request) => {
       return this.handleRequest(async () => {
@@ -55,16 +58,19 @@ export class NotebookIPC {
       });
     });
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.MOVE, async (_event, request: { id: string; parent_id?: string; position?: number }) => {
-      return this.handleRequest(async () => {
-        // Note: position is not currently supported by the use case
-        await notebookUseCases.moveNotebook.execute({
-          id: request.id,
-          targetParentId: request.parent_id ?? null,
+    ipcMain.handle(
+      NOTEBOOK_CHANNELS.MOVE,
+      async (_event, request: { id: string; parent_id?: string; position?: number }) => {
+        return this.handleRequest(async () => {
+          // Note: position is not currently supported by the use case
+          await notebookUseCases.moveNotebook.execute({
+            id: request.id,
+            targetParentId: request.parent_id ?? null,
+          });
+          return undefined;
         });
-        return undefined;
-      });
-    });
+      },
+    );
 
     logger.info('[NotebookIPC] Handlers registered');
   }

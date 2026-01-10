@@ -6,12 +6,7 @@
 
 import { eq, sql, inArray } from 'drizzle-orm';
 import { tags, noteTags, type Database } from '../../../shared';
-import type {
-  TagEntity,
-  TagProps,
-  ITagRepository,
-  TagWithCount,
-} from '../../../domain';
+import type { TagEntity, TagProps, ITagRepository, TagWithCount } from '../../../domain';
 
 export interface TagRepositoryDeps {
   db: Database;

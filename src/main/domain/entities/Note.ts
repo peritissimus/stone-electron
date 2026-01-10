@@ -289,4 +289,3 @@ export class NoteEntity {
     this.props.updatedAt = new Date();
   }
 }
-

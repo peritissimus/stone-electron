@@ -62,7 +62,10 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
     },
 
     commit: {
-      async execute(request: { workspaceId: string; message?: string }): Promise<GitCommitResponse | null> {
+      async execute(request: {
+        workspaceId: string;
+        message?: string;
+      }): Promise<GitCommitResponse | null> {
         const workspace = await workspaceRepository.findById(request.workspaceId);
         if (!workspace) {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
@@ -71,7 +74,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
         await gitService.stage(workspace.folderPath);
         const result = await gitService.commit(
           workspace.folderPath,
-          request.message || `Commit: ${new Date().toISOString()}`
+          request.message || `Commit: ${new Date().toISOString()}`,
         );
 
         if (!result.success) {
@@ -128,7 +131,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
 
         const result = await gitService.sync(
           workspace.folderPath,
-          request.message || `Sync: ${new Date().toISOString()}`
+          request.message || `Sync: ${new Date().toISOString()}`,
         );
         logger.info(`[GitUseCases] Synced workspace ${request.workspaceId}`);
         return {
@@ -149,13 +152,18 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
         }
 
         const result = await gitService.setRemote(workspace.folderPath, request.url, 'origin');
-        logger.info(`[GitUseCases] Set remote origin to ${request.url} in workspace ${request.workspaceId}`);
+        logger.info(
+          `[GitUseCases] Set remote origin to ${request.url} in workspace ${request.workspaceId}`,
+        );
         return { success: result.success };
       },
     },
 
     getCommits: {
-      async execute(request: { workspaceId: string; limit?: number }): Promise<GitGetCommitsResponse> {
+      async execute(request: {
+        workspaceId: string;
+        limit?: number;
+      }): Promise<GitGetCommitsResponse> {
         const workspace = await workspaceRepository.findById(request.workspaceId);
         if (!workspace) {
           throw new Error(`Workspace not found: ${request.workspaceId}`);

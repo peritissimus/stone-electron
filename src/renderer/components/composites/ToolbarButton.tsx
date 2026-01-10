@@ -37,17 +37,20 @@ export interface ToolbarButtonProps extends React.ButtonHTMLAttributes<HTMLButto
  * </ToolbarButton>
  */
 export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-  ({
-    size = 'normal',
-    active = false,
-    icon,
-    label,
-    tooltip,
-    disabled = false,
-    children,
-    className,
-    ...props
-  }, ref) => {
+  (
+    {
+      size = 'normal',
+      active = false,
+      icon,
+      label,
+      tooltip,
+      disabled = false,
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const padding = sizePaddingClasses[size];
 
     return (
@@ -61,7 +64,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
             ? 'bg-accent text-accent-foreground'
             : 'hover:bg-muted text-muted-foreground hover:text-foreground',
           disabled && 'opacity-40 cursor-not-allowed',
-          className
+          className,
         )}
         aria-label={label || tooltip}
         title={tooltip}
@@ -70,7 +73,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
         {icon || children}
       </button>
     );
-  }
+  },
 );
 ToolbarButton.displayName = 'ToolbarButton';
 
@@ -103,14 +106,10 @@ export const ToolbarDivider = React.forwardRef<HTMLDivElement, ToolbarDividerPro
     return (
       <div
         ref={ref}
-        className={cn(
-          'w-px bg-border mx-1',
-          dividerSizeClasses[size],
-          className
-        )}
+        className={cn('w-px bg-border mx-1', dividerSizeClasses[size], className)}
         {...props}
       />
     );
-  }
+  },
 );
 ToolbarDivider.displayName = 'ToolbarDivider';

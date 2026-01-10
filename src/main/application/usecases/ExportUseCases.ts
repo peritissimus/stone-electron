@@ -30,7 +30,8 @@ class ExportHtmlUseCase implements IExportHtmlUseCase {
   constructor(private deps: ExportUseCasesDeps) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
-    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } = this.deps;
+    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } =
+      this.deps;
 
     const note = await noteRepository.findById(noteId);
     if (!note || !note.filePath || !note.workspaceId) {
@@ -71,7 +72,8 @@ class ExportPdfUseCase implements IExportPdfUseCase {
   constructor(private deps: ExportUseCasesDeps) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
-    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } = this.deps;
+    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } =
+      this.deps;
 
     if (!exportService.isPdfAvailable()) {
       throw new Error('PDF export is not available');

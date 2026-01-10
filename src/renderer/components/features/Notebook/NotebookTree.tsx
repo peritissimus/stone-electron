@@ -61,7 +61,7 @@ const NotebookTreeItem = React.memo<NotebookTreeItemProps>(({ notebook, level })
       e.stopPropagation();
       toggleExpanded(notebook.id);
     },
-    [notebook.id, toggleExpanded]
+    [notebook.id, toggleExpanded],
   );
 
   return (

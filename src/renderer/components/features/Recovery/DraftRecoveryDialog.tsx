@@ -24,7 +24,9 @@ interface DraftRecoveryDialogProps {
 }
 
 export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftRecoveryDialogProps) {
-  const [drafts, setDrafts] = useState<Array<{ noteId: string; title?: string; timestamp: number; content: string }>>([]);
+  const [drafts, setDrafts] = useState<
+    Array<{ noteId: string; title?: string; timestamp: number; content: string }>
+  >([]);
   const notes = useNoteStore((state) => state.notes);
 
   useEffect(() => {
@@ -151,9 +153,7 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
             <Button variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleRecoverAll}>
-              Recover All
-            </Button>
+            <Button onClick={handleRecoverAll}>Recover All</Button>
           </div>
         </DialogFooter>
       </DialogContent>

@@ -19,24 +19,24 @@ export function getRenderedEditorContent(editor: Editor): string {
   const clone = editorElement.cloneNode(true) as HTMLElement;
 
   // Remove any editor-specific UI elements (selection, cursor, etc.)
-  clone.querySelectorAll('.ProseMirror-selectednode').forEach(el => {
+  clone.querySelectorAll('.ProseMirror-selectednode').forEach((el) => {
     el.classList.remove('ProseMirror-selectednode');
   });
 
   // Remove contenteditable attributes
   clone.removeAttribute('contenteditable');
-  clone.querySelectorAll('[contenteditable]').forEach(el => {
+  clone.querySelectorAll('[contenteditable]').forEach((el) => {
     el.removeAttribute('contenteditable');
   });
 
   // Remove any tippy/tooltip elements
-  clone.querySelectorAll('[data-tippy-root]').forEach(el => el.remove());
+  clone.querySelectorAll('[data-tippy-root]').forEach((el) => el.remove());
 
   // Remove slash command menu if present
-  clone.querySelectorAll('.slash-command-menu').forEach(el => el.remove());
+  clone.querySelectorAll('.slash-command-menu').forEach((el) => el.remove());
 
   // Remove any drag handles or block menus
-  clone.querySelectorAll('.block-menu, .drag-handle').forEach(el => el.remove());
+  clone.querySelectorAll('.block-menu, .drag-handle').forEach((el) => el.remove());
 
   return clone.innerHTML;
 }
@@ -134,7 +134,7 @@ export function getDocumentStyles(): string {
 export function buildExportHTML(
   title: string,
   renderedContent: string,
-  customCSS: string = ''
+  customCSS: string = '',
 ): string {
   const cssVars = getExportCSS();
   const docStyles = getDocumentStyles();

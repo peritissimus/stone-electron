@@ -24,7 +24,11 @@ interface FontPickerProps {
   placeholder?: string;
 }
 
-export function FontPicker({ value, onValueChange, placeholder = 'Select font...' }: FontPickerProps) {
+export function FontPicker({
+  value,
+  onValueChange,
+  placeholder = 'Select font...',
+}: FontPickerProps) {
   const [open, setOpen] = useState(false);
   const { fonts, loading, getFonts } = useSystemAPI();
 

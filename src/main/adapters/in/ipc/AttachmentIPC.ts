@@ -19,7 +19,10 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
 
   ipcMain.handle(
     ATTACHMENT_CHANNELS.ADD,
-    async (_, { noteId, filePath, filename }: { noteId: string; filePath: string; filename?: string }) => {
+    async (
+      _,
+      { noteId, filePath, filename }: { noteId: string; filePath: string; filename?: string },
+    ) => {
       return handleRequest(async () => {
         logger.info('[IPC] attachments:add', { noteId, filePath });
         const attachment = await attachmentUseCases.addAttachment(noteId, filePath, filename);
@@ -58,7 +61,12 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
     ATTACHMENT_CHANNELS.UPLOAD_IMAGE,
     async (
       _,
-      { noteId, imageData, filename, mimeType }: { noteId: string; imageData: string; filename: string; mimeType?: string }
+      {
+        noteId,
+        imageData,
+        filename,
+        mimeType,
+      }: { noteId: string; imageData: string; filename: string; mimeType?: string },
     ) => {
       return handleRequest(async () => {
         logger.info('[IPC] attachments:uploadImage', { noteId, filename });

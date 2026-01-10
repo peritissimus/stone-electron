@@ -183,12 +183,15 @@ export const zIndex = {
 
 export type SizeVariant = 'compact' | 'normal' | 'spacious' | 'roomy';
 
-export const sizeVariants: Record<SizeVariant, {
-  height: number;
-  fontSize: number;
-  padding: { x: number; y: number };
-  iconSize: number;
-}> = {
+export const sizeVariants: Record<
+  SizeVariant,
+  {
+    height: number;
+    fontSize: number;
+    padding: { x: number; y: number };
+    iconSize: number;
+  }
+> = {
   compact: {
     height: height.compact,
     fontSize: fontSize.xs,

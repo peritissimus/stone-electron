@@ -26,9 +26,15 @@ export function useNoteContent({ activeNote, editor }: UseNoteContentOptions) {
 
   // Load content when active note changes
   useEffect(() => {
-    logger.debug('[useNoteContent] Effect triggered', { activeNoteId: activeNote?.id, editorReady: !!editor });
+    logger.debug('[useNoteContent] Effect triggered', {
+      activeNoteId: activeNote?.id,
+      editorReady: !!editor,
+    });
     if (!activeNote || !editor) {
-      logger.debug('[useNoteContent] Skipping - activeNote or editor missing', { activeNote: !!activeNote, editor: !!editor });
+      logger.debug('[useNoteContent] Skipping - activeNote or editor missing', {
+        activeNote: !!activeNote,
+        editor: !!editor,
+      });
       return;
     }
 

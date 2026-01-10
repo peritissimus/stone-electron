@@ -27,15 +27,12 @@ export interface PanelFooterProps extends React.HTMLAttributes<HTMLDivElement> {
  * </PanelFooter>
  */
 export const PanelFooter = React.forwardRef<HTMLDivElement, PanelFooterProps>(
-  ({
-    size = 'normal',
-    divided = true,
-    justify = 'between',
-    children,
-    className,
-    ...props
-  }, ref) => {
-    const padding = size === 'compact' ? 'px-2 py-1.5' : size === 'spacious' ? 'px-3 py-2.5' : 'px-2.5 py-2';
+  (
+    { size = 'normal', divided = true, justify = 'between', children, className, ...props },
+    ref,
+  ) => {
+    const padding =
+      size === 'compact' ? 'px-2 py-1.5' : size === 'spacious' ? 'px-3 py-2.5' : 'px-2.5 py-2';
 
     return (
       <div
@@ -46,13 +43,13 @@ export const PanelFooter = React.forwardRef<HTMLDivElement, PanelFooterProps>(
           'flex-shrink-0',
           'flex items-center',
           justifyClasses[justify],
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 PanelFooter.displayName = 'PanelFooter';

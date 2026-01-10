@@ -25,10 +25,27 @@ interface UseAppShortcutsOptions {
  * Uses the shortcuts store for keybindings and connects them to actual actions
  */
 export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
-  const { onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, onFindReplace, onToggleEditorMode } = options;
+  const {
+    onSave,
+    onNewNote,
+    onNewPersonalNote,
+    onNewWorkNote,
+    onCloseNote,
+    onTodayJournal,
+    onFindReplace,
+    onToggleEditorMode,
+  } = options;
 
   const { getShortcut } = useShortcutsStore();
-  const { openSettings, closeSettings, settingsOpen, toggleSidebar, toggleCommandCenter, toggleFindReplace, toggleEditorMode } = useUIStore();
+  const {
+    openSettings,
+    closeSettings,
+    settingsOpen,
+    toggleSidebar,
+    toggleCommandCenter,
+    toggleFindReplace,
+    toggleEditorMode,
+  } = useUIStore();
   const { setActiveNote } = useNoteStore();
 
   // Action handlers mapped by shortcut ID
@@ -65,7 +82,24 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
         }
       },
     }),
-    [onSave, onNewNote, onNewPersonalNote, onNewWorkNote, onCloseNote, onTodayJournal, onFindReplace, onToggleEditorMode, openSettings, closeSettings, settingsOpen, toggleCommandCenter, toggleFindReplace, toggleEditorMode, toggleSidebar, setActiveNote]
+    [
+      onSave,
+      onNewNote,
+      onNewPersonalNote,
+      onNewWorkNote,
+      onCloseNote,
+      onTodayJournal,
+      onFindReplace,
+      onToggleEditorMode,
+      openSettings,
+      closeSettings,
+      settingsOpen,
+      toggleCommandCenter,
+      toggleFindReplace,
+      toggleEditorMode,
+      toggleSidebar,
+      setActiveNote,
+    ],
   );
 
   // Build shortcuts config from store

@@ -2,11 +2,7 @@
  * System Service Adapter - OS-level operations (fonts, dialogs, shell)
  */
 
-import type {
-  ISystemService,
-  FilePickerOptions,
-  FolderPickerOptions,
-} from '../../../domain';
+import type { ISystemService, FilePickerOptions, FolderPickerOptions } from '../../../domain';
 import { logger } from '../../../shared';
 
 // Conditionally import Electron modules

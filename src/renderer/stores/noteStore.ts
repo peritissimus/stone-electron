@@ -179,8 +179,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return {
         notes: state.notes.filter((n) => n.id !== removedNote.id),
         notesByPath,
-        activeNoteId:
-          state.activeNoteId === removedNote.id ? null : state.activeNoteId,
+        activeNoteId: state.activeNoteId === removedNote.id ? null : state.activeNoteId,
       };
     }),
 

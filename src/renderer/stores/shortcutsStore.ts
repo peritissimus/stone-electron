@@ -150,7 +150,7 @@ export const DEFAULT_SHORTCUTS: ShortcutDefinition[] = [
   {
     id: 'todayJournal',
     label: "Today's Journal",
-    description: 'Open or create today\'s journal entry',
+    description: "Open or create today's journal entry",
     key: 'j',
     metaKey: true,
     shiftKey: false,
@@ -243,8 +243,8 @@ export const useShortcutsStore = create<ShortcutsState>()(
       partialize: (state) => ({
         customBindings: state.customBindings,
       }),
-    }
-  )
+    },
+  ),
 );
 
 /**

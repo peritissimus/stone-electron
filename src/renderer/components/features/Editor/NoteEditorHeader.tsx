@@ -192,7 +192,11 @@ export function NoteEditorHeader({
         <IconButton
           size="normal"
           icon={editorMode === 'rich' ? <Code size={16} /> : <TextAa size={16} />}
-          tooltip={editorMode === 'rich' ? `Switch to raw markdown (${formatShortcut('M', true, true)})` : `Switch to rich editor (${formatShortcut('M', true, true)})`}
+          tooltip={
+            editorMode === 'rich'
+              ? `Switch to raw markdown (${formatShortcut('M', true, true)})`
+              : `Switch to rich editor (${formatShortcut('M', true, true)})`
+          }
           onClick={handleModeToggle}
         />
         <div className="flex items-center justify-center">

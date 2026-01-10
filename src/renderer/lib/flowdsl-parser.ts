@@ -79,8 +79,20 @@ const shapeMap: Record<string, [string, string]> = {
 
 // Mermaid reserved keywords that cannot be used as node IDs
 const MERMAID_RESERVED = new Set([
-  'end', 'subgraph', 'graph', 'flowchart', 'direction', 'click', 'style',
-  'linkstyle', 'classDef', 'class', 'callback', 'call', 'init', 'default',
+  'end',
+  'subgraph',
+  'graph',
+  'flowchart',
+  'direction',
+  'click',
+  'style',
+  'linkstyle',
+  'classDef',
+  'class',
+  'callback',
+  'call',
+  'init',
+  'default',
 ]);
 
 // Generate a safe ID from a label
@@ -375,7 +387,9 @@ export function convertFlowDSLToMermaid(content: string): string {
     import('@renderer/utils/logger').then(({ logger }) => {
       logger.error('FlowDSL parse error:', error);
     });
-    throw new Error(`Failed to parse FlowDSL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to parse FlowDSL: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    );
   }
 }
 

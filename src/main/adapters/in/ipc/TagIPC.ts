@@ -57,31 +57,46 @@ export class TagIPC {
       );
     });
 
-    ipcMain.handle(TAG_CHANNELS.ADD_TO_NOTE, async (_event, request: { noteId: string; tagId: string; tagIds?: string[] }) => {
-      return handleIpcRequest(
-        async () => {
-          // Handle both single tagId and array of tagIds
-          const tagIds = request.tagIds || [request.tagId];
-          for (const tagId of tagIds) {
-            await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
-          }
-          // Return updated tags list
-          const result = await tagUseCases.listTags.execute();
-          return { tags: result.tags };
-        },
-        { loggerPrefix: TAG_CHANNELS.ADD_TO_NOTE, errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' } },
-      );
-    });
+    ipcMain.handle(
+      TAG_CHANNELS.ADD_TO_NOTE,
+      async (_event, request: { noteId: string; tagId: string; tagIds?: string[] }) => {
+        return handleIpcRequest(
+          async () => {
+            // Handle both single tagId and array of tagIds
+            const tagIds = request.tagIds || [request.tagId];
+            for (const tagId of tagIds) {
+              await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
+            }
+            // Return updated tags list
+            const result = await tagUseCases.listTags.execute();
+            return { tags: result.tags };
+          },
+          {
+            loggerPrefix: TAG_CHANNELS.ADD_TO_NOTE,
+            errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' },
+          },
+        );
+      },
+    );
 
-    ipcMain.handle(TAG_CHANNELS.REMOVE_FROM_NOTE, async (_event, request: { noteId: string; tagId: string }) => {
-      return handleIpcRequest(
-        async () => {
-          await tagUseCases.removeTagFromNote.execute({ noteId: request.noteId, tagId: request.tagId });
-          return { success: true };
-        },
-        { loggerPrefix: TAG_CHANNELS.REMOVE_FROM_NOTE, errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' } },
-      );
-    });
+    ipcMain.handle(
+      TAG_CHANNELS.REMOVE_FROM_NOTE,
+      async (_event, request: { noteId: string; tagId: string }) => {
+        return handleIpcRequest(
+          async () => {
+            await tagUseCases.removeTagFromNote.execute({
+              noteId: request.noteId,
+              tagId: request.tagId,
+            });
+            return { success: true };
+          },
+          {
+            loggerPrefix: TAG_CHANNELS.REMOVE_FROM_NOTE,
+            errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' },
+          },
+        );
+      },
+    );
 
     logger.info('[TagIPC] Handlers registered');
   }

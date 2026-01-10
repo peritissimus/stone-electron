@@ -45,8 +45,7 @@ export const DEFAULT_FONT_SETTINGS: FontSettings = {
   editorLineHeight: 1.65,
 
   // Code - Fira Code with fallbacks
-  monoFont:
-    '"Fira Code", "SF Mono", ui-monospace, Menlo, Monaco, monospace',
+  monoFont: '"Fira Code", "SF Mono", ui-monospace, Menlo, Monaco, monospace',
   monoFontSize: 14,
 };
 

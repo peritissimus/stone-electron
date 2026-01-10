@@ -6,11 +6,7 @@
 
 import { eq } from 'drizzle-orm';
 import { workspaces, type Database } from '../../../shared';
-import type {
-  WorkspaceEntity,
-  WorkspaceProps,
-  IWorkspaceRepository,
-} from '../../../domain';
+import type { WorkspaceEntity, WorkspaceProps, IWorkspaceRepository } from '../../../domain';
 
 export interface WorkspaceRepositoryDeps {
   db: Database;

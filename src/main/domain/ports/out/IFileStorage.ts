@@ -76,6 +76,6 @@ export interface IFileStorage {
    */
   watch(
     path: string,
-    callback: (event: 'add' | 'change' | 'unlink', filePath: string) => void
+    callback: (event: 'add' | 'change' | 'unlink', filePath: string) => void,
   ): () => void;
 }

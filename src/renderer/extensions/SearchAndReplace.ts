@@ -43,7 +43,7 @@ const searchAndReplacePluginKey = new PluginKey('searchAndReplace');
 function findMatches(
   doc: any,
   searchTerm: string,
-  caseSensitive: boolean
+  caseSensitive: boolean,
 ): { from: number; to: number }[] {
   const results: { from: number; to: number }[] = [];
 
@@ -106,7 +106,7 @@ export const SearchAndReplace = Extension.create<SearchAndReplaceOptions, Search
           this.storage.results = findMatches(
             editor.state.doc,
             searchTerm,
-            this.storage.caseSensitive
+            this.storage.caseSensitive,
           );
           this.storage.currentIndex = this.storage.results.length > 0 ? 0 : -1;
 
@@ -118,12 +118,10 @@ export const SearchAndReplace = Extension.create<SearchAndReplaceOptions, Search
           return true;
         },
 
-      setReplaceTerm:
-        (replaceTerm: string) =>
-        () => {
-          this.storage.replaceTerm = replaceTerm;
-          return true;
-        },
+      setReplaceTerm: (replaceTerm: string) => () => {
+        this.storage.replaceTerm = replaceTerm;
+        return true;
+      },
 
       setCaseSensitive:
         (caseSensitive: boolean) =>
@@ -132,7 +130,7 @@ export const SearchAndReplace = Extension.create<SearchAndReplaceOptions, Search
           this.storage.results = findMatches(
             editor.state.doc,
             this.storage.searchTerm,
-            caseSensitive
+            caseSensitive,
           );
           this.storage.currentIndex = this.storage.results.length > 0 ? 0 : -1;
 
@@ -203,7 +201,7 @@ export const SearchAndReplace = Extension.create<SearchAndReplaceOptions, Search
           this.storage.results = findMatches(
             editor.state.doc,
             this.storage.searchTerm,
-            this.storage.caseSensitive
+            this.storage.caseSensitive,
           );
 
           // Adjust current index

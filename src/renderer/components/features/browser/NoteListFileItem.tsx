@@ -26,9 +26,7 @@ export function NoteListFileItem({
   onClick,
 }: NoteListFileItemProps) {
   const title = note?.title?.trim() ? note.title : fileName.replace(/\.md$/i, '');
-  const updatedAt = note
-    ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })
-    : '';
+  const updatedAt = note ? formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true }) : '';
   const isPinned = note?.isPinned;
   const isFavorite = note?.isFavorite;
 

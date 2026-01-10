@@ -7,7 +7,12 @@ import { Brain, CircleNotch, Warning } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 import { useMLStatusStore } from '@renderer/stores/mlStatusStore';
 import { useMLEventsSync } from '@renderer/hooks/useMLEvents';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@renderer/components/base/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@renderer/components/base/ui/tooltip';
 
 // Operation type labels for display
 const OPERATION_LABELS: Record<string, string> = {
@@ -45,9 +50,8 @@ export function MLStatusIndicator() {
     icon = <CircleNotch size={14} className="animate-spin" />;
     statusColor = 'text-primary';
     const operationLabel = OPERATION_LABELS[currentOperation?.type || ''] || 'Processing';
-    statusText = progressPercent !== null
-      ? `${operationLabel} (${progressPercent}%)`
-      : operationLabel;
+    statusText =
+      progressPercent !== null ? `${operationLabel} (${progressPercent}%)` : operationLabel;
   } else if (hasError()) {
     // Error state
     icon = <Warning size={14} />;
@@ -79,7 +83,7 @@ export function MLStatusIndicator() {
           <div
             className={cn(
               'flex items-center gap-2 px-3 py-2 text-xs border-t border-border',
-              statusColor
+              statusColor,
             )}
           >
             {icon}

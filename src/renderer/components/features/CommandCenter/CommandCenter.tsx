@@ -96,76 +96,79 @@ export function CommandCenter() {
   }, []);
 
   // Build static command list once
-  const commands = useMemo<CommandItem[]>(() => [
-    {
-      id: 'new-note',
-      type: 'command',
-      title: 'New Note',
-      subtitle: 'Create a new note',
-      icon: <Plus size={18} weight="bold" />,
-      shortcut: '⌘N',
-      action: handleClose,
-    },
-    {
-      id: 'go-home',
-      type: 'command',
-      title: 'Go Home',
-      subtitle: 'Navigate to home view',
-      icon: <House size={18} />,
-      shortcut: '⌘⇧H',
-      action: () => {
-        useNoteStore.getState().setActiveNote(null);
-        handleClose();
+  const commands = useMemo<CommandItem[]>(
+    () => [
+      {
+        id: 'new-note',
+        type: 'command',
+        title: 'New Note',
+        subtitle: 'Create a new note',
+        icon: <Plus size={18} weight="bold" />,
+        shortcut: '⌘N',
+        action: handleClose,
       },
-    },
-    {
-      id: 'toggle-sidebar',
-      type: 'command',
-      title: 'Toggle Sidebar',
-      subtitle: 'Show or hide the sidebar',
-      icon: <SidebarSimple size={18} />,
-      shortcut: '⌘\\',
-      action: () => {
-        useUIStore.getState().toggleSidebar();
-        handleClose();
+      {
+        id: 'go-home',
+        type: 'command',
+        title: 'Go Home',
+        subtitle: 'Navigate to home view',
+        icon: <House size={18} />,
+        shortcut: '⌘⇧H',
+        action: () => {
+          useNoteStore.getState().setActiveNote(null);
+          handleClose();
+        },
       },
-    },
-    {
-      id: 'open-settings',
-      type: 'command',
-      title: 'Open Settings',
-      subtitle: 'Configure app preferences',
-      icon: <Gear size={18} />,
-      shortcut: '⌘,',
-      action: () => {
-        handleClose();
-        useUIStore.getState().openSettings();
+      {
+        id: 'toggle-sidebar',
+        type: 'command',
+        title: 'Toggle Sidebar',
+        subtitle: 'Show or hide the sidebar',
+        icon: <SidebarSimple size={18} />,
+        shortcut: '⌘\\',
+        action: () => {
+          useUIStore.getState().toggleSidebar();
+          handleClose();
+        },
       },
-    },
-    {
-      id: 'today-journal',
-      type: 'command',
-      title: "Today's Journal",
-      subtitle: "Open or create today's journal entry",
-      icon: <Calendar size={18} />,
-      shortcut: '⌘J',
-      action: () => {
-        handleClose();
-        openOrCreateTodayJournal();
+      {
+        id: 'open-settings',
+        type: 'command',
+        title: 'Open Settings',
+        subtitle: 'Configure app preferences',
+        icon: <Gear size={18} />,
+        shortcut: '⌘,',
+        action: () => {
+          handleClose();
+          useUIStore.getState().openSettings();
+        },
       },
-    },
-    {
-      id: 'yesterday-journal',
-      type: 'command',
-      title: "Yesterday's Journal",
-      subtitle: "Open or create yesterday's journal entry",
-      icon: <CalendarBlank size={18} />,
-      action: () => {
-        handleClose();
-        openOrCreateYesterdayJournal();
+      {
+        id: 'today-journal',
+        type: 'command',
+        title: "Today's Journal",
+        subtitle: "Open or create today's journal entry",
+        icon: <Calendar size={18} />,
+        shortcut: '⌘J',
+        action: () => {
+          handleClose();
+          openOrCreateTodayJournal();
+        },
       },
-    },
-  ], [handleClose, openOrCreateTodayJournal, openOrCreateYesterdayJournal]);
+      {
+        id: 'yesterday-journal',
+        type: 'command',
+        title: "Yesterday's Journal",
+        subtitle: "Open or create yesterday's journal entry",
+        icon: <CalendarBlank size={18} />,
+        action: () => {
+          handleClose();
+          openOrCreateYesterdayJournal();
+        },
+      },
+    ],
+    [handleClose, openOrCreateTodayJournal, openOrCreateYesterdayJournal],
+  );
 
   // In-memory filtered notes (instant) - with fuzzy matching
   const filteredNotes = useMemo<CommandItem[]>(() => {
@@ -316,7 +319,11 @@ export function CommandCenter() {
       <div className="relative w-full max-w-xl mx-4 bg-popover rounded-xl overflow-hidden border border-border shadow-2xl">
         {/* Search Input */}
         <div className="flex items-center gap-3 px-4 py-3">
-          <MagnifyingGlass size={20} weight="regular" className="text-muted-foreground flex-shrink-0" />
+          <MagnifyingGlass
+            size={20}
+            weight="regular"
+            className="text-muted-foreground flex-shrink-0"
+          />
           <input
             ref={inputRef}
             type="text"
@@ -411,4 +418,3 @@ export function CommandCenter() {
     </div>
   );
 }
-

@@ -4,7 +4,16 @@
 
 import { useState, useEffect } from 'react';
 import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
-import { Database, HardDrive, Download, CheckCircle, Palette, Info, Keyboard, GitBranch } from 'phosphor-react';
+import {
+  Database,
+  HardDrive,
+  Download,
+  CheckCircle,
+  Palette,
+  Info,
+  Keyboard,
+  GitBranch,
+} from 'phosphor-react';
 import { useDatabaseAPI } from '@renderer/hooks/useDatabaseAPI';
 import { DatabaseStatus } from '@shared/types';
 import { TabbedModal } from '@renderer/components/composites';
@@ -29,7 +38,9 @@ import { ContainerStack, ContainerCenter, Separator } from '@renderer/components
 
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useUIStore();
-  const [activeTab, setActiveTab] = useState<'database' | 'appearance' | 'shortcuts' | 'git' | 'about'>('appearance');
+  const [activeTab, setActiveTab] = useState<
+    'database' | 'appearance' | 'shortcuts' | 'git' | 'about'
+  >('appearance');
 
   // Close on Escape key
   useEffect(() => {
@@ -190,7 +201,14 @@ function DatabaseSettings() {
 }
 
 function AppearanceSettings() {
-  const { theme, setTheme, accentColor, setAccentColor, showBlockIndicators, toggleBlockIndicators } = useUIStore();
+  const {
+    theme,
+    setTheme,
+    accentColor,
+    setAccentColor,
+    showBlockIndicators,
+    toggleBlockIndicators,
+  } = useUIStore();
 
   return (
     <SettingsSection title="Appearance">
@@ -224,12 +242,11 @@ function AppearanceSettings() {
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-0.5">
               <Body size="sm">Block Indicators</Body>
-              <Body size="xs" variant="muted">Show bullet markers on the left of blocks</Body>
+              <Body size="xs" variant="muted">
+                Show bullet markers on the left of blocks
+              </Body>
             </div>
-            <Switch
-              checked={showBlockIndicators}
-              onCheckedChange={toggleBlockIndicators}
-            />
+            <Switch checked={showBlockIndicators} onCheckedChange={toggleBlockIndicators} />
           </div>
         </ContainerStack>
 

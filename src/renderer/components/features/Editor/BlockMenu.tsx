@@ -96,34 +96,84 @@ export function BlockMenu({ editor, className }: BlockMenuProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[240px]">
           <DropdownMenuItem onClick={() => addBlock('paragraph')}>
-            <CommandMenuItem asChild icon={<TextT size={16} />} title="Text" description="Just start writing" />
+            <CommandMenuItem
+              asChild
+              icon={<TextT size={16} />}
+              title="Text"
+              description="Just start writing"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading1')}>
-            <CommandMenuItem asChild icon={<TextHOne size={16} />} title="Heading 1" description="Large section heading" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHOne size={16} />}
+              title="Heading 1"
+              description="Large section heading"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading2')}>
-            <CommandMenuItem asChild icon={<TextHTwo size={16} />} title="Heading 2" description="Medium section heading" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHTwo size={16} />}
+              title="Heading 2"
+              description="Medium section heading"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading3')}>
-            <CommandMenuItem asChild icon={<TextHThree size={16} />} title="Heading 3" description="Small section heading" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHThree size={16} />}
+              title="Heading 3"
+              description="Small section heading"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('bulletList')}>
-            <CommandMenuItem asChild icon={<List size={16} />} title="Bullet List" description="Simple bullet list" />
+            <CommandMenuItem
+              asChild
+              icon={<List size={16} />}
+              title="Bullet List"
+              description="Simple bullet list"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('orderedList')}>
-            <CommandMenuItem asChild icon={<ListNumbers size={16} />} title="Numbered List" description="List with numbering" />
+            <CommandMenuItem
+              asChild
+              icon={<ListNumbers size={16} />}
+              title="Numbered List"
+              description="List with numbering"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('taskList')}>
-            <CommandMenuItem asChild icon={<Check size={16} />} title="To-do List" description="Track tasks" />
+            <CommandMenuItem
+              asChild
+              icon={<Check size={16} />}
+              title="To-do List"
+              description="Track tasks"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('codeBlock')}>
-            <CommandMenuItem asChild icon={<Code size={16} />} title="Code Block" description="Syntax highlighting" />
+            <CommandMenuItem
+              asChild
+              icon={<Code size={16} />}
+              title="Code Block"
+              description="Syntax highlighting"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('blockquote')}>
-            <CommandMenuItem asChild icon={<Quotes size={16} />} title="Quote" description="Capture a quote" />
+            <CommandMenuItem
+              asChild
+              icon={<Quotes size={16} />}
+              title="Quote"
+              description="Capture a quote"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('divider')}>
-            <CommandMenuItem asChild icon={<Minus size={16} />} title="Divider" description="Visual separator" />
+            <CommandMenuItem
+              asChild
+              icon={<Minus size={16} />}
+              title="Divider"
+              description="Visual separator"
+            />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

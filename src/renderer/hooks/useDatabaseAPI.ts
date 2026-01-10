@@ -44,25 +44,28 @@ export function useDatabaseAPI() {
     }
   }, [setError]);
 
-  const backup = useCallback(async (path?: string): Promise<BackupResult | null> => {
-    setState((s) => ({ ...s, loading: true, error: null }));
-    try {
-      const response = await databaseAPI.backup(path);
-      setState((s) => ({ ...s, loading: false }));
-      if (response.success && response.data) {
-        logger.info('[useDatabaseAPI.backup] Backup created', { path: response.data.path });
-        return response.data;
-      } else {
-        setError(response.error?.message || 'Failed to create backup');
+  const backup = useCallback(
+    async (path?: string): Promise<BackupResult | null> => {
+      setState((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const response = await databaseAPI.backup(path);
+        setState((s) => ({ ...s, loading: false }));
+        if (response.success && response.data) {
+          logger.info('[useDatabaseAPI.backup] Backup created', { path: response.data.path });
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to create backup');
+          return null;
+        }
+      } catch (err) {
+        logger.error('[useDatabaseAPI.backup] Error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to create backup');
+        setState((s) => ({ ...s, loading: false }));
         return null;
       }
-    } catch (err) {
-      logger.error('[useDatabaseAPI.backup] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create backup');
-      setState((s) => ({ ...s, loading: false }));
-      return null;
-    }
-  }, [setError]);
+    },
+    [setError],
+  );
 
   const vacuum = useCallback(async (): Promise<VacuumResult | null> => {
     setState((s) => ({ ...s, loading: true, error: null }));

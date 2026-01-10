@@ -17,7 +17,11 @@ import tippy, { Instance as TippyInstance } from 'tippy.js';
 
 // Unique plugin key for note link suggestion
 const noteLinkPluginKey = new PluginKey('noteLink');
-import { NoteLinkMenu, NoteLinkMenuRef, NoteLinkItem } from '../components/features/Editor/NoteLinkMenu';
+import {
+  NoteLinkMenu,
+  NoteLinkMenuRef,
+  NoteLinkItem,
+} from '../components/features/Editor/NoteLinkMenu';
 import { NodeViewWrapper } from '@tiptap/react';
 import { Link } from 'phosphor-react';
 
@@ -140,11 +144,7 @@ export const NoteLink = Node.create<NoteLinkOptions>({
   renderHTML({ node, HTMLAttributes }) {
     return [
       'span',
-      mergeAttributes(
-        this.options.HTMLAttributes,
-        HTMLAttributes,
-        { 'data-type': 'note-link' }
-      ),
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-type': 'note-link' }),
       `[[${node.attrs.title || 'Unknown'}]]`,
     ];
   },

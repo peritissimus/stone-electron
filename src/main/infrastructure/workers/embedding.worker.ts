@@ -49,7 +49,7 @@ const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 const EMBEDDING_DIMS = 384;
 
 // Pipeline instance
-type Pipeline = Awaited<ReturnType<typeof import('@xenova/transformers')['pipeline']>>;
+type Pipeline = Awaited<ReturnType<(typeof import('@xenova/transformers'))['pipeline']>>;
 let pipeline: Pipeline | null = null;
 let initialized = false;
 
@@ -130,8 +130,8 @@ async function batchEmbed(texts: string[]): Promise<number[][]> {
       pipeline!(text, {
         pooling: 'mean',
         normalize: true,
-      } as any)
-    )
+      } as any),
+    ),
   );
 
   // Reconstruct with zero vectors for empty texts
@@ -180,9 +180,7 @@ parentPort?.on('message', async (message: WorkerMessage) => {
       }
 
       case 'ping': {
-        const info = initialized
-          ? { model: MODEL_NAME, dims: EMBEDDING_DIMS }
-          : await initialize();
+        const info = initialized ? { model: MODEL_NAME, dims: EMBEDDING_DIMS } : await initialize();
         respond({ id, success: true, data: info });
         break;
       }

@@ -18,10 +18,7 @@ export function normalizePath(path: string): string {
     return pathCache.get(path)!;
   }
 
-  const normalized = path
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '');
+  const normalized = path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
 
   pathCache.set(path, normalized);
   return normalized;

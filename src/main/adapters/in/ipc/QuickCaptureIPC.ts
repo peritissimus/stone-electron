@@ -8,7 +8,10 @@ import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface QuickCaptureIPCDeps {
-  appendToJournal: (content: string, workspaceId?: string) => Promise<{ noteId: string; appended: boolean }>;
+  appendToJournal: (
+    content: string,
+    workspaceId?: string,
+  ) => Promise<{ noteId: string; appended: boolean }>;
 }
 
 export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
@@ -25,7 +28,10 @@ export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
           const result = await appendToJournal(text, request.workspaceId);
           return result;
         },
-        { loggerPrefix: QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, defaultCode: 'QUICK_CAPTURE_ERROR' },
+        {
+          loggerPrefix: QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL,
+          defaultCode: 'QUICK_CAPTURE_ERROR',
+        },
       );
     },
   );

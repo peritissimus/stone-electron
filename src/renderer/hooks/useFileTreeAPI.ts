@@ -15,11 +15,7 @@ interface FolderStructure {
 }
 
 const normalizePath = (path: string) =>
-  path
-    .replace(/\\/g, '/')
-    .replace(/^\.\//, '')
-    .replace(/^\/+/, '')
-    .replace(/\/+$/, '');
+  path.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '').replace(/\/+$/, '');
 
 function mapStructure(node: FolderStructure): FileTreeNode | null {
   const normalizedPath = normalizePath(node.relativePath || node.path || node.name);
@@ -83,7 +79,9 @@ export function useFileTreeAPI() {
       try {
         const activeWorkspace = await workspaceAPI.getActive();
 
-        const workspaceId = activeWorkspace.success ? activeWorkspace.data?.workspace?.id : undefined;
+        const workspaceId = activeWorkspace.success
+          ? activeWorkspace.data?.workspace?.id
+          : undefined;
 
         if (!workspaceId) {
           setError('No active workspace selected');
@@ -91,7 +89,8 @@ export function useFileTreeAPI() {
           return;
         }
 
-        const { activeFolder: prevActive, selectedFile: prevSelected } = useFileTreeStore.getState();
+        const { activeFolder: prevActive, selectedFile: prevSelected } =
+          useFileTreeStore.getState();
 
         const response = await workspaceAPI.scan(workspaceId);
 

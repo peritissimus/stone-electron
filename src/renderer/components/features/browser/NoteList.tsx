@@ -23,14 +23,7 @@ import {
 import { Toggle } from '@renderer/components/base/ui/toggle';
 import { logger } from '@renderer/utils/logger';
 import { normalizePath, getParentPath } from '@renderer/utils/path';
-import {
-  List,
-  GridFour,
-  Article,
-  CaretUp,
-  CaretDown,
-  Plus,
-} from 'phosphor-react';
+import { List, GridFour, Article, CaretUp, CaretDown, Plus } from 'phosphor-react';
 import { Header, ControlGroup, ListContainer } from '@renderer/components/composites';
 import { NoteListFolderItem } from './NoteListFolderItem';
 import { NoteListFileItem } from './NoteListFileItem';

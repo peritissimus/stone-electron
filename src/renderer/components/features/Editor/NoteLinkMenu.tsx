@@ -50,12 +50,15 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
       }
     }, [selectedIndex]);
 
-    const selectItem = useCallback((index: number) => {
-      const item = items[index];
-      if (item) {
-        command(item);
-      }
-    }, [items, command]);
+    const selectItem = useCallback(
+      (index: number) => {
+        const item = items[index];
+        if (item) {
+          command(item);
+        }
+      },
+      [items, command],
+    );
 
     const upHandler = useCallback(() => {
       setSelectedIndex((prev) => (prev - 1 + items.length) % items.length);
@@ -95,9 +98,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
         <div className="bg-popover border border-border rounded-lg shadow-lg p-3 min-w-[280px] max-w-[400px]">
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <MagnifyingGlass size={16} />
-            <span>
-              {query ? `No notes found for "${query}"` : 'Type to search notes...'}
-            </span>
+            <span>{query ? `No notes found for "${query}"` : 'Type to search notes...'}</span>
           </div>
           {query && (
             <div className="mt-2 pt-2 border-t border-border">
@@ -134,16 +135,14 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
                 onClick={() => selectItem(index)}
                 className={cn(
                   'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors',
-                  isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+                  isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
                 )}
               >
                 <Link size={14} className="shrink-0 text-primary" weight="bold" />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium line-clamp-1">{item.title}</div>
                   {folderPath && (
-                    <div className="text-xs text-muted-foreground line-clamp-1">
-                      {folderPath}
-                    </div>
+                    <div className="text-xs text-muted-foreground line-clamp-1">{folderPath}</div>
                   )}
                 </div>
               </button>
@@ -152,7 +151,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 NoteLinkMenu.displayName = 'NoteLinkMenu';

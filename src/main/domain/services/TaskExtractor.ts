@@ -95,21 +95,18 @@ export const TaskExtractor = {
     let currentIndex = 0;
     let found = false;
 
-    const result = markdown.replace(
-      TASK_PATTERN,
-      (match, indent, _state, text) => {
-        if (currentIndex === taskIndex) {
-          found = true;
-          // Preserve the list marker if present, otherwise add one
-          const hasListMarker = /^(\s*)[-*]\s+/.test(match);
-          const prefix = hasListMarker ? `${indent}- ` : `${indent}`;
-          currentIndex++;
-          return `${prefix}${newState.toUpperCase()} ${text}`;
-        }
+    const result = markdown.replace(TASK_PATTERN, (match, indent, _state, text) => {
+      if (currentIndex === taskIndex) {
+        found = true;
+        // Preserve the list marker if present, otherwise add one
+        const hasListMarker = /^(\s*)[-*]\s+/.test(match);
+        const prefix = hasListMarker ? `${indent}- ` : `${indent}`;
         currentIndex++;
-        return match;
+        return `${prefix}${newState.toUpperCase()} ${text}`;
       }
-    );
+      currentIndex++;
+      return match;
+    });
 
     if (!found) {
       throw new Error(`Task at index ${taskIndex} not found`);

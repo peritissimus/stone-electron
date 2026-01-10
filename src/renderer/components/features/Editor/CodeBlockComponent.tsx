@@ -31,7 +31,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
 }) => {
   const [showCode, setShowCode] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() =>
-    document.documentElement.classList.contains('dark')
+    document.documentElement.classList.contains('dark'),
   );
 
   // Listen for theme changes
@@ -73,18 +73,18 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
       const oldInRelation = oldLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       updatedCode = updatedCode.replace(
         new RegExp(`(^|\\s)(${oldInRelation})(\\s*[><]\\s*)`, 'gm'),
-        `$1${newLabel}$3`
+        `$1${newLabel}$3`,
       );
       updatedCode = updatedCode.replace(
         new RegExp(`(\\s*[><]\\s*)(${oldInRelation})(\\s*:|\\s*$)`, 'gm'),
-        `$1${newLabel}$3`
+        `$1${newLabel}$3`,
       );
     } else {
       // For Mermaid, replace the label in node definitions
       const escapedOld = oldLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(
         `(${nodeId}[\\[\\(\\{\\|<]+["']?)${escapedOld}(["']?[\\]\\)\\}>|]+)`,
-        'gi'
+        'gi',
       );
       updatedCode = codeContent.replace(regex, `$1${newLabel}$2`);
     }
@@ -112,7 +112,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
       <div
         className={cn(
           'group relative my-4 rounded-lg border border-border bg-muted/30 overflow-hidden',
-          selected && 'ring-2 ring-primary ring-offset-2'
+          selected && 'ring-2 ring-primary ring-offset-2',
         )}
         data-language={language}
       >

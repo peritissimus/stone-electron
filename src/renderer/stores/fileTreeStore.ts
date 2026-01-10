@@ -78,7 +78,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
       logger.info('[FileTreeStore] Setting active folder', {
         originalPath: path,
         normalized,
-        currentExpanded: Array.from(state.expandedPaths)
+        currentExpanded: Array.from(state.expandedPaths),
       });
 
       const nextExpanded = new Set(state.expandedPaths);
@@ -91,7 +91,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
 
       logger.info('[FileTreeStore] Expanded paths after setting active folder', {
         added: segments,
-        allExpanded: Array.from(nextExpanded)
+        allExpanded: Array.from(nextExpanded),
       });
 
       return {
@@ -112,7 +112,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
       logger.info('[FileTreeStore] Setting selected file', {
         originalPath: path,
         normalized,
-        currentExpanded: Array.from(state.expandedPaths)
+        currentExpanded: Array.from(state.expandedPaths),
       });
 
       // Extract parent folder path and expand all parent folders
@@ -131,7 +131,7 @@ export const useFileTreeStore = create<FileTreeState>((set, get) => ({
         logger.info('[FileTreeStore] Expanding parent folders for selected file', {
           file: normalized,
           foldersExpanded: foldersToExpand,
-          allExpanded: Array.from(nextExpanded)
+          allExpanded: Array.from(nextExpanded),
         });
 
         return {

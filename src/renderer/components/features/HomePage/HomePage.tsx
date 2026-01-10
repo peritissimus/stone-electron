@@ -61,11 +61,7 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
       left={<FileText className="w-4 h-4" />}
       title={note.title || 'Untitled'}
       subtitle={folderPath}
-      right={
-        <span className="text-xs text-muted-foreground">
-          {formatDate(note.updatedAt)}
-        </span>
-      }
+      right={<span className="text-xs text-muted-foreground">{formatDate(note.updatedAt)}</span>}
     />
   );
 };
@@ -110,7 +106,9 @@ export function HomePage() {
   const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const expectedJournalPath = `Journal/${journalFilename}.md`;
   const normalizedExpectedPath = normalizePath(expectedJournalPath);
-  const todaysJournal = notes.find((note) => normalizePath(note.filePath) === normalizedExpectedPath);
+  const todaysJournal = notes.find(
+    (note) => normalizePath(note.filePath) === normalizedExpectedPath,
+  );
 
   // Format today's date for journal title (e.g., "November 10, 2025")
   const journalTitle = now.toLocaleDateString('en-US', {
@@ -282,7 +280,10 @@ export function HomePage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium flex items-center gap-2">
                     Continue writing
-                    <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowRight
+                      size={14}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
                   </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {continueNote.title || 'Untitled'}
@@ -302,13 +303,14 @@ export function HomePage() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium flex items-center gap-2">
                   {todaysJournal ? "Open today's journal" : "Start today's journal"}
-                  <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ArrowRight
+                    size={14}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  />
                 </div>
                 <div className="text-xs text-muted-foreground">{journalFilename}</div>
               </div>
-              {!todaysJournal && (
-                <Sparkles size={16} className="text-primary" />
-              )}
+              {!todaysJournal && <Sparkles size={16} className="text-primary" />}
             </button>
 
             {/* Quick Note */}
@@ -322,7 +324,10 @@ export function HomePage() {
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium flex items-center gap-2">
                   New note
-                  <ArrowRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ArrowRight
+                    size={14}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  />
                 </div>
                 <div className="text-xs text-muted-foreground">Create a quick note</div>
               </div>
@@ -363,9 +368,7 @@ export function HomePage() {
                 <FileText className="w-6 h-6 text-muted-foreground" />
               </div>
               <h3 className="font-medium mb-1">No notes yet</h3>
-              <p className="text-sm text-muted-foreground">
-                Create your first note to get started
-              </p>
+              <p className="text-sm text-muted-foreground">Create your first note to get started</p>
             </div>
           )}
         </div>

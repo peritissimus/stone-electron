@@ -167,4 +167,3 @@ export class WorkspaceEntity {
     return { ...this.props };
   }
 }
-

@@ -53,7 +53,9 @@ export function NoteEditorContent({ editor, isLoading }: NoteEditorContentProps)
       {isLoading ? (
         <EditorSkeleton />
       ) : (
-        <div className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}>
+        <div
+          className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}
+        >
           <EditorContent
             editor={editor}
             className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"

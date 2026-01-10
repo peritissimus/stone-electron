@@ -6,12 +6,7 @@
 
 import { generateId } from '@shared/utils/id';
 import { EVENTS } from '@shared/constants/ipcChannels';
-import {
-  TagEntity,
-  type TagProps,
-  type ITagRepository,
-  TagNotFoundError,
-} from '../../domain';
+import { TagEntity, type TagProps, type ITagRepository, TagNotFoundError } from '../../domain';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 
 // ============================================================================
@@ -21,7 +16,7 @@ import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 export class CreateTagUseCase {
   constructor(
     private readonly tagRepository: ITagRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { name: string; color?: string }): Promise<{ tag: TagProps }> {
@@ -51,7 +46,7 @@ export class CreateTagUseCase {
 export class UpdateTagUseCase {
   constructor(
     private readonly tagRepository: ITagRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -106,7 +101,7 @@ export class ListTagsUseCase {
 export class DeleteTagUseCase {
   constructor(
     private readonly tagRepository: ITagRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<void> {

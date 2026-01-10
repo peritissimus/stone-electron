@@ -223,10 +223,7 @@ export interface IEventPublisher {
   /**
    * Subscribe to events of a specific type
    */
-  subscribe<T extends AppDomainEvent>(
-    eventType: T['type'],
-    handler: EventHandler<T>
-  ): () => void;
+  subscribe<T extends AppDomainEvent>(eventType: T['type'], handler: EventHandler<T>): () => void;
 
   /**
    * Subscribe to all events

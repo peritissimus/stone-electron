@@ -46,7 +46,7 @@ export const searchAPI = {
    */
   byTag: (
     tagId: string,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number },
   ): Promise<IpcResponse<SearchResults>> =>
     invokeIpc(SEARCH_CHANNELS.BY_TAG, { tagId, ...options }),
 

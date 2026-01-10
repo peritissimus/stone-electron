@@ -75,7 +75,7 @@ export interface ITopicRepository {
    */
   getNotesForTopic(
     topicId: string,
-    options?: { limit?: number; offset?: number; excludeJournal?: boolean }
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
   ): Promise<{ noteId: string; confidence: number; isManual: boolean }[]>;
 
   /**
@@ -84,7 +84,7 @@ export interface ITopicRepository {
   assignToNote(
     noteId: string,
     topicId: string,
-    options?: { confidence?: number; isManual?: boolean }
+    options?: { confidence?: number; isManual?: boolean },
   ): Promise<void>;
 
   /**
@@ -97,7 +97,7 @@ export interface ITopicRepository {
    */
   setTopicsForNote(
     noteId: string,
-    assignments: { topicId: string; confidence?: number; isManual?: boolean }[]
+    assignments: { topicId: string; confidence?: number; isManual?: boolean }[],
   ): Promise<void>;
 
   /**

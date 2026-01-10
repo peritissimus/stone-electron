@@ -21,7 +21,7 @@ export interface DocumentBuffer {
 
 interface DocumentBufferState {
   buffers: Map<string, DocumentBuffer>;
-  maxBuffers: number;  // LRU limit
+  maxBuffers: number; // LRU limit
 
   // Actions
   getBuffer: (noteId: string) => DocumentBuffer | undefined;

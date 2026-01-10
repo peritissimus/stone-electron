@@ -51,7 +51,7 @@ export function useNotebookAPI() {
     async (flat = false) => {
       return loadAll({ include_counts: true, flat });
     },
-    [loadAll]
+    [loadAll],
   );
 
   /**
@@ -61,7 +61,7 @@ export function useNotebookAPI() {
     async (data: { name: string; parent_id?: string; icon?: string; color?: string }) => {
       return create(data as Partial<Notebook>);
     },
-    [create]
+    [create],
   );
 
   /**
@@ -71,7 +71,7 @@ export function useNotebookAPI() {
     async (id: string, data: { name?: string; icon?: string; color?: string }) => {
       return update(id, data as Partial<Notebook>);
     },
-    [update]
+    [update],
   );
 
   /**
@@ -93,7 +93,7 @@ export function useNotebookAPI() {
         return false;
       }
     },
-    [setError]
+    [setError],
   );
 
   /**
@@ -116,7 +116,7 @@ export function useNotebookAPI() {
         return false;
       }
     },
-    [loadNotebooks, setError]
+    [loadNotebooks, setError],
   );
 
   return {

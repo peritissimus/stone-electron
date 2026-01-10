@@ -114,20 +114,16 @@ export function useImageUpload({ editor, noteId, enabled = true }: UseImageUploa
         return null;
       }
     },
-    [noteId]
+    [noteId],
   );
 
   const insertImage = useCallback(
     (src: string) => {
       if (!editor) return;
 
-      editor
-        .chain()
-        .focus()
-        .setImage({ src })
-        .run();
+      editor.chain().focus().setImage({ src }).run();
     },
-    [editor]
+    [editor],
   );
 
   const handleImageFiles = useCallback(
@@ -139,7 +135,7 @@ export function useImageUpload({ editor, noteId, enabled = true }: UseImageUploa
         }
       }
     },
-    [uploadImage, insertImage]
+    [uploadImage, insertImage],
   );
 
   useEffect(() => {

@@ -250,7 +250,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         logger.error('[NoteEditor] Failed to restore draft:', error);
       }
     },
-    [editor]
+    [editor],
   );
 
   // Expose actions via ref for keyboard shortcuts
@@ -262,7 +262,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       restoreDraft: handleRestoreDraft,
       getEditor: () => editor,
     }),
-    [handleSave, handleCreateSiblingNote, handleRestoreDraft, editor]
+    [handleSave, handleCreateSiblingNote, handleRestoreDraft, editor],
   );
 
   // Handle title change with debounced save
@@ -285,7 +285,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         }
       }, 500);
     },
-    [activeNoteId, updateNote]
+    [activeNoteId, updateNote],
   );
 
   // Cleanup title save timeout on unmount
@@ -378,10 +378,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
       {/* Editor Content - Rich or Raw mode */}
       {editorMode === 'raw' ? (
-        <RawMarkdownEditor
-          value={rawMarkdown}
-          onChange={handleRawMarkdownChange}
-        />
+        <RawMarkdownEditor value={rawMarkdown} onChange={handleRawMarkdownChange} />
       ) : (
         <NoteEditorContent editor={editor} isLoading={false} />
       )}
@@ -397,7 +394,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
           <EditorStats editor={editor} />
         )}
         {activeNote?.filePath && activeWorkspace?.folderPath && (
-          <CopyPathButton filePath={activeNote.filePath} workspacePath={activeWorkspace.folderPath} />
+          <CopyPathButton
+            filePath={activeNote.filePath}
+            workspacePath={activeWorkspace.folderPath}
+          />
         )}
       </div>
     </div>

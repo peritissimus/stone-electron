@@ -217,4 +217,3 @@ export class NotebookEntity {
     this.props.updatedAt = new Date();
   }
 }
-

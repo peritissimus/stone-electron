@@ -15,12 +15,12 @@ import { tokens, type SizeVariant } from '@/specs';
 
 export const spacingClass = {
   none: '0',
-  xs: '1',    // 4px
-  sm: '2',    // 8px
-  md: '4',    // 16px
-  lg: '6',    // 24px
-  xl: '8',    // 32px
-  xxl: '12',  // 48px
+  xs: '1', // 4px
+  sm: '2', // 8px
+  md: '4', // 16px
+  lg: '6', // 24px
+  xl: '8', // 32px
+  xxl: '12', // 48px
 } as const;
 
 export const paddingX = {
@@ -51,10 +51,10 @@ export const gap = {
 // =============================================================================
 
 export const height = {
-  compact: 'h-6',    // 24px
-  normal: 'h-8',     // 32px
-  spacious: 'h-10',  // 40px
-  roomy: 'h-12',     // 48px
+  compact: 'h-6', // 24px
+  normal: 'h-8', // 32px
+  spacious: 'h-10', // 40px
+  roomy: 'h-12', // 48px
 } as const;
 
 export const minHeight = {
@@ -69,15 +69,15 @@ export const minHeight = {
 // =============================================================================
 
 export const fontSize = {
-  xs: 'text-xs',      // 12px
-  sm: 'text-sm',      // 13-14px
-  base: 'text-base',  // 14-16px
-  lg: 'text-lg',      // 16-18px
-  xl: 'text-xl',      // 20px
-  '2xl': 'text-2xl',  // 24px
-  '3xl': 'text-3xl',  // 30px
-  '4xl': 'text-4xl',  // 36px
-  '5xl': 'text-5xl',  // 48px
+  xs: 'text-xs', // 12px
+  sm: 'text-sm', // 13-14px
+  base: 'text-base', // 14-16px
+  lg: 'text-lg', // 16-18px
+  xl: 'text-xl', // 20px
+  '2xl': 'text-2xl', // 24px
+  '3xl': 'text-3xl', // 30px
+  '4xl': 'text-4xl', // 36px
+  '5xl': 'text-5xl', // 48px
 } as const;
 
 export const fontWeight = {
@@ -112,23 +112,26 @@ export const radius = {
 // =============================================================================
 
 export const iconSize = {
-  xs: 'w-3 h-3',    // 12px
+  xs: 'w-3 h-3', // 12px
   sm: 'w-3.5 h-3.5', // 14px
-  md: 'w-4 h-4',    // 16px
-  lg: 'w-5 h-5',    // 20px
-  xl: 'w-6 h-6',    // 24px
+  md: 'w-4 h-4', // 16px
+  lg: 'w-5 h-5', // 20px
+  xl: 'w-6 h-6', // 24px
 } as const;
 
 // =============================================================================
 // SIZE VARIANTS (composite)
 // =============================================================================
 
-export const sizeVariant: Record<SizeVariant, {
-  height: string;
-  text: string;
-  padding: string;
-  icon: string;
-}> = {
+export const sizeVariant: Record<
+  SizeVariant,
+  {
+    height: string;
+    text: string;
+    padding: string;
+    icon: string;
+  }
+> = {
   compact: {
     height: height.compact,
     text: fontSize.xs,
@@ -162,12 +165,12 @@ export const sizeVariant: Record<SizeVariant, {
 export const layout = {
   sidebarWidth: {
     min: 'min-w-[200px]',
-    default: 'w-60',  // 240px
+    default: 'w-60', // 240px
     max: 'max-w-[400px]',
   },
   noteListWidth: {
     min: 'min-w-[280px]',
-    default: 'w-80',  // 320px
+    default: 'w-80', // 320px
     max: 'max-w-[480px]',
   },
   editorWidth: {

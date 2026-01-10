@@ -173,19 +173,21 @@ Caption.displayName = 'Caption';
 type LabelProps = Omit<TextProps, 'as' | 'size' | 'weight'> &
   React.LabelHTMLAttributes<HTMLLabelElement>;
 
-export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(({ className, ...props }, ref) => (
-  <Text
-    // Cast ref to HTMLElement to satisfy Text's ref type
-    ref={ref as unknown as React.Ref<HTMLElement>}
-    as="label"
-    size="sm"
-    weight="medium"
-    className={cn(
-      'leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
-      className,
-    )}
-    // Pass through all label-specific attributes (e.g., htmlFor)
-    {...(props as any)}
-  />
-));
+export const Label = React.forwardRef<HTMLLabelElement, LabelProps>(
+  ({ className, ...props }, ref) => (
+    <Text
+      // Cast ref to HTMLElement to satisfy Text's ref type
+      ref={ref as unknown as React.Ref<HTMLElement>}
+      as="label"
+      size="sm"
+      weight="medium"
+      className={cn(
+        'leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+        className,
+      )}
+      // Pass through all label-specific attributes (e.g., htmlFor)
+      {...(props as any)}
+    />
+  ),
+);
 Label.displayName = 'Label';

@@ -16,11 +16,7 @@ export class SettingsRepository implements ISettingsRepository {
   constructor(private readonly deps: SettingsRepositoryDeps) {}
 
   async get(key: string): Promise<SettingProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, key))
-      .limit(1);
+    const result = await this.deps.db.select().from(settings).where(eq(settings.key, key)).limit(1);
 
     return result[0] ? this.toSettingProps(result[0]) : null;
   }

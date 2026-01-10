@@ -55,9 +55,7 @@ export function TaskSection({
         <ChevronRight
           className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${colorClass}`}>
-          {label}
-        </span>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${colorClass}`}>{label}</span>
         <span className="text-xs text-muted-foreground">{todos.length}</span>
       </button>
 

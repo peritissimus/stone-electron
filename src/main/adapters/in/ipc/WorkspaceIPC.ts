@@ -50,7 +50,10 @@ export class WorkspaceIPC {
         const result = await workspaceUseCases.listWorkspaces.execute();
         logger.info('[IPC] workspaces:getAll result:', result.workspaces.length, 'workspaces');
         if (result.workspaces.length > 0) {
-          logger.info('[IPC] workspaces:getAll first workspace:', JSON.stringify(result.workspaces[0]));
+          logger.info(
+            '[IPC] workspaces:getAll first workspace:',
+            JSON.stringify(result.workspaces[0]),
+          );
         }
         return { workspaces: result.workspaces };
       });

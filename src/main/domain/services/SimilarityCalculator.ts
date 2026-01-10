@@ -74,7 +74,7 @@ export const SimilarityCalculator = {
     query: EmbeddingVector,
     candidates: EmbeddingVector[],
     topK: number = 10,
-    minScore: number = 0
+    minScore: number = 0,
   ): SimilarityResult[] {
     const results: SimilarityResult[] = [];
 

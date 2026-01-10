@@ -30,7 +30,7 @@ export function RawMarkdownEditor({ value, onChange, className }: RawMarkdownEdi
         onChange(newValue);
       }
     },
-    [value, onChange]
+    [value, onChange],
   );
 
   // Restore cursor position after tab insertion
@@ -66,7 +66,7 @@ export function RawMarkdownEditor({ value, onChange, className }: RawMarkdownEdi
             'font-mono text-sm leading-relaxed',
             'text-foreground placeholder:text-muted-foreground/50',
             'focus:outline-none',
-            className
+            className,
           )}
           placeholder="Write your markdown here..."
         />

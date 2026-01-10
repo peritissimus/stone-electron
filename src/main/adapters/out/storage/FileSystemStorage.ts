@@ -76,7 +76,7 @@ export class FileSystemStorage implements IFileStorage {
       nodir: true,
     });
     // Normalize to posix-style paths
-    return matches.map(p => p.replace(/\\/g, '/'));
+    return matches.map((p) => p.replace(/\\/g, '/'));
   }
 
   async getFileInfo(filePath: string): Promise<FileInfo | null> {
@@ -103,7 +103,7 @@ export class FileSystemStorage implements IFileStorage {
 
   watch(
     watchPath: string,
-    callback: (event: 'add' | 'change' | 'unlink', filePath: string) => void
+    callback: (event: 'add' | 'change' | 'unlink', filePath: string) => void,
   ): () => void {
     const watcher: FSWatcher = watch(watchPath, {
       persistent: true,

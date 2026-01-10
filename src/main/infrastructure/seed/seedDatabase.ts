@@ -32,9 +32,7 @@ export interface SeedResult {
  * Check if database already has data
  */
 async function isDatabaseSeeded(db: Database): Promise<boolean> {
-  const result = await db
-    .select({ count: sql<number>`COUNT(*)` })
-    .from(notebooks);
+  const result = await db.select({ count: sql<number>`COUNT(*)` }).from(notebooks);
   return (result[0]?.count ?? 0) > 0;
 }
 
@@ -43,7 +41,7 @@ async function isDatabaseSeeded(db: Database): Promise<boolean> {
  */
 export async function seedDatabase(
   db: Database,
-  options: SeedOptions = {}
+  options: SeedOptions = {},
 ): Promise<SeedResult | null> {
   // Check if already seeded
   if (await isDatabaseSeeded(db)) {
@@ -216,9 +214,9 @@ Track the high-level initiatives planned for this quarter.
   return {
     workspaceId,
     workspacePath: workspaceFolderPath,
-    notebooks: notebooksData.map(n => ({ id: n.id, name: n.name, folderPath: n.folderPath })),
-    notes: notesData.map(n => ({ id: n.id, title: n.title, filePath: n.filePath })),
-    tags: tagsData.map(t => ({ id: t.id, name: t.name })),
+    notebooks: notebooksData.map((n) => ({ id: n.id, name: n.name, folderPath: n.folderPath })),
+    notes: notesData.map((n) => ({ id: n.id, title: n.title, filePath: n.filePath })),
+    tags: tagsData.map((t) => ({ id: t.id, name: t.name })),
   };
 }
 
@@ -227,7 +225,7 @@ Track the high-level initiatives planned for this quarter.
  */
 export async function forceSeedDatabase(
   db: Database,
-  options: SeedOptions = {}
+  options: SeedOptions = {},
 ): Promise<SeedResult> {
   // Clear existing data in reverse order of dependencies
   await db.delete(noteTags);
