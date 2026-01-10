@@ -316,7 +316,7 @@ describe('TopicUseCases', () => {
 
       const result = await useCases.classifyNote('note-1', false);
 
-      expect(result.topicId).toBeNull();
+      expect(result.topics).toHaveLength(0);
       expect(noteRepo.updateEmbedding).not.toHaveBeenCalled();
     });
 
@@ -467,7 +467,7 @@ describe('TopicUseCases', () => {
         expect.objectContaining({
           current: expect.any(Number),
           total: 2,
-          classified: expect.any(Number),
+          failed: expect.any(Number),
         }),
       );
     });
@@ -478,7 +478,8 @@ describe('TopicUseCases', () => {
       const result = await useCases.classifyAllNotes();
 
       expect(result.processed).toBe(0);
-      expect(result.classified).toBe(0);
+      expect(result.total).toBe(0);
+      expect(result.failed).toBe(0);
     });
   });
 
@@ -496,8 +497,9 @@ describe('TopicUseCases', () => {
       const result = await useCases.getEmbeddingStatus();
 
       expect(result.totalNotes).toBe(2);
-      expect(result.notesWithEmbeddings).toBe(1);
-      expect(result.isReady).toBe(true);
+      expect(result.embeddedNotes).toBe(1);
+      expect(result.pendingNotes).toBe(1);
+      expect(result.ready).toBe(true);
     });
 
     it('returns empty status when no active workspace', async () => {
@@ -507,20 +509,25 @@ describe('TopicUseCases', () => {
       const result = await useCases.getEmbeddingStatus();
 
       expect(result.totalNotes).toBe(0);
-      expect(result.notesWithEmbeddings).toBe(0);
-      expect(result.isReady).toBe(false);
+      expect(result.embeddedNotes).toBe(0);
+      expect(result.pendingNotes).toBe(0);
+      expect(result.ready).toBe(false);
     });
   });
 
   describe('getNotesForTopic', () => {
-    it('returns notes for topic', async () => {
-      const notes = [{ noteId: 'note-1', confidence: 0.9, isManual: false }];
-      vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue(notes);
+    it('returns notes for topic with titles', async () => {
+      const notesForTopic = [{ noteId: 'note-1', confidence: 0.9, isManual: false }];
+      const note = createNoteProps({ id: 'note-1', title: 'Test Note' });
+      vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue(notesForTopic);
+      vi.mocked(noteRepo.findById).mockResolvedValue(note);
 
       const result = await useCases.getNotesForTopic('topic-1');
 
       expect(result).toHaveLength(1);
-      expect(result[0].noteId).toBe('note-1');
+      expect(result[0].id).toBe('note-1');
+      expect(result[0].title).toBe('Test Note');
+      expect(result[0].confidence).toBe(0.9);
     });
   });
 
