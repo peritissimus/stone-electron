@@ -334,19 +334,19 @@ export class NoteRepository implements INoteRepository {
   // ============================================================================
 
   async getEmbedding(noteId: string): Promise<number[] | null> {
-    const result = await this.deps.db
-      .select({ embedding: notes.embedding })
-      .from(notes)
-      .where(eq(notes.id, noteId))
-      .limit(1);
-
-    if (!result[0]?.embedding) {
-      return null;
-    }
-
-    // Embedding is stored as blob - convert to number array
     try {
-      const buffer = result[0].embedding as Buffer;
+      const result = await this.deps.db
+        .select({ embedding: notes.embedding })
+        .from(notes)
+        .where(eq(notes.id, noteId))
+        .limit(1);
+
+      if (!result[0]?.embedding || !(result[0].embedding instanceof Buffer)) {
+        return null;
+      }
+
+      // Embedding is stored as blob - convert to number array
+      const buffer = result[0].embedding;
       const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
       return Array.from(floats);
     } catch {
