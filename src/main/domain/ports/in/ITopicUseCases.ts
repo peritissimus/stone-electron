@@ -208,7 +208,7 @@ export interface IInitializeTopicsUseCase {
  * Aggregated topic use cases interface for DI container
  */
 export interface ITopicUseCases {
-  initialize(): Promise<void>;
+  initialize(): Promise<{ success: boolean; ready: boolean }>;
   getAllTopics(): Promise<
     Array<{
       id: string;

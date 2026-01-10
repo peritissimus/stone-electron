@@ -20,8 +20,8 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(TOPIC_CHANNELS.INITIALIZE, async () => {
     return handleRequest(
       async () => {
-        await topicUseCases.initialize();
-        return { success: true };
+        const result = await topicUseCases.initialize();
+        return result;
       },
       { channel: TOPIC_CHANNELS.INITIALIZE },
     );

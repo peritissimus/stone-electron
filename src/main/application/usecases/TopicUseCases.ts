@@ -57,9 +57,16 @@ export interface SimilarNote {
 class TopicUseCasesImpl implements ITopicUseCases {
   constructor(private deps: TopicUseCasesDeps) {}
 
-  async initialize(): Promise<void> {
-    await this.deps.embeddingService.initialize();
-    logger.info('[TopicUseCases] Embedding service initialized');
+  async initialize(): Promise<{ success: boolean; ready: boolean }> {
+    try {
+      await this.deps.embeddingService.initialize();
+      const ready = this.deps.embeddingService.isReady();
+      logger.info('[TopicUseCases] Embedding service initialized, ready:', ready);
+      return { success: true, ready };
+    } catch (error) {
+      logger.error('[TopicUseCases] Failed to initialize embedding service:', error);
+      return { success: false, ready: false };
+    }
   }
 
   async getAllTopics(): Promise<TopicDTO[]> {
