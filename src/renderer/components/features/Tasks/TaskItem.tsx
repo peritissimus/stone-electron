@@ -4,7 +4,8 @@
  * Implements: specs/components.ts#TodoItemProps
  */
 
-import { ArrowRight, Loader2, Circle } from 'lucide-react';
+import { memo } from 'react';
+import { ArrowRight, Circle } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
 import {
   DropdownMenu,
@@ -41,7 +42,7 @@ interface TaskItemProps {
   isToggling?: boolean;
 }
 
-export function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps) {
+export const TaskItem = memo(function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps) {
   const isDone = todo.state === 'done' || todo.state === 'canceled';
   const badgeColor = STATE_BADGE_COLORS[todo.state] || STATE_BADGE_COLORS.todo;
 
@@ -74,7 +75,7 @@ export function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps)
                   onClick={() => handleStateChange(state.key)}
                   className="gap-2"
                 >
-                  <Circle className={`w-2 h-2 ${state.key === todo.state ? 'fill-current' : ''}`} />
+                  <Circle size={8} weight={state.key === todo.state ? 'fill' : 'regular'} />
                   <span className={state.key === todo.state ? 'font-medium' : ''}>
                     {state.label}
                   </span>
@@ -90,7 +91,7 @@ export function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps)
           <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{todo.noteTitle}</p>
         )}
       </div>
-      <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+      <ArrowRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
     </div>
   );
-}
+});

@@ -197,5 +197,3 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
     </ModalLayout>
   );
 }
-
-export default GraphView;

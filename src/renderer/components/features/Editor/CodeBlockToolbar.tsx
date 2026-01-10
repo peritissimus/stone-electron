@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 
 /**
@@ -98,7 +98,7 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
         )}
         title={copied ? 'Copied!' : 'Copy code'}
       >
-        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? <Check size={14} /> : <Copy size={14} />}
       </button>
 
       {/* Language selector dropdown */}

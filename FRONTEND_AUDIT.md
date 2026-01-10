@@ -101,6 +101,87 @@ Per architecture rules, error handling should live in hooks, not components. Com
 - Refactored `FindReplaceModal.tsx` to use base UI primitives and named export
 - Added `FindReplace/index.ts` barrel export
 
+### Store Import Migration (16 files migrated)
+
+**Created wrapper hooks:**
+- `useUI()` - main hook + granular: `useSidebarUI`, `useEditorUI`, `useNoteListUI`, `useTheme`, `useModals`
+- `useMLStatus()` - for mlStatusStore access + `useMLServiceState`, `useMLOperation`
+- `useShortcuts()` - for shortcutsStore access + `useShortcut`, `useShortcutDisplay`, `useShortcutEditor`
+
+**Migrated components:**
+- `FindReplaceModal.tsx` → `useModals`
+- `FontPreview.tsx`, `FontSettings.tsx` → `useTheme`
+- `NoteEditorContent.tsx`, `NoteEditorHeader.tsx` → `useEditorUI`, `useSidebarUI`
+- `SettingsModal.tsx` → `useModals`, `useTheme`, `useEditorUI`
+- `LayoutContainer.tsx` → `useModals`
+- `MLStatusIndicator.tsx` → `useMLStatus`
+- `KeyboardShortcutsSettings.tsx` → `useShortcuts`
+- `CommandCenter.tsx` → `useModals` (keeps `.getState()` for callbacks)
+- `NoteList.tsx` → `useNoteListUI`
+- `TopicsPage.tsx`, `GraphPage.tsx`, `TasksPage.tsx` → `useSidebarUI`
+- `HomePage.tsx` → `useSidebarUI`
+- `MainLayout.tsx` → `useUI`
+- `Sidebar.tsx` → `useUI`
+- `NoteEditor.tsx` → `useEditorUI` (keeps `.getState()` for callbacks)
+
+### Quick Fixes
+
+- **Removed default export** from `GraphView.tsx` (now uses named export only)
+- **Removed debug `console.log`** from `TopicsPage.tsx`
+
+### React.memo on List Items (P0 Performance)
+
+- `TopicsPage.tsx` → memoized `TopicRow`, `NoteRow`
+- `HomePage.tsx` → memoized `RecentNote`
+- `TaskItem.tsx` → memoized `TaskItem`
+
+### Icon Library Consolidation (P1)
+
+Migrated all feature components from lucide-react to phosphor-react:
+- `TaskSection.tsx` - ChevronRight → CaretRight
+- `TaskItem.tsx` - ArrowRight, Circle from phosphor
+- `TodoList.tsx` - CheckSquare, Square, ArrowRight from phosphor
+- `TasksPage.tsx` - CheckSquare, MagnifyingGlass, FolderOpen, Stack, Funnel from phosphor
+- `DraftRecoveryDialog.tsx` - FileText, X, CheckCircle from phosphor
+- `CodeBlockToolbar.tsx` - Copy, Check from phosphor
+- `TopicsPage.tsx` - MagnifyingGlass, Plus, CaretRight, X, FileText, ArrowsClockwise
+- `GraphPage.tsx` - GitFork, CaretRight from phosphor
+- `HomePage.tsx` - FileText, BookOpen, ArrowRight, Sparkle from phosphor
+
+Note: Base UI components (shadcn/ui) still use lucide-react as designed.
+
+### Inline Handler Extraction (P0)
+
+Extracted 25+ inline handlers in `EditorToolbar.tsx` to memoized callbacks using `useCallback`:
+- History: `handleUndo`, `handleRedo`
+- Text formatting: `handleToggleBold`, `handleToggleItalic`, `handleToggleStrike`, `handleToggleCode`, `handleToggleHighlight`
+- Headings: `handleToggleH1`, `handleToggleH2`, `handleToggleH3`
+- Lists: `handleToggleBulletList`, `handleToggleOrderedList`
+- Blocks: `handleToggleBlockquote`, `handleSetHorizontalRule`, `handleCodeBlockInsert`, `handleLanguageChange`
+- Tables: `handleInsertTable`, `handleAddRowBefore`, `handleAddRowAfter`, `handleAddColumnBefore`, `handleAddColumnAfter`, `handleDeleteRow`, `handleDeleteColumn`
+- Links: `handleInsertLink`, `handleLinkKeyDown`, `handleCancelLink`
+- Images: `handleInsertImage`, `handleImageKeyDown`, `handleCancelImage`
+- Memoized `isInTable` computed value with `useMemo`
+
+### useMemo for Expensive Computations (P2)
+
+Added `useMemo` to `HomePage.tsx` for:
+- `activeWorkspace` - find on workspaces array
+- `recentNotes` - sort + slice on notes array
+- `journalFilename`, `journalTitle`, `todayDateString` - date computations
+- `todaysJournal` - find on notes array
+- `todayNotes` - filter + count on notes array
+
+Note: TodoList sorting happens inside async `loadTodos` callback, not on render - no useMemo needed.
+
+### Toast Notifications (Medium)
+
+Replaced all `alert()` calls with toast notifications:
+- Added `sonner` package for toast notifications
+- Added `Toaster` component to `App.tsx`
+- `LayoutContainer.tsx` - replaced sync failure alerts with `toast.error()`
+- `Sidebar.tsx` - replaced workspace creation error alert with `toast.error()`
+
 ---
 
 # Part 2: Performance Inefficiencies

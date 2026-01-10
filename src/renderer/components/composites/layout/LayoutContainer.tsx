@@ -4,6 +4,7 @@
 
 import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
+import { toast } from 'sonner';
 import { useModals } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Heading3 } from '@renderer/components/base/ui/text';
@@ -82,11 +83,11 @@ export function LayoutContainer({
                     }
                   } else {
                     logger.error('Sync failed', res.error);
-                    alert(res.error?.message || 'Sync failed');
+                    toast.error(res.error?.message || 'Sync failed');
                   }
                 } catch (e) {
                   logger.error('Sync error', e);
-                  alert('Sync failed');
+                  toast.error('Sync failed');
                 }
               }}
             />

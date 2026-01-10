@@ -4,8 +4,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
-import { GitFork } from 'lucide-react';
-import { CaretRight } from 'phosphor-react';
+import { GitFork, CaretRight } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
@@ -158,7 +157,7 @@ export function GraphPage() {
               onClick={toggleSidebar}
             />
           )}
-          <GitFork className="w-4 h-4 text-muted-foreground" />
+          <GitFork size={16} className="text-muted-foreground" />
           <span className="text-sm font-medium">Graph</span>
           <div className="flex-1" />
           <Skeleton className="w-24 h-4 rounded" />
@@ -187,7 +186,7 @@ export function GraphPage() {
             onClick={toggleSidebar}
           />
         )}
-        <GitFork className="w-4 h-4 text-muted-foreground" />
+        <GitFork size={16} className="text-muted-foreground" />
         <span className="text-sm font-medium">Graph</span>
         <div className="flex-1" />
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -206,7 +205,7 @@ export function GraphPage() {
       <div ref={containerRef} className="flex-1 overflow-hidden">
         {graphData.nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <GitFork className="w-12 h-12 text-muted-foreground/30 mb-4" />
+            <GitFork size={48} className="text-muted-foreground/30 mb-4" />
             <p className="text-lg font-medium">No notes to display</p>
             <p className="text-sm mt-1">Create some notes and link them with [[note name]]</p>
           </div>
