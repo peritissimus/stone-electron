@@ -16,6 +16,7 @@ export interface HandleIpcRequestOptions {
   defaultCode?: string;
   errorMap?: Record<string, string>;
   mapErrorCode?: (error: unknown) => string | undefined;
+  context?: Record<string, unknown>;
 }
 
 const resolveErrorCode = (
@@ -36,15 +37,40 @@ const resolveErrorCode = (
 
 export async function handleIpcRequest<T>(
   fn: () => Promise<T>,
-  { loggerPrefix, defaultCode = 'INTERNAL_ERROR', errorMap, mapErrorCode }: HandleIpcRequestOptions,
+  {
+    loggerPrefix,
+    defaultCode = 'INTERNAL_ERROR',
+    errorMap,
+    mapErrorCode,
+    context = {},
+  }: HandleIpcRequestOptions,
 ): Promise<IPCResponse<T>> {
+  const startedAt = Date.now();
   try {
     const data = await fn();
+    const durationMs = Date.now() - startedAt;
+    logger.info('[IPC] request', {
+      event: 'ipc_request',
+      source: loggerPrefix,
+      success: true,
+      durationMs,
+      ...context,
+    });
     return { success: true, data };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     const code = resolveErrorCode(error, defaultCode, errorMap, mapErrorCode);
-    logger.error(`[IPC] ${loggerPrefix} error:`, { code, message });
+    const durationMs = Date.now() - startedAt;
+    logger.error('[IPC] request', {
+      event: 'ipc_request',
+      source: loggerPrefix,
+      success: false,
+      durationMs,
+      code,
+      message,
+      errorType: error instanceof Error ? error.name : 'Unknown',
+      ...context,
+    });
     return { success: false, error: { code, message } };
   }
 }

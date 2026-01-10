@@ -25,42 +25,55 @@ export class TagIPC {
 
   registerHandlers(): void {
     const { tagUseCases } = this.deps;
+    const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+      handleIpcRequest(fn, {
+        loggerPrefix: 'TagIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        errorMap: {
+          TagValidationError: 'VALIDATION_ERROR',
+          TagNotFoundError: 'TAG_NOT_FOUND',
+        },
+        context,
+      });
 
     ipcMain.handle(TAG_CHANNELS.CREATE, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await tagUseCases.createTag.execute(request);
           return result.tag;
         },
-        { loggerPrefix: TAG_CHANNELS.CREATE, errorMap: { TagValidationError: 'VALIDATION_ERROR' } },
+        { channel: TAG_CHANNELS.CREATE, tagId: request?.id, name: request?.name },
       );
     });
 
     ipcMain.handle(TAG_CHANNELS.DELETE, async (_event, request: { id: string } | string) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const id = typeof request === 'string' ? request : request.id;
           await tagUseCases.deleteTag.execute({ id });
           return { success: true };
         },
-        { loggerPrefix: TAG_CHANNELS.DELETE, errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' } },
+        {
+          channel: TAG_CHANNELS.DELETE,
+          tagId: typeof request === 'string' ? request : request.id,
+        },
       );
     });
 
     ipcMain.handle(TAG_CHANNELS.GET_ALL, async () => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await tagUseCases.listTags.execute();
           return { tags: result.tags };
         },
-        { loggerPrefix: TAG_CHANNELS.GET_ALL },
+        { channel: TAG_CHANNELS.GET_ALL },
       );
     });
 
     ipcMain.handle(
       TAG_CHANNELS.ADD_TO_NOTE,
       async (_event, request: { noteId: string; tagId: string; tagIds?: string[] }) => {
-        return handleIpcRequest(
+        return handleRequest(
           async () => {
             // Handle both single tagId and array of tagIds
             const tagIds = request.tagIds || [request.tagId];
@@ -71,10 +84,7 @@ export class TagIPC {
             const result = await tagUseCases.listTags.execute();
             return { tags: result.tags };
           },
-          {
-            loggerPrefix: TAG_CHANNELS.ADD_TO_NOTE,
-            errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' },
-          },
+          { channel: TAG_CHANNELS.ADD_TO_NOTE, noteId: request.noteId, tagIds: request.tagIds ?? [request.tagId] },
         );
       },
     );
@@ -82,7 +92,7 @@ export class TagIPC {
     ipcMain.handle(
       TAG_CHANNELS.REMOVE_FROM_NOTE,
       async (_event, request: { noteId: string; tagId: string }) => {
-        return handleIpcRequest(
+        return handleRequest(
           async () => {
             await tagUseCases.removeTagFromNote.execute({
               noteId: request.noteId,
@@ -90,10 +100,7 @@ export class TagIPC {
             });
             return { success: true };
           },
-          {
-            loggerPrefix: TAG_CHANNELS.REMOVE_FROM_NOTE,
-            errorMap: { TagNotFoundError: 'TAG_NOT_FOUND' },
-          },
+          { channel: TAG_CHANNELS.REMOVE_FROM_NOTE, noteId: request.noteId, tagId: request.tagId },
         );
       },
     );

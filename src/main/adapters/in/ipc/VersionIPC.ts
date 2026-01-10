@@ -22,71 +22,80 @@ const VERSION_CHANNELS = [
 
 export function registerVersionHandlers(deps: VersionIPCDeps): void {
   const { versionUseCases, noteUseCases } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>) =>
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, {
       loggerPrefix: 'VersionIPC',
       defaultCode: 'INTERNAL_ERROR',
       errorMap: { VersionNotFoundError: 'VERSION_NOT_FOUND' },
+      context,
     });
 
   ipcMain.handle(
     NOTE_CHANNELS.GET_VERSIONS,
     async (_, { id, noteId }: { id?: string; noteId?: string }) => {
-      return handleRequest(async () => {
-        const resolvedNoteId = noteId ?? id ?? '';
-        logger.info('[IPC] notes:getVersions', { noteId: resolvedNoteId });
-        const versions = await versionUseCases.getVersions.execute(resolvedNoteId);
-        return {
-          versions: versions.map((v) => ({
-            id: v.id,
-            noteId: v.noteId,
-            versionNumber: v.versionNumber,
-            title: v.title,
-            contentPreview: v.content.substring(0, 200),
-            createdAt: v.createdAt.toISOString(),
-            sizeBytes: new Blob([v.content]).size,
-          })),
-        };
-      });
+      return handleRequest(
+        async () => {
+          const resolvedNoteId = noteId ?? id ?? '';
+          const versions = await versionUseCases.getVersions.execute(resolvedNoteId);
+          return {
+            versions: versions.map((v) => ({
+              id: v.id,
+              noteId: v.noteId,
+              versionNumber: v.versionNumber,
+              title: v.title,
+              contentPreview: v.content.substring(0, 200),
+              createdAt: v.createdAt.toISOString(),
+              sizeBytes: new Blob([v.content]).size,
+            })),
+          };
+        },
+        { channel: NOTE_CHANNELS.GET_VERSIONS, noteId: noteId ?? id },
+      );
     },
   );
 
   ipcMain.handle(NOTE_CHANNELS.GET_VERSION, async (_event, versionId: string) => {
-    return handleRequest(async () => {
-      logger.info('[IPC] notes:getVersion', { versionId });
-      const version = await versionUseCases.getVersion.execute(versionId);
-      if (!version) {
-        const error = new Error('Version not found');
-        error.name = 'VersionNotFoundError';
-        throw error;
-      }
-      return {
-        ...version,
-        createdAt: version.createdAt.toISOString(),
-      };
-    });
+    return handleRequest(
+      async () => {
+        const version = await versionUseCases.getVersion.execute(versionId);
+        if (!version) {
+          const error = new Error('Version not found');
+          error.name = 'VersionNotFoundError';
+          throw error;
+        }
+        return {
+          ...version,
+          createdAt: version.createdAt.toISOString(),
+        };
+      },
+      { channel: NOTE_CHANNELS.GET_VERSION, versionId },
+    );
   });
 
   ipcMain.handle(NOTE_CHANNELS.CREATE_VERSION, async (_event, noteId: string) => {
-    return handleRequest(async () => {
-      logger.info('[IPC] notes:createVersion', { noteId });
-      const version = await versionUseCases.createVersion.execute(noteId);
-      return {
-        ...version,
-        createdAt: version.createdAt.toISOString(),
-      };
-    });
+    return handleRequest(
+      async () => {
+        const version = await versionUseCases.createVersion.execute(noteId);
+        return {
+          ...version,
+          createdAt: version.createdAt.toISOString(),
+        };
+      },
+      { channel: NOTE_CHANNELS.CREATE_VERSION, noteId },
+    );
   });
 
   ipcMain.handle(
     NOTE_CHANNELS.RESTORE_VERSION,
     async (_, { id, versionId }: { id: string; versionId: string }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] notes:restoreVersion', { noteId: id, versionId });
-        await versionUseCases.restoreVersion.execute(id, versionId);
-        const result = await noteUseCases.getNote.execute({ id, includeContent: false });
-        return result.note;
-      });
+      return handleRequest(
+        async () => {
+          await versionUseCases.restoreVersion.execute(id, versionId);
+          const result = await noteUseCases.getNote.execute({ id, includeContent: false });
+          return result.note;
+        },
+        { channel: NOTE_CHANNELS.RESTORE_VERSION, noteId: id, versionId },
+      );
     },
   );
 

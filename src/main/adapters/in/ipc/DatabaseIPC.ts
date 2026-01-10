@@ -15,37 +15,36 @@ export interface DatabaseIPCDeps {
 
 export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
   const { getDatabaseStatus, vacuumDatabase, checkDatabaseIntegrity } = deps;
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(DATABASE_CHANNELS.GET_STATUS, async () => {
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
-        logger.info('[IPC] db:getStatus');
         const status = await getDatabaseStatus();
         return status;
       },
-      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+      { channel: DATABASE_CHANNELS.GET_STATUS },
     );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.VACUUM, async () => {
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
-        logger.info('[IPC] db:vacuum');
         await vacuumDatabase();
         return { success: true };
       },
-      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+      { channel: DATABASE_CHANNELS.VACUUM },
     );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.CHECK_INTEGRITY, async () => {
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
-        logger.info('[IPC] db:checkIntegrity');
         const result = await checkDatabaseIntegrity();
         return result;
       },
-      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+      { channel: DATABASE_CHANNELS.CHECK_INTEGRITY },
     );
   });
 

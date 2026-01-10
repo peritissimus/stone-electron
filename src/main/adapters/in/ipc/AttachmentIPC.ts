@@ -14,8 +14,8 @@ export interface AttachmentIPCDeps {
 
 export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
   const { attachmentUseCases } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'AttachmentIPC', defaultCode: 'INTERNAL_ERROR' });
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'AttachmentIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(
     ATTACHMENT_CHANNELS.ADD,
@@ -23,38 +23,45 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
       _,
       { noteId, filePath, filename }: { noteId: string; filePath: string; filename?: string },
     ) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] attachments:add', { noteId, filePath });
-        const attachment = await attachmentUseCases.addAttachment(noteId, filePath, filename);
-        return {
-          ...attachment,
-          createdAt: attachment.createdAt.toISOString(),
-        };
-      });
+      return handleRequest(
+        async () => {
+          const attachment = await attachmentUseCases.addAttachment(noteId, filePath, filename);
+          return {
+            ...attachment,
+            createdAt: attachment.createdAt.toISOString(),
+          };
+        },
+        { channel: ATTACHMENT_CHANNELS.ADD, noteId, filePath, filename },
+      );
     },
   );
 
   ipcMain.handle(
     ATTACHMENT_CHANNELS.DELETE,
     async (_, { id, deleteFile }: { id: string; deleteFile?: boolean }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] attachments:delete', { attachmentId: id, deleteFile });
-        await attachmentUseCases.deleteAttachment(id, deleteFile);
-        return { success: true };
-      });
+      return handleRequest(
+        async () => {
+          await attachmentUseCases.deleteAttachment(id, deleteFile);
+          return { success: true };
+        },
+        { channel: ATTACHMENT_CHANNELS.DELETE, attachmentId: id, deleteFile },
+      );
     },
   );
 
   ipcMain.handle(ATTACHMENT_CHANNELS.GET_ALL, async (_, { noteId }: { noteId: string }) => {
-    return handleRequest(async () => {
-      const attachments = await attachmentUseCases.getAttachments(noteId);
-      return {
-        attachments: attachments.map((a) => ({
-          ...a,
-          createdAt: a.createdAt.toISOString(),
-        })),
-      };
-    });
+    return handleRequest(
+      async () => {
+        const attachments = await attachmentUseCases.getAttachments(noteId);
+        return {
+          attachments: attachments.map((a) => ({
+            ...a,
+            createdAt: a.createdAt.toISOString(),
+          })),
+        };
+      },
+      { channel: ATTACHMENT_CHANNELS.GET_ALL, noteId },
+    );
   });
 
   ipcMain.handle(
@@ -68,17 +75,24 @@ export function registerAttachmentHandlers(deps: AttachmentIPCDeps): void {
         mimeType,
       }: { noteId: string; imageData: string; filename: string; mimeType?: string },
     ) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] attachments:uploadImage', { noteId, filename });
-        const result = await attachmentUseCases.uploadImage(noteId, imageData, filename, mimeType);
-        return {
-          url: result.markdownLink,
-          attachment: {
-            ...result.attachment,
-            createdAt: result.attachment.createdAt.toISOString(),
-          },
-        };
-      });
+      return handleRequest(
+        async () => {
+          const result = await attachmentUseCases.uploadImage(
+            noteId,
+            imageData,
+            filename,
+            mimeType,
+          );
+          return {
+            url: result.markdownLink,
+            attachment: {
+              ...result.attachment,
+              createdAt: result.attachment.createdAt.toISOString(),
+            },
+          };
+        },
+        { channel: ATTACHMENT_CHANNELS.UPLOAD_IMAGE, noteId, filename },
+      );
     },
   );
 

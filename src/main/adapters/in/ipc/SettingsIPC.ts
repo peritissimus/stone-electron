@@ -14,31 +14,37 @@ export interface SettingsIPCDeps {
 
 export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
   const { settingsUseCases } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'SettingsIPC', defaultCode: 'INTERNAL_ERROR' });
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'SettingsIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(SETTINGS_CHANNELS.GET, async (_event, params: { key: string }) => {
-    return handleRequest(async () => {
-      logger.info(`[IPC] settings:get key=${params.key}`);
-      const result = await settingsUseCases.get(params.key);
-      return result;
-    });
+    return handleRequest(
+      async () => {
+        const result = await settingsUseCases.get(params.key);
+        return result;
+      },
+      { channel: SETTINGS_CHANNELS.GET, key: params.key },
+    );
   });
 
   ipcMain.handle(SETTINGS_CHANNELS.SET, async (_event, params: { key: string; value: string }) => {
-    return handleRequest(async () => {
-      logger.info(`[IPC] settings:set key=${params.key}`);
-      await settingsUseCases.set(params.key, params.value);
-      return { success: true };
-    });
+    return handleRequest(
+      async () => {
+        await settingsUseCases.set(params.key, params.value);
+        return { success: true };
+      },
+      { channel: SETTINGS_CHANNELS.SET, key: params.key },
+    );
   });
 
   ipcMain.handle(SETTINGS_CHANNELS.GET_ALL, async () => {
-    return handleRequest(async () => {
-      logger.info('[IPC] settings:getAll');
-      const result = await settingsUseCases.getAll();
-      return result;
-    });
+    return handleRequest(
+      async () => {
+        const result = await settingsUseCases.getAll();
+        return result;
+      },
+      { channel: SETTINGS_CHANNELS.GET_ALL },
+    );
   });
 
   logger.info('[IPC] Settings handlers registered');
