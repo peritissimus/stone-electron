@@ -68,7 +68,7 @@ class MLStatusService {
    */
   setServiceStatus(
     status: MLServiceStatus,
-    options?: { error?: string; model?: { name: string; dims: number } }
+    options?: { error?: string; model?: { name: string; dims: number } },
   ): void {
     this.serviceState = {
       status,
@@ -89,7 +89,10 @@ class MLStatusService {
   /**
    * Start a new operation
    */
-  startOperation(type: MLOperationType, options?: { totalItems?: number; message?: string }): string {
+  startOperation(
+    type: MLOperationType,
+    options?: { totalItems?: number; message?: string },
+  ): string {
     const id = nanoid();
 
     this.currentOperation = {

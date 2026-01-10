@@ -10,25 +10,27 @@ const formatTimestamp = () => {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 };
 
-const createLogFn = (level: LogLevel) => (...args: unknown[]) => {
-  const timestamp = formatTimestamp();
-  const prefix = `${timestamp} ›`;
+const createLogFn =
+  (level: LogLevel) =>
+  (...args: unknown[]) => {
+    const timestamp = formatTimestamp();
+    const prefix = `${timestamp} ›`;
 
-  switch (level) {
-    case 'debug':
-      console.debug(prefix, ...args);
-      break;
-    case 'info':
-      console.info(prefix, ...args);
-      break;
-    case 'warn':
-      console.warn(prefix, ...args);
-      break;
-    case 'error':
-      console.error(prefix, ...args);
-      break;
-  }
-};
+    switch (level) {
+      case 'debug':
+        console.debug(prefix, ...args);
+        break;
+      case 'info':
+        console.info(prefix, ...args);
+        break;
+      case 'warn':
+        console.warn(prefix, ...args);
+        break;
+      case 'error':
+        console.error(prefix, ...args);
+        break;
+    }
+  };
 
 export const logger = {
   debug: createLogFn('debug'),

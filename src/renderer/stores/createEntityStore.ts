@@ -77,9 +77,7 @@ interface StoreOptions<T extends BaseEntity> {
  *   }
  * });
  */
-export function createSingleSelectStore<T extends BaseEntity>(
-  options: StoreOptions<T> = {}
-) {
+export function createSingleSelectStore<T extends BaseEntity>(options: StoreOptions<T> = {}) {
   const { sortFn } = options;
 
   return create<SingleSelectState<T>>((set, get) => ({
@@ -98,9 +96,7 @@ export function createSingleSelectStore<T extends BaseEntity>(
 
     updateItem: (id, updates) =>
       set((state) => ({
-        items: state.items.map((item) =>
-          item.id === id ? { ...item, ...updates } : item
-        ),
+        items: state.items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
       })),
 
     deleteItem: (id) =>
@@ -129,9 +125,7 @@ export function createSingleSelectStore<T extends BaseEntity>(
  *   sortFn: (a, b) => a.name.localeCompare(b.name)
  * });
  */
-export function createMultiSelectStore<T extends BaseEntity>(
-  options: StoreOptions<T> = {}
-) {
+export function createMultiSelectStore<T extends BaseEntity>(options: StoreOptions<T> = {}) {
   const { sortFn } = options;
 
   return create<MultiSelectState<T>>((set, get) => ({
@@ -150,9 +144,7 @@ export function createMultiSelectStore<T extends BaseEntity>(
 
     updateItem: (id, updates) =>
       set((state) => ({
-        items: state.items.map((item) =>
-          item.id === id ? { ...item, ...updates } : item
-        ),
+        items: state.items.map((item) => (item.id === id ? { ...item, ...updates } : item)),
       })),
 
     deleteItem: (id) =>

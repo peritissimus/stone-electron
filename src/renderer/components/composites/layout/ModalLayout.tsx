@@ -32,27 +32,16 @@ export function ModalLayout({
         className={`rounded-xl shadow-2xl ${maxWidth} w-full max-h-[90vh] overflow-hidden border border-border bg-popover ${className}`}
       >
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50"
-        >
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50">
           <span className="text-sm font-medium">{title}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            aria-label="Close settings"
-          >
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close settings">
             <X size={18} />
           </Button>
         </div>
 
         <div className="flex h-[600px]">
           {/* Optional Sidebar */}
-          {sidebar && (
-            <div className="w-48 border-r border-border p-4 bg-muted/30">
-              {sidebar}
-            </div>
-          )}
+          {sidebar && <div className="w-48 border-r border-border p-4 bg-muted/30">{sidebar}</div>}
 
           {/* Content */}
           <div className={`flex-1 p-6 overflow-y-auto ${sidebar ? '' : 'max-w-none'}`}>

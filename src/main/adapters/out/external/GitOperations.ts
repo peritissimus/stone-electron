@@ -5,12 +5,7 @@
  */
 
 import { simpleGit, SimpleGit } from 'simple-git';
-import type {
-  IGitOperations,
-  GitStatus,
-  GitCommit,
-  GitSyncResult,
-} from '../../../domain';
+import type { IGitOperations, GitStatus, GitCommit, GitSyncResult } from '../../../domain';
 
 export class GitOperations implements IGitOperations {
   private getGit(workspacePath: string): SimpleGit {
@@ -118,7 +113,7 @@ export class GitOperations implements IGitOperations {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Pull failed'
+        error: error instanceof Error ? error.message : 'Pull failed',
       };
     }
   }
@@ -131,7 +126,7 @@ export class GitOperations implements IGitOperations {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Push failed'
+        error: error instanceof Error ? error.message : 'Push failed',
       };
     }
   }

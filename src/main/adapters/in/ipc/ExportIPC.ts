@@ -39,7 +39,9 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
         logger.info('[IPC] notes:exportPdf', { noteId: id, options });
         const result = await exportUseCases.exportPdf.execute(id, options);
         return {
-          content: Buffer.isBuffer(result.content) ? result.content.toString('base64') : result.content,
+          content: Buffer.isBuffer(result.content)
+            ? result.content.toString('base64')
+            : result.content,
           filename: result.filename,
           mimeType: result.mimeType,
           isBase64: Buffer.isBuffer(result.content),
@@ -67,7 +69,9 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
 }
 
 export function unregisterExportHandlers(): void {
-  [NOTE_CHANNELS.EXPORT_HTML, NOTE_CHANNELS.EXPORT_PDF, NOTE_CHANNELS.EXPORT_MARKDOWN].forEach((channel) => {
-    ipcMain.removeHandler(channel);
-  });
+  [NOTE_CHANNELS.EXPORT_HTML, NOTE_CHANNELS.EXPORT_PDF, NOTE_CHANNELS.EXPORT_MARKDOWN].forEach(
+    (channel) => {
+      ipcMain.removeHandler(channel);
+    },
+  );
 }

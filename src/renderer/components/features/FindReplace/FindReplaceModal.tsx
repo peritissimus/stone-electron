@@ -81,7 +81,7 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
         handleFindPrevious();
       }
     },
-    [editor]
+    [editor],
   );
 
   const handleClose = useCallback(() => {

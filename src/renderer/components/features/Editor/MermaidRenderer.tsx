@@ -210,7 +210,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
         suppressContentEditableWarning
         className={cn(
           'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none',
-          isStateDiagram && 'mermaid-state-diagram'
+          isStateDiagram && 'mermaid-state-diagram',
         )}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -240,7 +240,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
               'px-4 py-2.5 text-sm rounded-xl border-0',
               'text-foreground bg-overlay',
               'focus:outline-none',
-              'text-center font-medium'
+              'text-center font-medium',
             )}
             style={{
               width: editing.width,

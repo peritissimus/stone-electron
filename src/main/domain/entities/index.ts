@@ -17,6 +17,16 @@ export { AttachmentEntity, type AttachmentProps, type CreateAttachmentInput } fr
 
 export { TopicEntity, type TopicProps, type CreateTopicInput, type TopicWithCount } from './Topic';
 
-export { VersionEntity, type VersionProps, type CreateVersionInput, type VersionSummary } from './Version';
+export {
+  VersionEntity,
+  type VersionProps,
+  type CreateVersionInput,
+  type VersionSummary,
+} from './Version';
 
-export { NoteLinkEntity, type NoteLinkProps, type CreateNoteLinkInput, type LinkCount } from './NoteLink';
+export {
+  NoteLinkEntity,
+  type NoteLinkProps,
+  type CreateNoteLinkInput,
+  type LinkCount,
+} from './NoteLink';

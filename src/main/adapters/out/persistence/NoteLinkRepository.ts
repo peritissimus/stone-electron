@@ -82,47 +82,28 @@ export class NoteLinkRepository implements INoteLinkRepository {
   async delete(sourceId: string, targetId: string): Promise<void> {
     await this.deps.db
       .delete(noteLinks)
-      .where(
-        and(
-          eq(noteLinks.sourceNoteId, sourceId),
-          eq(noteLinks.targetNoteId, targetId)
-        )
-      );
+      .where(and(eq(noteLinks.sourceNoteId, sourceId), eq(noteLinks.targetNoteId, targetId)));
   }
 
   async deleteFromNote(noteId: string): Promise<void> {
-    await this.deps.db
-      .delete(noteLinks)
-      .where(eq(noteLinks.sourceNoteId, noteId));
+    await this.deps.db.delete(noteLinks).where(eq(noteLinks.sourceNoteId, noteId));
   }
 
   async deleteToNote(noteId: string): Promise<void> {
-    await this.deps.db
-      .delete(noteLinks)
-      .where(eq(noteLinks.targetNoteId, noteId));
+    await this.deps.db.delete(noteLinks).where(eq(noteLinks.targetNoteId, noteId));
   }
 
   async deleteAllForNote(noteId: string): Promise<void> {
     await this.deps.db
       .delete(noteLinks)
-      .where(
-        or(
-          eq(noteLinks.sourceNoteId, noteId),
-          eq(noteLinks.targetNoteId, noteId)
-        )
-      );
+      .where(or(eq(noteLinks.sourceNoteId, noteId), eq(noteLinks.targetNoteId, noteId)));
   }
 
   async exists(sourceId: string, targetId: string): Promise<boolean> {
     const result = await this.deps.db
       .select()
       .from(noteLinks)
-      .where(
-        and(
-          eq(noteLinks.sourceNoteId, sourceId),
-          eq(noteLinks.targetNoteId, targetId)
-        )
-      )
+      .where(and(eq(noteLinks.sourceNoteId, sourceId), eq(noteLinks.targetNoteId, targetId)))
       .limit(1);
     return result.length > 0;
   }

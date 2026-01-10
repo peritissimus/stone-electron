@@ -26,10 +26,7 @@ export interface ShortcutConfig {
  * @param shortcuts - Array of shortcut configurations
  * @param enabled - Whether shortcuts are enabled (default: true)
  */
-export const useKeyboardShortcuts = (
-  shortcuts: ShortcutConfig[],
-  enabled: boolean = true
-) => {
+export const useKeyboardShortcuts = (shortcuts: ShortcutConfig[], enabled: boolean = true) => {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (!enabled) return;
@@ -45,7 +42,8 @@ export const useKeyboardShortcuts = (
 
       // Allow specific shortcuts in textareas (save, mode toggle)
       const isSaveShortcut = event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey);
-      const isModeToggle = event.key.toLowerCase() === 'm' && (event.metaKey || event.ctrlKey) && event.shiftKey;
+      const isModeToggle =
+        event.key.toLowerCase() === 'm' && (event.metaKey || event.ctrlKey) && event.shiftKey;
       const isAllowedInTextarea = isSaveShortcut || isModeToggle;
 
       if (isInput && !isEditor) {
@@ -75,7 +73,7 @@ export const useKeyboardShortcuts = (
         }
       }
     },
-    [shortcuts, enabled]
+    [shortcuts, enabled],
   );
 
   useEffect(() => {
@@ -111,7 +109,7 @@ export const formatShortcut = (
   key: string,
   meta: boolean = false,
   shift: boolean = false,
-  alt: boolean = false
+  alt: boolean = false,
 ): string => {
   const parts: string[] = [];
 

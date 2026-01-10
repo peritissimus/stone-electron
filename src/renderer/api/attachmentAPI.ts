@@ -19,17 +19,13 @@ export const attachmentAPI = {
   /**
    * Add an attachment to a note
    */
-  add: (
-    noteId: string,
-    filePath: string
-  ): Promise<IpcResponse<Attachment>> =>
+  add: (noteId: string, filePath: string): Promise<IpcResponse<Attachment>> =>
     invokeIpc(ATTACHMENT_CHANNELS.ADD, { noteId, filePath }),
 
   /**
    * Delete an attachment
    */
-  delete: (id: string): Promise<IpcResponse<void>> =>
-    invokeIpc(ATTACHMENT_CHANNELS.DELETE, { id }),
+  delete: (id: string): Promise<IpcResponse<void>> => invokeIpc(ATTACHMENT_CHANNELS.DELETE, { id }),
 
   /**
    * Upload an image and attach to note
@@ -37,7 +33,7 @@ export const attachmentAPI = {
   uploadImage: (
     noteId: string,
     imageData: string,
-    filename: string
+    filename: string,
   ): Promise<IpcResponse<{ url: string; attachment: Attachment }>> =>
     invokeIpc(ATTACHMENT_CHANNELS.UPLOAD_IMAGE, {
       noteId,

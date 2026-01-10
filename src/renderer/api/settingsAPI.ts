@@ -6,7 +6,11 @@
  */
 
 import { invokeIpc } from '@renderer/lib/ipc';
-import { SETTINGS_CHANNELS, DATABASE_CHANNELS, SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  SETTINGS_CHANNELS,
+  DATABASE_CHANNELS,
+  SYSTEM_CHANNELS,
+} from '@shared/constants/ipcChannels';
 import type {
   Settings,
   DatabaseStatus,
@@ -77,8 +81,7 @@ export const databaseAPI = {
   /**
    * Vacuum database (optimize)
    */
-  vacuum: (): Promise<IpcResponse<VacuumResult>> =>
-    invokeIpc(DATABASE_CHANNELS.VACUUM, {}),
+  vacuum: (): Promise<IpcResponse<VacuumResult>> => invokeIpc(DATABASE_CHANNELS.VACUUM, {}),
 
   /**
    * Check database integrity

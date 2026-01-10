@@ -20,7 +20,10 @@ export interface QuickCaptureUseCasesDeps {
 class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
   constructor(private deps: QuickCaptureUseCasesDeps) {}
 
-  async appendToJournal(content: string, workspaceId?: string): Promise<{ noteId: string; appended: boolean }> {
+  async appendToJournal(
+    content: string,
+    workspaceId?: string,
+  ): Promise<{ noteId: string; appended: boolean }> {
     const { noteRepository, workspaceRepository, fileStorage } = this.deps;
 
     // Get active workspace
@@ -43,7 +46,7 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
     // Look for existing journal note
     const notes = await noteRepository.findAll({ isDeleted: false });
     const journalNote = notes.find(
-      (n) => n.title === journalTitle && n.workspaceId === workspace.id
+      (n) => n.title === journalTitle && n.workspaceId === workspace.id,
     );
 
     const timestamp = today.toLocaleTimeString('en-US', {
@@ -57,7 +60,7 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
     if (journalNote && journalNote.filePath) {
       // Append to existing journal
       const absolutePath = path.join(workspace.folderPath, journalNote.filePath);
-      const existingContent = await fileStorage.read(absolutePath) || '';
+      const existingContent = (await fileStorage.read(absolutePath)) || '';
       await fileStorage.write(absolutePath, existingContent + entryContent);
 
       // Update timestamp - reconstruct entity and save

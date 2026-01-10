@@ -45,8 +45,7 @@ export interface LogseqTaskItemOptions {
 const inputRegex = /^\s*(\[([( |x])?\])\s$/;
 // Input rule for task items WITHOUT list marker (dash/asterisk)
 // Lines starting with "- TODO" should remain as regular list items
-const logseqMarkerInputRegex =
-  /^\s*(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s$/i;
+const logseqMarkerInputRegex = /^\s*(TODO|DOING|DONE|WAITING|HOLD|CANCELED|CANCELLED|IDEA)\s$/i;
 
 const getStateOption = (options: LogseqTaskItemOptions, value?: string) => {
   if (!value) {
@@ -152,8 +151,7 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
         default: this.options.defaultState,
         keepOnSplit: false,
         parseHTML: (element) =>
-          normalizeStateValue(element.dataset.state) ??
-          this.options.defaultState,
+          normalizeStateValue(element.dataset.state) ?? this.options.defaultState,
         renderHTML: (attributes) => ({
           'data-state': attributes.state ?? this.options.defaultState,
         }),
@@ -430,7 +428,7 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
               state: stateValue,
               checked: isChecked,
             },
-            Fragment.from(state.schema.nodes.paragraph.create())
+            Fragment.from(state.schema.nodes.paragraph.create()),
           );
 
           const taskList = taskListType.create(null, taskItem);

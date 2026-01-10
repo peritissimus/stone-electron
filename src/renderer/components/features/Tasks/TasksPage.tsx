@@ -55,7 +55,7 @@ export function TasksPage() {
   const [folderFilter, setFolderFilter] = useState<string>('all');
   const [togglingTodoId, setTogglingTodoId] = useState<string | null>(null);
   const [visibleStates, setVisibleStates] = useState<Set<string>>(
-    () => new Set(TASK_STATES.filter((s) => !s.done).map((s) => s.key))
+    () => new Set(TASK_STATES.filter((s) => !s.done).map((s) => s.key)),
   );
   const [groupBy, setGroupBy] = useState<GroupByOption>('state');
   const { setActiveNote } = useNoteStore();
@@ -66,19 +66,22 @@ export function TasksPage() {
   // Debounce timer ref for auto-refresh
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const loadTodos = useCallback(async (showLoadingState = true) => {
-    try {
-      if (showLoadingState) setLoading(true);
-      const data = await getAllTodos();
-      if (Array.isArray(data)) {
-        setTodos(data);
+  const loadTodos = useCallback(
+    async (showLoadingState = true) => {
+      try {
+        if (showLoadingState) setLoading(true);
+        const data = await getAllTodos();
+        if (Array.isArray(data)) {
+          setTodos(data);
+        }
+      } catch (error) {
+        logger.error('[TasksPage] Failed to load todos', { error });
+      } finally {
+        if (showLoadingState) setLoading(false);
       }
-    } catch (error) {
-      logger.error('[TasksPage] Failed to load todos', { error });
-    } finally {
-      if (showLoadingState) setLoading(false);
-    }
-  }, [getAllTodos]);
+    },
+    [getAllTodos],
+  );
 
   // Initial load
   useEffect(() => {
@@ -133,8 +136,7 @@ export function TasksPage() {
     return todos.filter((todo) => {
       const matchesSearch =
         !searchQuery || todo.text.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFolder =
-        folderFilter === 'all' || todo.notePath?.startsWith(folderFilter);
+      const matchesFolder = folderFilter === 'all' || todo.notePath?.startsWith(folderFilter);
       const matchesState = visibleStates.has(todo.state);
       return matchesSearch && matchesFolder && matchesState;
     });
@@ -185,8 +187,7 @@ export function TasksPage() {
     const filtered = todos.filter((todo) => {
       const matchesSearch =
         !searchQuery || todo.text.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesFolder =
-        folderFilter === 'all' || todo.notePath?.startsWith(folderFilter);
+      const matchesFolder = folderFilter === 'all' || todo.notePath?.startsWith(folderFilter);
       return matchesSearch && matchesFolder;
     });
 
@@ -226,24 +227,30 @@ export function TasksPage() {
     setVisibleStates(new Set(TASK_STATES.filter((s) => !s.done).map((s) => s.key)));
   }, []);
 
-  const handleTodoClick = useCallback((todo: TodoItem) => {
-    logger.info('[TasksPage] Todo clicked', { noteId: todo.noteId, todoId: todo.id });
+  const handleTodoClick = useCallback(
+    (todo: TodoItem) => {
+      logger.info('[TasksPage] Todo clicked', { noteId: todo.noteId, todoId: todo.id });
 
-    // Set the selected file and active folder
-    if (todo.notePath) {
-      const normalizedPath = todo.notePath.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
-      setSelectedFile(normalizedPath);
+      // Set the selected file and active folder
+      if (todo.notePath) {
+        const normalizedPath = todo.notePath
+          .replace(/\\/g, '/')
+          .replace(/^\/+/, '')
+          .replace(/\/+$/, '');
+        setSelectedFile(normalizedPath);
 
-      const lastSlash = normalizedPath.lastIndexOf('/');
-      if (lastSlash > 0) {
-        const folderPath = normalizedPath.substring(0, lastSlash);
-        setActiveFolder(folderPath);
+        const lastSlash = normalizedPath.lastIndexOf('/');
+        if (lastSlash > 0) {
+          const folderPath = normalizedPath.substring(0, lastSlash);
+          setActiveFolder(folderPath);
+        }
       }
-    }
 
-    // Set the active note
-    setActiveNote(todo.noteId);
-  }, [setActiveNote, setSelectedFile, setActiveFolder]);
+      // Set the active note
+      setActiveNote(todo.noteId);
+    },
+    [setActiveNote, setSelectedFile, setActiveFolder],
+  );
 
   // Handle toggling task state
   const handleToggleTask = useCallback(
@@ -274,14 +281,18 @@ export function TasksPage() {
         if (!success) {
           // Revert on error
           setTodos((prev) =>
-            prev.map((t) => (t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t)),
+            prev.map((t) =>
+              t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t,
+            ),
           );
           logger.error('[TasksPage] Failed to update task state');
         }
       } catch (error) {
         // Revert on error
         setTodos((prev) =>
-          prev.map((t) => (t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t)),
+          prev.map((t) =>
+            t.id === todo.id ? { ...t, state: todo.state, checked: todo.checked } : t,
+          ),
         );
         logger.error('[TasksPage] Failed to toggle task', { error });
       } finally {
@@ -463,12 +474,7 @@ export function TasksPage() {
               <p className="text-sm text-muted-foreground/70">
                 Try adjusting your filters or search query
               </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={selectAllStates}
-                className="mt-4"
-              >
+              <Button variant="ghost" size="sm" onClick={selectAllStates} className="mt-4">
                 Show all states
               </Button>
             </div>

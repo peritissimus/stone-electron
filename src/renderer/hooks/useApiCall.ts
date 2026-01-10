@@ -59,7 +59,7 @@ export function useApiCall(store: StoreActions) {
     <TParams, TResult, TReturn = TResult>(
       fn: (params: TParams) => Promise<IpcResult<TResult>>,
       onSuccess?: (data: TResult, params: TParams) => TReturn | void,
-      options: ApiCallOptions = {}
+      options: ApiCallOptions = {},
     ) => {
       const { showLoading = false, logPrefix } = options;
 
@@ -106,7 +106,7 @@ export function useApiCall(store: StoreActions) {
         }
       };
     },
-    [setLoading, setError]
+    [setLoading, setError],
   );
 
   /**
@@ -116,7 +116,7 @@ export function useApiCall(store: StoreActions) {
     <TParams>(
       fn: (params: TParams) => Promise<{ success: boolean; error?: string }>,
       onSuccess?: (params: TParams) => void,
-      options: ApiCallOptions = {}
+      options: ApiCallOptions = {},
     ) => {
       const { showLoading = false, logPrefix } = options;
 
@@ -162,7 +162,7 @@ export function useApiCall(store: StoreActions) {
         }
       };
     },
-    [setLoading, setError]
+    [setLoading, setError],
   );
 
   return {
@@ -177,7 +177,7 @@ export function useApiCall(store: StoreActions) {
 export function createIpcHandler<TParams, TResult>(
   channel: string,
   fallbackError: string,
-  logPrefix?: string
+  logPrefix?: string,
 ) {
   return async (params: TParams): Promise<IpcResult<TResult>> => {
     try {

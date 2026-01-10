@@ -52,7 +52,10 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.UPDATE,
-    async (_event, { id, ...data }: { id: string; name?: string; description?: string; color?: string }) => {
+    async (
+      _event,
+      { id, ...data }: { id: string; name?: string; description?: string; color?: string },
+    ) => {
       return handleRequest(async () => {
         logger.info('[IPC] topics:update', { id, data });
         const topic = await topicUseCases.updateTopic(id, data);
@@ -118,12 +121,15 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     });
   });
 
-  ipcMain.handle(TOPIC_CHANNELS.SEMANTIC_SEARCH, async (_event, { query, limit }: { query: string; limit?: number }) => {
-    return handleRequest(async () => {
-      const results = await topicUseCases.semanticSearch(query, limit);
-      return { results };
-    });
-  });
+  ipcMain.handle(
+    TOPIC_CHANNELS.SEMANTIC_SEARCH,
+    async (_event, { query, limit }: { query: string; limit?: number }) => {
+      return handleRequest(async () => {
+        const results = await topicUseCases.semanticSearch(query, limit);
+        return { results };
+      });
+    },
+  );
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_SIMILAR_NOTES,
@@ -152,7 +158,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
-    async (_event, { topicId, ...options }: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean }) => {
+    async (
+      _event,
+      {
+        topicId,
+        ...options
+      }: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean },
+    ) => {
       return handleRequest(async () => {
         logger.info('[IPC] topics:getNotesByTopic', { topicId, options });
         const notes = await topicUseCases.getNotesForTopic(topicId, options);
@@ -161,18 +173,21 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     },
   );
 
-  ipcMain.handle(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, async (_event, { noteId }: { noteId: string }) => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:getTopicsForNote', { noteId });
-      const topics = await topicUseCases.getTopicsForNote(noteId);
-      return {
-        topics: topics.map((t) => ({
-          ...t,
-          createdAt: t.createdAt.toISOString(),
-        })),
-      };
-    });
-  });
+  ipcMain.handle(
+    TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE,
+    async (_event, { noteId }: { noteId: string }) => {
+      return handleRequest(async () => {
+        logger.info('[IPC] topics:getTopicsForNote', { noteId });
+        const topics = await topicUseCases.getTopicsForNote(noteId);
+        return {
+          topics: topics.map((t) => ({
+            ...t,
+            createdAt: t.createdAt.toISOString(),
+          })),
+        };
+      });
+    },
+  );
 
   logger.info('[IPC] Topic handlers registered');
 }

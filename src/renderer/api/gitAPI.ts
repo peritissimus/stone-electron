@@ -88,6 +88,9 @@ export const gitAPI = {
   /**
    * Get recent commits
    */
-  getCommits: (workspaceId: string, limit?: number): Promise<IpcResponse<{ commits: GitCommit[] }>> =>
+  getCommits: (
+    workspaceId: string,
+    limit?: number,
+  ): Promise<IpcResponse<{ commits: GitCommit[] }>> =>
     invokeIpc(GIT_CHANNELS.GET_COMMITS, { workspaceId, limit }),
 };

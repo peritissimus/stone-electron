@@ -32,14 +32,7 @@ export const ListContainer = React.forwardRef<HTMLDivElement, ListContainerProps
 
     if (viewMode === 'list') {
       return (
-        <div
-          ref={ref}
-          className={cn(
-            'divide-y divide-border',
-            className
-          )}
-          {...props}
-        >
+        <div ref={ref} className={cn('divide-y divide-border', className)} {...props}>
           {children}
         </div>
       );
@@ -53,13 +46,13 @@ export const ListContainer = React.forwardRef<HTMLDivElement, ListContainerProps
           viewMode === 'grid' ? 'grid grid-cols-2' : 'grid grid-cols-1',
           gridGap,
           'bg-card',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ListContainer.displayName = 'ListContainer';

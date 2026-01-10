@@ -32,19 +32,19 @@ export function useFileEvents(handlers: FileEventHandlers): void {
 
     if (handlersRef.current.onCreated) {
       unsubscribers.push(
-        events.onFileCreated((payload) => handlersRef.current.onCreated?.(payload))
+        events.onFileCreated((payload) => handlersRef.current.onCreated?.(payload)),
       );
     }
 
     if (handlersRef.current.onChanged) {
       unsubscribers.push(
-        events.onFileChanged((payload) => handlersRef.current.onChanged?.(payload))
+        events.onFileChanged((payload) => handlersRef.current.onChanged?.(payload)),
       );
     }
 
     if (handlersRef.current.onDeleted) {
       unsubscribers.push(
-        events.onFileDeleted((payload) => handlersRef.current.onDeleted?.(payload))
+        events.onFileDeleted((payload) => handlersRef.current.onDeleted?.(payload)),
       );
     }
 

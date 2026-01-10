@@ -43,22 +43,16 @@ export const CompactCard = React.forwardRef<HTMLDivElement, CompactCardProps>(
           isActive
             ? 'bg-accent text-accent-foreground ring-1 ring-primary shadow-sm'
             : 'bg-background border border-border hover:bg-muted/50',
-          className
+          className,
         )}
         {...props}
       >
-        {title && (
-          <div className="font-medium line-clamp-2 mb-1">
-            {title}
-          </div>
-        )}
+        {title && <div className="font-medium line-clamp-2 mb-1">{title}</div>}
         {children && (
-          <div className={isActive ? '' : 'text-muted-foreground opacity-70'}>
-            {children}
-          </div>
+          <div className={isActive ? '' : 'text-muted-foreground opacity-70'}>{children}</div>
         )}
       </div>
     );
-  }
+  },
 );
 CompactCard.displayName = 'CompactCard';

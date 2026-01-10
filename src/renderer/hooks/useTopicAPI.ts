@@ -43,13 +43,8 @@ const useTopicCRUD = createEntityAPI<TopicWithCount>({
  */
 export function useTopicAPI() {
   const { loadAll, create, update, remove } = useTopicCRUD();
-  const {
-    setEmbeddingStatus,
-    setSearchResults,
-    setLoading,
-    setClassifying,
-    setError,
-  } = useTopicStore();
+  const { setEmbeddingStatus, setSearchResults, setLoading, setClassifying, setError } =
+    useTopicStore();
 
   /**
    * Initialize the embedding service
@@ -72,9 +67,12 @@ export function useTopicAPI() {
   /**
    * Load all topics
    */
-  const loadTopics = useCallback(async (options?: { excludeJournal?: boolean }) => {
-    return loadAll(options || {});
-  }, [loadAll]);
+  const loadTopics = useCallback(
+    async (options?: { excludeJournal?: boolean }) => {
+      return loadAll(options || {});
+    },
+    [loadAll],
+  );
 
   /**
    * Create a new topic
@@ -83,7 +81,7 @@ export function useTopicAPI() {
     async (data: { name: string; description?: string; color?: string }) => {
       return create(data as Partial<TopicWithCount>);
     },
-    [create]
+    [create],
   );
 
   /**
@@ -93,14 +91,17 @@ export function useTopicAPI() {
     async (id: string, data: { name?: string; description?: string; color?: string }) => {
       return update(id, data as Partial<TopicWithCount>);
     },
-    [update]
+    [update],
   );
 
   /**
    * Get notes for a topic
    */
   const getNotesForTopic = useCallback(
-    async (topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }) => {
+    async (
+      topicId: string,
+      options?: { limit?: number; offset?: number; excludeJournal?: boolean },
+    ) => {
       setError(null);
       try {
         const response = await topicAPI.getNotesByTopic(topicId, options);
@@ -111,7 +112,7 @@ export function useTopicAPI() {
         return [];
       }
     },
-    [setError]
+    [setError],
   );
 
   /**
@@ -132,54 +133,60 @@ export function useTopicAPI() {
         setClassifying(false);
       }
     },
-    [setClassifying, setError]
+    [setClassifying, setError],
   );
 
   /**
    * Classify all notes (bulk operation - only pending notes)
    */
-  const classifyAllNotes = useCallback(async (options?: { excludeJournal?: boolean }) => {
-    setClassifying(true);
-    setError(null);
-    try {
-      const response = await topicAPI.classifyAll(options);
-      const result = handleIpcResponse(response, 'Failed to classify notes');
-      if (result.success) {
-        await loadTopics();
-        return result.data;
+  const classifyAllNotes = useCallback(
+    async (options?: { excludeJournal?: boolean }) => {
+      setClassifying(true);
+      setError(null);
+      try {
+        const response = await topicAPI.classifyAll(options);
+        const result = handleIpcResponse(response, 'Failed to classify notes');
+        if (result.success) {
+          await loadTopics();
+          return result.data;
+        }
+        setError(result.error);
+        return null;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to classify notes');
+        return null;
+      } finally {
+        setClassifying(false);
       }
-      setError(result.error);
-      return null;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to classify notes');
-      return null;
-    } finally {
-      setClassifying(false);
-    }
-  }, [loadTopics, setClassifying, setError]);
+    },
+    [loadTopics, setClassifying, setError],
+  );
 
   /**
    * Reclassify ALL notes (force reclassification)
    */
-  const reclassifyAllNotes = useCallback(async (options?: { excludeJournal?: boolean }) => {
-    setClassifying(true);
-    setError(null);
-    try {
-      const response = await topicAPI.reclassifyAll(options);
-      const result = handleIpcResponse(response, 'Failed to reclassify notes');
-      if (result.success) {
-        await loadTopics();
-        return result.data;
+  const reclassifyAllNotes = useCallback(
+    async (options?: { excludeJournal?: boolean }) => {
+      setClassifying(true);
+      setError(null);
+      try {
+        const response = await topicAPI.reclassifyAll(options);
+        const result = handleIpcResponse(response, 'Failed to reclassify notes');
+        if (result.success) {
+          await loadTopics();
+          return result.data;
+        }
+        setError(result.error);
+        return null;
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to reclassify notes');
+        return null;
+      } finally {
+        setClassifying(false);
       }
-      setError(result.error);
-      return null;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to reclassify notes');
-      return null;
-    } finally {
-      setClassifying(false);
-    }
-  }, [loadTopics, setClassifying, setError]);
+    },
+    [loadTopics, setClassifying, setError],
+  );
 
   /**
    * Semantic search
@@ -204,7 +211,7 @@ export function useTopicAPI() {
         setLoading(false);
       }
     },
-    [setSearchResults, setLoading, setError]
+    [setSearchResults, setLoading, setError],
   );
 
   /**
@@ -222,7 +229,7 @@ export function useTopicAPI() {
         return [];
       }
     },
-    [setError]
+    [setError],
   );
 
   /**
@@ -239,7 +246,7 @@ export function useTopicAPI() {
         return false;
       }
     },
-    [setError]
+    [setError],
   );
 
   /**
@@ -256,7 +263,7 @@ export function useTopicAPI() {
         return false;
       }
     },
-    [setError]
+    [setError],
   );
 
   /**

@@ -26,14 +26,15 @@ export const topicAPI = {
   /**
    * Get all topics
    */
-  getAll: (options?: { excludeJournal?: boolean }): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
+  getAll: (options?: {
+    excludeJournal?: boolean;
+  }): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
     invokeIpc(TOPIC_CHANNELS.GET_ALL, options || {}),
 
   /**
    * Get a topic by ID
    */
-  getById: (id: string): Promise<IpcResponse<Topic>> =>
-    invokeIpc(TOPIC_CHANNELS.GET_BY_ID, { id }),
+  getById: (id: string): Promise<IpcResponse<Topic>> => invokeIpc(TOPIC_CHANNELS.GET_BY_ID, { id }),
 
   /**
    * Create a new topic
@@ -42,8 +43,7 @@ export const topicAPI = {
     name: string;
     description?: string;
     color?: string;
-  }): Promise<IpcResponse<Topic>> =>
-    invokeIpc(TOPIC_CHANNELS.CREATE, data),
+  }): Promise<IpcResponse<Topic>> => invokeIpc(TOPIC_CHANNELS.CREATE, data),
 
   /**
    * Update an existing topic
@@ -54,31 +54,27 @@ export const topicAPI = {
       name: string;
       description: string;
       color: string;
-    }>
-  ): Promise<IpcResponse<Topic>> =>
-    invokeIpc(TOPIC_CHANNELS.UPDATE, { id, ...data }),
+    }>,
+  ): Promise<IpcResponse<Topic>> => invokeIpc(TOPIC_CHANNELS.UPDATE, { id, ...data }),
 
   /**
    * Delete a topic
    */
-  delete: (id: string): Promise<IpcResponse<void>> =>
-    invokeIpc(TOPIC_CHANNELS.DELETE, { id }),
+  delete: (id: string): Promise<IpcResponse<void>> => invokeIpc(TOPIC_CHANNELS.DELETE, { id }),
 
   /**
    * Get notes for a topic
    */
   getNotesByTopic: (
     topicId: string,
-    options?: { limit?: number; offset?: number; excludeJournal?: boolean }
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
   ): Promise<IpcResponse<{ notes: unknown[] }>> =>
     invokeIpc(TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, { topicId, ...options }),
 
   /**
    * Get topics for a note
    */
-  getTopicsForNote: (
-    noteId: string
-  ): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
+  getTopicsForNote: (noteId: string): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
     invokeIpc(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId }),
 
   /**
@@ -97,30 +93,32 @@ export const topicAPI = {
    * Classify a single note
    */
   classifyNote: (
-    noteId: string
+    noteId: string,
   ): Promise<IpcResponse<{ noteId: string; topics: ClassificationResult[] }>> =>
     invokeIpc(TOPIC_CHANNELS.CLASSIFY_NOTE, { noteId }),
 
   /**
    * Classify all pending notes
    */
-  classifyAll: (options?: { excludeJournal?: boolean }): Promise<
-    IpcResponse<{ processed: number; total: number; failed: number }>
-  > => invokeIpc(TOPIC_CHANNELS.CLASSIFY_ALL, options || {}),
+  classifyAll: (options?: {
+    excludeJournal?: boolean;
+  }): Promise<IpcResponse<{ processed: number; total: number; failed: number }>> =>
+    invokeIpc(TOPIC_CHANNELS.CLASSIFY_ALL, options || {}),
 
   /**
    * Reclassify all notes (force)
    */
-  reclassifyAll: (options?: { excludeJournal?: boolean }): Promise<
-    IpcResponse<{ processed: number; total: number; failed: number; skipped: number }>
-  > => invokeIpc(TOPIC_CHANNELS.RECLASSIFY_ALL, options || {}),
+  reclassifyAll: (options?: {
+    excludeJournal?: boolean;
+  }): Promise<IpcResponse<{ processed: number; total: number; failed: number; skipped: number }>> =>
+    invokeIpc(TOPIC_CHANNELS.RECLASSIFY_ALL, options || {}),
 
   /**
    * Semantic search
    */
   semanticSearch: (
     query: string,
-    limit?: number
+    limit?: number,
   ): Promise<IpcResponse<{ results: SimilarNote[] }>> =>
     invokeIpc(TOPIC_CHANNELS.SEMANTIC_SEARCH, { query, limit }),
 
@@ -129,7 +127,7 @@ export const topicAPI = {
    */
   getSimilarNotes: (
     noteId: string,
-    limit?: number
+    limit?: number,
   ): Promise<IpcResponse<{ similar: SimilarNote[] }>> =>
     invokeIpc(TOPIC_CHANNELS.GET_SIMILAR_NOTES, { noteId, limit }),
 

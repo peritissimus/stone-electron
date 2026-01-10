@@ -6,11 +6,7 @@
 
 import { EventEmitter } from 'events';
 import { BrowserWindow } from 'electron';
-import type {
-  IEventPublisher,
-  AppDomainEvent,
-  EventHandler,
-} from '../../../domain';
+import type { IEventPublisher, AppDomainEvent, EventHandler } from '../../../domain';
 
 // Singleton event emitter
 const eventEmitter = new EventEmitter();
@@ -34,10 +30,7 @@ export class EventPublisher implements IEventPublisher {
     this.broadcastToRenderer(channel, payload);
   }
 
-  subscribe<T extends AppDomainEvent>(
-    eventType: T['type'],
-    handler: EventHandler<T>
-  ): () => void {
+  subscribe<T extends AppDomainEvent>(eventType: T['type'], handler: EventHandler<T>): () => void {
     const wrappedHandler = (payload: unknown) => {
       const event = {
         type: eventType,

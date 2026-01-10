@@ -124,11 +124,15 @@ export function useNoteAPI() {
     ) => {
       setError(null);
       try {
-        const response = await noteAPI.update(id, {
-          title: data.title,
-          content: data.content,
-          notebookId: data.notebookId,
-        }, silent);
+        const response = await noteAPI.update(
+          id,
+          {
+            title: data.title,
+            content: data.content,
+            notebookId: data.notebookId,
+          },
+          silent,
+        );
         if (response.success && response.data) {
           // Only update store if not silent (silent = autosave without re-render)
           if (!silent) {
@@ -342,7 +346,8 @@ export function useNoteAPI() {
       if (response.success && response.data) {
         // GraphService returns { nodes, links } where nodes have { id, name, val }
         return {
-          nodes: response.data.nodes?.map((n) => ({ id: n.id, name: n.name, val: n.val || 1 })) || [],
+          nodes:
+            response.data.nodes?.map((n) => ({ id: n.id, name: n.name, val: n.val || 1 })) || [],
           links: response.data.links?.map((e) => ({ source: e.source, target: e.target })) || [],
         };
       }
@@ -363,7 +368,7 @@ export function useNoteAPI() {
           logger.info('[useNoteAPI.moveNote] Note moved successfully', {
             id,
             newFolderPath: folderPath,
-            updatedNote: response.data
+            updatedNote: response.data,
           });
           updateNote(response.data);
           return response.data;
@@ -371,7 +376,7 @@ export function useNoteAPI() {
           logger.error('[useNoteAPI.moveNote] Failed to move note', {
             id,
             folderPath,
-            error: response.error
+            error: response.error,
           });
           setError(response.error?.message || 'Failed to move note');
           return null;
@@ -417,7 +422,9 @@ export function useNoteAPI() {
     try {
       const response = await noteAPI.exportMarkdown(id);
       if (response.success && response.data) {
-        logger.info('[useNoteAPI.exportMarkdown] Exported Markdown', { filePath: response.data.path });
+        logger.info('[useNoteAPI.exportMarkdown] Exported Markdown', {
+          filePath: response.data.path,
+        });
         return { success: true, filePath: response.data.path };
       }
       return { success: false };
@@ -440,23 +447,30 @@ export function useNoteAPI() {
     }
   }, []);
 
-  const updateTaskState = useCallback(async (noteId: string, taskIndex: number, newState: string) => {
-    setError(null);
-    try {
-      const response = await noteAPI.updateTaskState(noteId, taskIndex, newState);
-      if (response.success) {
-        logger.info('[useNoteAPI.updateTaskState] Task state updated', { noteId, taskIndex, newState });
-        return true;
-      } else {
-        setError(response.error?.message || 'Failed to update task state');
+  const updateTaskState = useCallback(
+    async (noteId: string, taskIndex: number, newState: string) => {
+      setError(null);
+      try {
+        const response = await noteAPI.updateTaskState(noteId, taskIndex, newState);
+        if (response.success) {
+          logger.info('[useNoteAPI.updateTaskState] Task state updated', {
+            noteId,
+            taskIndex,
+            newState,
+          });
+          return true;
+        } else {
+          setError(response.error?.message || 'Failed to update task state');
+          return false;
+        }
+      } catch (error) {
+        logger.error('[useNoteAPI.updateTaskState] Error:', error);
+        setError(error instanceof Error ? error.message : 'Failed to update task state');
         return false;
       }
-    } catch (error) {
-      logger.error('[useNoteAPI.updateTaskState] Error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update task state');
-      return false;
-    }
-  }, [setError]);
+    },
+    [setError],
+  );
 
   return {
     loadNotes,

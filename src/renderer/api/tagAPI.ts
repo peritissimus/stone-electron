@@ -23,25 +23,18 @@ export const tagAPI = {
   /**
    * Create a new tag
    */
-  create: (data: {
-    name: string;
-    color?: string;
-  }): Promise<IpcResponse<Tag>> =>
+  create: (data: { name: string; color?: string }): Promise<IpcResponse<Tag>> =>
     invokeIpc(TAG_CHANNELS.CREATE, data),
 
   /**
    * Delete a tag
    */
-  delete: (id: string): Promise<IpcResponse<void>> =>
-    invokeIpc(TAG_CHANNELS.DELETE, { id }),
+  delete: (id: string): Promise<IpcResponse<void>> => invokeIpc(TAG_CHANNELS.DELETE, { id }),
 
   /**
    * Add tags to a note
    */
-  addToNote: (
-    noteId: string,
-    tagIds: string[]
-  ): Promise<IpcResponse<{ tags: TagWithCount[] }>> =>
+  addToNote: (noteId: string, tagIds: string[]): Promise<IpcResponse<{ tags: TagWithCount[] }>> =>
     invokeIpc(TAG_CHANNELS.ADD_TO_NOTE, { noteId, tagIds }),
 
   /**

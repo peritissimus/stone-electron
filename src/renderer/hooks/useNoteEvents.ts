@@ -33,25 +33,27 @@ export function useNoteEvents(handlers: NoteEventHandlers): void {
 
     if (handlersRef.current.onCreated) {
       unsubscribers.push(
-        subscribe(EVENTS.NOTE_CREATED, (payload) => handlersRef.current.onCreated?.(payload))
+        subscribe(EVENTS.NOTE_CREATED, (payload) => handlersRef.current.onCreated?.(payload)),
       );
     }
 
     if (handlersRef.current.onUpdated) {
       unsubscribers.push(
-        subscribe(EVENTS.NOTE_UPDATED, (payload) => handlersRef.current.onUpdated?.(payload))
+        subscribe(EVENTS.NOTE_UPDATED, (payload) => handlersRef.current.onUpdated?.(payload)),
       );
     }
 
     if (handlersRef.current.onDeleted) {
       unsubscribers.push(
-        subscribe(EVENTS.NOTE_DELETED, (payload) => handlersRef.current.onDeleted?.(payload))
+        subscribe(EVENTS.NOTE_DELETED, (payload) => handlersRef.current.onDeleted?.(payload)),
       );
     }
 
     if (handlersRef.current.onVersionRestored) {
       unsubscribers.push(
-        subscribe(EVENTS.NOTE_VERSION_RESTORED, (payload) => handlersRef.current.onVersionRestored?.(payload))
+        subscribe(EVENTS.NOTE_VERSION_RESTORED, (payload) =>
+          handlersRef.current.onVersionRestored?.(payload),
+        ),
       );
     }
 

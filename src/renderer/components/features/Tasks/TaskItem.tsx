@@ -74,9 +74,7 @@ export function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps)
                   onClick={() => handleStateChange(state.key)}
                   className="gap-2"
                 >
-                  <Circle
-                    className={`w-2 h-2 ${state.key === todo.state ? 'fill-current' : ''}`}
-                  />
+                  <Circle className={`w-2 h-2 ${state.key === todo.state ? 'fill-current' : ''}`} />
                   <span className={state.key === todo.state ? 'font-medium' : ''}>
                     {state.label}
                   </span>
@@ -89,9 +87,7 @@ export function TaskItem({ todo, onClick, onToggle, isToggling }: TaskItemProps)
           </p>
         </div>
         {todo.noteTitle && (
-          <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">
-            {todo.noteTitle}
-          </p>
+          <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{todo.noteTitle}</p>
         )}
       </div>
       <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />

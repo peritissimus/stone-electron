@@ -85,11 +85,7 @@ export const loadLanguage = async (language: string) => {
 
 // Pre-load common languages (JavaScript, TypeScript, JSON) for better UX
 const preloadCommonLanguages = async () => {
-  await Promise.all([
-    loadLanguage('javascript'),
-    loadLanguage('typescript'),
-    loadLanguage('json'),
-  ]);
+  await Promise.all([loadLanguage('javascript'), loadLanguage('typescript'), loadLanguage('json')]);
 };
 
 // Start preloading common languages immediately
@@ -108,7 +104,7 @@ async function fetchNotesForAutocomplete(query: string) {
     const now = Date.now();
 
     // Use cache if valid
-    if (!notesCache || (now - notesCache.timestamp) > NOTES_CACHE_TTL_MS) {
+    if (!notesCache || now - notesCache.timestamp > NOTES_CACHE_TTL_MS) {
       const response = await noteAPI.getAll({ includeArchived: false });
 
       if (response.success && response.data) {
@@ -126,9 +122,7 @@ async function fetchNotesForAutocomplete(query: string) {
 
     // Filter notes by query
     const filtered = query
-      ? notes.filter((note) =>
-          note.title?.toLowerCase().includes(lowerQuery)
-        )
+      ? notes.filter((note) => note.title?.toLowerCase().includes(lowerQuery))
       : notes;
 
     // Sort by relevance (title starts with query first, then contains)

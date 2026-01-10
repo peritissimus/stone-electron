@@ -77,7 +77,7 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
             'border border-border text-foreground cursor-pointer',
             'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
             'hover:bg-accent transition-colors',
-            'font-medium'
+            'font-medium',
           )}
         >
           {showCode ? 'View Diagram' : 'Edit Code'}
@@ -94,7 +94,7 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
           'border border-border text-foreground cursor-pointer',
           'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
           'hover:bg-accent transition-colors',
-          copied && 'text-green-600 dark:text-green-400'
+          copied && 'text-green-600 dark:text-green-400',
         )}
         title={copied ? 'Copied!' : 'Copy code'}
       >
@@ -110,7 +110,7 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
           'px-2 py-1 text-xs rounded bg-background/90 backdrop-blur-xs',
           'border border-border text-foreground cursor-pointer',
           'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
-          'hover:bg-accent transition-colors'
+          'hover:bg-accent transition-colors',
         )}
       >
         {CODE_LANGUAGES.map(({ value, label }) => (

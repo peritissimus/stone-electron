@@ -42,40 +42,40 @@ export function useMLEvents(handlers: MLEventHandlers): void {
     if (handlersRef.current.onStatusChanged) {
       unsubscribers.push(
         subscribe(EVENTS.ML_STATUS_CHANGED, (payload) =>
-          handlersRef.current.onStatusChanged?.(payload as MLStatusChangedPayload)
-        )
+          handlersRef.current.onStatusChanged?.(payload as MLStatusChangedPayload),
+        ),
       );
     }
 
     if (handlersRef.current.onOperationStarted) {
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_STARTED, (payload) =>
-          handlersRef.current.onOperationStarted?.(payload as MLOperationStartedPayload)
-        )
+          handlersRef.current.onOperationStarted?.(payload as MLOperationStartedPayload),
+        ),
       );
     }
 
     if (handlersRef.current.onOperationProgress) {
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_PROGRESS, (payload) =>
-          handlersRef.current.onOperationProgress?.(payload as MLOperationProgressPayload)
-        )
+          handlersRef.current.onOperationProgress?.(payload as MLOperationProgressPayload),
+        ),
       );
     }
 
     if (handlersRef.current.onOperationCompleted) {
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_COMPLETED, (payload) =>
-          handlersRef.current.onOperationCompleted?.(payload as MLOperationCompletedPayload)
-        )
+          handlersRef.current.onOperationCompleted?.(payload as MLOperationCompletedPayload),
+        ),
       );
     }
 
     if (handlersRef.current.onOperationError) {
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_ERROR, (payload) =>
-          handlersRef.current.onOperationError?.(payload as MLOperationErrorPayload)
-        )
+          handlersRef.current.onOperationError?.(payload as MLOperationErrorPayload),
+        ),
       );
     }
 
@@ -105,31 +105,31 @@ export function useMLEventsSync(): void {
       unsubscribers.push(
         subscribe(EVENTS.ML_STATUS_CHANGED, (payload) => {
           store.setServiceStatus(payload as MLStatusChangedPayload);
-        })
+        }),
       );
 
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_STARTED, (payload) => {
           store.startOperation(payload as MLOperationStartedPayload);
-        })
+        }),
       );
 
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_PROGRESS, (payload) => {
           store.updateProgress(payload as MLOperationProgressPayload);
-        })
+        }),
       );
 
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_COMPLETED, (payload) => {
           store.completeOperation(payload as MLOperationCompletedPayload);
-        })
+        }),
       );
 
       unsubscribers.push(
         subscribe(EVENTS.ML_OPERATION_ERROR, (payload) => {
           store.failOperation(payload as MLOperationErrorPayload);
-        })
+        }),
       );
     });
 

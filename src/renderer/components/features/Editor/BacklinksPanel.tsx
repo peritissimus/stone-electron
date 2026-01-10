@@ -3,7 +3,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowsInLineVertical, ArrowsOutLineVertical, Link, ArrowRight, CaretRight, CaretDown } from 'phosphor-react';
+import {
+  ArrowsInLineVertical,
+  ArrowsOutLineVertical,
+  Link,
+  ArrowRight,
+  CaretRight,
+  CaretDown,
+} from 'phosphor-react';
 import { Note } from '@shared/types';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -44,9 +51,7 @@ function BacklinkItem({ note, onClick }: BacklinkItemProps) {
             Open <ArrowRight size={12} />
           </span>
           {timeAgo && (
-            <span className="text-xs text-muted-foreground group-hover:hidden">
-              {timeAgo}
-            </span>
+            <span className="text-xs text-muted-foreground group-hover:hidden">{timeAgo}</span>
           )}
         </>
       }
@@ -108,7 +113,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
           'w-full flex items-center justify-between',
           'px-4 py-2',
           'text-sm font-medium text-muted-foreground',
-          'hover:bg-muted/30 transition-colors'
+          'hover:bg-muted/30 transition-colors',
         )}
       >
         <div className="flex items-center gap-2">
@@ -120,16 +125,10 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
           <Link size={14} weight="bold" />
           <span>Linked Notes</span>
           {totalLinks > 0 && (
-            <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">
-              {totalLinks}
-            </span>
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{totalLinks}</span>
           )}
         </div>
-        {isExpanded ? (
-          <ArrowsInLineVertical size={14} />
-        ) : (
-          <ArrowsOutLineVertical size={14} />
-        )}
+        {isExpanded ? <ArrowsInLineVertical size={14} /> : <ArrowsOutLineVertical size={14} />}
       </button>
 
       {/* Content */}

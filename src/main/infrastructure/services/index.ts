@@ -11,7 +11,4 @@ export {
   createEmbeddingWorkerService,
 } from './EmbeddingWorkerService';
 
-export {
-  getMLStatusService,
-  createMLStatusService,
-} from './MLStatusService';
+export { getMLStatusService, createMLStatusService } from './MLStatusService';

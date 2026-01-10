@@ -32,7 +32,18 @@ export interface ControlGroupProps extends React.HTMLAttributes<HTMLDivElement> 
  * </ControlGroup>
  */
 export const ControlGroup = React.forwardRef<HTMLDivElement, ControlGroupProps>(
-  ({ size = 'normal', gap = 'sm', wrap = false, background = 'bg-muted', children, className, ...props }, ref) => {
+  (
+    {
+      size = 'normal',
+      gap = 'sm',
+      wrap = false,
+      background = 'bg-muted',
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
     const padding = size === 'compact' ? 'p-0.5' : size === 'spacious' ? 'p-1' : 'p-0.5';
 
     return (
@@ -45,13 +56,13 @@ export const ControlGroup = React.forwardRef<HTMLDivElement, ControlGroupProps>(
           padding,
           background,
           'rounded-md',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ControlGroup.displayName = 'ControlGroup';

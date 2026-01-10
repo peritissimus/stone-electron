@@ -5,7 +5,12 @@
  */
 
 import { create } from 'zustand';
-import type { TopicWithCount, EmbeddingStatus, SimilarNote, ClassificationResult } from '@shared/types';
+import type {
+  TopicWithCount,
+  EmbeddingStatus,
+  SimilarNote,
+  ClassificationResult,
+} from '@shared/types';
 
 interface TopicState {
   // State
@@ -67,9 +72,7 @@ export const useTopicStore = create<TopicState>((set, get) => ({
 
   updateTopic: (id, updates) =>
     set((state) => ({
-      topics: state.topics.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      ),
+      topics: state.topics.map((t) => (t.id === id ? { ...t, ...updates } : t)),
     })),
 
   deleteTopic: (id) =>

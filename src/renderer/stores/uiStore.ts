@@ -4,10 +4,10 @@
  * Implements: specs/stores.ts#UIStoreState
  */
 
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings'
-import { tokens } from '@/specs'
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings';
+import { tokens } from '@/specs';
 import type {
   ViewMode,
   SortBy,
@@ -17,10 +17,19 @@ import type {
   EditorMode,
   SidebarPanel,
   ActivePage,
-} from '@/specs'
+} from '@/specs';
 
 // Re-export types from specs
-export type { EditorMode, ActivePage, AccentColor, ViewMode, SortBy, SortOrder, Theme, SidebarPanel }
+export type {
+  EditorMode,
+  ActivePage,
+  AccentColor,
+  ViewMode,
+  SortBy,
+  SortOrder,
+  Theme,
+  SidebarPanel,
+};
 
 // Map accent colors with display names (uses hues from specs)
 export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> = {
@@ -31,82 +40,82 @@ export const ACCENT_COLORS: Record<AccentColor, { name: string; hue: number }> =
   orange: { name: 'Orange', hue: tokens.accentHues.orange },
   green: { name: 'Green', hue: tokens.accentHues.green },
   teal: { name: 'Teal', hue: tokens.accentHues.teal },
-}
+};
 
 interface UIState {
   // Sidebar
-  sidebarOpen: boolean
-  sidebarCollapsed: boolean
-  sidebarWidth: number
-  sidebarPanel: SidebarPanel
+  sidebarOpen: boolean;
+  sidebarCollapsed: boolean;
+  sidebarWidth: number;
+  sidebarPanel: SidebarPanel;
 
   // Note list
-  noteListWidth: number
-  viewMode: ViewMode
-  sortBy: SortBy
-  sortOrder: SortOrder
-  showArchived: boolean
+  noteListWidth: number;
+  viewMode: ViewMode;
+  sortBy: SortBy;
+  sortOrder: SortOrder;
+  showArchived: boolean;
 
   // Editor
-  editorFullscreen: boolean
-  showPreview: boolean
-  showOutline: boolean
-  showBlockIndicators: boolean
-  editorMode: EditorMode
+  editorFullscreen: boolean;
+  showPreview: boolean;
+  showOutline: boolean;
+  showBlockIndicators: boolean;
+  editorMode: EditorMode;
 
   // Search
-  searchQuery: string
+  searchQuery: string;
 
   // Modals
-  settingsOpen: boolean
-  exportModalOpen: boolean
-  importModalOpen: boolean
-  commandCenterOpen: boolean
-  findReplaceOpen: boolean
+  settingsOpen: boolean;
+  exportModalOpen: boolean;
+  importModalOpen: boolean;
+  commandCenterOpen: boolean;
+  findReplaceOpen: boolean;
 
   // Theme
-  theme: 'light' | 'dark' | 'system'
-  accentColor: AccentColor
+  theme: 'light' | 'dark' | 'system';
+  accentColor: AccentColor;
 
   // Font settings
-  fontSettings: FontSettings
+  fontSettings: FontSettings;
 
   // Page navigation (when no note is active)
-  activePage: ActivePage
+  activePage: ActivePage;
 
   // Actions
-  setActivePage: (page: ActivePage) => void
-  toggleSidebar: () => void
-  setSidebarWidth: (width: number) => void
-  setSidebarPanel: (panel: SidebarPanel) => void
-  setNoteListWidth: (width: number) => void
-  setViewMode: (mode: ViewMode) => void
-  setSortBy: (sort: SortBy) => void
-  toggleSortOrder: () => void
-  toggleShowArchived: () => void
-  toggleEditorFullscreen: () => void
-  togglePreview: () => void
-  toggleOutline: () => void
-  toggleBlockIndicators: () => void
-  toggleEditorMode: () => void
-  setEditorMode: (mode: EditorMode) => void
-  setSearchQuery: (query: string) => void
-  openSettings: () => void
-  closeSettings: () => void
-  openExportModal: () => void
-  closeExportModal: () => void
-  openImportModal: () => void
-  closeImportModal: () => void
-  openCommandCenter: () => void
-  closeCommandCenter: () => void
-  toggleCommandCenter: () => void
-  openFindReplace: () => void
-  closeFindReplace: () => void
-  toggleFindReplace: () => void
-  setTheme: (theme: 'light' | 'dark' | 'system') => void
-  setAccentColor: (color: AccentColor) => void
-  setFontSettings: (settings: Partial<FontSettings>) => void
-  resetFontSettings: () => void
+  setActivePage: (page: ActivePage) => void;
+  toggleSidebar: () => void;
+  setSidebarWidth: (width: number) => void;
+  setSidebarPanel: (panel: SidebarPanel) => void;
+  setNoteListWidth: (width: number) => void;
+  setViewMode: (mode: ViewMode) => void;
+  setSortBy: (sort: SortBy) => void;
+  toggleSortOrder: () => void;
+  toggleShowArchived: () => void;
+  toggleEditorFullscreen: () => void;
+  togglePreview: () => void;
+  toggleOutline: () => void;
+  toggleBlockIndicators: () => void;
+  toggleEditorMode: () => void;
+  setEditorMode: (mode: EditorMode) => void;
+  setSearchQuery: (query: string) => void;
+  openSettings: () => void;
+  closeSettings: () => void;
+  openExportModal: () => void;
+  closeExportModal: () => void;
+  openImportModal: () => void;
+  closeImportModal: () => void;
+  openCommandCenter: () => void;
+  closeCommandCenter: () => void;
+  toggleCommandCenter: () => void;
+  openFindReplace: () => void;
+  closeFindReplace: () => void;
+  toggleFindReplace: () => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setAccentColor: (color: AccentColor) => void;
+  setFontSettings: (settings: Partial<FontSettings>) => void;
+  resetFontSettings: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -167,7 +176,8 @@ export const useUIStore = create<UIState>()(
 
       setSortBy: (sort) => set({ sortBy: sort }),
 
-      toggleSortOrder: () => set((state) => ({ sortOrder: state.sortOrder === 'asc' ? 'desc' : 'asc' })),
+      toggleSortOrder: () =>
+        set((state) => ({ sortOrder: state.sortOrder === 'asc' ? 'desc' : 'asc' })),
 
       toggleShowArchived: () => set((state) => ({ showArchived: !state.showArchived })),
 
@@ -177,9 +187,11 @@ export const useUIStore = create<UIState>()(
 
       toggleOutline: () => set((state) => ({ showOutline: !state.showOutline })),
 
-      toggleBlockIndicators: () => set((state) => ({ showBlockIndicators: !state.showBlockIndicators })),
+      toggleBlockIndicators: () =>
+        set((state) => ({ showBlockIndicators: !state.showBlockIndicators })),
 
-      toggleEditorMode: () => set((state) => ({ editorMode: state.editorMode === 'rich' ? 'raw' : 'rich' })),
+      toggleEditorMode: () =>
+        set((state) => ({ editorMode: state.editorMode === 'rich' ? 'raw' : 'rich' })),
 
       setEditorMode: (mode) => set({ editorMode: mode }),
 
@@ -238,6 +250,6 @@ export const useUIStore = create<UIState>()(
         fontSettings: state.fontSettings,
         activePage: state.activePage,
       }),
-    }
-  )
-)
+    },
+  ),
+);

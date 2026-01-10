@@ -21,7 +21,7 @@ import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 export class CreateNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -53,7 +53,7 @@ export class CreateNotebookUseCase {
 export class UpdateNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -116,7 +116,7 @@ export class ListNotebooksUseCase {
     if (request.parentId !== undefined) {
       notebooks = await this.notebookRepository.findByParentId(
         request.parentId,
-        request.workspaceId
+        request.workspaceId,
       );
     } else if (request.workspaceId) {
       notebooks = await this.notebookRepository.findByWorkspaceId(request.workspaceId);
@@ -131,7 +131,7 @@ export class ListNotebooksUseCase {
 export class DeleteNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<void> {
@@ -149,7 +149,7 @@ export class DeleteNotebookUseCase {
 export class MoveNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string; targetParentId: string | null }): Promise<void> {

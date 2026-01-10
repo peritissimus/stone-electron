@@ -67,7 +67,11 @@ export interface NoteAPI {
   getByPath(path: FilePath): Promise<Result<Note>>;
   getContent(id: UUID): Promise<Result<string>>;
   create(data: { title: string; content?: string; folderPath?: FilePath }): Promise<Result<Note>>;
-  update(id: UUID, data: { title?: string; content?: string }, silent?: boolean): Promise<Result<Note>>;
+  update(
+    id: UUID,
+    data: { title?: string; content?: string },
+    silent?: boolean,
+  ): Promise<Result<Note>>;
   delete(id: UUID): Promise<Result<void>>;
   move(id: UUID, targetPath: FilePath): Promise<Result<Note>>;
 
@@ -108,7 +112,10 @@ export interface NotebookAPI {
   getAll(filters?: NotebookFilters): Promise<Result<NotebookWithCount[]>>;
   getById(id: UUID): Promise<Result<Notebook>>;
   create(data: { name: string; parentId?: UUID; path?: FilePath }): Promise<Result<Notebook>>;
-  update(id: UUID, data: { name?: string; icon?: string; color?: string }): Promise<Result<Notebook>>;
+  update(
+    id: UUID,
+    data: { name?: string; icon?: string; color?: string },
+  ): Promise<Result<Notebook>>;
   delete(id: UUID): Promise<Result<void>>;
   move(id: UUID, newParentId: UUID | null): Promise<Result<Notebook>>;
 }
@@ -138,7 +145,10 @@ export interface TopicAPI {
   getAll(): Promise<Result<TopicWithCount[]>>;
   getById(id: UUID): Promise<Result<Topic>>;
   create(data: { name: string; color?: string; description?: string }): Promise<Result<Topic>>;
-  update(id: UUID, data: { name?: string; color?: string; description?: string }): Promise<Result<Topic>>;
+  update(
+    id: UUID,
+    data: { name?: string; color?: string; description?: string },
+  ): Promise<Result<Topic>>;
   delete(id: UUID): Promise<Result<void>>;
 
   // Note associations

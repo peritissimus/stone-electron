@@ -18,12 +18,18 @@ import {
 import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
 import { type Workspace, type Note } from '@shared/types';
-import { House, CaretLeft, Graph, CheckSquare, Tag, GitBranch, ArrowsClockwise, Check, Warning } from 'phosphor-react';
 import {
-  QuickLink,
-  sizeHeightClasses,
-  sizePaddingClasses,
-} from '@renderer/components/composites';
+  House,
+  CaretLeft,
+  Graph,
+  CheckSquare,
+  Tag,
+  GitBranch,
+  ArrowsClockwise,
+  Check,
+  Warning,
+} from 'phosphor-react';
+import { QuickLink, sizeHeightClasses, sizePaddingClasses } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
@@ -93,7 +99,7 @@ function GitSyncButton() {
           'flex items-center justify-between w-full px-2 py-1.5 rounded text-xs',
           'hover:bg-accent/50 transition-colors',
           'disabled:opacity-50 disabled:cursor-not-allowed',
-          needsSync && status.hasRemote && 'bg-accent/30'
+          needsSync && status.hasRemote && 'bg-accent/30',
         )}
         title={
           !status.hasRemote
@@ -113,7 +119,10 @@ function GitSyncButton() {
         <div className="flex items-center gap-1.5">
           {/* Local changes indicator */}
           {hasLocalChanges && (
-            <span className="flex items-center gap-0.5 text-amber-500" title={`${totalChanges} local changes`}>
+            <span
+              className="flex items-center gap-0.5 text-amber-500"
+              title={`${totalChanges} local changes`}
+            >
               <Warning size={12} weight="fill" />
               <span>{totalChanges}</span>
             </span>
@@ -161,42 +170,48 @@ export function Sidebar() {
   }, [loadWorkspaces]);
 
   // File event handlers
-  const handleFileCreated = useCallback(async (payload: unknown) => {
-    const { addFileToTree } = useFileTreeStore.getState();
-    const data = payload as { workspaceId: string; path: string };
-    logger.debug('[Sidebar] FILE_CREATED:', data.path);
+  const handleFileCreated = useCallback(
+    async (payload: unknown) => {
+      const { addFileToTree } = useFileTreeStore.getState();
+      const data = payload as { workspaceId: string; path: string };
+      logger.debug('[Sidebar] FILE_CREATED:', data.path);
 
-    // Add to tree optimistically
-    const segments = data.path.split('/');
-    const name = segments[segments.length - 1].replace(/\.md$/, '');
-    addFileToTree(data.path, {
-      name,
-      path: data.path,
-      type: 'file',
-    });
+      // Add to tree optimistically
+      const segments = data.path.split('/');
+      const name = segments[segments.length - 1].replace(/\.md$/, '');
+      addFileToTree(data.path, {
+        name,
+        path: data.path,
+        type: 'file',
+      });
 
-    // Reload notes for the current folder to pick up the new note
-    if (activeFolder) {
-      await loadNotes({ folderPath: activeFolder });
-    } else {
-      await loadNotes();
-    }
-  }, [activeFolder, loadNotes]);
-
-  const handleFileChanged = useCallback(async (payload: unknown) => {
-    const { updateNoteByPath, getNoteByFilePath } = useNoteStore.getState();
-    const data = payload as { workspaceId: string; path: string };
-    logger.debug('[Sidebar] FILE_CHANGED:', data.path);
-
-    // Update note in store if it exists
-    const note = getNoteByFilePath(data.path);
-    if (note) {
-      const updatedNote = await loadNoteById(note.id);
-      if (updatedNote) {
-        updateNoteByPath(data.path, updatedNote);
+      // Reload notes for the current folder to pick up the new note
+      if (activeFolder) {
+        await loadNotes({ folderPath: activeFolder });
+      } else {
+        await loadNotes();
       }
-    }
-  }, [loadNoteById]);
+    },
+    [activeFolder, loadNotes],
+  );
+
+  const handleFileChanged = useCallback(
+    async (payload: unknown) => {
+      const { updateNoteByPath, getNoteByFilePath } = useNoteStore.getState();
+      const data = payload as { workspaceId: string; path: string };
+      logger.debug('[Sidebar] FILE_CHANGED:', data.path);
+
+      // Update note in store if it exists
+      const note = getNoteByFilePath(data.path);
+      if (note) {
+        const updatedNote = await loadNoteById(note.id);
+        if (updatedNote) {
+          updateNoteByPath(data.path, updatedNote);
+        }
+      }
+    },
+    [loadNoteById],
+  );
 
   const handleFileDeleted = useCallback((payload: unknown) => {
     const { removeFileFromTree } = useFileTreeStore.getState();

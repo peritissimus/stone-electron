@@ -4,11 +4,7 @@
 
 import { eq, and } from 'drizzle-orm';
 import { attachments, type Database } from '../../../shared';
-import type {
-  IAttachmentRepository,
-  AttachmentProps,
-  AttachmentEntity,
-} from '../../../domain';
+import type { IAttachmentRepository, AttachmentProps, AttachmentEntity } from '../../../domain';
 
 export interface AttachmentRepositoryDeps {
   db: Database;

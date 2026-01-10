@@ -62,7 +62,10 @@ export function FontPreview() {
           Here's some{' '}
           <code
             className="px-2 py-1 rounded bg-muted text-foreground font-mono text-sm"
-            style={{ fontFamily: fontSettings.monoFont, fontSize: `${fontSettings.monoFontSize}px` }}
+            style={{
+              fontFamily: fontSettings.monoFont,
+              fontSize: `${fontSettings.monoFontSize}px`,
+            }}
           >
             inline code
           </code>{' '}

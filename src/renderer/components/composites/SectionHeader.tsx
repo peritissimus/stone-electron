@@ -29,28 +29,18 @@ export interface SectionHeaderProps extends Omit<React.HTMLAttributes<HTMLDivEle
  * <SectionHeader title="Quick Links" description="Fast access" />
  */
 export const SectionHeader = React.forwardRef<HTMLDivElement, SectionHeaderProps>(
-  ({
-    size = 'normal',
-    divided = true,
-    title,
-    description,
-    action,
-    children,
-    className,
-    ...props
-  }, ref) => {
-    const padding = size === 'compact' ? 'px-2 py-1' : size === 'spacious' ? 'px-4 py-2' : 'px-2 py-1.5';
+  (
+    { size = 'normal', divided = true, title, description, action, children, className, ...props },
+    ref,
+  ) => {
+    const padding =
+      size === 'compact' ? 'px-2 py-1' : size === 'spacious' ? 'px-4 py-2' : 'px-2 py-1.5';
     const textSize = sizeTextClasses[size];
 
     return (
       <div
         ref={ref}
-        className={cn(
-          padding,
-          divided && 'border-b border-border',
-          'flex-shrink-0',
-          className
-        )}
+        className={cn(padding, divided && 'border-b border-border', 'flex-shrink-0', className)}
         {...props}
       >
         {children ? (
@@ -72,6 +62,6 @@ export const SectionHeader = React.forwardRef<HTMLDivElement, SectionHeaderProps
         )}
       </div>
     );
-  }
+  },
 );
 SectionHeader.displayName = 'SectionHeader';

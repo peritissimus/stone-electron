@@ -11,9 +11,7 @@ import { logger } from '@renderer/utils/logger';
 /**
  * Result of handling an IPC response
  */
-export type IpcResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+export type IpcResult<T> = { success: true; data: T } | { success: false; error: string };
 
 /**
  * Options for IPC invocation
@@ -43,14 +41,14 @@ export interface InvokeOptions {
  */
 export function handleIpcResponse<T>(
   response: IpcResponse<T>,
-  fallbackError: string
+  fallbackError: string,
 ): IpcResult<T> {
   if (response.success && response.data !== undefined) {
     return { success: true, data: response.data };
   }
   return {
     success: false,
-    error: response.error?.message || fallbackError
+    error: response.error?.message || fallbackError,
   };
 }
 
@@ -63,14 +61,14 @@ export function handleIpcResponse<T>(
  */
 export function handleIpcVoidResponse(
   response: IpcResponse<unknown>,
-  fallbackError: string
+  fallbackError: string,
 ): { success: boolean; error?: string } {
   if (response.success) {
     return { success: true };
   }
   return {
     success: false,
-    error: response.error?.message || fallbackError
+    error: response.error?.message || fallbackError,
   };
 }
 
@@ -91,7 +89,7 @@ export function handleIpcVoidResponse(
 export async function invokeIpc<T>(
   channel: string,
   params?: unknown,
-  options?: InvokeOptions
+  options?: InvokeOptions,
 ): Promise<IpcResponse<T>> {
   const { logPrefix, debug } = options || {};
 
@@ -133,7 +131,7 @@ export async function invokeAndHandle<T>(
   channel: string,
   params: unknown,
   fallbackError: string,
-  options?: InvokeOptions
+  options?: InvokeOptions,
 ): Promise<IpcResult<T>> {
   try {
     const response = await invokeIpc<T>(channel, params, options);
@@ -160,7 +158,7 @@ export async function invokeAndHandleVoid(
   channel: string,
   params: unknown,
   fallbackError: string,
-  options?: InvokeOptions
+  options?: InvokeOptions,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await invokeIpc<unknown>(channel, params, options);

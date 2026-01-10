@@ -4,12 +4,7 @@
 
 import { eq, and, desc } from 'drizzle-orm';
 import { topics, noteTopics, type Database } from '../../../shared';
-import type {
-  ITopicRepository,
-  TopicProps,
-  TopicEntity,
-  TopicWithCount,
-} from '../../../domain';
+import type { ITopicRepository, TopicProps, TopicEntity, TopicWithCount } from '../../../domain';
 
 export interface TopicRepositoryDeps {
   db: Database;
@@ -19,11 +14,7 @@ export class TopicRepository implements ITopicRepository {
   constructor(private deps: TopicRepositoryDeps) {}
 
   async find(id: string): Promise<TopicProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(topics)
-      .where(eq(topics.id, id))
-      .limit(1);
+    const result = await this.deps.db.select().from(topics).where(eq(topics.id, id)).limit(1);
 
     if (result.length === 0) return null;
     return this.toProps(result[0]);
@@ -51,19 +42,12 @@ export class TopicRepository implements ITopicRepository {
   }
 
   async findPredefined(): Promise<TopicProps[]> {
-    const results = await this.deps.db
-      .select()
-      .from(topics)
-      .where(eq(topics.isPredefined, true));
+    const results = await this.deps.db.select().from(topics).where(eq(topics.isPredefined, true));
     return results.map((r) => this.toProps(r));
   }
 
   async findByName(name: string): Promise<TopicProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(topics)
-      .where(eq(topics.name, name))
-      .limit(1);
+    const result = await this.deps.db.select().from(topics).where(eq(topics.name, name)).limit(1);
 
     if (result.length === 0) return null;
     return this.toProps(result[0]);
@@ -110,13 +94,33 @@ export class TopicRepository implements ITopicRepository {
     return result.length > 0;
   }
 
-  async getTopicsForNote(noteId: string): Promise<Array<{ noteId: string; topicId: string; confidence: number; isManual: boolean; createdAt: Date; topicName: string; topicColor: string }>> {
+  async getTopicsForNote(
+    noteId: string,
+  ): Promise<
+    Array<{
+      noteId: string;
+      topicId: string;
+      confidence: number;
+      isManual: boolean;
+      createdAt: Date;
+      topicName: string;
+      topicColor: string;
+    }>
+  > {
     const results = await this.deps.db
       .select()
       .from(noteTopics)
       .where(eq(noteTopics.noteId, noteId));
 
-    const topicsWithDetails: Array<{ noteId: string; topicId: string; confidence: number; isManual: boolean; createdAt: Date; topicName: string; topicColor: string }> = [];
+    const topicsWithDetails: Array<{
+      noteId: string;
+      topicId: string;
+      confidence: number;
+      isManual: boolean;
+      createdAt: Date;
+      topicName: string;
+      topicColor: string;
+    }> = [];
     for (const result of results) {
       const topic = await this.find(result.topicId);
       if (topic) {
@@ -181,8 +185,34 @@ export class TopicRepository implements ITopicRepository {
       .where(eq(topics.id, topicId));
   }
 
-  async getTopicsForNotes(noteIds: string[]): Promise<Map<string, Array<{ noteId: string; topicId: string; confidence: number; isManual: boolean; createdAt: Date; topicName: string; topicColor: string }>>> {
-    const result = new Map<string, Array<{ noteId: string; topicId: string; confidence: number; isManual: boolean; createdAt: Date; topicName: string; topicColor: string }>>();
+  async getTopicsForNotes(
+    noteIds: string[],
+  ): Promise<
+    Map<
+      string,
+      Array<{
+        noteId: string;
+        topicId: string;
+        confidence: number;
+        isManual: boolean;
+        createdAt: Date;
+        topicName: string;
+        topicColor: string;
+      }>
+    >
+  > {
+    const result = new Map<
+      string,
+      Array<{
+        noteId: string;
+        topicId: string;
+        confidence: number;
+        isManual: boolean;
+        createdAt: Date;
+        topicName: string;
+        topicColor: string;
+      }>
+    >();
     for (const noteId of noteIds) {
       const topics = await this.getTopicsForNote(noteId);
       result.set(noteId, topics);
@@ -190,7 +220,10 @@ export class TopicRepository implements ITopicRepository {
     return result;
   }
 
-  async getNotesForTopic(topicId: string, options?: { limit?: number; offset?: number; excludeJournal?: boolean }): Promise<{ noteId: string; confidence: number; isManual: boolean }[]> {
+  async getNotesForTopic(
+    topicId: string,
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
+  ): Promise<{ noteId: string; confidence: number; isManual: boolean }[]> {
     const results = await this.deps.db
       .select()
       .from(noteTopics)
@@ -203,7 +236,11 @@ export class TopicRepository implements ITopicRepository {
     }));
   }
 
-  async assignToNote(noteId: string, topicId: string, options?: { confidence?: number; isManual?: boolean }): Promise<void> {
+  async assignToNote(
+    noteId: string,
+    topicId: string,
+    options?: { confidence?: number; isManual?: boolean },
+  ): Promise<void> {
     await this.assignNoteToTopic(noteId, topicId, options?.confidence || 0);
   }
 
@@ -211,7 +248,10 @@ export class TopicRepository implements ITopicRepository {
     await this.removeNoteFromTopic(noteId, topicId);
   }
 
-  async setTopicsForNote(noteId: string, assignments: { topicId: string; confidence?: number; isManual?: boolean }[]): Promise<void> {
+  async setTopicsForNote(
+    noteId: string,
+    assignments: { topicId: string; confidence?: number; isManual?: boolean }[],
+  ): Promise<void> {
     await this.clearTopicsForNote(noteId);
     for (const assignment of assignments) {
       await this.assignNoteToTopic(noteId, assignment.topicId, assignment.confidence || 0);
@@ -232,7 +272,11 @@ export class TopicRepository implements ITopicRepository {
       // Convert Buffer/Uint8Array to Uint8Array
       const rawCentroid = row.centroid as Buffer | Uint8Array;
       if (Buffer.isBuffer(rawCentroid)) {
-        centroid = new Uint8Array(rawCentroid.buffer, rawCentroid.byteOffset, rawCentroid.byteLength);
+        centroid = new Uint8Array(
+          rawCentroid.buffer,
+          rawCentroid.byteOffset,
+          rawCentroid.byteLength,
+        );
       } else {
         centroid = rawCentroid;
       }

@@ -98,7 +98,7 @@ export const useMLStatusStore = create<MLStatusState>((set, get) => ({
 
       const recentOperations = [completed, ...state.recentOperations].slice(
         0,
-        MAX_RECENT_OPERATIONS
+        MAX_RECENT_OPERATIONS,
       );
 
       return {
@@ -118,10 +118,7 @@ export const useMLStatusStore = create<MLStatusState>((set, get) => ({
         completedAt: Date.now(),
       };
 
-      const recentOperations = [failed, ...state.recentOperations].slice(
-        0,
-        MAX_RECENT_OPERATIONS
-      );
+      const recentOperations = [failed, ...state.recentOperations].slice(0, MAX_RECENT_OPERATIONS);
 
       return {
         currentOperation: null,
@@ -143,4 +140,3 @@ export const useMLStatusStore = create<MLStatusState>((set, get) => ({
     return Math.round((progress.current / progress.total) * 100);
   },
 }));
-

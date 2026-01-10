@@ -39,18 +39,22 @@ export interface ListItemProps extends Omit<React.HTMLAttributes<HTMLButtonEleme
  * />
  */
 export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
-  ({
-    size = 'normal',
-    isActive = false,
-    left,
-    right,
-    title,
-    subtitle,
-    children,
-    className,
-    ...props
-  }, ref) => {
-    const padding = size === 'compact' ? 'px-2 py-1' : size === 'spacious' ? 'px-4 py-2.5' : 'px-3 py-1.5';
+  (
+    {
+      size = 'normal',
+      isActive = false,
+      left,
+      right,
+      title,
+      subtitle,
+      children,
+      className,
+      ...props
+    },
+    ref,
+  ) => {
+    const padding =
+      size === 'compact' ? 'px-2 py-1' : size === 'spacious' ? 'px-4 py-2.5' : 'px-3 py-1.5';
     const textSize = sizeTextClasses[size];
 
     return (
@@ -62,10 +66,8 @@ export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
           textSize,
           'transition-colors border-b border-border',
           'flex items-center gap-2',
-          isActive
-            ? 'bg-accent text-accent-foreground'
-            : 'hover:bg-muted/50',
-          className
+          isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
+          className,
         )}
         {...props}
       >
@@ -75,11 +77,7 @@ export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
           {children}
           {!children && (
             <>
-              {title && (
-                <div className="line-clamp-1 font-medium">
-                  {title}
-                </div>
-              )}
+              {title && <div className="line-clamp-1 font-medium">{title}</div>}
               {subtitle && (
                 <div className="line-clamp-1 text-muted-foreground opacity-70 text-[0.85em]">
                   {subtitle}
@@ -92,6 +90,6 @@ export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
         {right && <div className="flex-shrink-0 flex items-center">{right}</div>}
       </button>
     );
-  }
+  },
 );
 ListItem.displayName = 'ListItem';

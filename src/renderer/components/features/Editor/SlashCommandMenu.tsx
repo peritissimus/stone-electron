@@ -181,7 +181,8 @@ export const defaultSlashCommands = (editor: any): SlashCommandItem[] => [
         .focus()
         .deleteRange(range)
         .setCodeBlock({ language: 'flowdsl' })
-        .insertContent(`title My Flow Chart
+        .insertContent(
+          `title My Flow Chart
 direction down
 
 // Define your nodes
@@ -194,7 +195,8 @@ End [shape: oval, color: gray]
 Start > Process
 Process > Decision
 Decision > End: Yes
-Decision > Process: No`)
+Decision > Process: No`,
+        )
         .run();
     },
     searchTerms: ['flow', 'flowchart', 'diagram', 'flowdsl', 'chart', 'graph'],

@@ -123,7 +123,7 @@ export const LinkExtractor = {
    */
   extractInternalLinks(markdown: string): ExtractedLink[] {
     return this.extractAllLinks(markdown).filter(
-      (link) => link.type === 'wiki' || link.type === 'markdown'
+      (link) => link.type === 'wiki' || link.type === 'markdown',
     );
   },
 

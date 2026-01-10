@@ -50,10 +50,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
     logger.info('[IPC] git:getStatus', { workspaceId });
-    return handleIpcRequest(
-      async () => getGitStatus.execute({ workspaceId }),
-      { loggerPrefix: GIT_CHANNELS.GET_STATUS, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
-    );
+    return handleIpcRequest(async () => getGitStatus.execute({ workspaceId }), {
+      loggerPrefix: GIT_CHANNELS.GET_STATUS,
+      defaultCode: 'GIT_ERROR',
+      mapErrorCode: mapGitErrorCode,
+    });
   });
 
   ipcMain.handle(GIT_CHANNELS.INIT, async (_, { workspaceId }: { workspaceId: string }) => {
@@ -89,7 +90,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
             date: result.date.toISOString(),
           };
         },
-        { loggerPrefix: GIT_CHANNELS.COMMIT, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+        {
+          loggerPrefix: GIT_CHANNELS.COMMIT,
+          defaultCode: 'GIT_ERROR',
+          mapErrorCode: mapGitErrorCode,
+        },
       );
     },
   );
@@ -130,10 +135,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     GIT_CHANNELS.SYNC,
     async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
       logger.info('[IPC] git:sync', { workspaceId, message });
-      return handleIpcRequest(
-        async () => gitSync.execute({ workspaceId, message }),
-        { loggerPrefix: GIT_CHANNELS.SYNC, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
-      );
+      return handleIpcRequest(async () => gitSync.execute({ workspaceId, message }), {
+        loggerPrefix: GIT_CHANNELS.SYNC,
+        defaultCode: 'GIT_ERROR',
+        mapErrorCode: mapGitErrorCode,
+      });
     },
   );
 
@@ -151,7 +157,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
           }
           return { success: true };
         },
-        { loggerPrefix: GIT_CHANNELS.SET_REMOTE, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+        {
+          loggerPrefix: GIT_CHANNELS.SET_REMOTE,
+          defaultCode: 'GIT_ERROR',
+          mapErrorCode: mapGitErrorCode,
+        },
       );
     },
   );
@@ -170,7 +180,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
             })),
           };
         },
-        { loggerPrefix: GIT_CHANNELS.GET_COMMITS, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+        {
+          loggerPrefix: GIT_CHANNELS.GET_COMMITS,
+          defaultCode: 'GIT_ERROR',
+          mapErrorCode: mapGitErrorCode,
+        },
       );
     },
   );

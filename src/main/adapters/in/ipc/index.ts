@@ -12,25 +12,13 @@ export { TagIPC, type TagIPCDeps } from './TagIPC';
 export { SearchIPC, type SearchIPCDeps } from './SearchIPC';
 
 // Task management
-export {
-  registerTaskHandlers,
-  unregisterTaskHandlers,
-  type TaskIPCDeps,
-} from './TaskIPC';
+export { registerTaskHandlers, unregisterTaskHandlers, type TaskIPCDeps } from './TaskIPC';
 
 // Topic classification
-export {
-  registerTopicHandlers,
-  unregisterTopicHandlers,
-  type TopicIPCDeps,
-} from './TopicIPC';
+export { registerTopicHandlers, unregisterTopicHandlers, type TopicIPCDeps } from './TopicIPC';
 
 // Graph and links
-export {
-  registerGraphHandlers,
-  unregisterGraphHandlers,
-  type GraphIPCDeps,
-} from './GraphIPC';
+export { registerGraphHandlers, unregisterGraphHandlers, type GraphIPCDeps } from './GraphIPC';
 
 // Version history
 export {
@@ -47,18 +35,10 @@ export {
 } from './AttachmentIPC';
 
 // Export operations
-export {
-  registerExportHandlers,
-  unregisterExportHandlers,
-  type ExportIPCDeps,
-} from './ExportIPC';
+export { registerExportHandlers, unregisterExportHandlers, type ExportIPCDeps } from './ExportIPC';
 
 // Git operations
-export {
-  registerGitHandlers,
-  unregisterGitHandlers,
-  type GitIPCDeps,
-} from './GitIPC';
+export { registerGitHandlers, unregisterGitHandlers, type GitIPCDeps } from './GitIPC';
 
 // Database maintenance
 export {
@@ -75,11 +55,7 @@ export {
 } from './QuickCaptureIPC';
 
 // System utilities
-export {
-  registerSystemHandlers,
-  unregisterSystemHandlers,
-  type SystemIPCDeps,
-} from './SystemIPC';
+export { registerSystemHandlers, unregisterSystemHandlers, type SystemIPCDeps } from './SystemIPC';
 
 // Settings
 export {

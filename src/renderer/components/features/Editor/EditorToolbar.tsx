@@ -38,11 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/base/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@renderer/components/base/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/base/ui/popover';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 
@@ -358,11 +354,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         <ToolbarButton
           size="compact"
           onClick={() => {
-            editor
-              .chain()
-              .focus()
-              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-              .run();
+            editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
           }}
           tooltip="Insert Table (3x3)"
         >
@@ -371,11 +363,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
           <PopoverTrigger asChild>
             <div>
-              <ToolbarButton
-                size="compact"
-                active={editor.isActive('link')}
-                tooltip="Insert Link"
-              >
+              <ToolbarButton size="compact" active={editor.isActive('link')} tooltip="Insert Link">
                 <Link size={14} />
               </ToolbarButton>
             </div>

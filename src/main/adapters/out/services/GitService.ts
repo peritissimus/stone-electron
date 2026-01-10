@@ -71,12 +71,36 @@ export class GitService implements IGitService {
       const remote = remotes.find((r: any) => r.name === 'origin');
 
       const changes: GitFileChange[] = [
-        ...status.modified.map((f: string) => ({ path: f, status: 'modified' as const, staged: false })),
-        ...status.created.map((f: string) => ({ path: f, status: 'added' as const, staged: false })),
-        ...status.deleted.map((f: string) => ({ path: f, status: 'deleted' as const, staged: false })),
-        ...status.renamed.map((f: any) => ({ path: f.to, status: 'renamed' as const, staged: false })),
-        ...status.not_added.map((f: string) => ({ path: f, status: 'untracked' as const, staged: false })),
-        ...status.staged.map((f: string) => ({ path: f, status: 'modified' as const, staged: true })),
+        ...status.modified.map((f: string) => ({
+          path: f,
+          status: 'modified' as const,
+          staged: false,
+        })),
+        ...status.created.map((f: string) => ({
+          path: f,
+          status: 'added' as const,
+          staged: false,
+        })),
+        ...status.deleted.map((f: string) => ({
+          path: f,
+          status: 'deleted' as const,
+          staged: false,
+        })),
+        ...status.renamed.map((f: any) => ({
+          path: f.to,
+          status: 'renamed' as const,
+          staged: false,
+        })),
+        ...status.not_added.map((f: string) => ({
+          path: f,
+          status: 'untracked' as const,
+          staged: false,
+        })),
+        ...status.staged.map((f: string) => ({
+          path: f,
+          status: 'modified' as const,
+          staged: true,
+        })),
       ];
 
       return {

@@ -7,11 +7,7 @@
 
 import TurndownService from 'turndown';
 import { marked } from 'marked';
-import type {
-  IMarkdownProcessor,
-  MarkdownMetadata,
-  ParsedMarkdown,
-} from '../../../domain';
+import type { IMarkdownProcessor, MarkdownMetadata, ParsedMarkdown } from '../../../domain';
 import { logger } from '../../../shared/utils';
 
 /**
@@ -318,10 +314,14 @@ export class MarkdownProcessor implements IMarkdownProcessor {
         if (headingMatch) {
           const level = headingMatch[1].length;
           const text = headingMatch[2];
-          result.push(`<h${level} data-indent="${indent}" style="margin-left: ${indent * 24}px">${this.escapeHtml(text)}</h${level}>`);
+          result.push(
+            `<h${level} data-indent="${indent}" style="margin-left: ${indent * 24}px">${this.escapeHtml(text)}</h${level}>`,
+          );
         } else if (content.trim()) {
           // Regular indented paragraph
-          result.push(`<p data-indent="${indent}" style="margin-left: ${indent * 24}px">${this.escapeHtml(content)}</p>`);
+          result.push(
+            `<p data-indent="${indent}" style="margin-left: ${indent * 24}px">${this.escapeHtml(content)}</p>`,
+          );
         } else {
           result.push(line);
         }
@@ -341,7 +341,16 @@ export class MarkdownProcessor implements IMarkdownProcessor {
    *   - List task items (e.g. "- DONE Task text") → task item with checkbox (in list)
    */
   private preprocessLogseqTasksInMarkdown(markdown: string): string {
-    const taskStates = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
+    const taskStates = [
+      'TODO',
+      'DOING',
+      'DONE',
+      'WAITING',
+      'HOLD',
+      'CANCELED',
+      'CANCELLED',
+      'IDEA',
+    ];
     const lines = markdown.split('\n');
     const result: string[] = [];
     let inTaskList = false;
@@ -349,10 +358,16 @@ export class MarkdownProcessor implements IMarkdownProcessor {
     for (const line of lines) {
       // Match task items with OR without list markers
       // Pattern 1: "DOING Task text" (standalone task state)
-      const standaloneTaskMatch = new RegExp(String.raw`^(\s*)(${taskStates.join('|')})\s+(.+)$`, 'i').exec(line);
+      const standaloneTaskMatch = new RegExp(
+        String.raw`^(\s*)(${taskStates.join('|')})\s+(.+)$`,
+        'i',
+      ).exec(line);
 
       // Pattern 2: "- DONE Task text" or "* DOING Task text" (task in list)
-      const listTaskMatch = new RegExp(String.raw`^(\s*)[-*]\s+(${taskStates.join('|')})\s+(.+)$`, 'i').exec(line);
+      const listTaskMatch = new RegExp(
+        String.raw`^(\s*)[-*]\s+(${taskStates.join('|')})\s+(.+)$`,
+        'i',
+      ).exec(line);
 
       const taskMatch = listTaskMatch || standaloneTaskMatch;
 
@@ -369,7 +384,9 @@ export class MarkdownProcessor implements IMarkdownProcessor {
         }
 
         // Add task item
-        result.push(`<li data-type="taskItem" data-state="${normalizedState}" data-checked="${isDone}"><p>${taskText}</p></li>`);
+        result.push(
+          `<li data-type="taskItem" data-state="${normalizedState}" data-checked="${isDone}"><p>${taskText}</p></li>`,
+        );
       } else {
         // Close task list if we were in one
         if (inTaskList) {
@@ -433,7 +450,8 @@ export class MarkdownProcessor implements IMarkdownProcessor {
         const stateLabel = state.toUpperCase();
 
         // Extract the text content without the button
-        const contentDiv = (node as HTMLElement).querySelector('div') || (node as HTMLElement).querySelector('p');
+        const contentDiv =
+          (node as HTMLElement).querySelector('div') || (node as HTMLElement).querySelector('p');
         const textContent = contentDiv ? contentDiv.textContent || '' : content;
 
         // Save as list-style task item with dash prefix for consistency
@@ -468,14 +486,20 @@ export class MarkdownProcessor implements IMarkdownProcessor {
     // Handle code blocks with language
     this.turndownService.addRule('fencedCodeBlock', {
       filter: (node: Node): boolean => {
-        return node.nodeName === 'PRE' && node.firstChild !== null && node.firstChild.nodeName === 'CODE';
+        return (
+          node.nodeName === 'PRE' && node.firstChild !== null && node.firstChild.nodeName === 'CODE'
+        );
       },
       replacement: (content: string, node: Node, options): string => {
         const codeElement = node.firstChild as HTMLElement;
         const className = codeElement.className || '';
 
         // Try to extract language from class name
-        let language = className.replaceAll('language-', '').replaceAll('hljs', '').replaceAll('code-block', '').trim();
+        let language = className
+          .replaceAll('language-', '')
+          .replaceAll('hljs', '')
+          .replaceAll('code-block', '')
+          .trim();
 
         // If no language in class, check for data-language attribute on parent wrapper
         if (!language) {
@@ -512,10 +536,7 @@ export class MarkdownProcessor implements IMarkdownProcessor {
     // Handle our custom code block wrapper structure
     this.turndownService.addRule('customCodeBlockWrapper', {
       filter: (node): boolean => {
-        return (
-          node.nodeName === 'DIV' &&
-          node.classList?.contains('code-block-wrapper')
-        );
+        return node.nodeName === 'DIV' && node.classList?.contains('code-block-wrapper');
       },
       replacement: (content, node) => {
         // Find the pre > code element
@@ -573,14 +594,14 @@ export class MarkdownProcessor implements IMarkdownProcessor {
 
     // Indented headings (with data-indent attribute) - handle before regular headings
     for (let i = 6; i >= 1; i--) {
-      const indentRe = new RegExp(String.raw`<h${i}[^>]*data-indent=["'](\d+)["'][^>]*>([\s\S]*?)<\/h${i}>`, 'gi');
-      out = out.replaceAll(
-        indentRe,
-        (_, indent: string, text: string) => {
-          const tabs = '\t'.repeat(Number.parseInt(indent, 10));
-          return `\n\n${tabs}${'#'.repeat(i)} ${this.stripTags(text).trim()}\n\n`;
-        },
+      const indentRe = new RegExp(
+        String.raw`<h${i}[^>]*data-indent=["'](\d+)["'][^>]*>([\s\S]*?)<\/h${i}>`,
+        'gi',
       );
+      out = out.replaceAll(indentRe, (_, indent: string, text: string) => {
+        const tabs = '\t'.repeat(Number.parseInt(indent, 10));
+        return `\n\n${tabs}${'#'.repeat(i)} ${this.stripTags(text).trim()}\n\n`;
+      });
     }
 
     // Regular headings (without indent)
@@ -644,7 +665,7 @@ export class MarkdownProcessor implements IMarkdownProcessor {
         .split(/<li[^>]*>/i)
         .map((s: string) => s.replaceAll('</li>', '').trim())
         .filter(Boolean);
-      const formatted = items.map((it: string, idx: number) => (idx + 1) + '. ' + this.stripTags(it));
+      const formatted = items.map((it: string, idx: number) => idx + 1 + '. ' + this.stripTags(it));
       return '\n\n' + formatted.join('\n') + '\n\n';
     });
 
@@ -671,7 +692,10 @@ export class MarkdownProcessor implements IMarkdownProcessor {
     );
 
     // Emphasis and strong
-    out = out.replaceAll(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, (_, t: string) => `**${this.stripTags(t)}**`);
+    out = out.replaceAll(
+      /<strong[^>]*>([\s\S]*?)<\/strong>/gi,
+      (_, t: string) => `**${this.stripTags(t)}**`,
+    );
     out = out.replaceAll(/<b[^>]*>([\s\S]*?)<\/b>/gi, (_, t: string) => `**${this.stripTags(t)}**`);
     out = out.replaceAll(/<em[^>]*>([\s\S]*?)<\/em>/gi, (_, t: string) => `*${this.stripTags(t)}*`);
     out = out.replaceAll(/<i[^>]*>([\s\S]*?)<\/i>/gi, (_, t: string) => `*${this.stripTags(t)}*`);

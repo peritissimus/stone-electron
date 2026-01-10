@@ -127,13 +127,10 @@ export function useSearchAPI() {
       setLoading(true);
       setError(null);
       try {
-        const response = await invokeIpc<{ notes: Note[]; total: number }>(
-          SEARCH_CHANNELS.BY_TAG,
-          {
-            tagIds: tagIds,
-            match_all: matchAll,
-          },
-        );
+        const response = await invokeIpc<{ notes: Note[]; total: number }>(SEARCH_CHANNELS.BY_TAG, {
+          tagIds: tagIds,
+          match_all: matchAll,
+        });
         if (response.success && response.data) {
           return response.data;
         } else {

@@ -32,10 +32,7 @@ export type Unsubscribe = () => void;
  *   return unsubscribe;
  * }, []);
  */
-export function subscribe(
-  event: string,
-  handler: EventHandler
-): Unsubscribe {
+export function subscribe(event: string, handler: EventHandler): Unsubscribe {
   const off = window.electron.on(event, handler);
   return () => off?.();
 }
@@ -56,10 +53,7 @@ export function subscribe(
  *   return unsubscribe;
  * }, []);
  */
-export function subscribeMany(
-  events: string[],
-  handler: EventHandler
-): Unsubscribe {
+export function subscribeMany(events: string[], handler: EventHandler): Unsubscribe {
   const unsubscribers = events.map((event) => subscribe(event, handler));
   return () => unsubscribers.forEach((unsub) => unsub());
 }
@@ -71,36 +65,27 @@ export const events = {
   /**
    * Subscribe to file system events
    */
-  onFileCreated: (handler: EventHandler) =>
-    subscribe(EVENTS.FILE_CREATED, handler),
+  onFileCreated: (handler: EventHandler) => subscribe(EVENTS.FILE_CREATED, handler),
 
-  onFileChanged: (handler: EventHandler) =>
-    subscribe(EVENTS.FILE_CHANGED, handler),
+  onFileChanged: (handler: EventHandler) => subscribe(EVENTS.FILE_CHANGED, handler),
 
-  onFileDeleted: (handler: EventHandler) =>
-    subscribe(EVENTS.FILE_DELETED, handler),
+  onFileDeleted: (handler: EventHandler) => subscribe(EVENTS.FILE_DELETED, handler),
 
   /**
    * Subscribe to note events
    */
-  onNoteUpdated: (handler: EventHandler) =>
-    subscribe(EVENTS.NOTE_UPDATED, handler),
+  onNoteUpdated: (handler: EventHandler) => subscribe(EVENTS.NOTE_UPDATED, handler),
 
-  onNoteDeleted: (handler: EventHandler) =>
-    subscribe(EVENTS.NOTE_DELETED, handler),
+  onNoteDeleted: (handler: EventHandler) => subscribe(EVENTS.NOTE_DELETED, handler),
 
   /**
    * Subscribe to workspace events
    */
-  onWorkspaceUpdated: (handler: EventHandler) =>
-    subscribe(EVENTS.WORKSPACE_UPDATED, handler),
+  onWorkspaceUpdated: (handler: EventHandler) => subscribe(EVENTS.WORKSPACE_UPDATED, handler),
 
   /**
    * Subscribe to all file system events with a single handler
    */
   onFileSystemChange: (handler: EventHandler) =>
-    subscribeMany(
-      [EVENTS.FILE_CREATED, EVENTS.FILE_CHANGED, EVENTS.FILE_DELETED],
-      handler
-    ),
+    subscribeMany([EVENTS.FILE_CREATED, EVENTS.FILE_CHANGED, EVENTS.FILE_DELETED], handler),
 };

@@ -147,7 +147,7 @@ class AttachmentUseCasesImpl implements IAttachmentUseCases {
     noteId: string,
     imageData: Buffer | string,
     filename: string,
-    mimeType?: string
+    mimeType?: string,
   ) {
     const { noteRepository, workspaceRepository, fileStorage } = this.deps;
 

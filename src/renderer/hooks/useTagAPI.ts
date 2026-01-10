@@ -51,7 +51,7 @@ export function useTagAPI() {
     async (sort: 'name' | 'count' | 'recent' = 'name') => {
       return loadAll({ sort });
     },
-    [loadAll]
+    [loadAll],
   );
 
   /**
@@ -73,7 +73,7 @@ export function useTagAPI() {
         return null;
       }
     },
-    [setError]
+    [setError],
   );
 
   /**
@@ -94,7 +94,7 @@ export function useTagAPI() {
         return false;
       }
     },
-    [setError]
+    [setError],
   );
 
   return {

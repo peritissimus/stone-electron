@@ -144,4 +144,3 @@ export class TagEntity {
     this.props.updatedAt = new Date();
   }
 }
-

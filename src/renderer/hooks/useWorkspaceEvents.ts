@@ -34,31 +34,33 @@ export function useWorkspaceEvents(handlers: WorkspaceEventHandlers): void {
 
     if (handlersRef.current.onCreated) {
       unsubscribers.push(
-        subscribe(EVENTS.WORKSPACE_CREATED, (payload) => handlersRef.current.onCreated?.(payload))
+        subscribe(EVENTS.WORKSPACE_CREATED, (payload) => handlersRef.current.onCreated?.(payload)),
       );
     }
 
     if (handlersRef.current.onUpdated) {
       unsubscribers.push(
-        subscribe(EVENTS.WORKSPACE_UPDATED, (payload) => handlersRef.current.onUpdated?.(payload))
+        subscribe(EVENTS.WORKSPACE_UPDATED, (payload) => handlersRef.current.onUpdated?.(payload)),
       );
     }
 
     if (handlersRef.current.onDeleted) {
       unsubscribers.push(
-        subscribe(EVENTS.WORKSPACE_DELETED, (payload) => handlersRef.current.onDeleted?.(payload))
+        subscribe(EVENTS.WORKSPACE_DELETED, (payload) => handlersRef.current.onDeleted?.(payload)),
       );
     }
 
     if (handlersRef.current.onSwitched) {
       unsubscribers.push(
-        subscribe(EVENTS.WORKSPACE_SWITCHED, (payload) => handlersRef.current.onSwitched?.(payload))
+        subscribe(EVENTS.WORKSPACE_SWITCHED, (payload) =>
+          handlersRef.current.onSwitched?.(payload),
+        ),
       );
     }
 
     if (handlersRef.current.onScanned) {
       unsubscribers.push(
-        subscribe(EVENTS.WORKSPACE_SCANNED, (payload) => handlersRef.current.onScanned?.(payload))
+        subscribe(EVENTS.WORKSPACE_SCANNED, (payload) => handlersRef.current.onScanned?.(payload)),
       );
     }
 

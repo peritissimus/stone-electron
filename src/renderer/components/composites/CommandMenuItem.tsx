@@ -98,7 +98,7 @@ export const CommandMenuItem = React.forwardRef<HTMLButtonElement, CommandMenuIt
       className,
       asChild = false,
     },
-    ref
+    ref,
   ) => {
     const config = sizeConfig[size];
 
@@ -107,20 +107,14 @@ export const CommandMenuItem = React.forwardRef<HTMLButtonElement, CommandMenuIt
         <div className="flex-shrink-0 text-muted-foreground">{icon}</div>
         <div className="flex-1 min-w-0">
           <div className={config.titleClass}>{title}</div>
-          {description && (
-            <div className={cn(config.descClass, 'line-clamp-1')}>{description}</div>
-          )}
+          {description && <div className={cn(config.descClass, 'line-clamp-1')}>{description}</div>}
         </div>
       </>
     );
 
     // Render as div for use inside DropdownMenuItem
     if (asChild) {
-      return (
-        <div className={cn('flex items-start', config.gap, className)}>
-          {content}
-        </div>
-      );
+      return <div className={cn('flex items-start', config.gap, className)}>{content}</div>;
     }
 
     // Render as button for standalone use
@@ -137,13 +131,13 @@ export const CommandMenuItem = React.forwardRef<HTMLButtonElement, CommandMenuIt
           'rounded-md transition-colors',
           'hover:bg-accent cursor-pointer',
           isSelected && 'bg-accent',
-          className
+          className,
         )}
       >
         {content}
       </button>
     );
-  }
+  },
 );
 
 CommandMenuItem.displayName = 'CommandMenuItem';

@@ -16,13 +16,13 @@ export type ContainerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 export type ContainerPadding = 'none' | 'sm' | 'md' | 'lg' | 'xl';
 
 const sizeClasses: Record<ContainerSize, string> = {
-  xs: 'max-w-xl',      // 576px - narrow content
-  sm: 'max-w-2xl',     // 672px - blog posts
-  md: 'max-w-4xl',     // 896px - standard content
-  lg: 'max-w-6xl',     // 1152px - wide layouts
-  xl: 'max-w-7xl',     // 1280px - very wide
+  xs: 'max-w-xl', // 576px - narrow content
+  sm: 'max-w-2xl', // 672px - blog posts
+  md: 'max-w-4xl', // 896px - standard content
+  lg: 'max-w-6xl', // 1152px - wide layouts
+  xl: 'max-w-7xl', // 1280px - very wide
   '2xl': 'max-w-[1400px]', // 1400px - extra wide
-  full: 'max-w-full',  // no constraint
+  full: 'max-w-full', // no constraint
 };
 
 const paddingClasses: Record<ContainerPadding, string> = {
@@ -54,15 +54,18 @@ export interface ContainerProps extends React.HTMLAttributes<HTMLDivElement> {
  * </Container>
  */
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
-  ({
-    size = 'lg',
-    padding = 'md',
-    centered = true,
-    fullHeight = false,
-    className,
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      size = 'lg',
+      padding = 'md',
+      centered = true,
+      fullHeight = false,
+      className,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
@@ -72,14 +75,14 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
           paddingClasses[padding],
           centered && 'mx-auto',
           fullHeight && 'h-full',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 Container.displayName = 'Container';
 
@@ -123,7 +126,10 @@ const sectionBackgroundClasses = {
  * </ContainerSection>
  */
 export const ContainerSection = React.forwardRef<HTMLElement, ContainerSectionProps>(
-  ({ spacing = 'md', background = 'default', fullWidth = false, className, children, ...props }, ref) => {
+  (
+    { spacing = 'md', background = 'default', fullWidth = false, className, children, ...props },
+    ref,
+  ) => {
     return (
       <section
         ref={ref}
@@ -132,14 +138,14 @@ export const ContainerSection = React.forwardRef<HTMLElement, ContainerSectionPr
           sectionSpacingClasses[spacing],
           sectionBackgroundClasses[background],
           !fullWidth && 'max-w-7xl mx-auto',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </section>
     );
-  }
+  },
 );
 ContainerSection.displayName = 'ContainerSection';
 
@@ -197,14 +203,14 @@ export const ContainerStack = React.forwardRef<HTMLDivElement, ContainerStackPro
           stackGapClasses[gap],
           stackAlignClasses[align],
           split && 'justify-between',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerStack.displayName = 'ContainerStack';
 
@@ -257,7 +263,10 @@ export interface ContainerClusterProps extends React.HTMLAttributes<HTMLDivEleme
  * </ContainerCluster>
  */
 export const ContainerCluster = React.forwardRef<HTMLDivElement, ContainerClusterProps>(
-  ({ gap = 'md', justify = 'start', align = 'center', wrap = true, className, children, ...props }, ref) => {
+  (
+    { gap = 'md', justify = 'start', align = 'center', wrap = true, className, children, ...props },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
@@ -267,14 +276,14 @@ export const ContainerCluster = React.forwardRef<HTMLDivElement, ContainerCluste
           clusterJustifyClasses[justify],
           clusterAlignClasses[align],
           wrap ? 'flex-wrap' : 'flex-nowrap',
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerCluster.displayName = 'ContainerCluster';
 
@@ -332,14 +341,14 @@ export const ContainerGrid = React.forwardRef<HTMLDivElement, ContainerGridProps
           tabletCols && `md:${gridColsClasses[tabletCols]}`,
           `lg:${gridColsClasses[cols]}`,
           !mobileCols && gridColsClasses[cols],
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerGrid.displayName = 'ContainerGrid';
 
@@ -387,16 +396,19 @@ export interface ContainerFlexProps extends React.HTMLAttributes<HTMLDivElement>
  * </ContainerFlex>
  */
 export const ContainerFlex = React.forwardRef<HTMLDivElement, ContainerFlexProps>(
-  ({
-    direction = 'row',
-    gap = 'md',
-    wrap = 'nowrap',
-    justify = 'start',
-    align = 'stretch',
-    className,
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      direction = 'row',
+      gap = 'md',
+      wrap = 'nowrap',
+      justify = 'start',
+      align = 'stretch',
+      className,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
@@ -407,14 +419,14 @@ export const ContainerFlex = React.forwardRef<HTMLDivElement, ContainerFlexProps
           flexWrapClasses[wrap],
           clusterJustifyClasses[justify],
           clusterAlignClasses[align],
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerFlex.displayName = 'ContainerFlex';
 
@@ -463,16 +475,19 @@ export interface ContainerSplitProps extends React.HTMLAttributes<HTMLDivElement
  * </ContainerSplit>
  */
 export const ContainerSplit = React.forwardRef<HTMLDivElement, ContainerSplitProps>(
-  ({
-    gap = 'lg',
-    ratio = '1:1',
-    breakpoint = 'md',
-    align = 'stretch',
-    reverseOnMobile = false,
-    className,
-    children,
-    ...props
-  }, ref) => {
+  (
+    {
+      gap = 'lg',
+      ratio = '1:1',
+      breakpoint = 'md',
+      align = 'stretch',
+      reverseOnMobile = false,
+      className,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
@@ -483,14 +498,14 @@ export const ContainerSplit = React.forwardRef<HTMLDivElement, ContainerSplitPro
           stackGapClasses[gap],
           clusterAlignClasses[align],
           splitRatioClasses[ratio],
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerSplit.displayName = 'ContainerSplit';
 
@@ -517,7 +532,10 @@ export interface ContainerCenterProps extends React.HTMLAttributes<HTMLDivElemen
  * </ContainerCenter>
  */
 export const ContainerCenter = React.forwardRef<HTMLDivElement, ContainerCenterProps>(
-  ({ maxWidth = 'md', centerVertically = false, minHeight, className, children, ...props }, ref) => {
+  (
+    { maxWidth = 'md', centerVertically = false, minHeight, className, children, ...props },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
@@ -525,7 +543,7 @@ export const ContainerCenter = React.forwardRef<HTMLDivElement, ContainerCenterP
           'mx-auto px-4',
           sizeClasses[maxWidth],
           centerVertically && 'flex items-center justify-center',
-          className
+          className,
         )}
         style={{ minHeight }}
         {...props}
@@ -533,7 +551,7 @@ export const ContainerCenter = React.forwardRef<HTMLDivElement, ContainerCenterP
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerCenter.displayName = 'ContainerCenter';
 
@@ -568,14 +586,17 @@ export interface ContainerScrollableProps extends React.HTMLAttributes<HTMLDivEl
  * </ContainerScrollable>
  */
 export const ContainerScrollable = React.forwardRef<HTMLDivElement, ContainerScrollableProps>(
-  ({ direction = 'vertical', maxHeight, hideScrollbar = false, className, children, ...props }, ref) => {
+  (
+    { direction = 'vertical', maxHeight, hideScrollbar = false, className, children, ...props },
+    ref,
+  ) => {
     return (
       <div
         ref={ref}
         className={cn(
           scrollDirectionClasses[direction],
           hideScrollbar && 'scrollbar-hide',
-          className
+          className,
         )}
         style={{ maxHeight }}
         {...props}
@@ -583,7 +604,7 @@ export const ContainerScrollable = React.forwardRef<HTMLDivElement, ContainerScr
         {children}
       </div>
     );
-  }
+  },
 );
 ContainerScrollable.displayName = 'ContainerScrollable';
 
@@ -591,6 +612,5 @@ ContainerScrollable.displayName = 'ContainerScrollable';
 // EXPORTS
 // ============================================================================
 
-export {
-  // Types are exported inline above
-};
+export // Types are exported inline above
+ {};

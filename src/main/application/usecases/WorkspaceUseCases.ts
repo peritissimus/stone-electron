@@ -26,7 +26,7 @@ import type { NoteProps } from '../../domain/entities';
 export class CreateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: {
@@ -73,7 +73,7 @@ export class ListWorkspacesUseCase {
 export class SetActiveWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<{ workspace: WorkspaceProps }> {
@@ -115,7 +115,7 @@ export class GetActiveWorkspaceUseCase {
 export class DeleteWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string }): Promise<void> {
@@ -133,7 +133,7 @@ export class DeleteWorkspaceUseCase {
 export class UpdateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly eventPublisher?: IEventPublisher
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { id: string; name?: string }): Promise<{ workspace: WorkspaceProps }> {
@@ -192,13 +192,10 @@ export class ValidatePathUseCase {
 export class CreateFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: {
-    name: string;
-    parentPath?: string;
-  }): Promise<{ path: string }> {
+  async execute(request: { name: string; parentPath?: string }): Promise<{ path: string }> {
     const activeWorkspace = await this.workspaceRepository.findActive();
     if (!activeWorkspace) {
       throw new Error('No active workspace');
@@ -220,7 +217,7 @@ export class CreateFolderUseCase {
 export class RenameFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
   async execute(request: {
@@ -254,7 +251,7 @@ export class RenameFolderUseCase {
 export class DeleteFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
   async execute(request: { path: string }): Promise<void> {
@@ -280,7 +277,7 @@ export class DeleteFolderUseCase {
 export class MoveFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
   async execute(request: {
@@ -336,7 +333,7 @@ interface FolderStructure {
 export class ScanWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
   async execute(request: { workspaceId: string }): Promise<{
@@ -385,7 +382,10 @@ export class ScanWorkspaceUseCase {
     };
   }
 
-  private async buildFolderStructure(basePath: string, relativePath: string): Promise<FolderStructure[]> {
+  private async buildFolderStructure(
+    basePath: string,
+    relativePath: string,
+  ): Promise<FolderStructure[]> {
     const currentPath = relativePath ? path.join(basePath, relativePath) : basePath;
     const items = await this.fileStorage.listFiles(currentPath);
 
@@ -433,7 +433,7 @@ export class SyncWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly noteRepository: INoteRepository,
-    private readonly fileStorage: IFileStorage
+    private readonly fileStorage: IFileStorage,
   ) {}
 
   async execute(request?: { workspaceId?: string }): Promise<SyncResult> {

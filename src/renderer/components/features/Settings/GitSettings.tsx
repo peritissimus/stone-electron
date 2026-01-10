@@ -172,8 +172,8 @@ export function GitSettings() {
         <ContainerStack gap="lg">
           <ContainerStack gap="sm">
             <Body variant="muted">
-              Enable Git sync for <strong>{activeWorkspace.name}</strong> to version control your notes
-              and sync across devices.
+              Enable Git sync for <strong>{activeWorkspace.name}</strong> to version control your
+              notes and sync across devices.
             </Body>
           </ContainerStack>
 
@@ -215,7 +215,9 @@ export function GitSettings() {
         {/* Workspace info */}
         <ContainerStack gap="xs">
           <Body weight="medium">{activeWorkspace.name}</Body>
-          <Body size="sm" variant="muted">{activeWorkspace.folderPath}</Body>
+          <Body size="sm" variant="muted">
+            {activeWorkspace.folderPath}
+          </Body>
         </ContainerStack>
 
         {/* Status */}

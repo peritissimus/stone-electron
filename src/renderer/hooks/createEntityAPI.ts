@@ -93,7 +93,7 @@ export interface EntityAPIResult<T, TParams = Record<string, unknown>> {
  * ```
  */
 export function createEntityAPI<T extends { id: string }, TParams = Record<string, unknown>>(
-  config: EntityAPIConfig<T>
+  config: EntityAPIConfig<T>,
 ): () => EntityAPIResult<T, TParams> {
   const { entityName, channels, useStore, responseKey, logPrefix } = config;
   const prefix = logPrefix || `[${entityName}API]`;
@@ -136,7 +136,7 @@ export function createEntityAPI<T extends { id: string }, TParams = Record<strin
           setLoading(false);
         }
       },
-      [setItems, setLoading, setError]
+      [setItems, setLoading, setError],
     );
 
     /**
@@ -173,7 +173,7 @@ export function createEntityAPI<T extends { id: string }, TParams = Record<strin
           setLoading(false);
         }
       },
-      [addItem, setLoading, setError]
+      [addItem, setLoading, setError],
     );
 
     /**
@@ -207,7 +207,7 @@ export function createEntityAPI<T extends { id: string }, TParams = Record<strin
           return null;
         }
       },
-      [updateItem, setError]
+      [updateItem, setError],
     );
 
     /**
@@ -240,7 +240,7 @@ export function createEntityAPI<T extends { id: string }, TParams = Record<strin
           return false;
         }
       },
-      [deleteItem, setError]
+      [deleteItem, setError],
     );
 
     return { loadAll, create, update, remove };
@@ -264,7 +264,7 @@ export function useEntityAction<T>(
   channel: string,
   errorMessage: string,
   setError: (error: string | null) => void,
-  onSuccess?: (data: T) => void
+  onSuccess?: (data: T) => void,
 ) {
   return useCallback(
     async (params: Record<string, unknown>): Promise<T | null> => {
@@ -288,7 +288,7 @@ export function useEntityAction<T>(
         return null;
       }
     },
-    [channel, errorMessage, setError, onSuccess]
+    [channel, errorMessage, setError, onSuccess],
   );
 }
 
@@ -299,7 +299,7 @@ export function useEntityVoidAction(
   channel: string,
   errorMessage: string,
   setError: (error: string | null) => void,
-  onSuccess?: () => void
+  onSuccess?: () => void,
 ) {
   return useCallback(
     async (params: Record<string, unknown>): Promise<boolean> => {
@@ -322,6 +322,6 @@ export function useEntityVoidAction(
         return false;
       }
     },
-    [channel, errorMessage, setError, onSuccess]
+    [channel, errorMessage, setError, onSuccess],
   );
 }

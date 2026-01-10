@@ -168,34 +168,94 @@ export function FloatingBlockMenu({ editor }: FloatingBlockMenuProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[260px]">
           <DropdownMenuItem onClick={() => addBlock('paragraph')}>
-            <CommandMenuItem asChild icon={<TextT size={18} />} title="Text" description="Just start writing" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<TextT size={18} />}
+              title="Text"
+              description="Just start writing"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading1')}>
-            <CommandMenuItem asChild icon={<TextHOne size={18} />} title="Heading 1" description="Large section heading" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHOne size={18} />}
+              title="Heading 1"
+              description="Large section heading"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading2')}>
-            <CommandMenuItem asChild icon={<TextHTwo size={18} />} title="Heading 2" description="Medium section heading" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHTwo size={18} />}
+              title="Heading 2"
+              description="Medium section heading"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('heading3')}>
-            <CommandMenuItem asChild icon={<TextHThree size={18} />} title="Heading 3" description="Small section heading" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<TextHThree size={18} />}
+              title="Heading 3"
+              description="Small section heading"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('bulletList')}>
-            <CommandMenuItem asChild icon={<List size={18} />} title="Bullet List" description="Simple bullet list" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<List size={18} />}
+              title="Bullet List"
+              description="Simple bullet list"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('orderedList')}>
-            <CommandMenuItem asChild icon={<ListNumbers size={18} />} title="Numbered List" description="List with numbering" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<ListNumbers size={18} />}
+              title="Numbered List"
+              description="List with numbering"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('taskList')}>
-            <CommandMenuItem asChild icon={<Check size={18} />} title="To-do List" description="Track tasks" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<Check size={18} />}
+              title="To-do List"
+              description="Track tasks"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('codeBlock')}>
-            <CommandMenuItem asChild icon={<Code size={18} />} title="Code Block" description="Syntax highlighting" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<Code size={18} />}
+              title="Code Block"
+              description="Syntax highlighting"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('blockquote')}>
-            <CommandMenuItem asChild icon={<Quotes size={18} />} title="Quote" description="Capture a quote" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<Quotes size={18} />}
+              title="Quote"
+              description="Capture a quote"
+              size="spacious"
+            />
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => addBlock('divider')}>
-            <CommandMenuItem asChild icon={<Minus size={18} />} title="Divider" description="Visual separator" size="spacious" />
+            <CommandMenuItem
+              asChild
+              icon={<Minus size={18} />}
+              title="Divider"
+              description="Visual separator"
+              size="spacious"
+            />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

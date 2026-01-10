@@ -22,11 +22,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@renderer/components/base/ui/dialog';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@renderer/components/base/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/base/ui/popover';
 import { cn } from '@renderer/lib/utils';
 import type { TopicWithCount } from '@shared/types';
 
@@ -194,9 +190,19 @@ export function TopicsPage() {
   if (initializing) {
     return (
       <div className="flex flex-col h-full">
-        <div className={cn('px-4 border-b border-border/50 flex items-center gap-2', sizeHeightClasses['spacious'])}>
+        <div
+          className={cn(
+            'px-4 border-b border-border/50 flex items-center gap-2',
+            sizeHeightClasses['spacious'],
+          )}
+        >
           {!sidebarOpen && (
-            <IconButton size="normal" icon={<CaretRight size={16} weight="bold" />} tooltip="Expand" onClick={toggleSidebar} />
+            <IconButton
+              size="normal"
+              icon={<CaretRight size={16} weight="bold" />}
+              tooltip="Expand"
+              onClick={toggleSidebar}
+            />
           )}
           <span className="text-sm font-medium">Topics</span>
         </div>
@@ -210,9 +216,19 @@ export function TopicsPage() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className={cn('px-4 border-b border-border/50 flex items-center gap-2', sizeHeightClasses['spacious'])}>
+      <div
+        className={cn(
+          'px-4 border-b border-border/50 flex items-center gap-2',
+          sizeHeightClasses['spacious'],
+        )}
+      >
         {!sidebarOpen && (
-          <IconButton size="normal" icon={<CaretRight size={16} weight="bold" />} tooltip="Expand" onClick={toggleSidebar} />
+          <IconButton
+            size="normal"
+            icon={<CaretRight size={16} weight="bold" />}
+            tooltip="Expand"
+            onClick={toggleSidebar}
+          />
         )}
         <span className="text-sm font-medium">Topics</span>
         <div className="flex-1" />
@@ -252,7 +268,12 @@ export function TopicsPage() {
             </div>
           </PopoverContent>
         </Popover>
-        <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(true)} className="h-7 px-2 text-xs">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowCreateDialog(true)}
+          className="h-7 px-2 text-xs"
+        >
           <Plus className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -275,7 +296,10 @@ export function TopicsPage() {
             checked={excludeJournal}
             onCheckedChange={(checked) => setExcludeJournal(checked === true)}
           />
-          <Label htmlFor="exclude-journal-listing" className="text-xs text-muted-foreground cursor-pointer">
+          <Label
+            htmlFor="exclude-journal-listing"
+            className="text-xs text-muted-foreground cursor-pointer"
+          >
             Exclude journals
           </Label>
         </div>
@@ -284,7 +308,12 @@ export function TopicsPage() {
       {/* Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Topics List */}
-        <div className={cn('overflow-auto', selectedTopicId ? 'w-1/2 border-r border-border/50' : 'w-full')}>
+        <div
+          className={cn(
+            'overflow-auto',
+            selectedTopicId ? 'w-1/2 border-r border-border/50' : 'w-full',
+          )}
+        >
           {error && <div className="px-4 py-2 text-xs text-destructive">{error}</div>}
 
           {searchQuery && searchResults.length > 0 && (
@@ -305,7 +334,12 @@ export function TopicsPage() {
           {!searchQuery && topics.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <p className="text-sm">No topics</p>
-              <Button variant="link" size="sm" onClick={() => setShowCreateDialog(true)} className="mt-1">
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setShowCreateDialog(true)}
+                className="mt-1"
+              >
                 Create one
               </Button>
             </div>
@@ -332,7 +366,9 @@ export function TopicsPage() {
             <div className="px-4 py-3 border-t border-border/50 text-xs text-muted-foreground">
               <div className="flex justify-between">
                 <span>{embeddingStatus.ready ? 'Ready' : 'Not initialized'}</span>
-                <span>{embeddingStatus.embeddedNotes}/{embeddingStatus.totalNotes} classified</span>
+                <span>
+                  {embeddingStatus.embeddedNotes}/{embeddingStatus.totalNotes} classified
+                </span>
               </div>
             </div>
           )}
@@ -348,12 +384,19 @@ export function TopicsPage() {
               />
               <span className="text-sm font-medium flex-1">{selectedTopic.name}</span>
               <span className="text-xs text-muted-foreground">{topicNotes.length}</span>
-              <IconButton size="normal" icon={<X size={14} />} tooltip="Close" onClick={() => selectTopic(null)} />
+              <IconButton
+                size="normal"
+                icon={<X size={14} />}
+                tooltip="Close"
+                onClick={() => selectTopic(null)}
+              />
             </div>
             <div className="flex-1 overflow-auto">
               {loadingNotes ? (
                 <div className="p-4 space-y-2">
-                  {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10" />)}
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-10" />
+                  ))}
                 </div>
               ) : topicNotes.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
@@ -390,7 +433,9 @@ export function TopicsPage() {
                   onClick={() => setNewTopicColor(c)}
                   className={cn(
                     'w-6 h-6 rounded-full transition-transform',
-                    newTopicColor === c ? 'scale-125 ring-2 ring-offset-2 ring-offset-background ring-foreground/20' : 'hover:scale-110',
+                    newTopicColor === c
+                      ? 'scale-125 ring-2 ring-offset-2 ring-offset-background ring-foreground/20'
+                      : 'hover:scale-110',
                   )}
                   style={{ backgroundColor: c }}
                 />

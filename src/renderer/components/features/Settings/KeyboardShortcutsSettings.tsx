@@ -45,7 +45,7 @@ function ShortcutRow({ shortcut, isCustomized, onEdit, onReset }: ShortcutRowPro
           className={cn(
             'px-3 py-1.5 rounded-md text-xs font-mono',
             'bg-muted/50 hover:bg-muted transition-colors',
-            'border border-border'
+            'border border-border',
           )}
         >
           {formatShortcutDisplay(shortcut)}
@@ -104,7 +104,7 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
       });
       setRecording(false);
     },
-    [recording]
+    [recording],
   );
 
   useEffect(() => {
@@ -132,7 +132,7 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
               'w-full py-6 rounded-lg border-2 border-dashed transition-colors',
               recording
                 ? 'border-primary bg-primary/10'
-                : 'border-border hover:border-muted-foreground'
+                : 'border-border hover:border-muted-foreground',
             )}
           >
             {recording ? (

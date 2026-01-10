@@ -127,7 +127,7 @@ interface MermaidOverrides {
 export function initializeMermaid(
   mermaid: typeof import('mermaid').default,
   isDark = false,
-  overrides: MermaidOverrides = {}
+  overrides: MermaidOverrides = {},
 ) {
   // Safe fallbacks matching CSS variables in index.css
   const F = isDark
@@ -292,7 +292,7 @@ export function fixMermaidForeignObjects(svg: string): string {
 
           div.setAttribute(
             'style',
-            'display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; text-align: center; white-space: nowrap;'
+            'display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; text-align: center; white-space: nowrap;',
           );
         }
       }
@@ -309,7 +309,7 @@ export function fixMermaidForeignObjects(svg: string): string {
 export async function renderMermaidDiagram(
   code: string,
   isDark: boolean,
-  isStateDiagram: boolean
+  isStateDiagram: boolean,
 ): Promise<{ svg: string; error?: string }> {
   try {
     // Check cache first
@@ -324,11 +324,7 @@ export async function renderMermaidDiagram(
     // Only re-initialize Mermaid when theme changes
     const currentTheme = isDark ? 'dark' : 'light';
     if (mermaidInitializedTheme !== currentTheme) {
-      initializeMermaid(
-        mermaid,
-        isDark,
-        isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {}
-      );
+      initializeMermaid(mermaid, isDark, isStateDiagram ? { fontFamily: MERMAID_FONT_STACK } : {});
       mermaidInitializedTheme = currentTheme;
     }
 

@@ -31,8 +31,7 @@ export const noteAPI = {
   /**
    * Get a single note by ID
    */
-  getById: (id: string): Promise<IpcResponse<Note>> =>
-    invokeIpc(NOTE_CHANNELS.GET, { id }),
+  getById: (id: string): Promise<IpcResponse<Note>> => invokeIpc(NOTE_CHANNELS.GET, { id }),
 
   /**
    * Get a note by its file path
@@ -54,8 +53,7 @@ export const noteAPI = {
     content?: string;
     notebookId?: string;
     folderPath?: string;
-  }): Promise<IpcResponse<Note>> =>
-    invokeIpc(NOTE_CHANNELS.CREATE, data),
+  }): Promise<IpcResponse<Note>> => invokeIpc(NOTE_CHANNELS.CREATE, data),
 
   /**
    * Update an existing note
@@ -67,15 +65,13 @@ export const noteAPI = {
       content: string;
       notebookId: string;
     }>,
-    silent?: boolean
-  ): Promise<IpcResponse<Note>> =>
-    invokeIpc(NOTE_CHANNELS.UPDATE, { id, ...data, silent }),
+    silent?: boolean,
+  ): Promise<IpcResponse<Note>> => invokeIpc(NOTE_CHANNELS.UPDATE, { id, ...data, silent }),
 
   /**
    * Delete a note
    */
-  delete: (id: string): Promise<IpcResponse<void>> =>
-    invokeIpc(NOTE_CHANNELS.DELETE, { id }),
+  delete: (id: string): Promise<IpcResponse<void>> => invokeIpc(NOTE_CHANNELS.DELETE, { id }),
 
   /**
    * Move a note to a different location
@@ -104,8 +100,7 @@ export const noteAPI = {
   /**
    * Get all todos across all notes
    */
-  getAllTodos: (): Promise<IpcResponse<TodoItem[]>> =>
-    invokeIpc(NOTE_CHANNELS.GET_ALL_TODOS, {}),
+  getAllTodos: (): Promise<IpcResponse<TodoItem[]>> => invokeIpc(NOTE_CHANNELS.GET_ALL_TODOS, {}),
 
   /**
    * Update a task state in a note
@@ -113,7 +108,7 @@ export const noteAPI = {
   updateTaskState: (
     noteId: string,
     taskIndex: number,
-    newState: string
+    newState: string,
   ): Promise<IpcResponse<void>> =>
     invokeIpc(NOTE_CHANNELS.UPDATE_TASK_STATE, { noteId, taskIndex, newState }),
 
@@ -144,8 +139,7 @@ export const noteAPI = {
   /**
    * Get graph data for visualization
    */
-  getGraphData: (): Promise<IpcResponse<GraphData>> =>
-    invokeIpc(NOTE_CHANNELS.GET_GRAPH_DATA, {}),
+  getGraphData: (): Promise<IpcResponse<GraphData>> => invokeIpc(NOTE_CHANNELS.GET_GRAPH_DATA, {}),
 
   /**
    * Export note as HTML
