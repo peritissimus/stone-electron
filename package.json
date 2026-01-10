@@ -30,7 +30,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest --coverage run",
     "test:e2e": "start-server-and-test dev http://localhost:5173 cy:run",
     "cy:open": "cypress open",
     "cy:run": "cypress run",
