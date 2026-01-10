@@ -7,6 +7,7 @@
 import { eq } from 'drizzle-orm';
 import { workspaces, type Database } from '../../../shared';
 import type { WorkspaceEntity, WorkspaceProps, IWorkspaceRepository } from '../../../domain';
+import { handleOperation } from '../../../shared/utils';
 
 export interface WorkspaceRepositoryDeps {
   db: Database;
@@ -15,90 +16,138 @@ export interface WorkspaceRepositoryDeps {
 export class WorkspaceRepository implements IWorkspaceRepository {
   constructor(private readonly deps: WorkspaceRepositoryDeps) {}
 
-  async findById(id: string): Promise<WorkspaceProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.id, id))
-      .limit(1);
+  private handle<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) {
+    return handleOperation(fn, { adapter: 'WorkspaceRepository', operation, context });
+  }
 
-    return result[0] ? this.toWorkspaceProps(result[0]) : null;
+  async findById(id: string): Promise<WorkspaceProps | null> {
+    return this.handle(
+      'findById',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(workspaces)
+          .where(eq(workspaces.id, id))
+          .limit(1);
+
+        return result[0] ? this.toWorkspaceProps(result[0]) : null;
+      },
+      { workspaceId: id },
+    );
   }
 
   async findByFolderPath(folderPath: string): Promise<WorkspaceProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.folderPath, folderPath))
-      .limit(1);
+    return this.handle(
+      'findByFolderPath',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(workspaces)
+          .where(eq(workspaces.folderPath, folderPath))
+          .limit(1);
 
-    return result[0] ? this.toWorkspaceProps(result[0]) : null;
+        return result[0] ? this.toWorkspaceProps(result[0]) : null;
+      },
+      { folderPath },
+    );
   }
 
   async findAll(): Promise<WorkspaceProps[]> {
-    const result = await this.deps.db.select().from(workspaces);
-    return result.map((row) => this.toWorkspaceProps(row));
+    return this.handle('findAll', async () => {
+      const result = await this.deps.db.select().from(workspaces);
+      return result.map((row) => this.toWorkspaceProps(row));
+    });
   }
 
   async findActive(): Promise<WorkspaceProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.isActive, true))
-      .limit(1);
+    return this.handle('findActive', async () => {
+      const result = await this.deps.db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.isActive, true))
+        .limit(1);
 
-    return result[0] ? this.toWorkspaceProps(result[0]) : null;
+      return result[0] ? this.toWorkspaceProps(result[0]) : null;
+    });
   }
 
   async save(workspace: WorkspaceEntity): Promise<void> {
     const props = workspace.toPersistence();
-    const existing = await this.findById(props.id);
+    return this.handle(
+      'save',
+      async () => {
+        const existing = await this.deps.db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, props.id))
+          .limit(1);
 
-    if (existing) {
-      await this.deps.db
-        .update(workspaces)
-        .set({
-          name: props.name,
-          folderPath: props.folderPath,
-          isActive: props.isActive,
-          lastAccessedAt: new Date(),
-        })
-        .where(eq(workspaces.id, props.id));
-    } else {
-      await this.deps.db.insert(workspaces).values({
-        id: props.id,
-        name: props.name,
-        folderPath: props.folderPath,
-        isActive: props.isActive,
-        createdAt: props.createdAt,
-        lastAccessedAt: new Date(),
-      });
-    }
+        if (existing.length > 0) {
+          await this.deps.db
+            .update(workspaces)
+            .set({
+              name: props.name,
+              folderPath: props.folderPath,
+              isActive: props.isActive,
+              lastAccessedAt: new Date(),
+            })
+            .where(eq(workspaces.id, props.id));
+        } else {
+          await this.deps.db.insert(workspaces).values({
+            id: props.id,
+            name: props.name,
+            folderPath: props.folderPath,
+            isActive: props.isActive,
+            createdAt: props.createdAt,
+            lastAccessedAt: new Date(),
+          });
+        }
+      },
+      { workspaceId: props.id, name: props.name },
+    );
   }
 
   async delete(id: string): Promise<void> {
-    await this.deps.db.delete(workspaces).where(eq(workspaces.id, id));
+    return this.handle(
+      'delete',
+      async () => {
+        await this.deps.db.delete(workspaces).where(eq(workspaces.id, id));
+      },
+      { workspaceId: id },
+    );
   }
 
   async setActive(id: string): Promise<void> {
-    // Deactivate all workspaces
-    await this.deps.db.update(workspaces).set({ isActive: false });
+    return this.handle(
+      'setActive',
+      async () => {
+        // Deactivate all workspaces
+        await this.deps.db.update(workspaces).set({ isActive: false });
 
-    // Activate the specified workspace
-    await this.deps.db
-      .update(workspaces)
-      .set({ isActive: true, lastAccessedAt: new Date() })
-      .where(eq(workspaces.id, id));
+        // Activate the specified workspace
+        await this.deps.db
+          .update(workspaces)
+          .set({ isActive: true, lastAccessedAt: new Date() })
+          .where(eq(workspaces.id, id));
+      },
+      { workspaceId: id },
+    );
   }
 
   async exists(id: string): Promise<boolean> {
-    const result = await this.deps.db
-      .select({ id: workspaces.id })
-      .from(workspaces)
-      .where(eq(workspaces.id, id))
-      .limit(1);
+    return this.handle(
+      'exists',
+      async () => {
+        const result = await this.deps.db
+          .select({ id: workspaces.id })
+          .from(workspaces)
+          .where(eq(workspaces.id, id))
+          .limit(1);
 
-    return result.length > 0;
+        return result.length > 0;
+      },
+      { workspaceId: id },
+    );
   }
 
   private toWorkspaceProps(row: typeof workspaces.$inferSelect): WorkspaceProps {

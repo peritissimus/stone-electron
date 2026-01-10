@@ -49,9 +49,11 @@ export async function handleIpcRequest<T>(
   try {
     const data = await fn();
     const durationMs = Date.now() - startedAt;
-    logger.info('[IPC] request', {
-      event: 'ipc_request',
-      source: loggerPrefix,
+    logger.info({
+      event: 'request',
+      layer: 'in',
+      adapter: loggerPrefix,
+      operation: context.channel ?? 'unknown',
       success: true,
       durationMs,
       ...context,
@@ -61,9 +63,11 @@ export async function handleIpcRequest<T>(
     const message = error instanceof Error ? error.message : 'Unknown error';
     const code = resolveErrorCode(error, defaultCode, errorMap, mapErrorCode);
     const durationMs = Date.now() - startedAt;
-    logger.error('[IPC] request', {
-      event: 'ipc_request',
-      source: loggerPrefix,
+    logger.error({
+      event: 'request',
+      layer: 'in',
+      adapter: loggerPrefix,
+      operation: context.channel ?? 'unknown',
       success: false,
       durationMs,
       code,

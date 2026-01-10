@@ -10,6 +10,7 @@ import type {
   VersionEntity,
   VersionSummary,
 } from '../../../domain';
+import { handleOperation } from '../../../shared/utils';
 
 export interface VersionRepositoryDeps {
   db: Database;
@@ -18,102 +19,181 @@ export interface VersionRepositoryDeps {
 export class VersionRepository implements IVersionRepository {
   constructor(private deps: VersionRepositoryDeps) {}
 
-  async findById(id: string): Promise<VersionProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(noteVersions)
-      .where(eq(noteVersions.id, id))
-      .limit(1);
+  private handle<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) {
+    return handleOperation(fn, { adapter: 'VersionRepository', operation, context });
+  }
 
-    if (result.length === 0) return null;
-    return this.toProps(result[0]);
+  async findById(id: string): Promise<VersionProps | null> {
+    return this.handle(
+      'findById',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.id, id))
+          .limit(1);
+
+        if (result.length === 0) return null;
+        return this.toProps(result[0]);
+      },
+      { versionId: id },
+    );
   }
 
   async findByNoteId(noteId: string): Promise<VersionProps[]> {
-    const results = await this.deps.db
-      .select()
-      .from(noteVersions)
-      .where(eq(noteVersions.noteId, noteId))
-      .orderBy(desc(noteVersions.versionNumber));
+    return this.handle(
+      'findByNoteId',
+      async () => {
+        const results = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId))
+          .orderBy(desc(noteVersions.versionNumber));
 
-    return results.map((r) => this.toProps(r));
+        return results.map((r) => this.toProps(r));
+      },
+      { noteId },
+    );
   }
 
   async getVersionSummary(noteId: string): Promise<VersionSummary[]> {
-    const versions = await this.findByNoteId(noteId);
-    return versions.map((v) => ({
-      id: v.id,
-      noteId: v.noteId,
-      versionNumber: v.versionNumber,
-      title: v.title,
-      createdAt: v.createdAt,
-      contentLength: v.content.length,
-    }));
+    return this.handle(
+      'getVersionSummary',
+      async () => {
+        const results = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId))
+          .orderBy(desc(noteVersions.versionNumber));
+
+        return results.map((r) => {
+          const v = this.toProps(r);
+          return {
+            id: v.id,
+            noteId: v.noteId,
+            versionNumber: v.versionNumber,
+            title: v.title,
+            createdAt: v.createdAt,
+            contentLength: v.content.length,
+          };
+        });
+      },
+      { noteId },
+    );
   }
 
   async getLatestVersion(noteId: string): Promise<VersionProps | null> {
-    const result = await this.deps.db
-      .select()
-      .from(noteVersions)
-      .where(eq(noteVersions.noteId, noteId))
-      .orderBy(desc(noteVersions.versionNumber))
-      .limit(1);
+    return this.handle(
+      'getLatestVersion',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId))
+          .orderBy(desc(noteVersions.versionNumber))
+          .limit(1);
 
-    if (result.length === 0) return null;
-    return this.toProps(result[0]);
+        if (result.length === 0) return null;
+        return this.toProps(result[0]);
+      },
+      { noteId },
+    );
   }
 
   async getNextVersionNumber(noteId: string): Promise<number> {
-    const latest = await this.getLatestVersion(noteId);
-    return latest ? latest.versionNumber + 1 : 1;
+    return this.handle(
+      'getNextVersionNumber',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId))
+          .orderBy(desc(noteVersions.versionNumber))
+          .limit(1);
+
+        if (result.length === 0) return 1;
+        return this.toProps(result[0]).versionNumber + 1;
+      },
+      { noteId },
+    );
   }
 
   async save(version: VersionEntity): Promise<void> {
-    await this.deps.db
-      .insert(noteVersions)
-      .values({
-        id: version.id,
-        noteId: version.noteId,
-        versionNumber: version.versionNumber,
-        title: version.title,
-        content: version.content,
-        createdAt: version.createdAt,
-      })
-      .onConflictDoUpdate({
-        target: noteVersions.id,
-        set: {
-          title: version.title,
-          content: version.content,
-        },
-      });
+    return this.handle(
+      'save',
+      async () => {
+        await this.deps.db
+          .insert(noteVersions)
+          .values({
+            id: version.id,
+            noteId: version.noteId,
+            versionNumber: version.versionNumber,
+            title: version.title,
+            content: version.content,
+            createdAt: version.createdAt,
+          })
+          .onConflictDoUpdate({
+            target: noteVersions.id,
+            set: {
+              title: version.title,
+              content: version.content,
+            },
+          });
+      },
+      { versionId: version.id, noteId: version.noteId, versionNumber: version.versionNumber },
+    );
   }
 
   async deleteByNoteId(noteId: string): Promise<void> {
-    await this.deps.db.delete(noteVersions).where(eq(noteVersions.noteId, noteId));
+    return this.handle(
+      'deleteByNoteId',
+      async () => {
+        await this.deps.db.delete(noteVersions).where(eq(noteVersions.noteId, noteId));
+      },
+      { noteId },
+    );
   }
 
   async pruneVersions(noteId: string, keepCount: number): Promise<number> {
-    const versions = await this.findByNoteId(noteId);
+    return this.handle(
+      'pruneVersions',
+      async () => {
+        const results = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId))
+          .orderBy(desc(noteVersions.versionNumber));
 
-    if (versions.length <= keepCount) {
-      return 0;
-    }
+        const versions = results.map((r) => this.toProps(r));
 
-    // Keep the most recent versions
-    const toDelete = versions.slice(keepCount);
-    for (const version of toDelete) {
-      await this.deps.db.delete(noteVersions).where(eq(noteVersions.id, version.id));
-    }
+        if (versions.length <= keepCount) {
+          return 0;
+        }
 
-    return toDelete.length;
+        // Keep the most recent versions
+        const toDelete = versions.slice(keepCount);
+        for (const version of toDelete) {
+          await this.deps.db.delete(noteVersions).where(eq(noteVersions.id, version.id));
+        }
+
+        return toDelete.length;
+      },
+      { noteId, keepCount },
+    );
   }
 
   async countByNoteId(noteId: string): Promise<number> {
-    const results = await this.deps.db
-      .select()
-      .from(noteVersions)
-      .where(eq(noteVersions.noteId, noteId));
-    return results.length;
+    return this.handle(
+      'countByNoteId',
+      async () => {
+        const results = await this.deps.db
+          .select()
+          .from(noteVersions)
+          .where(eq(noteVersions.noteId, noteId));
+        return results.length;
+      },
+      { noteId },
+    );
   }
 
   private toProps(row: typeof noteVersions.$inferSelect): VersionProps {

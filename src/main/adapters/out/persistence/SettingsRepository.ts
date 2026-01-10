@@ -7,6 +7,7 @@
 import { eq } from 'drizzle-orm';
 import { settings, type Database } from '../../../shared';
 import type { ISettingsRepository, SettingProps } from '../../../domain';
+import { handleOperation } from '../../../shared/utils';
 
 export interface SettingsRepositoryDeps {
   db: Database;
@@ -15,46 +16,78 @@ export interface SettingsRepositoryDeps {
 export class SettingsRepository implements ISettingsRepository {
   constructor(private readonly deps: SettingsRepositoryDeps) {}
 
-  async get(key: string): Promise<SettingProps | null> {
-    const result = await this.deps.db.select().from(settings).where(eq(settings.key, key)).limit(1);
+  private handle<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) {
+    return handleOperation(fn, { adapter: 'SettingsRepository', operation, context });
+  }
 
-    return result[0] ? this.toSettingProps(result[0]) : null;
+  async get(key: string): Promise<SettingProps | null> {
+    return this.handle(
+      'get',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(settings)
+          .where(eq(settings.key, key))
+          .limit(1);
+
+        return result[0] ? this.toSettingProps(result[0]) : null;
+      },
+      { key },
+    );
   }
 
   async set(key: string, value: string): Promise<SettingProps> {
-    const now = new Date();
-    const existing = await this.get(key);
+    return this.handle(
+      'set',
+      async () => {
+        const now = new Date();
+        const existing = await this.deps.db
+          .select({ key: settings.key })
+          .from(settings)
+          .where(eq(settings.key, key))
+          .limit(1);
 
-    if (existing) {
-      await this.deps.db
-        .update(settings)
-        .set({
+        if (existing.length > 0) {
+          await this.deps.db
+            .update(settings)
+            .set({
+              value,
+              updatedAt: now,
+            })
+            .where(eq(settings.key, key));
+        } else {
+          await this.deps.db.insert(settings).values({
+            key,
+            value,
+            updatedAt: now,
+          });
+        }
+
+        return {
+          key,
           value,
           updatedAt: now,
-        })
-        .where(eq(settings.key, key));
-    } else {
-      await this.deps.db.insert(settings).values({
-        key,
-        value,
-        updatedAt: now,
-      });
-    }
-
-    return {
-      key,
-      value,
-      updatedAt: now,
-    };
+        };
+      },
+      { key },
+    );
   }
 
   async getAll(): Promise<SettingProps[]> {
-    const result = await this.deps.db.select().from(settings);
-    return result.map((row) => this.toSettingProps(row));
+    return this.handle('getAll', async () => {
+      const result = await this.deps.db.select().from(settings);
+      return result.map((row) => this.toSettingProps(row));
+    });
   }
 
   async delete(key: string): Promise<void> {
-    await this.deps.db.delete(settings).where(eq(settings.key, key));
+    return this.handle(
+      'delete',
+      async () => {
+        await this.deps.db.delete(settings).where(eq(settings.key, key));
+      },
+      { key },
+    );
   }
 
   private toSettingProps(row: typeof settings.$inferSelect): SettingProps {

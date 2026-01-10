@@ -13,6 +13,7 @@ import type {
   NotebookFindOptions,
   NotebookWithCount,
 } from '../../../domain';
+import { handleOperation } from '../../../shared/utils';
 
 export interface NotebookRepositoryDeps {
   db: Database;
@@ -21,206 +22,306 @@ export interface NotebookRepositoryDeps {
 export class NotebookRepository implements INotebookRepository {
   constructor(private readonly deps: NotebookRepositoryDeps) {}
 
-  async findById(id: string): Promise<NotebookProps | null> {
-    const result = await this.deps.db.select().from(notebooks).where(eq(notebooks.id, id)).limit(1);
+  private handle<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) {
+    return handleOperation(fn, { adapter: 'NotebookRepository', operation, context });
+  }
 
-    return result[0] ? this.toNotebookProps(result[0]) : null;
+  async findById(id: string): Promise<NotebookProps | null> {
+    return this.handle(
+      'findById',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(eq(notebooks.id, id))
+          .limit(1);
+        return result[0] ? this.toNotebookProps(result[0]) : null;
+      },
+      { notebookId: id },
+    );
   }
 
   async findAll(options?: NotebookFindOptions): Promise<NotebookProps[]> {
-    const conditions: any[] = [];
+    return this.handle(
+      'findAll',
+      async () => {
+        const conditions: any[] = [];
 
-    if (options?.workspaceId) {
-      conditions.push(eq(notebooks.workspaceId, options.workspaceId));
-    }
-    if (options?.parentId !== undefined) {
-      if (options.parentId === null) {
-        conditions.push(isNull(notebooks.parentId));
-      } else {
-        conditions.push(eq(notebooks.parentId, options.parentId));
-      }
-    }
+        if (options?.workspaceId) {
+          conditions.push(eq(notebooks.workspaceId, options.workspaceId));
+        }
+        if (options?.parentId !== undefined) {
+          if (options.parentId === null) {
+            conditions.push(isNull(notebooks.parentId));
+          } else {
+            conditions.push(eq(notebooks.parentId, options.parentId));
+          }
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notebooks)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+        const result = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    return result.map((row) => this.toNotebookProps(row));
+        return result.map((row) => this.toNotebookProps(row));
+      },
+      { workspaceId: options?.workspaceId, parentId: options?.parentId },
+    );
   }
 
   async findAllWithCounts(workspaceId?: string): Promise<NotebookWithCount[]> {
-    const conditions: any[] = [];
-    if (workspaceId) {
-      conditions.push(eq(notebooks.workspaceId, workspaceId));
-    }
+    return this.handle(
+      'findAllWithCounts',
+      async () => {
+        const conditions: any[] = [];
+        if (workspaceId) {
+          conditions.push(eq(notebooks.workspaceId, workspaceId));
+        }
 
-    const allNotebooks = await this.deps.db
-      .select()
-      .from(notebooks)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+        const allNotebooks = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    const result: NotebookWithCount[] = [];
+        const result: NotebookWithCount[] = [];
 
-    for (const notebook of allNotebooks) {
-      const countResult = await this.deps.db
-        .select({ count: sql<number>`count(*)` })
-        .from(notes)
-        .where(and(eq(notes.notebookId, notebook.id), eq(notes.isDeleted, false)));
+        for (const notebook of allNotebooks) {
+          const countResult = await this.deps.db
+            .select({ count: sql<number>`count(*)` })
+            .from(notes)
+            .where(and(eq(notes.notebookId, notebook.id), eq(notes.isDeleted, false)));
 
-      result.push({
-        ...this.toNotebookProps(notebook),
-        noteCount: countResult[0]?.count ?? 0,
-      });
-    }
+          result.push({
+            ...this.toNotebookProps(notebook),
+            noteCount: countResult[0]?.count ?? 0,
+          });
+        }
 
-    return result;
+        return result;
+      },
+      { workspaceId },
+    );
   }
 
   async findByWorkspaceId(workspaceId: string): Promise<NotebookProps[]> {
-    const result = await this.deps.db
-      .select()
-      .from(notebooks)
-      .where(eq(notebooks.workspaceId, workspaceId));
+    return this.handle(
+      'findByWorkspaceId',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(eq(notebooks.workspaceId, workspaceId));
 
-    return result.map((row) => this.toNotebookProps(row));
+        return result.map((row) => this.toNotebookProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   async findByParentId(parentId: string | null, workspaceId?: string): Promise<NotebookProps[]> {
-    const conditions: any[] = [];
+    return this.handle(
+      'findByParentId',
+      async () => {
+        const conditions: any[] = [];
 
-    if (parentId === null) {
-      conditions.push(isNull(notebooks.parentId));
-    } else {
-      conditions.push(eq(notebooks.parentId, parentId));
-    }
+        if (parentId === null) {
+          conditions.push(isNull(notebooks.parentId));
+        } else {
+          conditions.push(eq(notebooks.parentId, parentId));
+        }
 
-    if (workspaceId) {
-      conditions.push(eq(notebooks.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notebooks.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notebooks)
-      .where(and(...conditions));
+        const result = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(and(...conditions));
 
-    return result.map((row) => this.toNotebookProps(row));
+        return result.map((row) => this.toNotebookProps(row));
+      },
+      { parentId, workspaceId },
+    );
   }
 
   async findByFolderPath(folderPath: string, workspaceId?: string): Promise<NotebookProps | null> {
-    const conditions: any[] = [eq(notebooks.folderPath, folderPath)];
+    return this.handle(
+      'findByFolderPath',
+      async () => {
+        const conditions: any[] = [eq(notebooks.folderPath, folderPath)];
 
-    if (workspaceId) {
-      conditions.push(eq(notebooks.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notebooks.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notebooks)
-      .where(and(...conditions))
-      .limit(1);
+        const result = await this.deps.db
+          .select()
+          .from(notebooks)
+          .where(and(...conditions))
+          .limit(1);
 
-    return result[0] ? this.toNotebookProps(result[0]) : null;
+        return result[0] ? this.toNotebookProps(result[0]) : null;
+      },
+      { folderPath, workspaceId },
+    );
   }
 
   async save(notebook: NotebookEntity): Promise<void> {
     const props = notebook.toPersistence();
-    const existing = await this.findById(props.id);
+    return this.handle(
+      'save',
+      async () => {
+        const existing = await this.deps.db
+          .select({ id: notebooks.id })
+          .from(notebooks)
+          .where(eq(notebooks.id, props.id))
+          .limit(1);
 
-    if (existing) {
-      await this.deps.db
-        .update(notebooks)
-        .set({
-          name: props.name,
-          parentId: props.parentId,
-          workspaceId: props.workspaceId,
-          folderPath: props.folderPath,
-          icon: props.icon,
-          color: props.color,
-          position: props.position,
-          updatedAt: props.updatedAt,
-        })
-        .where(eq(notebooks.id, props.id));
-    } else {
-      await this.deps.db.insert(notebooks).values({
-        id: props.id,
-        name: props.name,
-        parentId: props.parentId,
-        workspaceId: props.workspaceId,
-        folderPath: props.folderPath,
-        icon: props.icon,
-        color: props.color,
-        position: props.position,
-        createdAt: props.createdAt,
-        updatedAt: props.updatedAt,
-      });
-    }
+        if (existing.length > 0) {
+          await this.deps.db
+            .update(notebooks)
+            .set({
+              name: props.name,
+              parentId: props.parentId,
+              workspaceId: props.workspaceId,
+              folderPath: props.folderPath,
+              icon: props.icon,
+              color: props.color,
+              position: props.position,
+              updatedAt: props.updatedAt,
+            })
+            .where(eq(notebooks.id, props.id));
+        } else {
+          await this.deps.db.insert(notebooks).values({
+            id: props.id,
+            name: props.name,
+            parentId: props.parentId,
+            workspaceId: props.workspaceId,
+            folderPath: props.folderPath,
+            icon: props.icon,
+            color: props.color,
+            position: props.position,
+            createdAt: props.createdAt,
+            updatedAt: props.updatedAt,
+          });
+        }
+      },
+      { notebookId: props.id },
+    );
   }
 
   async delete(id: string): Promise<void> {
-    await this.deps.db.delete(notebooks).where(eq(notebooks.id, id));
+    return this.handle(
+      'delete',
+      async () => {
+        await this.deps.db.delete(notebooks).where(eq(notebooks.id, id));
+      },
+      { notebookId: id },
+    );
   }
 
   async getAncestorIds(id: string): Promise<string[]> {
-    const ancestors: string[] = [];
-    let currentId: string | null = id;
+    return this.handle(
+      'getAncestorIds',
+      async () => {
+        const ancestors: string[] = [];
+        let currentId: string | null = id;
 
-    while (currentId) {
-      const notebook = await this.findById(currentId);
-      if (!notebook || !notebook.parentId) break;
-      ancestors.push(notebook.parentId);
-      currentId = notebook.parentId;
-    }
+        while (currentId) {
+          const rows = await this.deps.db
+            .select()
+            .from(notebooks)
+            .where(eq(notebooks.id, currentId))
+            .limit(1);
+          if (rows.length === 0) break;
+          const notebook = this.toNotebookProps(rows[0]);
+          if (!notebook.parentId) break;
+          ancestors.push(notebook.parentId);
+          currentId = notebook.parentId;
+        }
 
-    return ancestors;
+        return ancestors;
+      },
+      { notebookId: id },
+    );
   }
 
   async getDescendantIds(id: string): Promise<string[]> {
-    const descendants: string[] = [];
-    const queue: string[] = [id];
+    return this.handle(
+      'getDescendantIds',
+      async () => {
+        const descendants: string[] = [];
+        const queue: string[] = [id];
 
-    while (queue.length > 0) {
-      const currentId = queue.shift()!;
-      const children = await this.findByParentId(currentId);
+        while (queue.length > 0) {
+          const currentId = queue.shift()!;
+          const conditions: any[] = [eq(notebooks.parentId, currentId)];
+          const result = await this.deps.db
+            .select()
+            .from(notebooks)
+            .where(and(...conditions));
+          const children = result.map((row) => this.toNotebookProps(row));
 
-      for (const child of children) {
-        descendants.push(child.id);
-        queue.push(child.id);
-      }
-    }
+          for (const child of children) {
+            descendants.push(child.id);
+            queue.push(child.id);
+          }
+        }
 
-    return descendants;
+        return descendants;
+      },
+      { notebookId: id },
+    );
   }
 
   async exists(id: string): Promise<boolean> {
-    const result = await this.deps.db
-      .select({ id: notebooks.id })
-      .from(notebooks)
-      .where(eq(notebooks.id, id))
-      .limit(1);
+    return this.handle(
+      'exists',
+      async () => {
+        const result = await this.deps.db
+          .select({ id: notebooks.id })
+          .from(notebooks)
+          .where(eq(notebooks.id, id))
+          .limit(1);
 
-    return result.length > 0;
+        return result.length > 0;
+      },
+      { notebookId: id },
+    );
   }
 
   async count(workspaceId?: string): Promise<number> {
-    const conditions: any[] = [];
+    return this.handle(
+      'count',
+      async () => {
+        const conditions: any[] = [];
 
-    if (workspaceId) {
-      conditions.push(eq(notebooks.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notebooks.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select({ count: sql<number>`count(*)` })
-      .from(notebooks)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+        const result = await this.deps.db
+          .select({ count: sql<number>`count(*)` })
+          .from(notebooks)
+          .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    return result[0]?.count ?? 0;
+        return result[0]?.count ?? 0;
+      },
+      { workspaceId },
+    );
   }
 
   async updatePositions(updates: Array<{ id: string; position: number }>): Promise<void> {
-    for (const { id, position } of updates) {
-      await this.deps.db.update(notebooks).set({ position }).where(eq(notebooks.id, id));
-    }
+    return this.handle(
+      'updatePositions',
+      async () => {
+        for (const { id, position } of updates) {
+          await this.deps.db.update(notebooks).set({ position }).where(eq(notebooks.id, id));
+        }
+      },
+      { count: updates.length },
+    );
   }
 
   private toNotebookProps(row: typeof notebooks.$inferSelect): NotebookProps {
