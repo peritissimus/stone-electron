@@ -15,6 +15,7 @@ import type {
   IFileStorage,
   IMarkdownProcessor,
 } from '../../../domain';
+import { handleOperation } from '../../../shared/utils';
 
 export interface NoteRepositoryDeps {
   db: Database;
@@ -26,278 +27,378 @@ export interface NoteRepositoryDeps {
 export class NoteRepository implements INoteRepository {
   constructor(private readonly deps: NoteRepositoryDeps) {}
 
-  async findById(id: string): Promise<NoteProps | null> {
-    const result = await this.deps.db.select().from(notes).where(eq(notes.id, id)).limit(1);
+  private handle<T>(operation: string, fn: () => Promise<T>, context?: Record<string, unknown>) {
+    return handleOperation(fn, { adapter: 'NoteRepository', operation, context });
+  }
 
-    return result[0] ? this.toNoteProps(result[0]) : null;
+  async findById(id: string): Promise<NoteProps | null> {
+    return this.handle(
+      'findById',
+      async () => {
+        const result = await this.deps.db.select().from(notes).where(eq(notes.id, id)).limit(1);
+        return result[0] ? this.toNoteProps(result[0]) : null;
+      },
+      { noteId: id },
+    );
   }
 
   async findAll(options?: NoteFindOptions): Promise<NoteProps[]> {
-    const conditions: any[] = [];
+    return this.handle(
+      'findAll',
+      async () => {
+        const conditions: any[] = [];
 
-    if (options?.workspaceId) {
-      conditions.push(eq(notes.workspaceId, options.workspaceId));
-    }
-    if (options?.notebookId !== undefined) {
-      if (options.notebookId === null) {
-        conditions.push(isNull(notes.notebookId));
-      } else {
-        conditions.push(eq(notes.notebookId, options.notebookId));
-      }
-    }
-    if (options?.isFavorite !== undefined) {
-      conditions.push(eq(notes.isFavorite, options.isFavorite));
-    }
-    if (options?.isPinned !== undefined) {
-      conditions.push(eq(notes.isPinned, options.isPinned));
-    }
-    if (options?.isArchived !== undefined) {
-      conditions.push(eq(notes.isArchived, options.isArchived));
-    }
-    if (options?.isDeleted !== undefined) {
-      conditions.push(eq(notes.isDeleted, options.isDeleted));
-    }
+        if (options?.workspaceId) {
+          conditions.push(eq(notes.workspaceId, options.workspaceId));
+        }
+        if (options?.notebookId !== undefined) {
+          if (options.notebookId === null) {
+            conditions.push(isNull(notes.notebookId));
+          } else {
+            conditions.push(eq(notes.notebookId, options.notebookId));
+          }
+        }
+        if (options?.isFavorite !== undefined) {
+          conditions.push(eq(notes.isFavorite, options.isFavorite));
+        }
+        if (options?.isPinned !== undefined) {
+          conditions.push(eq(notes.isPinned, options.isPinned));
+        }
+        if (options?.isArchived !== undefined) {
+          conditions.push(eq(notes.isArchived, options.isArchived));
+        }
+        if (options?.isDeleted !== undefined) {
+          conditions.push(eq(notes.isDeleted, options.isDeleted));
+        }
 
-    const orderColumn = this.getOrderColumn(options?.orderBy || 'updatedAt');
-    const orderFn = options?.orderDirection === 'asc' ? asc : desc;
+        const orderColumn = this.getOrderColumn(options?.orderBy || 'updatedAt');
+        const orderFn = options?.orderDirection === 'asc' ? asc : desc;
 
-    const baseQuery = this.deps.db
-      .select()
-      .from(notes)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(orderFn(orderColumn));
+        const baseQuery = this.deps.db
+          .select()
+          .from(notes)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .orderBy(orderFn(orderColumn));
 
-    const result =
-      options?.limit && options?.offset
-        ? await baseQuery.limit(options.limit).offset(options.offset)
-        : options?.limit
-          ? await baseQuery.limit(options.limit)
-          : await baseQuery;
+        const result =
+          options?.limit && options?.offset
+            ? await baseQuery.limit(options.limit).offset(options.offset)
+            : options?.limit
+              ? await baseQuery.limit(options.limit)
+              : await baseQuery;
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId: options?.workspaceId, notebookId: options?.notebookId, limit: options?.limit },
+    );
   }
 
   async findByNotebookId(notebookId: string | null, workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false)];
+    return this.handle(
+      'findByNotebookId',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, false)];
 
-    if (notebookId === null) {
-      conditions.push(isNull(notes.notebookId));
-    } else {
-      conditions.push(eq(notes.notebookId, notebookId));
-    }
+        if (notebookId === null) {
+          conditions.push(isNull(notes.notebookId));
+        } else {
+          conditions.push(eq(notes.notebookId, notebookId));
+        }
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt));
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { notebookId, workspaceId },
+    );
   }
 
   async findByWorkspaceId(workspaceId: string): Promise<NoteProps[]> {
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(eq(notes.workspaceId, workspaceId), eq(notes.isDeleted, false)))
-      .orderBy(desc(notes.updatedAt));
+    return this.handle(
+      'findByWorkspaceId',
+      async () => {
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(eq(notes.workspaceId, workspaceId), eq(notes.isDeleted, false)))
+          .orderBy(desc(notes.updatedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   async findByFilePath(filePath: string, workspaceId?: string): Promise<NoteProps | null> {
-    const conditions = [eq(notes.filePath, filePath)];
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+    return this.handle(
+      'findByFilePath',
+      async () => {
+        const conditions = [eq(notes.filePath, filePath)];
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .limit(1);
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .limit(1);
 
-    return result[0] ? this.toNoteProps(result[0]) : null;
+        return result[0] ? this.toNoteProps(result[0]) : null;
+      },
+      { filePath, workspaceId },
+    );
   }
 
   async save(note: NoteEntity): Promise<void> {
     const props = note.toPersistence();
-    const existing = await this.findById(props.id);
+    return this.handle(
+      'save',
+      async () => {
+        const existing = await this.deps.db
+          .select({ id: notes.id })
+          .from(notes)
+          .where(eq(notes.id, props.id))
+          .limit(1);
 
-    if (existing) {
-      await this.deps.db
-        .update(notes)
-        .set({
-          title: props.title,
-          notebookId: props.notebookId,
-          workspaceId: props.workspaceId,
-          filePath: props.filePath,
-          isFavorite: props.isFavorite,
-          isPinned: props.isPinned,
-          isArchived: props.isArchived,
-          isDeleted: props.isDeleted,
-          deletedAt: props.deletedAt,
-          updatedAt: props.updatedAt,
-        })
-        .where(eq(notes.id, props.id));
-    } else {
-      await this.deps.db.insert(notes).values({
-        id: props.id,
-        title: props.title,
-        notebookId: props.notebookId,
-        workspaceId: props.workspaceId,
-        filePath: props.filePath,
-        isFavorite: props.isFavorite,
-        isPinned: props.isPinned,
-        isArchived: props.isArchived,
-        isDeleted: props.isDeleted,
-        deletedAt: props.deletedAt,
-        createdAt: props.createdAt,
-        updatedAt: props.updatedAt,
-      });
-    }
+        if (existing.length > 0) {
+          await this.deps.db
+            .update(notes)
+            .set({
+              title: props.title,
+              notebookId: props.notebookId,
+              workspaceId: props.workspaceId,
+              filePath: props.filePath,
+              isFavorite: props.isFavorite,
+              isPinned: props.isPinned,
+              isArchived: props.isArchived,
+              isDeleted: props.isDeleted,
+              deletedAt: props.deletedAt,
+              updatedAt: props.updatedAt,
+            })
+            .where(eq(notes.id, props.id));
+        } else {
+          await this.deps.db.insert(notes).values({
+            id: props.id,
+            title: props.title,
+            notebookId: props.notebookId,
+            workspaceId: props.workspaceId,
+            filePath: props.filePath,
+            isFavorite: props.isFavorite,
+            isPinned: props.isPinned,
+            isArchived: props.isArchived,
+            isDeleted: props.isDeleted,
+            deletedAt: props.deletedAt,
+            createdAt: props.createdAt,
+            updatedAt: props.updatedAt,
+          });
+        }
+      },
+      { noteId: props.id, isUpdate: props.id ? true : false },
+    );
   }
 
   async delete(id: string): Promise<void> {
-    await this.deps.db.delete(notes).where(eq(notes.id, id));
+    return this.handle(
+      'delete',
+      async () => {
+        await this.deps.db.delete(notes).where(eq(notes.id, id));
+      },
+      { noteId: id },
+    );
   }
 
   async searchByTitle(options: NoteSearchOptions): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false), like(notes.title, `%${options.query}%`)];
+    return this.handle(
+      'searchByTitle',
+      async () => {
+        const conditions: any[] = [
+          eq(notes.isDeleted, false),
+          like(notes.title, `%${options.query}%`),
+        ];
 
-    if (options.workspaceId) {
-      conditions.push(eq(notes.workspaceId, options.workspaceId));
-    }
+        if (options.workspaceId) {
+          conditions.push(eq(notes.workspaceId, options.workspaceId));
+        }
 
-    const baseQuery = this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt));
+        const baseQuery = this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt));
 
-    const result = options.limit ? await baseQuery.limit(options.limit) : await baseQuery;
+        const result = options.limit ? await baseQuery.limit(options.limit) : await baseQuery;
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { query: options.query, workspaceId: options.workspaceId, limit: options.limit },
+    );
   }
 
   async count(options?: NoteFindOptions): Promise<number> {
-    const conditions: any[] = [];
+    return this.handle(
+      'count',
+      async () => {
+        const conditions: any[] = [];
 
-    if (options?.workspaceId) {
-      conditions.push(eq(notes.workspaceId, options.workspaceId));
-    }
-    if (options?.notebookId !== undefined) {
-      if (options.notebookId === null) {
-        conditions.push(isNull(notes.notebookId));
-      } else {
-        conditions.push(eq(notes.notebookId, options.notebookId));
-      }
-    }
-    if (options?.isDeleted !== undefined) {
-      conditions.push(eq(notes.isDeleted, options.isDeleted));
-    }
+        if (options?.workspaceId) {
+          conditions.push(eq(notes.workspaceId, options.workspaceId));
+        }
+        if (options?.notebookId !== undefined) {
+          if (options.notebookId === null) {
+            conditions.push(isNull(notes.notebookId));
+          } else {
+            conditions.push(eq(notes.notebookId, options.notebookId));
+          }
+        }
+        if (options?.isDeleted !== undefined) {
+          conditions.push(eq(notes.isDeleted, options.isDeleted));
+        }
 
-    const result = await this.deps.db
-      .select({ count: sql<number>`count(*)` })
-      .from(notes)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+        const result = await this.deps.db
+          .select({ count: sql<number>`count(*)` })
+          .from(notes)
+          .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-    return result[0]?.count ?? 0;
+        return result[0]?.count ?? 0;
+      },
+      { workspaceId: options?.workspaceId, notebookId: options?.notebookId },
+    );
   }
 
   async exists(id: string): Promise<boolean> {
-    const result = await this.deps.db
-      .select({ id: notes.id })
-      .from(notes)
-      .where(eq(notes.id, id))
-      .limit(1);
+    return this.handle(
+      'exists',
+      async () => {
+        const result = await this.deps.db
+          .select({ id: notes.id })
+          .from(notes)
+          .where(eq(notes.id, id))
+          .limit(1);
 
-    return result.length > 0;
+        return result.length > 0;
+      },
+      { noteId: id },
+    );
   }
 
   async findRecentlyUpdated(limit: number, workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false)];
+    return this.handle(
+      'findRecentlyUpdated',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, false)];
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt))
-      .limit(limit);
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt))
+          .limit(limit);
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { limit, workspaceId },
+    );
   }
 
   async findFavorites(workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isFavorite, true)];
+    return this.handle(
+      'findFavorites',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isFavorite, true)];
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt));
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   async findPinned(workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isPinned, true)];
+    return this.handle(
+      'findPinned',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isPinned, true)];
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt));
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   async findArchived(workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isArchived, true)];
+    return this.handle(
+      'findArchived',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, false), eq(notes.isArchived, true)];
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.updatedAt));
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.updatedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   async findDeleted(workspaceId?: string): Promise<NoteProps[]> {
-    const conditions: any[] = [eq(notes.isDeleted, true)];
+    return this.handle(
+      'findDeleted',
+      async () => {
+        const conditions: any[] = [eq(notes.isDeleted, true)];
 
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    const result = await this.deps.db
-      .select()
-      .from(notes)
-      .where(and(...conditions))
-      .orderBy(desc(notes.deletedAt));
+        const result = await this.deps.db
+          .select()
+          .from(notes)
+          .where(and(...conditions))
+          .orderBy(desc(notes.deletedAt));
 
-    return result.map((row) => this.toNoteProps(row));
+        return result.map((row) => this.toNoteProps(row));
+      },
+      { workspaceId },
+    );
   }
 
   // ============================================================================
@@ -305,28 +406,38 @@ export class NoteRepository implements INoteRepository {
   // ============================================================================
 
   async getContentById(id: string): Promise<string | null> {
-    const noteProps = await this.findById(id);
-    if (!noteProps?.filePath) {
-      return null;
-    }
+    return this.handle(
+      'getContentById',
+      async () => {
+        const noteProps = await this.deps.db
+          .select()
+          .from(notes)
+          .where(eq(notes.id, id))
+          .limit(1);
+        if (!noteProps[0]?.filePath) {
+          return null;
+        }
 
-    const workspacePath = this.deps.getWorkspacePath();
-    if (!workspacePath) {
-      return null;
-    }
+        const workspacePath = this.deps.getWorkspacePath();
+        if (!workspacePath) {
+          return null;
+        }
 
-    const fullPath = `${workspacePath}/${noteProps.filePath}`;
-    const exists = await this.deps.fileStorage.exists(fullPath);
-    if (!exists) {
-      return null;
-    }
+        const fullPath = `${workspacePath}/${noteProps[0].filePath}`;
+        const exists = await this.deps.fileStorage.exists(fullPath);
+        if (!exists) {
+          return null;
+        }
 
-    const markdown = await this.deps.fileStorage.read(fullPath);
-    if (!markdown) {
-      return null;
-    }
-    const html = await this.deps.markdownProcessor.markdownToHtml(markdown);
-    return html;
+        const markdown = await this.deps.fileStorage.read(fullPath);
+        if (!markdown) {
+          return null;
+        }
+        const html = await this.deps.markdownProcessor.markdownToHtml(markdown);
+        return html;
+      },
+      { noteId: id },
+    );
   }
 
   // ============================================================================
@@ -334,35 +445,50 @@ export class NoteRepository implements INoteRepository {
   // ============================================================================
 
   async getEmbedding(noteId: string): Promise<number[] | null> {
-    try {
-      const result = await this.deps.db
-        .select({ embedding: notes.embedding })
-        .from(notes)
-        .where(eq(notes.id, noteId))
-        .limit(1);
+    return this.handle(
+      'getEmbedding',
+      async () => {
+        try {
+          const result = await this.deps.db
+            .select({ embedding: notes.embedding })
+            .from(notes)
+            .where(eq(notes.id, noteId))
+            .limit(1);
 
-      if (!result[0]?.embedding || !(result[0].embedding instanceof Buffer)) {
-        return null;
-      }
+          if (!result[0]?.embedding || !(result[0].embedding instanceof Buffer)) {
+            return null;
+          }
 
-      // Embedding is stored as blob - convert to number array
-      const buffer = result[0].embedding;
-      const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
-      return Array.from(floats);
-    } catch {
-      return null;
-    }
+          // Embedding is stored as blob - convert to number array
+          const buffer = result[0].embedding;
+          const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
+          return Array.from(floats);
+        } catch {
+          return null;
+        }
+      },
+      { noteId },
+    );
   }
 
   async updateEmbedding(noteId: string, embedding: number[] | null): Promise<void> {
-    let embeddingBlob: Buffer | null = null;
+    return this.handle(
+      'updateEmbedding',
+      async () => {
+        let embeddingBlob: Buffer | null = null;
 
-    if (embedding) {
-      const floats = new Float32Array(embedding);
-      embeddingBlob = Buffer.from(floats.buffer);
-    }
+        if (embedding) {
+          const floats = new Float32Array(embedding);
+          embeddingBlob = Buffer.from(floats.buffer);
+        }
 
-    await this.deps.db.update(notes).set({ embedding: embeddingBlob }).where(eq(notes.id, noteId));
+        await this.deps.db
+          .update(notes)
+          .set({ embedding: embeddingBlob })
+          .where(eq(notes.id, noteId));
+      },
+      { noteId, hasEmbedding: embedding !== null },
+    );
   }
 
   async findBySimilarity(
@@ -370,41 +496,47 @@ export class NoteRepository implements INoteRepository {
     limit: number,
     workspaceId?: string,
   ): Promise<Array<{ noteId: string; title: string; distance: number }>> {
-    // Build query conditions
-    const conditions: any[] = [eq(notes.isDeleted, false)];
-    if (workspaceId) {
-      conditions.push(eq(notes.workspaceId, workspaceId));
-    }
+    return this.handle(
+      'findBySimilarity',
+      async () => {
+        // Build query conditions
+        const conditions: any[] = [eq(notes.isDeleted, false)];
+        if (workspaceId) {
+          conditions.push(eq(notes.workspaceId, workspaceId));
+        }
 
-    // Get notes with embeddings matching conditions
-    const allNotes = await this.deps.db
-      .select({
-        id: notes.id,
-        title: notes.title,
-        embedding: notes.embedding,
-      })
-      .from(notes)
-      .where(and(...conditions));
+        // Get notes with embeddings matching conditions
+        const allNotes = await this.deps.db
+          .select({
+            id: notes.id,
+            title: notes.title,
+            embedding: notes.embedding,
+          })
+          .from(notes)
+          .where(and(...conditions));
 
-    const results: Array<{ noteId: string; title: string; distance: number }> = [];
+        const results: Array<{ noteId: string; title: string; distance: number }> = [];
 
-    for (const row of allNotes) {
-      if (!row.embedding) continue;
+        for (const row of allNotes) {
+          if (!row.embedding) continue;
 
-      try {
-        const buffer = row.embedding as Buffer;
-        const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
-        const stored = Array.from(floats);
-        const distance = this.cosineSimilarity(embedding, stored);
-        results.push({ noteId: row.id, title: row.title ?? 'Untitled', distance });
-      } catch {
-        continue;
-      }
-    }
+          try {
+            const buffer = row.embedding as Buffer;
+            const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
+            const stored = Array.from(floats);
+            const distance = this.cosineSimilarity(embedding, stored);
+            results.push({ noteId: row.id, title: row.title ?? 'Untitled', distance });
+          } catch {
+            continue;
+          }
+        }
 
-    // Sort by similarity (higher is better) and take top N
-    results.sort((a, b) => b.distance - a.distance);
-    return results.slice(0, limit);
+        // Sort by similarity (higher is better) and take top N
+        results.sort((a, b) => b.distance - a.distance);
+        return results.slice(0, limit);
+      },
+      { limit, workspaceId },
+    );
   }
 
   // ============================================================================
