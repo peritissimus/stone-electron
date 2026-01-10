@@ -12,7 +12,8 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useEditorUI } from '@renderer/hooks/useUI';
+import { useUIStore } from '@renderer/stores/uiStore'; // Keep for .getState() in callbacks
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
@@ -76,7 +77,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const titleSaveTimeoutRef = useRef<number | null>(null);
 
   // Editor mode (rich vs raw)
-  const { editorMode, setEditorMode } = useUIStore();
+  const { editorMode, setEditorMode } = useEditorUI();
   const [rawMarkdown, setRawMarkdown] = useState('');
   const [rawDirty, setRawDirty] = useState(false);
   const previousModeRef = useRef(editorMode);
