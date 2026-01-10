@@ -2,9 +2,8 @@
  * TopicsPage - Minimal topic-based note organization
  */
 
-import { useEffect, useState, useCallback } from 'react';
-import { Search, Plus, ChevronRight, X, FileText, RotateCw } from 'lucide-react';
-import { CaretRight } from 'phosphor-react';
+import { useEffect, useState, useCallback, memo } from 'react';
+import { MagnifyingGlass, Plus, CaretRight, X, FileText, ArrowsClockwise } from 'phosphor-react';
 import { useTopicStore } from '@renderer/stores/topicStore';
 import { useTopicAPI } from '@renderer/hooks/useTopicAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -35,7 +34,7 @@ interface TopicNote {
   isManual?: boolean;
 }
 
-function TopicRow({
+const TopicRow = memo(function TopicRow({
   topic,
   onClick,
   isSelected,
@@ -60,12 +59,12 @@ function TopicRow({
       />
       <span className="flex-1 text-sm font-medium truncate">{topic.name}</span>
       <span className="text-xs text-muted-foreground tabular-nums">{topic.noteCount || 0}</span>
-      <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+      <CaretRight size={16} className="text-muted-foreground/50" />
     </button>
   );
-}
+});
 
-function NoteRow({ note, onClick }: { note: TopicNote; onClick: () => void }) {
+const NoteRow = memo(function NoteRow({ note, onClick }: { note: TopicNote; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -84,7 +83,7 @@ function NoteRow({ note, onClick }: { note: TopicNote; onClick: () => void }) {
       )}
     </button>
   );
-}
+});
 
 export function TopicsPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
@@ -141,7 +140,6 @@ export function TopicsPage() {
       getNotesForTopic(selectedTopicId, { excludeJournal })
         .then((notes) => setTopicNotes(notes as TopicNote[]))
         .finally(() => setLoadingNotes(false));
-      console.log(topicNotes);
     } else {
       setTopicNotes([]);
     }
@@ -242,7 +240,7 @@ export function TopicsPage() {
               className="h-7 px-2 text-xs"
               title="Reclassify options"
             >
-              <RotateCw className={cn('w-3.5 h-3.5', classifying && 'animate-spin')} />
+              <ArrowsClockwise size={14} className={cn(classifying && 'animate-spin')} />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-3" align="end">
@@ -282,7 +280,7 @@ export function TopicsPage() {
       {/* Search */}
       <div className="px-4 py-2 border-b border-border/50 space-y-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <MagnifyingGlass size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search..."

@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '@renderer/components/base/ui/dialog';
 import { Button } from '@renderer/components/base/ui/button';
-import { FileText, X, CheckCircle2 } from 'lucide-react';
+import { FileText, X, CheckCircle } from 'phosphor-react';
 import { logger } from '@renderer/utils/logger';
 
 interface DraftRecoveryDialogProps {
@@ -96,7 +96,7 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
+            <FileText size={20} />
             Recover Unsaved Changes
           </DialogTitle>
           <DialogDescription>
@@ -127,7 +127,7 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
                     onClick={() => handleRecover(draft.noteId, draft.content)}
                     className="gap-1.5"
                   >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <CheckCircle size={14} />
                     Recover
                   </Button>
                   <Button
@@ -136,7 +136,7 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
                     onClick={() => handleDiscard(draft.noteId)}
                     className="gap-1.5"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X size={14} />
                     Discard
                   </Button>
                 </div>

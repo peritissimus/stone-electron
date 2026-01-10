@@ -3,7 +3,7 @@
  */
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { CaretRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
 import { TaskItem } from './TaskItem';
 
@@ -52,8 +52,9 @@ export function TaskSection({
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/10 transition-colors"
       >
-        <ChevronRight
-          className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
+        <CaretRight
+          size={16}
+          className={`text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
         />
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${colorClass}`}>{label}</span>
         <span className="text-xs text-muted-foreground">{todos.length}</span>

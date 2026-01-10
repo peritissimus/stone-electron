@@ -3,8 +3,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { CheckSquare, Search, FolderOpen, Layers, Filter } from 'lucide-react';
-import { CaretRight } from 'phosphor-react';
+import { CheckSquare, MagnifyingGlass, FolderOpen, Stack, Funnel, CaretRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
@@ -368,7 +367,7 @@ export function TasksPage() {
       {/* Filter Bar */}
       <div className="px-4 py-2 border-b border-border bg-card/50 flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[180px] max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search tasks..."
@@ -400,7 +399,7 @@ export function TasksPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="h-8 gap-2">
-              <Filter className="w-4 h-4" />
+              <Funnel size={16} />
               States
               <span className="text-xs text-muted-foreground">
                 ({visibleStates.size}/{TASK_STATES.length})
@@ -444,7 +443,7 @@ export function TasksPage() {
         {/* Group By */}
         <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByOption)}>
           <SelectTrigger className="w-[140px] h-8">
-            <Layers className="w-4 h-4 mr-2 text-muted-foreground" />
+            <Stack size={16} className="mr-2 text-muted-foreground" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -469,7 +468,7 @@ export function TasksPage() {
             </div>
           ) : counts.visible === 0 ? (
             <div className="text-center py-16">
-              <Filter className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+              <Funnel size={48} className="text-muted-foreground/30 mx-auto mb-4" />
               <h2 className="text-lg font-medium text-muted-foreground mb-2">No matching tasks</h2>
               <p className="text-sm text-muted-foreground/70">
                 Try adjusting your filters or search query

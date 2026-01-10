@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { CheckSquare, Square, ArrowRight } from 'lucide-react';
+import { CheckSquare, Square, ArrowRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
@@ -39,10 +39,10 @@ const StateIcon: React.FC<{ state: string }> = ({ state }) => {
   const color = getStateColor(state);
 
   if (state === 'done' || state === 'canceled') {
-    return <CheckSquare className={`w-4 h-4 ${color}`} />;
+    return <CheckSquare size={16} className={color} />;
   }
 
-  return <Square className={`w-4 h-4 ${color}`} />;
+  return <Square size={16} className={color} />;
 };
 
 const StateLabel: React.FC<{ state: string }> = ({ state }) => {
@@ -193,7 +193,7 @@ export function TodoList({ onTodoClick }: TodoListProps) {
           className="rounded-lg border-none group"
           left={<StateIcon state={todo.state} />}
           right={
-            <ArrowRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ArrowRight size={16} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
           }
         >
           <div className="flex items-center gap-2 mb-1">

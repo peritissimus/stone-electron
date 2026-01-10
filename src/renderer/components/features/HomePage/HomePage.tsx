@@ -1,6 +1,5 @@
-import React, { useRef } from 'react';
-import { FileText, BookOpen, ArrowRight, Sparkles } from 'lucide-react';
-import { CaretRight, PencilSimple, Plus } from 'phosphor-react';
+import React, { useRef, memo, useMemo } from 'react';
+import { FileText, BookOpen, ArrowRight, Sparkle, CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
@@ -50,7 +49,7 @@ const getFolderPath = (filePath: string | null) => {
   return lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : null;
 };
 
-const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
+const RecentNote = memo<RecentNoteProps>(function RecentNote({ note, onClick }) {
   const folderPath = getFolderPath(note.filePath);
 
   return (
@@ -64,7 +63,7 @@ const RecentNote: React.FC<RecentNoteProps> = ({ note, onClick }) => {
       right={<span className="text-xs text-muted-foreground">{formatDate(note.updatedAt)}</span>}
     />
   );
-};
+});
 
 // Get time-based greeting
 function getGreeting(): string {
@@ -91,38 +90,50 @@ export function HomePage() {
   const isCreatingNote = useRef(false);
 
   // Get the active workspace
-  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const activeWorkspace = useMemo(
+    () => workspaces.find((w) => w.id === activeWorkspaceId),
+    [workspaces, activeWorkspaceId],
+  );
 
   // Get recent notes (last 5, sorted by update time)
-  const recentNotes = [...notes]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5);
+  const recentNotes = useMemo(
+    () =>
+      [...notes]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 5),
+    [notes],
+  );
 
   // Get the most recent note for "Continue writing"
   const continueNote = recentNotes[0];
 
-  // Check if we have today's journal
-  const now = new Date();
-  const journalFilename = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const expectedJournalPath = `Journal/${journalFilename}.md`;
-  const normalizedExpectedPath = normalizePath(expectedJournalPath);
-  const todaysJournal = notes.find(
-    (note) => normalizePath(note.filePath) === normalizedExpectedPath,
-  );
+  // Today's date info (memoized to avoid recalculating on each render)
+  const { journalFilename, journalTitle, todayDateString } = useMemo(() => {
+    const now = new Date();
+    return {
+      journalFilename: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
+      journalTitle: now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      todayDateString: now.toDateString(),
+    };
+  }, []);
 
-  // Format today's date for journal title (e.g., "November 10, 2025")
-  const journalTitle = now.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  // Check if we have today's journal
+  const todaysJournal = useMemo(() => {
+    const expectedJournalPath = `Journal/${journalFilename}.md`;
+    const normalizedExpectedPath = normalizePath(expectedJournalPath);
+    return notes.find((note) => normalizePath(note.filePath) === normalizedExpectedPath);
+  }, [notes, journalFilename]);
 
   // Stats
   const totalNotes = notes.length;
-  const todayNotes = notes.filter((n) => {
-    const noteDate = new Date(n.updatedAt);
-    return noteDate.toDateString() === now.toDateString();
-  }).length;
+  const todayNotes = useMemo(
+    () => notes.filter((n) => new Date(n.updatedAt).toDateString() === todayDateString).length,
+    [notes, todayDateString],
+  );
 
   const handleNoteClick = (noteId: string) => {
     logger.info('[HomePage] Note clicked', { noteId });
@@ -310,7 +321,7 @@ export function HomePage() {
                 </div>
                 <div className="text-xs text-muted-foreground">{journalFilename}</div>
               </div>
-              {!todaysJournal && <Sparkles size={16} className="text-primary" />}
+              {!todaysJournal && <Sparkle size={16} className="text-primary" />}
             </button>
 
             {/* Quick Note */}

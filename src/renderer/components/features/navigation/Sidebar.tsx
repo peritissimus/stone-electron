@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -287,7 +288,7 @@ export function Sidebar() {
       setWorkspaceModalOpen(false);
     } catch (error) {
       logger.error('Failed to create workspace:', error);
-      alert(
+      toast.error(
         `Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     } finally {

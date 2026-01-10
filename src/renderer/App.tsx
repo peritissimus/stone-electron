@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { Toaster } from 'sonner';
 import { MainLayout } from '@renderer/components/composites';
 import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
 import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
@@ -80,8 +81,18 @@ export const App: React.FC = () => {
 
   // Render quick capture window if that's the route
   if (isQuickCapture) {
-    return <QuickCaptureWindow />;
+    return (
+      <>
+        <QuickCaptureWindow />
+        <Toaster position="top-center" richColors closeButton />
+      </>
+    );
   }
 
-  return <MainLayout />;
+  return (
+    <>
+      <MainLayout />
+      <Toaster position="top-center" richColors closeButton />
+    </>
+  );
 };
