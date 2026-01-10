@@ -37,6 +37,8 @@ export const NOTE_CHANNELS = {
   PIN: 'notes:pin',
   ARCHIVE: 'notes:archive',
   GET_VERSIONS: 'notes:getVersions',
+  GET_VERSION: 'notes:getVersion',
+  CREATE_VERSION: 'notes:createVersion',
   RESTORE_VERSION: 'notes:restoreVersion',
   GET_BACKLINKS: 'notes:getBacklinks',
   GET_FORWARD_LINKS: 'notes:getForwardLinks',
