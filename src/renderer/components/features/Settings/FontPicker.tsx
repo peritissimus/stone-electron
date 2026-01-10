@@ -68,7 +68,7 @@ export function FontPicker({
               {loading ? 'Loading fonts...' : 'No font found.'}
             </CommandEmpty>
             <CommandGroup>
-              {fonts.map((font) => (
+              {(fonts || []).map((font) => (
                 <CommandItem
                   key={font}
                   value={font}
