@@ -74,8 +74,21 @@ export const topicAPI = {
   /**
    * Get topics for a note
    */
-  getTopicsForNote: (noteId: string): Promise<IpcResponse<{ topics: TopicWithCount[] }>> =>
-    invokeIpc(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId }),
+  getTopicsForNote: (
+    noteId: string,
+  ): Promise<
+    IpcResponse<{
+      topics: Array<{
+        noteId: string;
+        topicId: string;
+        confidence: number;
+        isManual: boolean;
+        createdAt: string;
+        topicName: string;
+        topicColor: string;
+      }>;
+    }>
+  > => invokeIpc(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId }),
 
   /**
    * Assign a topic to a note

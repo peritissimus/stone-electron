@@ -115,7 +115,7 @@ export interface TopicSemanticSearchResponse {
   results: Array<{
     noteId: string;
     title: string;
-    similarity: number;
+    distance: number;
   }>;
 }
 
@@ -128,7 +128,7 @@ export interface GetSimilarNotesResponse {
   similar: Array<{
     noteId: string;
     title: string;
-    similarity: number;
+    distance: number;
   }>;
 }
 
@@ -252,12 +252,15 @@ export interface ITopicUseCases {
     force?: boolean,
   ): Promise<{
     noteId: string;
-    topicId: string | null;
-    confidence: number;
+    topics: Array<{
+      topicId: string;
+      topicName: string;
+      confidence: number;
+    }>;
   }>;
   classifyAllNotes(options?: {
     force?: boolean;
-  }): Promise<{ processed: number; classified: number }>;
+  }): Promise<{ processed: number; total: number; failed: number }>;
   assignTopicToNote(noteId: string, topicId: string): Promise<void>;
   removeTopicFromNote(noteId: string, topicId: string): Promise<void>;
   getSimilarNotes(
@@ -266,8 +269,8 @@ export interface ITopicUseCases {
   ): Promise<
     Array<{
       noteId: string;
-      noteTitle: string;
-      similarity: number;
+      title: string;
+      distance: number;
     }>
   >;
   semanticSearch(
@@ -276,22 +279,24 @@ export interface ITopicUseCases {
   ): Promise<
     Array<{
       noteId: string;
-      noteTitle: string;
-      similarity: number;
+      title: string;
+      distance: number;
     }>
   >;
   recomputeCentroids(): Promise<void>;
   getEmbeddingStatus(): Promise<{
+    ready: boolean;
     totalNotes: number;
-    notesWithEmbeddings: number;
-    isReady: boolean;
+    embeddedNotes: number;
+    pendingNotes: number;
   }>;
   getNotesForTopic(
     topicId: string,
     options?: { limit?: number; offset?: number; excludeJournal?: boolean },
   ): Promise<
     Array<{
-      noteId: string;
+      id: string;
+      title: string;
       confidence: number;
       isManual: boolean;
     }>

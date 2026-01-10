@@ -38,14 +38,17 @@ export interface TopicDTO {
 
 export interface ClassifyResult {
   noteId: string;
-  topicId: string | null;
-  confidence: number;
+  topics: Array<{
+    topicId: string;
+    topicName: string;
+    confidence: number;
+  }>;
 }
 
 export interface SimilarNote {
   noteId: string;
-  noteTitle: string;
-  similarity: number;
+  title: string;
+  distance: number;
 }
 
 /**
@@ -184,23 +187,23 @@ class TopicUseCasesImpl implements ITopicUseCases {
     // Check if already has embedding
     const existingEmbedding = await noteRepository.getEmbedding(noteId);
     if (existingEmbedding && !force) {
-      return { noteId, topicId: null, confidence: 0 };
+      return { noteId, topics: [] };
     }
 
     // Get note content
     if (!note.filePath || !note.workspaceId) {
-      return { noteId, topicId: null, confidence: 0 };
+      return { noteId, topics: [] };
     }
 
     const workspace = await workspaceRepository.findById(note.workspaceId);
     if (!workspace) {
-      return { noteId, topicId: null, confidence: 0 };
+      return { noteId, topics: [] };
     }
 
     const absolutePath = path.join(workspace.folderPath, note.filePath);
     const markdown = await fileStorage.read(absolutePath);
     if (!markdown) {
-      return { noteId, topicId: null, confidence: 0 };
+      return { noteId, topics: [] };
     }
 
     // Convert to plain text and generate embedding
@@ -211,9 +214,9 @@ class TopicUseCasesImpl implements ITopicUseCases {
     // Save embedding
     await noteRepository.updateEmbedding(noteId, embedding);
 
-    // Find best matching topic
+    // Find all matching topics above threshold
     const topics = await topicRepository.findAll();
-    let bestTopic: { id: string; confidence: number } | null = null;
+    const matchedTopics: Array<{ topicId: string; topicName: string; confidence: number }> = [];
 
     for (const topic of topics) {
       if (topic.centroid) {
@@ -227,35 +230,41 @@ class TopicUseCasesImpl implements ITopicUseCases {
           embedding,
           Array.from(centroidFloat32),
         );
-        if (!bestTopic || similarity > bestTopic.confidence) {
-          bestTopic = { id: topic.id, confidence: similarity };
+        if (similarity > 0.5) {
+          matchedTopics.push({
+            topicId: topic.id,
+            topicName: topic.name,
+            confidence: similarity,
+          });
         }
       }
     }
 
-    // Assign topic if confidence is high enough
-    if (bestTopic && bestTopic.confidence > 0.5) {
-      await topicRepository.assignToNote(noteId, bestTopic.id, {
+    // Sort by confidence descending
+    matchedTopics.sort((a, b) => b.confidence - a.confidence);
+
+    // Assign the best matching topic if any
+    if (matchedTopics.length > 0) {
+      const bestTopic = matchedTopics[0];
+      await topicRepository.assignToNote(noteId, bestTopic.topicId, {
         confidence: bestTopic.confidence,
       });
 
       this.deps.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
         noteId,
-        topicId: bestTopic.id,
+        topicId: bestTopic.topicId,
         confidence: bestTopic.confidence,
       });
-
-      return { noteId, topicId: bestTopic.id, confidence: bestTopic.confidence };
     }
 
-    return { noteId, topicId: null, confidence: bestTopic?.confidence || 0 };
+    return { noteId, topics: matchedTopics };
   }
 
   async classifyAllNotes(options?: {
     force?: boolean;
-  }): Promise<{ processed: number; classified: number }> {
+  }): Promise<{ processed: number; total: number; failed: number }> {
     const activeWorkspace = await this.deps.workspaceRepository.findActive();
-    if (!activeWorkspace) return { processed: 0, classified: 0 };
+    if (!activeWorkspace) return { processed: 0, total: 0, failed: 0 };
 
     const notes = await this.deps.noteRepository.findAll({
       workspaceId: activeWorkspace.id,
@@ -263,27 +272,27 @@ class TopicUseCasesImpl implements ITopicUseCases {
     });
     const total = notes.length;
     let processed = 0;
-    let classified = 0;
+    let failed = 0;
 
     for (const note of notes) {
       try {
-        const result = await this.classifyNote(note.id, options?.force || false);
+        await this.classifyNote(note.id, options?.force || false);
         processed++;
-        if (result.topicId) classified++;
 
         // Emit progress event
         this.deps.eventPublisher?.emit(EVENTS.EMBEDDING_PROGRESS, {
           current: processed,
           total,
-          classified,
+          failed,
         });
       } catch (error) {
+        failed++;
         logger.error(`[TopicUseCases] Failed to classify note ${note.id}:`, error);
       }
     }
 
-    logger.info(`[TopicUseCases] Classified ${classified}/${processed} notes`);
-    return { processed, classified };
+    logger.info(`[TopicUseCases] Classified ${processed}/${total} notes (${failed} failed)`);
+    return { processed, total, failed };
   }
 
   async assignTopicToNote(noteId: string, topicId: string): Promise<void> {
@@ -330,7 +339,6 @@ class TopicUseCasesImpl implements ITopicUseCases {
     );
 
     // Filter out the query note and map to result
-    // distance is typically 0-2 for cosine, convert to similarity (1 - distance/2)
     const results: SimilarNote[] = [];
     for (const result of similarNotes) {
       if (result.noteId !== noteId) {
@@ -338,8 +346,8 @@ class TopicUseCasesImpl implements ITopicUseCases {
         if (note) {
           results.push({
             noteId: result.noteId,
-            noteTitle: note.title || 'Untitled',
-            similarity: 1 - result.distance / 2, // Convert distance to similarity
+            title: note.title || 'Untitled',
+            distance: result.distance,
           });
         }
       }
@@ -366,8 +374,8 @@ class TopicUseCasesImpl implements ITopicUseCases {
       if (note) {
         notes.push({
           noteId: result.noteId,
-          noteTitle: note.title || 'Untitled',
-          similarity: 1 - result.distance / 2, // Convert distance to similarity
+          title: note.title || 'Untitled',
+          distance: result.distance,
         });
       }
     }
@@ -403,16 +411,18 @@ class TopicUseCasesImpl implements ITopicUseCases {
   }
 
   async getEmbeddingStatus(): Promise<{
+    ready: boolean;
     totalNotes: number;
-    notesWithEmbeddings: number;
-    isReady: boolean;
+    embeddedNotes: number;
+    pendingNotes: number;
   }> {
     const activeWorkspace = await this.deps.workspaceRepository.findActive();
     if (!activeWorkspace) {
       return {
+        ready: await this.deps.embeddingService.isReady(),
         totalNotes: 0,
-        notesWithEmbeddings: 0,
-        isReady: await this.deps.embeddingService.isReady(),
+        embeddedNotes: 0,
+        pendingNotes: 0,
       };
     }
 
@@ -420,17 +430,18 @@ class TopicUseCasesImpl implements ITopicUseCases {
       workspaceId: activeWorkspace.id,
       isDeleted: false,
     });
-    let withEmbeddings = 0;
+    let embeddedNotes = 0;
 
     for (const note of notes) {
       const embedding = await this.deps.noteRepository.getEmbedding(note.id);
-      if (embedding) withEmbeddings++;
+      if (embedding) embeddedNotes++;
     }
 
     return {
+      ready: await this.deps.embeddingService.isReady(),
       totalNotes: notes.length,
-      notesWithEmbeddings: withEmbeddings,
-      isReady: await this.deps.embeddingService.isReady(),
+      embeddedNotes,
+      pendingNotes: notes.length - embeddedNotes,
     };
   }
 
@@ -439,13 +450,29 @@ class TopicUseCasesImpl implements ITopicUseCases {
     options?: { limit?: number; offset?: number; excludeJournal?: boolean },
   ): Promise<
     Array<{
-      noteId: string;
+      id: string;
+      title: string;
       confidence: number;
       isManual: boolean;
     }>
   > {
     const notesForTopic = await this.deps.topicRepository.getNotesForTopic(topicId, options);
-    return notesForTopic;
+
+    // Fetch note titles
+    const results: Array<{ id: string; title: string; confidence: number; isManual: boolean }> = [];
+    for (const item of notesForTopic) {
+      const note = await this.deps.noteRepository.findById(item.noteId);
+      if (note) {
+        results.push({
+          id: item.noteId,
+          title: note.title || 'Untitled',
+          confidence: item.confidence,
+          isManual: item.isManual,
+        });
+      }
+    }
+
+    return results;
   }
 
   async getTopicsForNote(noteId: string): Promise<

@@ -141,6 +141,7 @@ export function TopicsPage() {
       getNotesForTopic(selectedTopicId, { excludeJournal })
         .then((notes) => setTopicNotes(notes as TopicNote[]))
         .finally(() => setLoadingNotes(false));
+      console.log(topicNotes);
     } else {
       setTopicNotes([]);
     }
