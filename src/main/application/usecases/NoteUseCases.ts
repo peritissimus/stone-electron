@@ -74,17 +74,24 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     // Determine folder path (default to 'Personal' like legacy)
     const folderPath = request.folderPath || 'Personal';
 
-    // Generate timestamp-based filename like legacy: YYYY-MM-DD-HHMMSS-RRR.md
-    const now = new Date();
-    const timestamp = now
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[-:T]/g, '')
-      .replace(/(\d{8})(\d{6})/, '$1-$2');
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, '0');
-    const filename = `${timestamp}-${random}.md`;
+    // Generate filename based on folder type
+    let filename: string;
+    if (folderPath === 'Journal' && request.title) {
+      // For journals, use title as filename (e.g., "2026-01-11.md")
+      filename = `${request.title}.md`;
+    } else {
+      // Generate timestamp-based filename like legacy: YYYY-MM-DD-HHMMSS-RRR.md
+      const now = new Date();
+      const timestamp = now
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[-:T]/g, '')
+        .replace(/(\d{8})(\d{6})/, '$1-$2');
+      const random = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, '0');
+      filename = `${timestamp}-${random}.md`;
+    }
 
     // Construct relative path: folderPath/filename.md
     const relativePath = `${folderPath}/${filename}`;
@@ -458,16 +465,65 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly fileStorage: IFileStorage,
+    private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: { filePath: string; workspaceId?: string }): Promise<{ note: NoteProps }> {
-    const workspaceId = request.workspaceId || (await this.workspaceRepository.findActive())?.id;
+    const workspace = request.workspaceId
+      ? await this.workspaceRepository.findById(request.workspaceId)
+      : await this.workspaceRepository.findActive();
+
+    const workspaceId = workspace?.id;
+
+    // First try to find in database
     const noteProps = await this.noteRepository.findByFilePath(request.filePath, workspaceId);
-    if (!noteProps) {
+    if (noteProps) {
+      return { note: noteProps };
+    }
+
+    // Not in database - check if file exists on disk
+    if (!workspace) {
       throw new NoteNotFoundError(`file:${request.filePath} (workspace:${workspaceId})`);
     }
 
-    return { note: noteProps };
+    const absolutePath = path.join(workspace.folderPath, request.filePath);
+    const fileExists = await this.fileStorage.exists(absolutePath);
+
+    if (!fileExists) {
+      throw new NoteNotFoundError(`file:${request.filePath} (workspace:${workspaceId})`);
+    }
+
+    // File exists on disk but not in DB - create the note entry
+    const fileContent = await this.fileStorage.read(absolutePath);
+    const filenameWithoutExt = path.basename(request.filePath, '.md');
+
+    // For journal files, always use the filename as title (e.g., "2026-01-11")
+    // This matches how journals are created in useJournalActions
+    const isJournalFile = request.filePath.startsWith('Journal/');
+    let title: string;
+
+    if (isJournalFile) {
+      // Journal titles are the date filename format
+      title = filenameWithoutExt;
+    } else {
+      // For other files, try to extract title from content, fallback to filename
+      const extractedTitle = fileContent ? this.markdownProcessor.extractTitle(fileContent) : null;
+      title = extractedTitle || filenameWithoutExt;
+    }
+
+    const note = NoteEntity.create({
+      id: generateId(),
+      title,
+      filePath: request.filePath,
+      workspaceId: workspace.id,
+    });
+
+    await this.noteRepository.save(note);
+    this.eventPublisher?.emit(EVENTS.NOTE_CREATED, { id: note.id });
+
+    return { note: note.toPersistence() };
   }
 }
 
@@ -596,7 +652,13 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       fileStorage,
       markdownProcessor,
     ),
-    getNoteByPath: new GetNoteByPathUseCase(noteRepository, workspaceRepository),
+    getNoteByPath: new GetNoteByPathUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      markdownProcessor,
+      eventPublisher,
+    ),
     toggleFavorite: new ToggleFavoriteUseCase(noteRepository, eventPublisher),
     togglePin: new TogglePinUseCase(noteRepository, eventPublisher),
     toggleArchive: new ToggleArchiveUseCase(noteRepository, eventPublisher),
