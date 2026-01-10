@@ -167,8 +167,13 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
       }
 
       const absolutePath = path.join(workspace.folderPath, note.filePath);
-      const markdown = this.markdownProcessor.htmlToMarkdown(request.content);
-      await this.fileStorage.write(absolutePath, markdown);
+      const bodyMarkdown = this.markdownProcessor.htmlToMarkdown(request.content);
+
+      // Prepend title heading - the editor only contains body content
+      const titleHeading = `# ${note.title}\n\n`;
+      const fullMarkdown = titleHeading + bodyMarkdown;
+
+      await this.fileStorage.write(absolutePath, fullMarkdown);
     }
 
     await this.noteRepository.save(note);
@@ -423,9 +428,40 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
     if (!markdown) {
       return { content: '' };
     }
-    const html = await this.markdownProcessor.markdownToHtml(markdown);
+
+    // Strip the first H1 heading from markdown since title is edited separately
+    const bodyMarkdown = this.stripFirstHeading(markdown);
+    const html = await this.markdownProcessor.markdownToHtml(bodyMarkdown);
 
     return { content: html };
+  }
+
+  /**
+   * Strip the first H1 heading from markdown content.
+   * The title is edited separately in the title editor.
+   */
+  private stripFirstHeading(markdown: string): string {
+    const lines = markdown.split('\n');
+    let foundHeading = false;
+    const result: string[] = [];
+
+    for (const line of lines) {
+      // Match H1 heading: # Title
+      if (!foundHeading && /^#\s+.+$/.test(line)) {
+        foundHeading = true;
+        // Skip this line (the title heading)
+        // Also skip the next line if it's empty (common pattern: # Title\n\n)
+        continue;
+      }
+      result.push(line);
+    }
+
+    // Remove leading empty lines that may result from stripping the heading
+    while (result.length > 0 && result[0].trim() === '') {
+      result.shift();
+    }
+
+    return result.join('\n');
   }
 }
 
@@ -456,8 +492,13 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
     }
 
     const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
-    const markdown = this.markdownProcessor.htmlToMarkdown(request.content);
-    await this.fileStorage.write(absolutePath, markdown);
+    const bodyMarkdown = this.markdownProcessor.htmlToMarkdown(request.content);
+
+    // Prepend title heading - the editor only contains body content
+    const titleHeading = `# ${noteProps.title}\n\n`;
+    const fullMarkdown = titleHeading + bodyMarkdown;
+
+    await this.fileStorage.write(absolutePath, fullMarkdown);
   }
 }
 

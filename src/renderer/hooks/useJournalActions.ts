@@ -12,20 +12,13 @@ import { logger } from '@renderer/utils/logger';
  * Get journal info for a specific date
  */
 function getJournalInfoForDate(date: Date) {
-  // Full title (e.g., "December 14, 2025")
-  const journalTitle = date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
   // Filename format (e.g., "2025-12-14")
   const journalFilename = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
   // Expected file path
   const expectedFilePath = `Journal/${journalFilename}.md`;
 
-  return { journalTitle, journalFilename, expectedFilePath };
+  return { journalTitle: journalFilename, journalFilename, expectedFilePath };
 }
 
 /**
