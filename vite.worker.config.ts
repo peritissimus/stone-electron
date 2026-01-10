@@ -19,7 +19,7 @@ export default defineConfig({
     outDir: 'dist/main/workers',
     emptyOutDir: false,
     lib: {
-      entry: path.resolve(__dirname, 'src/main/workers/embedding.worker.ts'),
+      entry: path.resolve(__dirname, 'src/main/infrastructure/workers/embedding.worker.ts'),
       formats: ['cjs'],
       fileName: () => 'embedding.worker.cjs',
     },

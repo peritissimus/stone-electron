@@ -1,8 +1,8 @@
 /**
  * Embedding Service Adapter
  *
- * Stub implementation of IEmbeddingService port.
- * ML/embedding functionality can be added later.
+ * Implements IEmbeddingService port using EmbeddingWorkerService
+ * for real ML embedding generation via Transformers.js.
  */
 
 import type {
@@ -12,6 +12,11 @@ import type {
   INoteRepository,
   IMarkdownProcessor,
 } from '../../../domain';
+import {
+  EmbeddingWorkerService,
+  createEmbeddingWorkerService,
+} from '../../../infrastructure/services/EmbeddingWorkerService';
+import { logger } from '../../../shared/utils';
 
 export interface EmbeddingServiceDeps {
   noteRepository: INoteRepository;
@@ -19,40 +24,44 @@ export interface EmbeddingServiceDeps {
 }
 
 export class EmbeddingService implements IEmbeddingService {
-  private ready = false;
+  private workerService: EmbeddingWorkerService;
 
-  constructor(private readonly deps: EmbeddingServiceDeps) {}
+  constructor(private readonly deps: EmbeddingServiceDeps) {
+    this.workerService = createEmbeddingWorkerService();
+  }
 
   async initialize(): Promise<void> {
-    // Stub - ML initialization would go here
-    this.ready = true;
+    logger.info('[EmbeddingService] Initializing with worker service...');
+    await this.workerService.initialize();
+    logger.info('[EmbeddingService] Worker service initialized');
   }
 
   isReady(): boolean {
-    return this.ready;
+    return this.workerService.isReady();
   }
 
-  async generateEmbedding(_text: string): Promise<Float32Array> {
-    // Stub - returns empty embedding
-    return new Float32Array(0);
+  async generateEmbedding(text: string): Promise<Float32Array> {
+    const embedding = await this.workerService.getEmbedding(text);
+    return new Float32Array(embedding);
   }
 
   async generateEmbeddings(texts: string[]): Promise<Float32Array[]> {
-    return texts.map(() => new Float32Array(0));
+    const embeddings = await this.workerService.batchEmbed(texts);
+    return embeddings.map((e) => new Float32Array(e));
   }
 
   async classifyNote(_noteId: string): Promise<ClassificationResult[]> {
-    // Stub - no classification
+    // Classification is handled by TopicUseCases, not here
     return [];
   }
 
   async findSimilarNotes(_noteId: string, _limit = 5): Promise<SimilarNote[]> {
-    // Stub - no similar notes
+    // Similar notes search is handled by TopicUseCases, not here
     return [];
   }
 
   async semanticSearch(_query: string, _limit = 10): Promise<SimilarNote[]> {
-    // Stub - no semantic search
+    // Semantic search is handled by TopicUseCases, not here
     return [];
   }
 
@@ -74,7 +83,7 @@ export class EmbeddingService implements IEmbeddingService {
   }
 
   async recomputeCentroids(): Promise<void> {
-    // Stub - no centroid computation
+    // Centroid computation is handled by TopicUseCases
   }
 
   async getStatus(): Promise<{
@@ -84,12 +93,24 @@ export class EmbeddingService implements IEmbeddingService {
     pendingNotes: number;
   }> {
     const totalNotes = await this.deps.noteRepository.count({ isDeleted: false });
+    const ready = this.workerService.isReady();
+
+    // Count notes with embeddings
+    // This is a simplified count - could be optimized with a dedicated query
+    let embeddedNotes = 0;
+    if (ready) {
+      const notes = await this.deps.noteRepository.findAll({ isDeleted: false });
+      for (const note of notes) {
+        const embedding = await this.deps.noteRepository.getEmbedding(note.id);
+        if (embedding) embeddedNotes++;
+      }
+    }
 
     return {
-      ready: this.ready,
+      ready,
       totalNotes,
-      embeddedNotes: 0,
-      pendingNotes: totalNotes,
+      embeddedNotes,
+      pendingNotes: totalNotes - embeddedNotes,
     };
   }
 }

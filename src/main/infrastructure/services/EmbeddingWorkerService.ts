@@ -44,9 +44,10 @@ export class EmbeddingWorkerService {
    * Get the worker script path (handles both dev and packaged app)
    */
   private getWorkerPath(): string {
-    // Worker is in ../workers/ relative to services/
-    // Both dev and production use the same relative path
-    return path.join(__dirname, '..', 'workers', 'embedding.worker.cjs');
+    // Main process is bundled to dist/main/index.cjs
+    // Worker is at dist/main/workers/embedding.worker.cjs
+    // So from __dirname (dist/main/), worker is in ./workers/
+    return path.join(__dirname, 'workers', 'embedding.worker.cjs');
   }
 
   /**
