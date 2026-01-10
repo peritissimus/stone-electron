@@ -27,6 +27,7 @@ import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileSt
 import type { ISystemService } from '../../../../src/main/domain/ports/out/ISystemService';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import { WorkspaceNotFoundError } from '../../../../src/main/domain/errors';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 
@@ -75,6 +76,7 @@ function createMockSystemService(): ISystemService {
 function createMockNoteRepository(): INoteRepository {
   return {
     findAll: vi.fn(),
+    save: vi.fn(),
   } as unknown as INoteRepository;
 }
 
@@ -86,6 +88,20 @@ function createMockEventPublisher(): IEventPublisher {
     subscribe: vi.fn(),
     subscribeAll: vi.fn(),
   } as unknown as IEventPublisher;
+}
+
+function createMockMarkdownProcessor(): IMarkdownProcessor {
+  return {
+    htmlToMarkdown: vi.fn().mockReturnValue(''),
+    markdownToHtml: vi.fn().mockResolvedValue(''),
+    parseFrontmatter: vi.fn().mockReturnValue({ content: '', metadata: {} }),
+    updateFrontmatter: vi.fn().mockReturnValue(''),
+    extractTitle: vi.fn().mockReturnValue(null),
+    extractPlainText: vi.fn().mockReturnValue(''),
+    extractLinks: vi.fn().mockReturnValue([]),
+    extractWikiLinks: vi.fn().mockReturnValue([]),
+    htmlToPlainText: vi.fn().mockReturnValue(''),
+  } as unknown as IMarkdownProcessor;
 }
 
 function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
@@ -603,16 +619,18 @@ describe('WorkspaceUseCases', () => {
     let workspaceRepo: IWorkspaceRepository;
     let noteRepo: INoteRepository;
     let fileStorage: IFileStorage;
+    let markdownProcessor: IMarkdownProcessor;
     let useCase: SyncWorkspaceUseCase;
 
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       noteRepo = createMockNoteRepository();
       fileStorage = createMockFileStorage();
-      useCase = new SyncWorkspaceUseCase(workspaceRepo, noteRepo, fileStorage);
+      markdownProcessor = createMockMarkdownProcessor();
+      useCase = new SyncWorkspaceUseCase(workspaceRepo, noteRepo, fileStorage, markdownProcessor);
     });
 
-    it('detects changes in workspace', async () => {
+    it('syncs workspace files to database', async () => {
       const workspace = createWorkspaceProps({ folderPath: '/ws' });
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
 
@@ -623,8 +641,8 @@ describe('WorkspaceUseCases', () => {
       const now = new Date();
       const oldDate = new Date(now.getTime() - 10000);
       vi.mocked(noteRepo.findAll).mockResolvedValue([
-        { filePath: 'updated.md', updatedAt: oldDate } as any, // Will be marked as updated
-        { filePath: 'deleted.md', updatedAt: now } as any, // Will be marked as deleted
+        { id: 'note-1', filePath: 'updated.md', title: 'Updated', updatedAt: oldDate, isDeleted: false } as any,
+        { id: 'note-2', filePath: 'deleted.md', title: 'Deleted', updatedAt: now, isDeleted: false } as any,
       ]);
 
       // Mock file info
@@ -637,11 +655,20 @@ describe('WorkspaceUseCases', () => {
         isDirectory: false,
       });
 
+      // Mock file read
+      vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
+
+      // Mock save
+      vi.mocked(noteRepo.save).mockResolvedValue(undefined);
+
       const result = await useCase.execute({ workspaceId: 'ws-1' });
 
       expect(result.notes.created).toBe(1); // new.md
       expect(result.notes.updated).toBe(1); // updated.md
       expect(result.notes.deleted).toBe(1); // deleted.md
+
+      // Verify save was called for each operation
+      expect(noteRepo.save).toHaveBeenCalledTimes(3);
     });
 
     it('throws WorkspaceNotFoundError', async () => {
