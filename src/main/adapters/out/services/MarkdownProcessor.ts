@@ -100,7 +100,9 @@ export class MarkdownProcessor implements IMarkdownProcessor {
       // In main process, avoid noisy logs during bulk sync. Fall back to the
       // original content so we never block saves.
       if (process?.env?.NODE_ENV !== 'test') {
-        logger.warn('HTML→Markdown conversion failed, writing content as-is.');
+        logger.withContext('out:MarkdownProcessor.htmlToMarkdown', () =>
+          logger.warn('HTML→Markdown conversion failed, writing content as-is.'),
+        );
       }
       return html;
     }
@@ -124,7 +126,9 @@ export class MarkdownProcessor implements IMarkdownProcessor {
       const html = await marked.parse(processedMarkdown);
       return html;
     } catch (error) {
-      logger.error('Error converting Markdown to HTML:', error);
+      logger.withContext('out:MarkdownProcessor.markdownToHtml', () =>
+        logger.error('Error converting Markdown to HTML:', error),
+      );
       return markdown; // Return original if conversion fails
     }
   }
