@@ -10,7 +10,7 @@ import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
@@ -60,7 +60,7 @@ export function TasksPage() {
   const [groupBy, setGroupBy] = useState<GroupByOption>('state');
   const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { getAllTodos, updateTaskState } = useNoteAPI();
 
   // Debounce timer ref for auto-refresh

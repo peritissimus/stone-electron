@@ -10,7 +10,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useModals } from '@renderer/hooks/useUI';
+import { useUIStore } from '@renderer/stores/uiStore'; // Keep for .getState() calls in callbacks
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import {
@@ -76,7 +77,7 @@ function fuzzyMatch(query: string, target: string): number {
 }
 
 export function CommandCenter() {
-  const { commandCenterOpen } = useUIStore();
+  const { commandCenterOpen } = useModals();
   const { notes } = useNoteStore();
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
 

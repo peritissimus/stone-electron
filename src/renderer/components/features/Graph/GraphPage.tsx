@@ -8,7 +8,7 @@ import { GitFork } from 'lucide-react';
 import { CaretRight } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useSidebarUI } from '@renderer/hooks/useUI';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
@@ -36,7 +36,7 @@ interface GraphData {
 export function GraphPage() {
   const { getGraphData } = useNoteAPI();
   const { setActiveNote, activeNoteId } = useNoteStore();
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });

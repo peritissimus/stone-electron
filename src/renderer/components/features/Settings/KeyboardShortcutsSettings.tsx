@@ -5,13 +5,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Command, ArrowClockwise } from 'phosphor-react';
 import {
-  useShortcutsStore,
+  useShortcuts,
   DEFAULT_SHORTCUTS,
   formatShortcutDisplay,
   type ShortcutDefinition,
   type ShortcutAction,
   type ShortcutBinding,
-} from '@renderer/stores/shortcutsStore';
+} from '@renderer/hooks/useShortcuts';
 import { SettingsSection } from './SettingsSection';
 import { Button } from '@renderer/components/base/ui/button';
 import { Label, Body } from '@renderer/components/base/ui/text';
@@ -161,7 +161,7 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
 
 export function KeyboardShortcutsSettings() {
   const { getShortcut, setShortcut, resetShortcut, resetAllShortcuts, isCustomized } =
-    useShortcutsStore();
+    useShortcuts();
   const [editingShortcut, setEditingShortcut] = useState<ShortcutAction | null>(null);
 
   // Group shortcuts by category

@@ -4,7 +4,7 @@
 import { Editor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useEditorUI } from '@renderer/hooks/useUI';
 
 export interface NoteEditorContentProps {
   editor: Editor | null;
@@ -46,7 +46,7 @@ function EditorSkeleton() {
 }
 
 export function NoteEditorContent({ editor, isLoading }: NoteEditorContentProps) {
-  const { showBlockIndicators } = useUIStore();
+  const { showBlockIndicators } = useEditorUI();
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-background relative">

@@ -4,7 +4,7 @@ import { CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
 import { TodoList } from './TodoList';
@@ -84,7 +84,7 @@ export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { createNote } = useNoteAPI();
 
   // Prevent double-click creating duplicate notes

@@ -17,7 +17,6 @@ import {
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { logger } from '@renderer/utils/logger';
-import type { GitStatus, GitCommit } from '@renderer/api';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';

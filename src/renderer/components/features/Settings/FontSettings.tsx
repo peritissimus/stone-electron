@@ -3,7 +3,7 @@
  * Allows users to customize fonts for UI, editor headings, editor body, and code
  */
 
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useTheme } from '@renderer/hooks/useUI';
 import { Label, Body } from '@renderer/components/base/ui/text';
 import { Slider } from '@renderer/components/base/ui/slider';
 import { Button } from '@renderer/components/base/ui/button';
@@ -12,7 +12,7 @@ import { ArrowCounterClockwise } from 'phosphor-react';
 import { FontPicker } from './FontPicker';
 
 export function FontSettings() {
-  const { fontSettings, setFontSettings, resetFontSettings } = useUIStore();
+  const { fontSettings, setFontSettings, resetFontSettings } = useTheme();
 
   return (
     <ContainerStack gap="lg">

@@ -3,7 +3,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useUIStore, ACCENT_COLORS, type AccentColor } from '@renderer/stores/uiStore';
+import { useModals, useTheme, useEditorUI, type AccentColor } from '@renderer/hooks/useUI';
+import { ACCENT_COLORS } from '@renderer/stores/uiStore';
 import {
   Database,
   HardDrive,
@@ -37,7 +38,7 @@ import { Label, Body, Heading4 } from '@renderer/components/base/ui/text';
 import { ContainerStack, ContainerCenter, Separator } from '@renderer/components/base/ui';
 
 export function SettingsModal() {
-  const { settingsOpen, closeSettings } = useUIStore();
+  const { settingsOpen, closeSettings } = useModals();
   const [activeTab, setActiveTab] = useState<
     'database' | 'appearance' | 'shortcuts' | 'git' | 'about'
   >('appearance');
@@ -201,14 +202,8 @@ function DatabaseSettings() {
 }
 
 function AppearanceSettings() {
-  const {
-    theme,
-    setTheme,
-    accentColor,
-    setAccentColor,
-    showBlockIndicators,
-    toggleBlockIndicators,
-  } = useUIStore();
+  const { theme, setTheme, accentColor, setAccentColor } = useTheme();
+  const { showBlockIndicators, toggleBlockIndicators } = useEditorUI();
 
   return (
     <SettingsSection title="Appearance">
