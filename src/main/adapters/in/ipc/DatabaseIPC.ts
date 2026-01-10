@@ -4,6 +4,7 @@
 
 import { ipcMain } from 'electron';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
+import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface DatabaseIPCDeps {
@@ -16,48 +17,36 @@ export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
   const { getDatabaseStatus, vacuumDatabase, checkDatabaseIntegrity } = deps;
 
   ipcMain.handle(DATABASE_CHANNELS.GET_STATUS, async () => {
-    try {
-      logger.info('[IPC] db:getStatus');
-      const status = await getDatabaseStatus();
-      return {
-        success: true,
-        data: status,
-      };
-    } catch (error) {
-      logger.error('[IPC] db:getStatus error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+    return handleIpcRequest(
+      async () => {
+        logger.info('[IPC] db:getStatus');
+        const status = await getDatabaseStatus();
+        return status;
+      },
+      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+    );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.VACUUM, async () => {
-    try {
-      logger.info('[IPC] db:vacuum');
-      await vacuumDatabase();
-      return { success: true };
-    } catch (error) {
-      logger.error('[IPC] db:vacuum error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+    return handleIpcRequest(
+      async () => {
+        logger.info('[IPC] db:vacuum');
+        await vacuumDatabase();
+        return { success: true };
+      },
+      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+    );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.CHECK_INTEGRITY, async () => {
-    try {
-      logger.info('[IPC] db:checkIntegrity');
-      const result = await checkDatabaseIntegrity();
-      return { success: true, data: result };
-    } catch (error) {
-      logger.error('[IPC] db:checkIntegrity error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+    return handleIpcRequest(
+      async () => {
+        logger.info('[IPC] db:checkIntegrity');
+        const result = await checkDatabaseIntegrity();
+        return result;
+      },
+      { loggerPrefix: 'DatabaseIPC', defaultCode: 'INTERNAL_ERROR' },
+    );
   });
 
   logger.info('[IPC] Database handlers registered');

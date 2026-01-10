@@ -4,7 +4,7 @@
 
 import { ipcMain } from 'electron';
 import { QUICK_CAPTURE_CHANNELS } from '@shared/constants/ipcChannels';
-import { handleIpcRequest } from './ipcUtils';
+import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface QuickCaptureIPCDeps {

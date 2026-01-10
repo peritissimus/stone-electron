@@ -3,11 +3,9 @@
  */
 
 import { ipcMain } from 'electron';
+import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import { logger } from '../../../shared';
-
-const CHANNELS = {
-  GET_FONTS: 'system:getFonts',
-} as const;
+import { handleIpcRequest } from '@main/shared/utils';
 
 export interface SystemIPCDeps {
   getSystemFonts: () => Promise<string[]>;
@@ -16,25 +14,22 @@ export interface SystemIPCDeps {
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
   const { getSystemFonts } = deps;
 
-  ipcMain.handle(CHANNELS.GET_FONTS, async () => {
-    try {
-      logger.info('[IPC] system:getFonts');
-      const fonts = await getSystemFonts();
-      return { success: true, data: fonts };
-    } catch (error) {
-      logger.error('[IPC] system:getFonts error:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      };
-    }
+  ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
+    return handleIpcRequest(
+      async () => {
+        logger.info('[IPC] system:getFonts');
+        const fonts = await getSystemFonts();
+        return fonts;
+      },
+      { loggerPrefix: 'SystemIPC', defaultCode: 'INTERNAL_ERROR' },
+    );
   });
 
   logger.info('[IPC] System handlers registered');
 }
 
 export function unregisterSystemHandlers(): void {
-  Object.values(CHANNELS).forEach((channel) => {
+  Object.values(SYSTEM_CHANNELS).forEach((channel) => {
     ipcMain.removeHandler(channel);
   });
 }

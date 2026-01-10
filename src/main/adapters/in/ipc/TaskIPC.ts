@@ -5,7 +5,7 @@
 import { ipcMain } from 'electron';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { ITaskUseCases, TaskState } from '../../../domain';
-import { handleIpcRequest } from './ipcUtils';
+import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface TaskIPCDeps {

@@ -3,14 +3,10 @@
  */
 
 import { ipcMain } from 'electron';
+import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IExportUseCases, ExportOptions } from '../../../domain';
+import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
-
-const CHANNELS = {
-  EXPORT_HTML: 'notes:exportHtml',
-  EXPORT_PDF: 'notes:exportPdf',
-  EXPORT_MARKDOWN: 'notes:exportMarkdown',
-} as const;
 
 export interface ExportIPCDeps {
   exportUseCases: IExportUseCases;
@@ -18,88 +14,60 @@ export interface ExportIPCDeps {
 
 export function registerExportHandlers(deps: ExportIPCDeps): void {
   const { exportUseCases } = deps;
+  const handleRequest = <T>(fn: () => Promise<T>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'ExportIPC', defaultCode: 'INTERNAL_ERROR' });
 
   ipcMain.handle(
-    CHANNELS.EXPORT_HTML,
+    NOTE_CHANNELS.EXPORT_HTML,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      try {
+      return handleRequest(async () => {
         logger.info('[IPC] notes:exportHtml', { noteId: id, options });
         const result = await exportUseCases.exportHtml.execute(id, options);
         return {
-          success: true,
-          data: {
-            content: result.content.toString(),
-            filename: result.filename,
-            mimeType: result.mimeType,
-          },
+          content: result.content.toString(),
+          filename: result.filename,
+          mimeType: result.mimeType,
         };
-      } catch (error) {
-        logger.error('[IPC] notes:exportHtml error:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        };
-      }
-    }
+      });
+    },
   );
 
   ipcMain.handle(
-    CHANNELS.EXPORT_PDF,
+    NOTE_CHANNELS.EXPORT_PDF,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      try {
+      return handleRequest(async () => {
         logger.info('[IPC] notes:exportPdf', { noteId: id, options });
         const result = await exportUseCases.exportPdf.execute(id, options);
         return {
-          success: true,
-          data: {
-            // PDF is binary, encode as base64 for IPC
-            content: Buffer.isBuffer(result.content)
-              ? result.content.toString('base64')
-              : result.content,
-            filename: result.filename,
-            mimeType: result.mimeType,
-            isBase64: Buffer.isBuffer(result.content),
-          },
+          content: Buffer.isBuffer(result.content) ? result.content.toString('base64') : result.content,
+          filename: result.filename,
+          mimeType: result.mimeType,
+          isBase64: Buffer.isBuffer(result.content),
         };
-      } catch (error) {
-        logger.error('[IPC] notes:exportPdf error:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        };
-      }
-    }
+      });
+    },
   );
 
   ipcMain.handle(
-    CHANNELS.EXPORT_MARKDOWN,
+    NOTE_CHANNELS.EXPORT_MARKDOWN,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      try {
+      return handleRequest(async () => {
         logger.info('[IPC] notes:exportMarkdown', { noteId: id, options });
         const result = await exportUseCases.exportMarkdown.execute(id, options);
         return {
-          success: true,
-          data: {
-            content: result.content.toString(),
-            filename: result.filename,
-            mimeType: result.mimeType,
-          },
+          content: result.content.toString(),
+          filename: result.filename,
+          mimeType: result.mimeType,
         };
-      } catch (error) {
-        logger.error('[IPC] notes:exportMarkdown error:', error);
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        };
-      }
-    }
+      });
+    },
   );
 
   logger.info('[IPC] Export handlers registered');
 }
 
 export function unregisterExportHandlers(): void {
-  Object.values(CHANNELS).forEach((channel) => {
+  [NOTE_CHANNELS.EXPORT_HTML, NOTE_CHANNELS.EXPORT_PDF, NOTE_CHANNELS.EXPORT_MARKDOWN].forEach((channel) => {
     ipcMain.removeHandler(channel);
   });
 }

@@ -8,6 +8,7 @@ import { ipcMain } from 'electron';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IWorkspaceUseCases } from '../../../application';
 import { logger } from '../../../shared';
+import { handleIpcRequest } from '@main/shared/utils';
 
 export interface WorkspaceIPCDeps {
   workspaceUseCases: IWorkspaceUseCases;
@@ -44,18 +45,15 @@ export class WorkspaceIPC {
     );
 
     ipcMain.handle(WORKSPACE_CHANNELS.GET_ALL, async () => {
-      logger.info('[IPC] workspaces:getAll CALLED');
-      try {
+      return this.handleRequest(async () => {
+        logger.info('[IPC] workspaces:getAll CALLED');
         const result = await workspaceUseCases.listWorkspaces.execute();
         logger.info('[IPC] workspaces:getAll result:', result.workspaces.length, 'workspaces');
         if (result.workspaces.length > 0) {
           logger.info('[IPC] workspaces:getAll first workspace:', JSON.stringify(result.workspaces[0]));
         }
-        return { success: true, data: { workspaces: result.workspaces } };
-      } catch (error) {
-        logger.error('[IPC] workspaces:getAll ERROR:', error);
-        return { success: false, error: { code: 'INTERNAL_ERROR', message: String(error) } };
-      }
+        return { workspaces: result.workspaces };
+      });
     });
 
     ipcMain.handle(WORKSPACE_CHANNELS.DELETE, async (_event, id: string) => {
@@ -73,15 +71,12 @@ export class WorkspaceIPC {
     });
 
     ipcMain.handle(WORKSPACE_CHANNELS.GET_ACTIVE, async () => {
-      logger.info('[IPC] workspaces:getActive CALLED');
-      try {
+      return this.handleRequest(async () => {
+        logger.info('[IPC] workspaces:getActive CALLED');
         const result = await workspaceUseCases.getActiveWorkspace.execute();
         logger.info('[IPC] workspaces:getActive result:', result.workspace?.id || 'null');
-        return { success: true, data: { workspace: result.workspace } };
-      } catch (error) {
-        logger.error('[IPC] workspaces:getActive ERROR:', error);
-        return { success: false, error: { code: 'INTERNAL_ERROR', message: String(error) } };
-      }
+        return { workspace: result.workspace };
+      });
     });
 
     // UPDATE - Update workspace name
@@ -195,26 +190,12 @@ export class WorkspaceIPC {
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {
-    try {
-      const data = await fn();
-      return { success: true, data };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const code = this.getErrorCode(error);
-      logger.error('[WorkspaceIPC] Error:', { code, message });
-      return { success: false, error: { code, message } };
-    }
-  }
-
-  private getErrorCode(error: unknown): string {
-    if (error instanceof Error) {
-      switch (error.name) {
-        case 'WorkspaceNotFoundError':
-          return 'WORKSPACE_NOT_FOUND';
-        default:
-          return 'INTERNAL_ERROR';
-      }
-    }
-    return 'UNKNOWN_ERROR';
+    return handleIpcRequest(fn, {
+      loggerPrefix: 'WorkspaceIPC',
+      defaultCode: 'INTERNAL_ERROR',
+      errorMap: {
+        WorkspaceNotFoundError: 'WORKSPACE_NOT_FOUND',
+      },
+    });
   }
 }
