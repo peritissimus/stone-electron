@@ -489,15 +489,27 @@ describe('NoteUseCases', () => {
   describe('GetNoteByPathUseCase', () => {
     let noteRepo: INoteRepository;
     let workspaceRepo: IWorkspaceRepository;
+    let fileStorage: IFileStorage;
+    let markdownProcessor: IMarkdownProcessor;
+    let eventPublisher: IEventPublisher;
     let useCase: GetNoteByPathUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       workspaceRepo = createMockWorkspaceRepository();
-      useCase = new GetNoteByPathUseCase(noteRepo, workspaceRepo);
+      fileStorage = createMockFileStorage();
+      markdownProcessor = createMockMarkdownProcessor();
+      eventPublisher = createMockEventPublisher();
+      useCase = new GetNoteByPathUseCase(
+        noteRepo,
+        workspaceRepo,
+        fileStorage,
+        markdownProcessor,
+        eventPublisher,
+      );
     });
 
-    it('returns note by file path', async () => {
+    it('returns note by file path when found in database', async () => {
       const noteProps = createNoteProps();
       vi.mocked(workspaceRepo.findActive).mockResolvedValue({ id: 'ws-1' } as any);
       vi.mocked(noteRepo.findByFilePath).mockResolvedValue(noteProps);
@@ -507,9 +519,51 @@ describe('NoteUseCases', () => {
       expect(result.note).toEqual(noteProps);
     });
 
-    it('throws NoteNotFoundError when note not found', async () => {
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue({ id: 'ws-1' } as any);
+    it('creates note from disk when not in database but file exists', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue({
+        id: 'ws-1',
+        folderPath: '/workspace',
+      } as any);
       vi.mocked(noteRepo.findByFilePath).mockResolvedValue(null);
+      vi.mocked(fileStorage.exists).mockResolvedValue(true);
+      vi.mocked(fileStorage.read).mockResolvedValue('# My Note\nContent here');
+      vi.mocked(markdownProcessor.extractTitle).mockReturnValue('My Note');
+      vi.mocked(noteRepo.save).mockResolvedValue();
+
+      const result = await useCase.execute({ filePath: 'test.md' });
+
+      expect(result.note.title).toBe('My Note');
+      expect(result.note.filePath).toBe('test.md');
+      expect(noteRepo.save).toHaveBeenCalled();
+      expect(eventPublisher.emit).toHaveBeenCalled();
+    });
+
+    it('uses filename as title for journal files (not extracted title)', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue({
+        id: 'ws-1',
+        folderPath: '/workspace',
+      } as any);
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(null);
+      vi.mocked(fileStorage.exists).mockResolvedValue(true);
+      vi.mocked(fileStorage.read).mockResolvedValue('# January 11, 2026\n\nJournal content');
+      vi.mocked(markdownProcessor.extractTitle).mockReturnValue('January 11, 2026');
+      vi.mocked(noteRepo.save).mockResolvedValue();
+
+      const result = await useCase.execute({ filePath: 'Journal/2026-01-11.md' });
+
+      // Should use filename format, not extracted title
+      expect(result.note.title).toBe('2026-01-11');
+      expect(result.note.filePath).toBe('Journal/2026-01-11.md');
+      expect(noteRepo.save).toHaveBeenCalled();
+    });
+
+    it('throws NoteNotFoundError when note not in DB and file does not exist', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue({
+        id: 'ws-1',
+        folderPath: '/workspace',
+      } as any);
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(null);
+      vi.mocked(fileStorage.exists).mockResolvedValue(false);
 
       await expect(useCase.execute({ filePath: 'nonexistent.md' })).rejects.toThrow(
         NoteNotFoundError,
