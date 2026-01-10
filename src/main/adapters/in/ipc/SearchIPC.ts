@@ -6,7 +6,7 @@
 
 import { ipcMain } from 'electron';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ISearchUseCases } from '../../../application';
+import type { ISearchUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 

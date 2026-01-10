@@ -9,7 +9,25 @@ import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NotebookEntity,
   type NotebookProps,
+  type NotebookWithCount,
   type INotebookRepository,
+  type INotebookUseCases,
+  type ICreateNotebookUseCase,
+  type IUpdateNotebookUseCase,
+  type IGetNotebookUseCase,
+  type IListNotebooksUseCase,
+  type IDeleteNotebookUseCase,
+  type IMoveNotebookUseCase,
+  type CreateNotebookRequest,
+  type CreateNotebookResponse,
+  type UpdateNotebookRequest,
+  type UpdateNotebookResponse,
+  type GetNotebookRequest,
+  type GetNotebookResponse,
+  type ListNotebooksRequest,
+  type ListNotebooksResponse,
+  type DeleteNotebookRequest,
+  type MoveNotebookRequest,
   NotebookNotFoundError,
 } from '../../domain';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
@@ -18,20 +36,13 @@ import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 // Use Case Implementations
 // ============================================================================
 
-export class CreateNotebookUseCase {
+export class CreateNotebookUseCase implements ICreateNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: {
-    name: string;
-    parentId?: string;
-    workspaceId?: string;
-    folderPath?: string;
-    icon?: string;
-    color?: string;
-  }): Promise<{ notebook: NotebookProps }> {
+  async execute(request: CreateNotebookRequest): Promise<CreateNotebookResponse> {
     const notebook = NotebookEntity.create({
       id: generateId(),
       name: request.name,
@@ -50,19 +61,13 @@ export class CreateNotebookUseCase {
   }
 }
 
-export class UpdateNotebookUseCase {
+export class UpdateNotebookUseCase implements IUpdateNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: {
-    id: string;
-    name?: string;
-    parentId?: string;
-    icon?: string;
-    color?: string;
-  }): Promise<{ notebook: NotebookProps }> {
+  async execute(request: UpdateNotebookRequest): Promise<UpdateNotebookResponse> {
     const notebookProps = await this.notebookRepository.findById(request.id);
     if (!notebookProps) {
       throw new NotebookNotFoundError(request.id);
@@ -91,10 +96,10 @@ export class UpdateNotebookUseCase {
   }
 }
 
-export class GetNotebookUseCase {
+export class GetNotebookUseCase implements IGetNotebookUseCase {
   constructor(private readonly notebookRepository: INotebookRepository) {}
 
-  async execute(request: { id: string }): Promise<{ notebook: NotebookProps }> {
+  async execute(request: GetNotebookRequest): Promise<GetNotebookResponse> {
     const notebookProps = await this.notebookRepository.findById(request.id);
     if (!notebookProps) {
       throw new NotebookNotFoundError(request.id);
@@ -104,13 +109,19 @@ export class GetNotebookUseCase {
   }
 }
 
-export class ListNotebooksUseCase {
+export class ListNotebooksUseCase implements IListNotebooksUseCase {
   constructor(private readonly notebookRepository: INotebookRepository) {}
 
-  async execute(request: {
-    workspaceId?: string;
-    parentId?: string | null;
-  }): Promise<{ notebooks: NotebookProps[] }> {
+  async execute(request: ListNotebooksRequest): Promise<ListNotebooksResponse> {
+    const includeNoteCount = request.includeNoteCount ?? false;
+
+    if (includeNoteCount) {
+      const notebooks: NotebookWithCount[] = await this.notebookRepository.findAllWithCounts(
+        request.workspaceId,
+      );
+      return { notebooks };
+    }
+
     let notebooks: NotebookProps[];
 
     if (request.parentId !== undefined) {
@@ -124,17 +135,17 @@ export class ListNotebooksUseCase {
       notebooks = await this.notebookRepository.findAll();
     }
 
-    return { notebooks };
+    return { notebooks: notebooks as NotebookProps[] };
   }
 }
 
-export class DeleteNotebookUseCase {
+export class DeleteNotebookUseCase implements IDeleteNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: { id: string }): Promise<void> {
+  async execute(request: DeleteNotebookRequest): Promise<void> {
     const exists = await this.notebookRepository.exists(request.id);
     if (!exists) {
       throw new NotebookNotFoundError(request.id);
@@ -146,13 +157,13 @@ export class DeleteNotebookUseCase {
   }
 }
 
-export class MoveNotebookUseCase {
+export class MoveNotebookUseCase implements IMoveNotebookUseCase {
   constructor(
     private readonly notebookRepository: INotebookRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: { id: string; targetParentId: string | null }): Promise<void> {
+  async execute(request: MoveNotebookRequest): Promise<void> {
     const notebookProps = await this.notebookRepository.findById(request.id);
     if (!notebookProps) {
       throw new NotebookNotFoundError(request.id);
@@ -169,15 +180,6 @@ export class MoveNotebookUseCase {
 // ============================================================================
 // Factory
 // ============================================================================
-
-export interface INotebookUseCases {
-  createNotebook: CreateNotebookUseCase;
-  updateNotebook: UpdateNotebookUseCase;
-  getNotebook: GetNotebookUseCase;
-  listNotebooks: ListNotebooksUseCase;
-  deleteNotebook: DeleteNotebookUseCase;
-  moveNotebook: MoveNotebookUseCase;
-}
 
 export interface NotebookUseCasesDeps {
   notebookRepository: INotebookRepository;

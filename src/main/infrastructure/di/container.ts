@@ -31,6 +31,11 @@ import type {
   ISystemService,
   IGitService,
   // Inbound Ports (Use Cases)
+  INoteUseCases,
+  INotebookUseCases,
+  IWorkspaceUseCases,
+  ITagUseCases,
+  ISearchUseCases,
   ITaskUseCases,
   IGraphUseCases,
   IVersionUseCases,
@@ -164,11 +169,11 @@ export interface Container {
   fileWatcherService: FileWatcherService;
 
   // Use Cases - Core
-  noteUseCases: ReturnType<typeof createNoteUseCases>;
-  notebookUseCases: ReturnType<typeof createNotebookUseCases>;
-  workspaceUseCases: ReturnType<typeof createWorkspaceUseCases>;
-  tagUseCases: ReturnType<typeof createTagUseCases>;
-  searchUseCases: ReturnType<typeof createSearchUseCases>;
+  noteUseCases: INoteUseCases;
+  notebookUseCases: INotebookUseCases;
+  workspaceUseCases: IWorkspaceUseCases;
+  tagUseCases: ITagUseCases;
+  searchUseCases: ISearchUseCases;
 
   // Use Cases - Extended
   taskUseCases: ITaskUseCases;

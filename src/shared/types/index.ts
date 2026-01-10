@@ -4,13 +4,12 @@
  * Implementation Layer - Drizzle-inferred types used at runtime.
  * These types are tightly coupled to the database schema.
  *
- * For language-agnostic reference specifications, see: src/specs/entities.ts
+ * Notes:
+ *   - `src/specs/*` are UI/reference specs (renderer-facing, cross-platform friendly).
+ *   - `src/main/domain/*` is the source of truth for backend contracts (ports) and rules.
+ *   - `src/shared/types/*` are runtime implementation types for main↔renderer data transfer.
  *
- * Relationship:
- *   - specs/entities.ts = Cross-platform reference (Swift, Kotlin, etc.)
- *   - shared/types/     = TypeScript implementation (Drizzle-specific)
- *
- * Key differences from specs:
+ * Key differences vs specs:
  *   - Timestamps: Date objects (Drizzle) vs UnixTimestamp (specs)
  *   - Property names: snake_case counts vs camelCase (specs)
  *   - Workspace: isActive (impl) vs isDefault (spec reference)

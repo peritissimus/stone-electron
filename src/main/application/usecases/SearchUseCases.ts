@@ -5,29 +5,42 @@
  */
 
 import {
-  type NoteProps,
   type INoteRepository,
   type ISearchEngine,
   type IEmbeddingService,
-  type SearchResult,
-  type SemanticSearchResult,
+  type ISearchUseCases,
+  type IFullTextSearchUseCase,
+  type ISemanticSearchUseCase,
+  type IFindSimilarNotesUseCase,
+  type IRebuildSearchIndexUseCase,
+  type IHybridSearchUseCase,
+  type ISearchByTagsUseCase,
+  type ISearchByDateRangeUseCase,
+  type FullTextSearchRequest,
+  type FullTextSearchResponse,
+  type SemanticSearchRequest,
+  type SemanticSearchResponse,
+  type FindSimilarNotesRequest,
+  type FindSimilarNotesResponse,
+  type HybridSearchRequest,
+  type HybridSearchResponse,
+  type SearchByTagsRequest,
+  type SearchByTagsResponse,
+  type SearchByDateRangeRequest,
+  type SearchByDateRangeResponse,
 } from '../../domain';
 
 // ============================================================================
 // Use Case Implementations
 // ============================================================================
 
-export class FullTextSearchUseCase {
+export class FullTextSearchUseCase implements IFullTextSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly searchEngine: ISearchEngine,
   ) {}
 
-  async execute(request: {
-    query: string;
-    workspaceId?: string;
-    limit?: number;
-  }): Promise<{ results: SearchResult[]; total: number }> {
+  async execute(request: FullTextSearchRequest): Promise<FullTextSearchResponse> {
     const results = await this.searchEngine.searchFullText(request.query, {
       workspaceId: request.workspaceId,
       limit: request.limit || 50,
@@ -37,17 +50,13 @@ export class FullTextSearchUseCase {
   }
 }
 
-export class SemanticSearchUseCase {
+export class SemanticSearchUseCase implements ISemanticSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly embeddingService: IEmbeddingService,
   ) {}
 
-  async execute(request: {
-    query: string;
-    workspaceId?: string;
-    limit?: number;
-  }): Promise<{ results: Array<{ noteId: string; title: string; distance: number }> }> {
+  async execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse> {
     // Generate embedding for query
     const queryEmbedding = await this.embeddingService.generateEmbedding(request.query);
 
@@ -69,16 +78,13 @@ export class SemanticSearchUseCase {
   }
 }
 
-export class FindSimilarNotesUseCase {
+export class FindSimilarNotesUseCase implements IFindSimilarNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly embeddingService: IEmbeddingService,
   ) {}
 
-  async execute(request: {
-    noteId: string;
-    limit?: number;
-  }): Promise<{ results: Array<{ noteId: string; title: string; distance: number }> }> {
+  async execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse> {
     // Get note's embedding
     const embedding = await this.noteRepository.getEmbedding(request.noteId);
 
@@ -107,7 +113,7 @@ export class FindSimilarNotesUseCase {
   }
 }
 
-export class RebuildSearchIndexUseCase {
+export class RebuildSearchIndexUseCase implements IRebuildSearchIndexUseCase {
   constructor(private readonly searchEngine: ISearchEngine) {}
 
   async execute(): Promise<void> {
@@ -115,25 +121,14 @@ export class RebuildSearchIndexUseCase {
   }
 }
 
-export class HybridSearchUseCase {
+export class HybridSearchUseCase implements IHybridSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly searchEngine: ISearchEngine,
     private readonly embeddingService: IEmbeddingService,
   ) {}
 
-  async execute(request: {
-    query: string;
-    weights?: { fts: number; semantic: number };
-    limit?: number;
-    workspaceId?: string;
-    notebookId?: string;
-    tagIds?: string[];
-  }): Promise<{
-    results: Array<{ note: NoteProps; score: number; searchType: 'fts' | 'semantic' | 'hybrid' }>;
-    total: number;
-    queryTimeMs: number;
-  }> {
+  async execute(request: HybridSearchRequest): Promise<HybridSearchResponse> {
     const startTime = Date.now();
     const limit = request.limit || 50;
 
@@ -157,18 +152,13 @@ export class HybridSearchUseCase {
   }
 }
 
-export class SearchByTagsUseCase {
+export class SearchByTagsUseCase implements ISearchByTagsUseCase {
   constructor(private readonly noteRepository: INoteRepository) {}
 
-  async execute(request: {
-    tagIds: string[];
-    matchAll?: boolean;
-    limit?: number;
-    offset?: number;
-  }): Promise<{ notes: NoteProps[]; total: number }> {
+  async execute(request: SearchByTagsRequest): Promise<SearchByTagsResponse> {
     // NOTE: Tag filtering requires a tag repository - for now return empty
     // TODO: Implement when ITagRepository is available in use case deps
-    const notes: NoteProps[] = [];
+    const notes: SearchByTagsResponse['notes'] = [];
 
     // Apply pagination
     const offset = request.offset || 0;
@@ -182,16 +172,10 @@ export class SearchByTagsUseCase {
   }
 }
 
-export class SearchByDateRangeUseCase {
+export class SearchByDateRangeUseCase implements ISearchByDateRangeUseCase {
   constructor(private readonly noteRepository: INoteRepository) {}
 
-  async execute(request: {
-    startDate: number;
-    endDate: number;
-    workspaceId?: string;
-    field?: 'created' | 'updated';
-    limit?: number;
-  }): Promise<{ notes: NoteProps[]; total: number }> {
+  async execute(request: SearchByDateRangeRequest): Promise<SearchByDateRangeResponse> {
     const field = request.field === 'created' ? 'createdAt' : 'updatedAt';
     const orderBy = field;
     const startDate = new Date(request.startDate);
@@ -222,16 +206,6 @@ export class SearchByDateRangeUseCase {
 // ============================================================================
 // Factory
 // ============================================================================
-
-export interface ISearchUseCases {
-  fullTextSearch: FullTextSearchUseCase;
-  semanticSearch: SemanticSearchUseCase;
-  findSimilarNotes: FindSimilarNotesUseCase;
-  rebuildIndex: RebuildSearchIndexUseCase;
-  hybridSearch: HybridSearchUseCase;
-  searchByTags: SearchByTagsUseCase;
-  searchByDateRange: SearchByDateRangeUseCase;
-}
 
 export function createSearchUseCases(
   noteRepository: INoteRepository,
