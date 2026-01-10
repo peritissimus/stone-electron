@@ -41,6 +41,10 @@ export class ExportService implements IExportService {
         },
       });
 
+      if (!win) {
+        throw new Error('Failed to create BrowserWindow for PDF export');
+      }
+
       // Load the HTML content
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
@@ -49,9 +53,10 @@ export class ExportService implements IExportService {
 
       // Generate PDF
       const pdfBuffer = await win.webContents.printToPDF({
-        marginsType: 0,
+        margins: {
+          marginType: 'default',
+        },
         printBackground: options?.printBackground ?? true,
-        printSelectionOnly: false,
         landscape: options?.landscape ?? false,
         pageSize: options?.format || 'A4',
       });
