@@ -2,6 +2,7 @@
  * Export Service Adapter - Renders notes to various export formats
  */
 
+import type { BrowserWindow } from 'electron';
 import type { IExportService, PdfOptions, HtmlOptions } from '../../../domain';
 import { logger } from '../../../shared';
 
@@ -28,11 +29,12 @@ export class ExportService implements IExportService {
       throw new Error('PDF export is not available in this environment');
     }
 
+    let win: BrowserWindow | null = null;
     try {
       const { BrowserWindow } = require('electron');
 
       // Create a hidden window for rendering
-      const win = new BrowserWindow({
+      win = new BrowserWindow({
         show: false,
         webPreferences: {
           offscreen: true,
@@ -61,6 +63,10 @@ export class ExportService implements IExportService {
     } catch (error) {
       logger.error('[ExportService] PDF generation failed:', error);
       throw error;
+    } finally {
+      if (win && !win.isDestroyed()) {
+        win.destroy();
+      }
     }
   }
 

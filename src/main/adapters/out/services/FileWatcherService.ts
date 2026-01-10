@@ -51,6 +51,7 @@ export class FileWatcherService implements IFileWatcher {
   }
 
   async stopAll(): Promise<void> {
+    this.clearAllTimers();
     for (const [id, entry] of this.watchers) {
       await entry.watcher.close();
       this.watchers.delete(id);
@@ -114,6 +115,7 @@ export class FileWatcherService implements IFileWatcher {
   async unwatchWorkspace(workspaceId: string): Promise<void> {
     const entry = this.watchers.get(workspaceId);
     if (!entry) return;
+    this.clearTimer(workspaceId);
     await entry.watcher.close();
     this.watchers.delete(workspaceId);
     logger.info(`[Watcher] Unwatched workspace ${workspaceId}`);
@@ -131,6 +133,20 @@ export class FileWatcherService implements IFileWatcher {
     }, 500);
 
     this.debounceTimers.set(workspaceId, timer);
+  }
+
+  private clearTimer(workspaceId: string) {
+    const timer = this.debounceTimers.get(workspaceId);
+    if (timer) {
+      clearTimeout(timer);
+      this.debounceTimers.delete(workspaceId);
+    }
+  }
+
+  private clearAllTimers() {
+    for (const [workspaceId] of this.debounceTimers) {
+      this.clearTimer(workspaceId);
+    }
   }
 
   private async syncWorkspace(workspaceId: string) {
