@@ -14,7 +14,7 @@ import type {
   ISetGitRemoteUseCase,
   IGetGitCommitsUseCase,
 } from '../../../domain';
-import { handleIpcRequest } from './ipcUtils';
+import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface GitIPCDeps {

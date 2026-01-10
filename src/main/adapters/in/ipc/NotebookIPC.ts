@@ -8,6 +8,7 @@ import { ipcMain } from 'electron';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
 import type { INotebookUseCases } from '../../../application';
 import { logger } from '../../../shared';
+import { handleIpcRequest } from '@main/shared/utils';
 
 export interface NotebookIPCDeps {
   notebookUseCases: INotebookUseCases;
@@ -77,28 +78,13 @@ export class NotebookIPC {
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {
-    try {
-      const data = await fn();
-      return { success: true, data };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const code = this.getErrorCode(error);
-      logger.error('[NotebookIPC] Error:', { code, message });
-      return { success: false, error: { code, message } };
-    }
-  }
-
-  private getErrorCode(error: unknown): string {
-    if (error instanceof Error) {
-      switch (error.name) {
-        case 'NotebookNotFoundError':
-          return 'NOTEBOOK_NOT_FOUND';
-        case 'NotebookValidationError':
-          return 'VALIDATION_ERROR';
-        default:
-          return 'INTERNAL_ERROR';
-      }
-    }
-    return 'UNKNOWN_ERROR';
+    return handleIpcRequest(fn, {
+      loggerPrefix: 'NotebookIPC',
+      defaultCode: 'INTERNAL_ERROR',
+      errorMap: {
+        NotebookNotFoundError: 'NOTEBOOK_NOT_FOUND',
+        NotebookValidationError: 'VALIDATION_ERROR',
+      },
+    });
   }
 }

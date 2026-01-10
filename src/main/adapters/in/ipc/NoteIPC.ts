@@ -8,6 +8,7 @@ import { ipcMain } from 'electron';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { INoteUseCases } from '../../../domain';
 import { logger } from '../../../shared';
+import { handleIpcRequest } from '@main/shared/utils';
 
 export interface NoteIPCDeps {
   noteUseCases: INoteUseCases;
@@ -160,15 +161,11 @@ export class NoteIPC {
   }
 
   private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {
-    try {
-      const data = await fn();
-      return { success: true, data };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      const code = this.getErrorCode(error);
-      logger.error('[NoteIPC] Error:', { code, message });
-      return { success: false, error: { code, message } };
-    }
+    return handleIpcRequest(fn, {
+      loggerPrefix: 'NoteIPC',
+      defaultCode: 'INTERNAL_ERROR',
+      mapErrorCode: (error) => this.getErrorCode(error),
+    });
   }
 
   private getErrorCode(error: unknown): string {
