@@ -14,39 +14,43 @@ export interface GraphIPCDeps {
 
 export function registerGraphHandlers(deps: GraphIPCDeps): void {
   const { graphUseCases } = deps;
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'GraphIPC', defaultCode: 'GRAPH_ERROR', context });
 
   ipcMain.handle(NOTE_CHANNELS.GET_BACKLINKS, async (_, { id }: { id: string }) => {
-    logger.info('[IPC] notes:getBacklinks', { id });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const notes = await graphUseCases.getBacklinks.execute(id);
         return { notes };
       },
-      { loggerPrefix: NOTE_CHANNELS.GET_BACKLINKS, defaultCode: 'GRAPH_ERROR' },
+      { channel: NOTE_CHANNELS.GET_BACKLINKS, noteId: id },
     );
   });
 
   ipcMain.handle(NOTE_CHANNELS.GET_FORWARD_LINKS, async (_, { id }: { id: string }) => {
-    logger.info('[IPC] notes:getForwardLinks', { id });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const notes = await graphUseCases.getForwardLinks.execute(id);
         return { notes };
       },
-      { loggerPrefix: NOTE_CHANNELS.GET_FORWARD_LINKS, defaultCode: 'GRAPH_ERROR' },
+      { channel: NOTE_CHANNELS.GET_FORWARD_LINKS, noteId: id },
     );
   });
 
   ipcMain.handle(
     NOTE_CHANNELS.GET_GRAPH_DATA,
     async (_, options?: { centerNoteId?: string; depth?: number; includeOrphans?: boolean }) => {
-      logger.info('[IPC] notes:getGraphData', options);
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const graphData = await graphUseCases.getGraphData.execute(options);
           return graphData;
         },
-        { loggerPrefix: NOTE_CHANNELS.GET_GRAPH_DATA, defaultCode: 'GRAPH_ERROR' },
+        {
+          channel: NOTE_CHANNELS.GET_GRAPH_DATA,
+          centerNoteId: options?.centerNoteId,
+          depth: options?.depth,
+          includeOrphans: options?.includeOrphans,
+        },
       );
     },
   );

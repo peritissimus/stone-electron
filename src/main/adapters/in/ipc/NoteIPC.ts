@@ -30,21 +30,21 @@ export class NoteIPC {
       return this.handleRequest(async () => {
         const result = await noteUseCases.createNote.execute(request);
         return result.note;
-      });
+      }, { channel: NOTE_CHANNELS.CREATE, requestId: request?.id });
     });
 
     ipcMain.handle(NOTE_CHANNELS.GET, async (_event, { id }: { id: string }) => {
       return this.handleRequest(async () => {
         const result = await noteUseCases.getNote.execute({ id, includeContent: true });
         return result.note;
-      });
+      }, { channel: NOTE_CHANNELS.GET, noteId: id });
     });
 
     ipcMain.handle(NOTE_CHANNELS.GET_CONTENT, async (_event, { id }: { id: string }) => {
       return this.handleRequest(async () => {
         const result = await noteUseCases.getNoteContent.execute({ id });
         return { content: result.content };
-      });
+      }, { channel: NOTE_CHANNELS.GET_CONTENT, noteId: id });
     });
 
     ipcMain.handle(NOTE_CHANNELS.UPDATE, async (_event, request) => {
@@ -57,7 +57,7 @@ export class NoteIPC {
         }
         const result = await noteUseCases.updateNote.execute(request);
         return result.note;
-      });
+      }, { channel: NOTE_CHANNELS.UPDATE, noteId: request?.id });
     });
 
     ipcMain.handle(
@@ -66,7 +66,7 @@ export class NoteIPC {
         return this.handleRequest(async () => {
           await noteUseCases.deleteNote.execute({ id, permanent });
           return { success: true };
-        });
+        }, { channel: NOTE_CHANNELS.DELETE, noteId: id, permanent });
       },
     );
 
@@ -74,7 +74,7 @@ export class NoteIPC {
       return this.handleRequest(async () => {
         const result = await noteUseCases.listNotes.execute(request || {});
         return result;
-      });
+      }, { channel: NOTE_CHANNELS.GET_ALL });
     });
 
     ipcMain.handle(
@@ -96,7 +96,7 @@ export class NoteIPC {
           // Fetch and return the moved note
           const result = await noteUseCases.getNote.execute({ id, includeContent: false });
           return result.note;
-        });
+        }, { channel: NOTE_CHANNELS.MOVE, noteId: id, targetNotebookId: targetNotebookId ?? targetPath ?? null });
       },
     );
 
@@ -109,7 +109,7 @@ export class NoteIPC {
             filePath: filePath ?? path ?? '',
           });
           return result.note;
-        });
+        }, { channel: NOTE_CHANNELS.GET_BY_PATH, filePath: filePath ?? path });
       },
     );
 
@@ -120,7 +120,7 @@ export class NoteIPC {
         return this.handleRequest(async () => {
           const result = await noteUseCases.toggleFavorite.execute({ id });
           return result.note;
-        });
+        }, { channel: NOTE_CHANNELS.FAVORITE, noteId: id });
       },
     );
 
@@ -129,7 +129,7 @@ export class NoteIPC {
       return this.handleRequest(async () => {
         const result = await noteUseCases.togglePin.execute({ id });
         return result.note;
-      });
+      }, { channel: NOTE_CHANNELS.PIN, noteId: id });
     });
 
     // notes:archive - Toggle archive status
@@ -139,7 +139,7 @@ export class NoteIPC {
         return this.handleRequest(async () => {
           const result = await noteUseCases.toggleArchive.execute({ id });
           return result.note;
-        });
+        }, { channel: NOTE_CHANNELS.ARCHIVE, noteId: id });
       },
     );
 
@@ -160,11 +160,15 @@ export class NoteIPC {
     ipcMain.removeHandler(NOTE_CHANNELS.ARCHIVE);
   }
 
-  private async handleRequest<T>(fn: () => Promise<T>): Promise<IPCResponse<T>> {
+  private async handleRequest<T>(
+    fn: () => Promise<T>,
+    context?: Record<string, unknown>,
+  ): Promise<IPCResponse<T>> {
     return handleIpcRequest(fn, {
       loggerPrefix: 'NoteIPC',
       defaultCode: 'INTERNAL_ERROR',
       mapErrorCode: (error) => this.getErrorCode(error),
+      context,
     });
   }
 

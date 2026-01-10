@@ -13,16 +13,14 @@ export interface SystemIPCDeps {
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
   const { getSystemFonts } = deps;
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'SystemIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
-    return handleIpcRequest(
-      async () => {
-        logger.info('[IPC] system:getFonts');
-        const fonts = await getSystemFonts();
-        return fonts;
-      },
-      { loggerPrefix: 'SystemIPC', defaultCode: 'INTERNAL_ERROR' },
-    );
+    return handleRequest(async () => {
+      const fonts = await getSystemFonts();
+      return fonts;
+    }, { channel: SYSTEM_CHANNELS.GET_FONTS });
   });
 
   logger.info('[IPC] System handlers registered');

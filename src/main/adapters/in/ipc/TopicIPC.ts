@@ -14,39 +14,49 @@ export interface TopicIPCDeps {
 
 export function registerTopicHandlers(deps: TopicIPCDeps): void {
   const { topicUseCases } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'TopicIPC', defaultCode: 'INTERNAL_ERROR' });
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'TopicIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(TOPIC_CHANNELS.INITIALIZE, async () => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:initialize');
-      await topicUseCases.initialize();
-      return { success: true };
-    });
+    return handleRequest(
+      async () => {
+        await topicUseCases.initialize();
+        return { success: true };
+      },
+      { channel: TOPIC_CHANNELS.INITIALIZE },
+    );
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_ALL, async () => {
-    return handleRequest(async () => {
-      const topics = await topicUseCases.getAllTopics();
-      return { topics };
-    });
+    return handleRequest(
+      async () => {
+        const topics = await topicUseCases.getAllTopics();
+        return { topics };
+      },
+      { channel: TOPIC_CHANNELS.GET_ALL },
+    );
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_BY_ID, async (_event, { id }: { id: string }) => {
-    return handleRequest(async () => {
-      const topic = await topicUseCases.getTopicById(id);
-      return topic;
-    });
+    return handleRequest(
+      async () => {
+        const topic = await topicUseCases.getTopicById(id);
+        return topic;
+      },
+      { channel: TOPIC_CHANNELS.GET_BY_ID, topicId: id },
+    );
   });
 
   ipcMain.handle(
     TOPIC_CHANNELS.CREATE,
     async (_event, data: { name: string; description?: string; color?: string }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:create', data);
-        const topic = await topicUseCases.createTopic(data);
-        return topic;
-      });
+      return handleRequest(
+        async () => {
+          const topic = await topicUseCases.createTopic(data);
+          return topic;
+        },
+        { channel: TOPIC_CHANNELS.CREATE, name: data.name },
+      );
     },
   );
 
@@ -56,104 +66,129 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
       _event,
       { id, ...data }: { id: string; name?: string; description?: string; color?: string },
     ) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:update', { id, data });
-        const topic = await topicUseCases.updateTopic(id, data);
-        return topic;
-      });
+      return handleRequest(
+        async () => {
+          const topic = await topicUseCases.updateTopic(id, data);
+          return topic;
+        },
+        { channel: TOPIC_CHANNELS.UPDATE, topicId: id },
+      );
     },
   );
 
   ipcMain.handle(TOPIC_CHANNELS.DELETE, async (_event, { id }: { id: string }) => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:delete', { id });
-      await topicUseCases.deleteTopic(id);
-      return { success: true };
-    });
+    return handleRequest(
+      async () => {
+        await topicUseCases.deleteTopic(id);
+        return { success: true };
+      },
+      { channel: TOPIC_CHANNELS.DELETE, topicId: id },
+    );
   });
 
   ipcMain.handle(
     TOPIC_CHANNELS.ASSIGN_TO_NOTE,
     async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:assignToNote', { noteId, topicId });
-        await topicUseCases.assignTopicToNote(noteId, topicId);
-        return { success: true };
-      });
+      return handleRequest(
+        async () => {
+          await topicUseCases.assignTopicToNote(noteId, topicId);
+          return { success: true };
+        },
+        { channel: TOPIC_CHANNELS.ASSIGN_TO_NOTE, noteId, topicId },
+      );
     },
   );
 
   ipcMain.handle(
     TOPIC_CHANNELS.REMOVE_FROM_NOTE,
     async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:removeFromNote', { noteId, topicId });
-        await topicUseCases.removeTopicFromNote(noteId, topicId);
-        return { success: true };
-      });
+      return handleRequest(
+        async () => {
+          await topicUseCases.removeTopicFromNote(noteId, topicId);
+          return { success: true };
+        },
+        { channel: TOPIC_CHANNELS.REMOVE_FROM_NOTE, noteId, topicId },
+      );
     },
   );
 
   ipcMain.handle(
     TOPIC_CHANNELS.CLASSIFY_NOTE,
     async (_event, { noteId, force }: { noteId: string; force?: boolean }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:classifyNote', { noteId, force });
-        const result = await topicUseCases.classifyNote(noteId, force);
-        return result;
-      });
+      return handleRequest(
+        async () => {
+          const result = await topicUseCases.classifyNote(noteId, force);
+          return result;
+        },
+        { channel: TOPIC_CHANNELS.CLASSIFY_NOTE, noteId, force },
+      );
     },
   );
 
   ipcMain.handle(TOPIC_CHANNELS.CLASSIFY_ALL, async (_event, options?: { force?: boolean }) => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:classifyAll', options);
-      const result = await topicUseCases.classifyAllNotes(options);
-      return result;
-    });
+    return handleRequest(
+      async () => {
+        const result = await topicUseCases.classifyAllNotes(options);
+        return result;
+      },
+      { channel: TOPIC_CHANNELS.CLASSIFY_ALL, force: options?.force },
+    );
   });
 
   ipcMain.handle(TOPIC_CHANNELS.RECLASSIFY_ALL, async () => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:reclassifyAll');
-      const result = await topicUseCases.classifyAllNotes({ force: true });
-      return result;
-    });
+    return handleRequest(
+      async () => {
+        const result = await topicUseCases.classifyAllNotes({ force: true });
+        return result;
+      },
+      { channel: TOPIC_CHANNELS.RECLASSIFY_ALL, force: true },
+    );
   });
 
   ipcMain.handle(
     TOPIC_CHANNELS.SEMANTIC_SEARCH,
     async (_event, { query, limit }: { query: string; limit?: number }) => {
-      return handleRequest(async () => {
-        const results = await topicUseCases.semanticSearch(query, limit);
-        return { results };
-      });
+      return handleRequest(
+        async () => {
+          const results = await topicUseCases.semanticSearch(query, limit);
+          return { results };
+        },
+        { channel: TOPIC_CHANNELS.SEMANTIC_SEARCH, limit },
+      );
     },
   );
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_SIMILAR_NOTES,
     async (_event, { noteId, limit }: { noteId: string; limit?: number }) => {
-      return handleRequest(async () => {
-        const similar = await topicUseCases.getSimilarNotes(noteId, limit);
-        return { similar };
-      });
+      return handleRequest(
+        async () => {
+          const similar = await topicUseCases.getSimilarNotes(noteId, limit);
+          return { similar };
+        },
+        { channel: TOPIC_CHANNELS.GET_SIMILAR_NOTES, noteId, limit },
+      );
     },
   );
 
   ipcMain.handle(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, async () => {
-    return handleRequest(async () => {
-      logger.info('[IPC] topics:recomputeCentroids');
-      await topicUseCases.recomputeCentroids();
-      return { success: true };
-    });
+    return handleRequest(
+      async () => {
+        await topicUseCases.recomputeCentroids();
+        return { success: true };
+      },
+      { channel: TOPIC_CHANNELS.RECOMPUTE_CENTROIDS },
+    );
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_EMBEDDING_STATUS, async () => {
-    return handleRequest(async () => {
-      const status = await topicUseCases.getEmbeddingStatus();
-      return status;
-    });
+    return handleRequest(
+      async () => {
+        const status = await topicUseCases.getEmbeddingStatus();
+        return status;
+      },
+      { channel: TOPIC_CHANNELS.GET_EMBEDDING_STATUS },
+    );
   });
 
   ipcMain.handle(
@@ -165,27 +200,31 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
         ...options
       }: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean },
     ) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:getNotesByTopic', { topicId, options });
-        const notes = await topicUseCases.getNotesForTopic(topicId, options);
-        return { notes };
-      });
+      return handleRequest(
+        async () => {
+          const notes = await topicUseCases.getNotesForTopic(topicId, options);
+          return { notes };
+        },
+        { channel: TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, topicId, ...options },
+      );
     },
   );
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE,
     async (_event, { noteId }: { noteId: string }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] topics:getTopicsForNote', { noteId });
-        const topics = await topicUseCases.getTopicsForNote(noteId);
-        return {
-          topics: topics.map((t) => ({
-            ...t,
-            createdAt: t.createdAt.toISOString(),
-          })),
-        };
-      });
+      return handleRequest(
+        async () => {
+          const topics = await topicUseCases.getTopicsForNote(noteId);
+          return {
+            topics: topics.map((t) => ({
+              ...t,
+              createdAt: t.createdAt.toISOString(),
+            })),
+          };
+        },
+        { channel: TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, noteId },
+      );
     },
   );
 

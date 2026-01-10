@@ -25,54 +25,65 @@ export class SearchIPC {
 
   registerHandlers(): void {
     const { searchUseCases } = this.deps;
+    const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+      handleIpcRequest(fn, {
+        loggerPrefix: 'SearchIPC',
+        defaultCode: 'SEARCH_ERROR',
+        context,
+      });
 
     ipcMain.handle(SEARCH_CHANNELS.FULL_TEXT, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await searchUseCases.fullTextSearch.execute(request);
           return result;
         },
-        { loggerPrefix: SEARCH_CHANNELS.FULL_TEXT, defaultCode: 'SEARCH_ERROR' },
+        { channel: SEARCH_CHANNELS.FULL_TEXT, query: request?.query, workspaceId: request?.workspaceId },
       );
     });
 
     ipcMain.handle(SEARCH_CHANNELS.SEMANTIC, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await searchUseCases.semanticSearch.execute(request);
           return result;
         },
-        { loggerPrefix: SEARCH_CHANNELS.SEMANTIC, defaultCode: 'SEARCH_ERROR' },
+        { channel: SEARCH_CHANNELS.SEMANTIC, query: request?.query, workspaceId: request?.workspaceId },
       );
     });
 
     ipcMain.handle(SEARCH_CHANNELS.HYBRID, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await searchUseCases.hybridSearch.execute(request);
           return result;
         },
-        { loggerPrefix: SEARCH_CHANNELS.HYBRID, defaultCode: 'SEARCH_ERROR' },
+        { channel: SEARCH_CHANNELS.HYBRID, query: request?.query, workspaceId: request?.workspaceId },
       );
     });
 
     ipcMain.handle(SEARCH_CHANNELS.BY_TAG, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await searchUseCases.searchByTags.execute(request);
           return result;
         },
-        { loggerPrefix: SEARCH_CHANNELS.BY_TAG, defaultCode: 'SEARCH_ERROR' },
+        { channel: SEARCH_CHANNELS.BY_TAG, tags: request?.tags, workspaceId: request?.workspaceId },
       );
     });
 
     ipcMain.handle(SEARCH_CHANNELS.BY_DATE_RANGE, async (_event, request) => {
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await searchUseCases.searchByDateRange.execute(request);
           return result;
         },
-        { loggerPrefix: SEARCH_CHANNELS.BY_DATE_RANGE, defaultCode: 'SEARCH_ERROR' },
+        {
+          channel: SEARCH_CHANNELS.BY_DATE_RANGE,
+          startDate: request?.startDate,
+          endDate: request?.endDate,
+          workspaceId: request?.workspaceId,
+        },
       );
     });
 

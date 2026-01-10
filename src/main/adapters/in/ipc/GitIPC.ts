@@ -47,19 +47,23 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     setGitRemote,
     getGitCommits,
   } = deps;
-
-  ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
-    logger.info('[IPC] git:getStatus', { workspaceId });
-    return handleIpcRequest(async () => getGitStatus.execute({ workspaceId }), {
-      loggerPrefix: GIT_CHANNELS.GET_STATUS,
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, {
+      loggerPrefix: 'GitIPC',
       defaultCode: 'GIT_ERROR',
       mapErrorCode: mapGitErrorCode,
+      context,
     });
+
+  ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
+    return handleRequest(
+      async () => getGitStatus.execute({ workspaceId }),
+      { channel: GIT_CHANNELS.GET_STATUS, workspaceId },
+    );
   });
 
   ipcMain.handle(GIT_CHANNELS.INIT, async (_, { workspaceId }: { workspaceId: string }) => {
-    logger.info('[IPC] git:init', { workspaceId });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const result = await initGitRepo.execute({ workspaceId });
         if (!result.success) {
@@ -69,15 +73,14 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
         }
         return { success: true };
       },
-      { loggerPrefix: GIT_CHANNELS.INIT, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+      { channel: GIT_CHANNELS.INIT, workspaceId },
     );
   });
 
   ipcMain.handle(
     GIT_CHANNELS.COMMIT,
     async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
-      logger.info('[IPC] git:commit', { workspaceId, message });
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await gitCommit.execute({ workspaceId, message });
           if (!result) {
@@ -90,18 +93,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
             date: result.date.toISOString(),
           };
         },
-        {
-          loggerPrefix: GIT_CHANNELS.COMMIT,
-          defaultCode: 'GIT_ERROR',
-          mapErrorCode: mapGitErrorCode,
-        },
+        { channel: GIT_CHANNELS.COMMIT, workspaceId },
       );
     },
   );
 
   ipcMain.handle(GIT_CHANNELS.PULL, async (_, { workspaceId }: { workspaceId: string }) => {
-    logger.info('[IPC] git:pull', { workspaceId });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const result = await gitPull.execute({ workspaceId });
         if (!result.success) {
@@ -111,13 +109,12 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
         }
         return { success: true };
       },
-      { loggerPrefix: GIT_CHANNELS.PULL, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+      { channel: GIT_CHANNELS.PULL, workspaceId },
     );
   });
 
   ipcMain.handle(GIT_CHANNELS.PUSH, async (_, { workspaceId }: { workspaceId: string }) => {
-    logger.info('[IPC] git:push', { workspaceId });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const result = await gitPush.execute({ workspaceId });
         if (!result.success) {
@@ -127,27 +124,24 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
         }
         return { success: true };
       },
-      { loggerPrefix: GIT_CHANNELS.PUSH, defaultCode: 'GIT_ERROR', mapErrorCode: mapGitErrorCode },
+      { channel: GIT_CHANNELS.PUSH, workspaceId },
     );
   });
 
   ipcMain.handle(
     GIT_CHANNELS.SYNC,
     async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
-      logger.info('[IPC] git:sync', { workspaceId, message });
-      return handleIpcRequest(async () => gitSync.execute({ workspaceId, message }), {
-        loggerPrefix: GIT_CHANNELS.SYNC,
-        defaultCode: 'GIT_ERROR',
-        mapErrorCode: mapGitErrorCode,
-      });
+      return handleRequest(
+        async () => gitSync.execute({ workspaceId, message }),
+        { channel: GIT_CHANNELS.SYNC, workspaceId },
+      );
     },
   );
 
   ipcMain.handle(
     GIT_CHANNELS.SET_REMOTE,
     async (_, { workspaceId, url }: { workspaceId: string; url: string }) => {
-      logger.info('[IPC] git:setRemote', { workspaceId, url });
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await setGitRemote.execute({ workspaceId, url });
           if (!result.success) {
@@ -157,11 +151,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
           }
           return { success: true };
         },
-        {
-          loggerPrefix: GIT_CHANNELS.SET_REMOTE,
-          defaultCode: 'GIT_ERROR',
-          mapErrorCode: mapGitErrorCode,
-        },
+        { channel: GIT_CHANNELS.SET_REMOTE, workspaceId },
       );
     },
   );
@@ -169,8 +159,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
   ipcMain.handle(
     GIT_CHANNELS.GET_COMMITS,
     async (_, { workspaceId, limit }: { workspaceId: string; limit?: number }) => {
-      logger.info('[IPC] git:getCommits', { workspaceId, limit });
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           const result = await getGitCommits.execute({ workspaceId, limit });
           return {
@@ -180,11 +169,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
             })),
           };
         },
-        {
-          loggerPrefix: GIT_CHANNELS.GET_COMMITS,
-          defaultCode: 'GIT_ERROR',
-          mapErrorCode: mapGitErrorCode,
-        },
+        { channel: GIT_CHANNELS.GET_COMMITS, workspaceId, limit },
       );
     },
   );

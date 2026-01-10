@@ -14,54 +14,60 @@ export interface ExportIPCDeps {
 
 export function registerExportHandlers(deps: ExportIPCDeps): void {
   const { exportUseCases } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'ExportIPC', defaultCode: 'INTERNAL_ERROR' });
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'ExportIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(
     NOTE_CHANNELS.EXPORT_HTML,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] notes:exportHtml', { noteId: id, options });
-        const result = await exportUseCases.exportHtml.execute(id, options);
-        return {
-          content: result.content.toString(),
-          filename: result.filename,
-          mimeType: result.mimeType,
-        };
-      });
+      return handleRequest(
+        async () => {
+          const result = await exportUseCases.exportHtml.execute(id, options);
+          return {
+            content: result.content.toString(),
+            filename: result.filename,
+            mimeType: result.mimeType,
+          };
+        },
+        { channel: NOTE_CHANNELS.EXPORT_HTML, noteId: id },
+      );
     },
   );
 
   ipcMain.handle(
     NOTE_CHANNELS.EXPORT_PDF,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] notes:exportPdf', { noteId: id, options });
-        const result = await exportUseCases.exportPdf.execute(id, options);
-        return {
-          content: Buffer.isBuffer(result.content)
-            ? result.content.toString('base64')
-            : result.content,
-          filename: result.filename,
-          mimeType: result.mimeType,
-          isBase64: Buffer.isBuffer(result.content),
-        };
-      });
+      return handleRequest(
+        async () => {
+          const result = await exportUseCases.exportPdf.execute(id, options);
+          return {
+            content: Buffer.isBuffer(result.content)
+              ? result.content.toString('base64')
+              : result.content,
+            filename: result.filename,
+            mimeType: result.mimeType,
+            isBase64: Buffer.isBuffer(result.content),
+          };
+        },
+        { channel: NOTE_CHANNELS.EXPORT_PDF, noteId: id },
+      );
     },
   );
 
   ipcMain.handle(
     NOTE_CHANNELS.EXPORT_MARKDOWN,
     async (_, { id, options }: { id: string; options?: ExportOptions }) => {
-      return handleRequest(async () => {
-        logger.info('[IPC] notes:exportMarkdown', { noteId: id, options });
-        const result = await exportUseCases.exportMarkdown.execute(id, options);
-        return {
-          content: result.content.toString(),
-          filename: result.filename,
-          mimeType: result.mimeType,
-        };
-      });
+      return handleRequest(
+        async () => {
+          const result = await exportUseCases.exportMarkdown.execute(id, options);
+          return {
+            content: result.content.toString(),
+            filename: result.filename,
+            mimeType: result.mimeType,
+          };
+        },
+        { channel: NOTE_CHANNELS.EXPORT_MARKDOWN, noteId: id },
+      );
     },
   );
 

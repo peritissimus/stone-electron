@@ -14,11 +14,12 @@ export interface TaskIPCDeps {
 
 export function registerTaskHandlers(deps: TaskIPCDeps): void {
   const { taskUseCases } = deps;
+  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
+    handleIpcRequest(fn, { loggerPrefix: 'TaskIPC', defaultCode: 'TASK_ERROR', context });
 
   // Get all tasks from all notes
   ipcMain.handle(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
-    logger.info('[IPC] notes:getAllTodos');
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const tasks = await taskUseCases.getAllTasks.execute();
         return tasks.map((t) => ({
@@ -27,14 +28,13 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
           updatedAt: t.updatedAt.toISOString(),
         }));
       },
-      { loggerPrefix: NOTE_CHANNELS.GET_ALL_TODOS, defaultCode: 'TASK_ERROR' },
+      { channel: NOTE_CHANNELS.GET_ALL_TODOS },
     );
   });
 
   // Get tasks for a specific note
   ipcMain.handle(NOTE_CHANNELS.GET_NOTE_TODOS, async (_, { noteId }: { noteId: string }) => {
-    logger.info('[IPC] notes:getNoteTodos', { noteId });
-    return handleIpcRequest(
+    return handleRequest(
       async () => {
         const tasks = await taskUseCases.getNoteTasks.execute(noteId);
         return tasks.map((t) => ({
@@ -43,7 +43,7 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
           updatedAt: t.updatedAt.toISOString(),
         }));
       },
-      { loggerPrefix: 'notes:getNoteTodos', defaultCode: 'TASK_ERROR' },
+      { channel: NOTE_CHANNELS.GET_NOTE_TODOS, noteId },
     );
   });
 
@@ -54,13 +54,12 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
       _,
       { noteId, taskIndex, newState }: { noteId: string; taskIndex: number; newState: TaskState },
     ) => {
-      logger.info('[IPC] notes:updateTaskState', { noteId, taskIndex, newState });
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           await taskUseCases.updateTaskState.execute(noteId, taskIndex, newState);
           return { success: true };
         },
-        { loggerPrefix: NOTE_CHANNELS.UPDATE_TASK_STATE, defaultCode: 'TASK_ERROR' },
+        { channel: NOTE_CHANNELS.UPDATE_TASK_STATE, noteId, taskIndex, newState },
       );
     },
   );
@@ -69,13 +68,12 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
   ipcMain.handle(
     NOTE_CHANNELS.TOGGLE_TASK,
     async (_, { noteId, taskIndex }: { noteId: string; taskIndex: number }) => {
-      logger.info('[IPC] notes:toggleTask', { noteId, taskIndex });
-      return handleIpcRequest(
+      return handleRequest(
         async () => {
           await taskUseCases.toggleTask.execute(noteId, taskIndex);
           return { success: true };
         },
-        { loggerPrefix: 'notes:toggleTask', defaultCode: 'TASK_ERROR' },
+        { channel: NOTE_CHANNELS.TOGGLE_TASK, noteId, taskIndex },
       );
     },
   );
