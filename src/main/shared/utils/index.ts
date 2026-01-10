@@ -9,4 +9,10 @@ export {
   type IPCErrorPayload,
   type IPCResponse,
 } from './ipc';
-export { handleOperation, type HandleOperationOptions } from './operation';
+export {
+  handleRequest,
+  handleOperation,
+  type AdapterLayer,
+  type HandleRequestOptions,
+  type HandleOperationOptions,
+} from './operation';
