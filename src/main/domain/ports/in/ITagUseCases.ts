@@ -27,6 +27,14 @@ export interface UpdateTagResponse {
   tag: TagProps;
 }
 
+export interface GetTagRequest {
+  id: string;
+}
+
+export interface GetTagResponse {
+  tag: TagProps;
+}
+
 export interface ListTagsRequest {
   includeNoteCount?: boolean;
 }
@@ -39,12 +47,12 @@ export interface DeleteTagRequest {
   id: string;
 }
 
-export interface TagNoteRequest {
+export interface AddTagToNoteRequest {
   noteId: string;
   tagId: string;
 }
 
-export interface UntagNoteRequest {
+export interface RemoveTagFromNoteRequest {
   noteId: string;
   tagId: string;
 }
@@ -66,22 +74,40 @@ export interface IUpdateTagUseCase {
   execute(request: UpdateTagRequest): Promise<UpdateTagResponse>;
 }
 
+export interface IGetTagUseCase {
+  execute(request: GetTagRequest): Promise<GetTagResponse>;
+}
+
 export interface IListTagsUseCase {
-  execute(request: ListTagsRequest): Promise<ListTagsResponse>;
+  execute(request?: ListTagsRequest): Promise<ListTagsResponse>;
 }
 
 export interface IDeleteTagUseCase {
   execute(request: DeleteTagRequest): Promise<void>;
 }
 
-export interface ITagNoteUseCase {
-  execute(request: TagNoteRequest): Promise<void>;
+export interface IAddTagToNoteUseCase {
+  execute(request: AddTagToNoteRequest): Promise<void>;
 }
 
-export interface IUntagNoteUseCase {
-  execute(request: UntagNoteRequest): Promise<void>;
+export interface IRemoveTagFromNoteUseCase {
+  execute(request: RemoveTagFromNoteRequest): Promise<void>;
 }
 
 export interface IGetNoteTagsUseCase {
   execute(request: GetNoteTagsRequest): Promise<GetNoteTagsResponse>;
+}
+
+/**
+ * Aggregated Tag Use Cases (for DI container)
+ */
+export interface ITagUseCases {
+  createTag: ICreateTagUseCase;
+  updateTag: IUpdateTagUseCase;
+  getTag: IGetTagUseCase;
+  listTags: IListTagsUseCase;
+  deleteTag: IDeleteTagUseCase;
+  addTagToNote: IAddTagToNoteUseCase;
+  removeTagFromNote: IRemoveTagFromNoteUseCase;
+  getNoteTags: IGetNoteTagsUseCase;
 }

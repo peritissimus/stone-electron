@@ -6,7 +6,7 @@
 
 import { ipcMain } from 'electron';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
-import type { INotebookUseCases } from '../../../application';
+import type { INotebookUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
@@ -26,17 +26,30 @@ export class NotebookIPC {
   registerHandlers(): void {
     const { notebookUseCases } = this.deps;
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.CREATE, async (_event, request) => {
+    ipcMain.handle(
+      NOTEBOOK_CHANNELS.CREATE,
+      async (
+        _event,
+        request: { name: string; parent_id?: string; icon?: string; color?: string },
+      ) => {
       return this.handleRequest(
         async () => {
-          const result = await notebookUseCases.createNotebook.execute(request);
+          const result = await notebookUseCases.createNotebook.execute({
+            name: request.name,
+            parentId: request.parent_id,
+            icon: request.icon,
+            color: request.color,
+          });
           return result.notebook;
         },
-        { channel: NOTEBOOK_CHANNELS.CREATE, notebookId: request?.id },
+        { channel: NOTEBOOK_CHANNELS.CREATE, name: request.name, parentId: request.parent_id },
       );
-    });
+      },
+    );
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.UPDATE, async (_event, request) => {
+    ipcMain.handle(
+      NOTEBOOK_CHANNELS.UPDATE,
+      async (_event, request: { id: string; name?: string; icon?: string; color?: string }) => {
       return this.handleRequest(
         async () => {
           const result = await notebookUseCases.updateNotebook.execute(request);
@@ -44,7 +57,8 @@ export class NotebookIPC {
         },
         { channel: NOTEBOOK_CHANNELS.UPDATE, notebookId: request?.id },
       );
-    });
+      },
+    );
 
     ipcMain.handle(
       NOTEBOOK_CHANNELS.DELETE,
@@ -52,7 +66,10 @@ export class NotebookIPC {
         return this.handleRequest(
           async () => {
             // Note: delete_notes is not currently supported by the use case
-            await notebookUseCases.deleteNotebook.execute({ id: request.id });
+            await notebookUseCases.deleteNotebook.execute({
+              id: request.id,
+              deleteNotes: request.delete_notes,
+            });
             return undefined;
           },
           { channel: NOTEBOOK_CHANNELS.DELETE, notebookId: request.id, deleteNotes: request.delete_notes },
@@ -60,15 +77,20 @@ export class NotebookIPC {
       },
     );
 
-    ipcMain.handle(NOTEBOOK_CHANNELS.GET_ALL, async (_event, request) => {
+    ipcMain.handle(
+      NOTEBOOK_CHANNELS.GET_ALL,
+      async (_event, request: { include_counts?: boolean; flat?: boolean } | undefined) => {
       return this.handleRequest(
         async () => {
-          const result = await notebookUseCases.listNotebooks.execute(request || {});
+          const result = await notebookUseCases.listNotebooks.execute({
+            includeNoteCount: request?.include_counts ?? false,
+          });
           return { notebooks: result.notebooks };
         },
         { channel: NOTEBOOK_CHANNELS.GET_ALL },
       );
-    });
+      },
+    );
 
     ipcMain.handle(
       NOTEBOOK_CHANNELS.MOVE,

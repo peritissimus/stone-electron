@@ -6,7 +6,7 @@
 
 import { ipcMain } from 'electron';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ITagUseCases } from '../../../application';
+import type { ITagUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
@@ -42,7 +42,7 @@ export class TagIPC {
           const result = await tagUseCases.createTag.execute(request);
           return result.tag;
         },
-        { channel: TAG_CHANNELS.CREATE, tagId: request?.id, name: request?.name },
+        { channel: TAG_CHANNELS.CREATE, name: request?.name },
       );
     });
 

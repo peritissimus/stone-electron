@@ -18,18 +18,17 @@ export interface NoteLink {
  */
 export interface GraphNode {
   id: string;
-  title: string;
-  type: 'note' | 'tag' | 'topic';
-  linkCount: number;
+  name: string;
+  val: number;
+  color?: string;
 }
 
 /**
- * Edge in the graph visualization
+ * Link in the graph visualization
  */
-export interface GraphEdge {
+export interface GraphLink {
   source: string;
   target: string;
-  type: 'link' | 'tag' | 'topic';
 }
 
 /**
@@ -37,7 +36,7 @@ export interface GraphEdge {
  */
 export interface GraphData {
   nodes: GraphNode[];
-  edges: GraphEdge[];
+  links: GraphLink[];
 }
 
 /**

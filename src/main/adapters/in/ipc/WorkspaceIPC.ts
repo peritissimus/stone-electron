@@ -6,7 +6,7 @@
 
 import { ipcMain } from 'electron';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { IWorkspaceUseCases } from '../../../application';
+import type { IWorkspaceUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
@@ -56,25 +56,36 @@ export class WorkspaceIPC {
       );
     });
 
-    ipcMain.handle(WORKSPACE_CHANNELS.DELETE, async (_event, id: string) => {
+    ipcMain.handle(WORKSPACE_CHANNELS.DELETE, async (_event, request: { id: string } | string) => {
       return this.handleRequest(
         async () => {
+          const id = typeof request === 'string' ? request : request.id;
           await workspaceUseCases.deleteWorkspace.execute({ id });
           return { success: true };
         },
-        { channel: WORKSPACE_CHANNELS.DELETE, workspaceId: id },
+        {
+          channel: WORKSPACE_CHANNELS.DELETE,
+          workspaceId: typeof request === 'string' ? request : request.id,
+        },
       );
     });
 
-    ipcMain.handle(WORKSPACE_CHANNELS.SET_ACTIVE, async (_event, id: string) => {
-      return this.handleRequest(
-        async () => {
-          const result = await workspaceUseCases.setActiveWorkspace.execute({ id });
-          return result.workspace;
-        },
-        { channel: WORKSPACE_CHANNELS.SET_ACTIVE, workspaceId: id },
-      );
-    });
+    ipcMain.handle(
+      WORKSPACE_CHANNELS.SET_ACTIVE,
+      async (_event, request: { id: string } | string) => {
+        return this.handleRequest(
+          async () => {
+            const id = typeof request === 'string' ? request : request.id;
+            const result = await workspaceUseCases.setActiveWorkspace.execute({ id });
+            return result.workspace;
+          },
+          {
+            channel: WORKSPACE_CHANNELS.SET_ACTIVE,
+            workspaceId: typeof request === 'string' ? request : request.id,
+          },
+        );
+      },
+    );
 
     ipcMain.handle(WORKSPACE_CHANNELS.GET_ACTIVE, async () => {
       return this.handleRequest(
@@ -114,13 +125,24 @@ export class WorkspaceIPC {
     // VALIDATE_PATH - Validate a folder path exists
     ipcMain.handle(
       WORKSPACE_CHANNELS.VALIDATE_PATH,
-      async (_event, request: { folderPath: string }) => {
+      async (_event, request: { path: string } | { folderPath: string }) => {
         return this.handleRequest(
           async () => {
-            const result = await workspaceUseCases.validatePath.execute(request);
-            return result;
+            const folderPath =
+              'folderPath' in request && typeof request.folderPath === 'string'
+                ? request.folderPath
+                : (request as { path: string }).path;
+
+            const result = await workspaceUseCases.validatePath.execute({ folderPath });
+            return { valid: result.valid, message: result.error };
           },
-          { channel: WORKSPACE_CHANNELS.VALIDATE_PATH, folderPath: request.folderPath },
+          {
+            channel: WORKSPACE_CHANNELS.VALIDATE_PATH,
+            folderPath:
+              'folderPath' in request && typeof request.folderPath === 'string'
+                ? request.folderPath
+                : (request as { path: string }).path,
+          },
         );
       },
     );
@@ -132,7 +154,7 @@ export class WorkspaceIPC {
         return this.handleRequest(
           async () => {
             const result = await workspaceUseCases.createFolder.execute(request);
-            return result;
+            return { folderPath: result.path };
           },
           { channel: WORKSPACE_CHANNELS.CREATE_FOLDER, parentPath: request.parentPath },
         );
@@ -146,7 +168,7 @@ export class WorkspaceIPC {
         return this.handleRequest(
           async () => {
             const result = await workspaceUseCases.renameFolder.execute(request);
-            return result;
+            return { folderPath: result.newPath };
           },
           { channel: WORKSPACE_CHANNELS.RENAME_FOLDER, path: request.path },
         );
@@ -171,7 +193,7 @@ export class WorkspaceIPC {
         return this.handleRequest(
           async () => {
             const result = await workspaceUseCases.moveFolder.execute(request);
-            return result;
+            return { folderPath: result.newPath };
           },
           {
             channel: WORKSPACE_CHANNELS.MOVE_FOLDER,

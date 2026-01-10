@@ -1,62 +1,64 @@
 /**
- * Search Use Cases Port
+ * Search Use Cases Port (Inbound)
  *
- * Defines the contract for search operations.
+ * Defines what the application CAN DO for search.
+ * Implementations live in the application layer.
  */
 
 import type { NoteProps } from '../../entities';
+import type { SearchResult } from '../out/ISearchEngine';
 
-// Request/Response types
+// =============================================================================
+// Requests / Responses
+// =============================================================================
+
 export interface FullTextSearchRequest {
   query: string;
-  notebookId?: string;
-  tagIds?: string[];
+  workspaceId?: string;
   limit?: number;
-  offset?: number;
 }
 
 export interface FullTextSearchResponse {
-  results: Array<{
-    note: NoteProps;
-    relevance: number;
-    matchType: 'title' | 'content' | 'both';
-    titleHighlight?: string;
-  }>;
+  results: SearchResult[];
   total: number;
-  queryTimeMs: number;
 }
 
 export interface SemanticSearchRequest {
   query: string;
-  threshold?: number;
+  workspaceId?: string;
   limit?: number;
-  notebookId?: string;
+}
+
+export interface VectorSearchResult {
+  noteId: string;
+  title: string;
+  distance: number;
 }
 
 export interface SemanticSearchResponse {
-  results: Array<{
-    noteId: string;
-    title: string;
-    similarity: number;
-  }>;
-  total: number;
-  queryTimeMs: number;
+  results: VectorSearchResult[];
+}
+
+export interface FindSimilarNotesRequest {
+  noteId: string;
+  limit?: number;
+}
+
+export interface FindSimilarNotesResponse {
+  results: VectorSearchResult[];
 }
 
 export interface HybridSearchRequest {
   query: string;
   weights?: { fts: number; semantic: number };
   limit?: number;
+  workspaceId?: string;
   notebookId?: string;
   tagIds?: string[];
 }
 
 export interface HybridSearchResponse {
-  results: Array<{
-    note: NoteProps;
-    score: number;
-    searchType: 'fts' | 'semantic' | 'hybrid';
-  }>;
+  results: Array<{ note: NoteProps; score: number; searchType: 'fts' | 'semantic' | 'hybrid' }>;
   total: number;
   queryTimeMs: number;
 }
@@ -74,8 +76,9 @@ export interface SearchByTagsResponse {
 }
 
 export interface SearchByDateRangeRequest {
-  startDate: number; // timestamp
-  endDate: number; // timestamp
+  startDate: number;
+  endDate: number;
+  workspaceId?: string;
   field?: 'created' | 'updated';
   limit?: number;
 }
@@ -85,13 +88,24 @@ export interface SearchByDateRangeResponse {
   total: number;
 }
 
-// Use case interfaces
+// =============================================================================
+// Use Case Interfaces
+// =============================================================================
+
 export interface IFullTextSearchUseCase {
   execute(request: FullTextSearchRequest): Promise<FullTextSearchResponse>;
 }
 
 export interface ISemanticSearchUseCase {
   execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse>;
+}
+
+export interface IFindSimilarNotesUseCase {
+  execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse>;
+}
+
+export interface IRebuildSearchIndexUseCase {
+  execute(): Promise<void>;
 }
 
 export interface IHybridSearchUseCase {
@@ -105,3 +119,17 @@ export interface ISearchByTagsUseCase {
 export interface ISearchByDateRangeUseCase {
   execute(request: SearchByDateRangeRequest): Promise<SearchByDateRangeResponse>;
 }
+
+/**
+ * Aggregated Search Use Cases (for DI container)
+ */
+export interface ISearchUseCases {
+  fullTextSearch: IFullTextSearchUseCase;
+  semanticSearch: ISemanticSearchUseCase;
+  findSimilarNotes: IFindSimilarNotesUseCase;
+  rebuildIndex: IRebuildSearchIndexUseCase;
+  hybridSearch: IHybridSearchUseCase;
+  searchByTags: ISearchByTagsUseCase;
+  searchByDateRange: ISearchByDateRangeUseCase;
+}
+

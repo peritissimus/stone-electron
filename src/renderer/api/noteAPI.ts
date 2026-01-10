@@ -139,7 +139,12 @@ export const noteAPI = {
   /**
    * Get graph data for visualization
    */
-  getGraphData: (): Promise<IpcResponse<GraphData>> => invokeIpc(NOTE_CHANNELS.GET_GRAPH_DATA, {}),
+  getGraphData: (options?: {
+    centerNoteId?: string;
+    depth?: number;
+    includeOrphans?: boolean;
+  }): Promise<IpcResponse<GraphData>> =>
+    invokeIpc(NOTE_CHANNELS.GET_GRAPH_DATA, { includeOrphans: true, ...options }),
 
   /**
    * Export note as HTML

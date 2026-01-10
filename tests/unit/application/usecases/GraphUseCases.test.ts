@@ -182,7 +182,7 @@ describe('GraphUseCases', () => {
       const result = await useCases.getGraphData.execute();
 
       expect(result.nodes).toHaveLength(2);
-      expect(result.edges).toHaveLength(1);
+      expect(result.links).toHaveLength(1);
     });
 
     it('returns empty data when no active workspace', async () => {
@@ -191,7 +191,7 @@ describe('GraphUseCases', () => {
       const result = await useCases.getGraphData.execute();
 
       expect(result.nodes).toHaveLength(0);
-      expect(result.edges).toHaveLength(0);
+      expect(result.links).toHaveLength(0);
     });
 
     it('excludes orphan notes when includeOrphans is false', async () => {

@@ -15,7 +15,7 @@ import type {
   NoteLink,
   GraphData,
   GraphNode,
-  GraphEdge,
+  GraphLink,
 } from '../../domain/ports/in/IGraphUseCases';
 import { LinkExtractor } from '../../domain/services/LinkExtractor';
 import { NoteLinkEntity } from '../../domain/entities';
@@ -97,12 +97,12 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
     const { centerNoteId, depth = 2, includeOrphans = false } = options || {};
 
     const nodes: Map<string, GraphNode> = new Map();
-    const edges: GraphEdge[] = [];
+    const links: GraphLink[] = [];
 
     // Get active workspace
     const activeWorkspace = await workspaceRepository.findActive();
     if (!activeWorkspace) {
-      return { nodes: [], edges: [] };
+      return { nodes: [], links: [] };
     }
 
     // Get all notes for active workspace only
@@ -155,27 +155,25 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
       if (includedNotes.has(note.id)) {
         nodes.set(note.id, {
           id: note.id,
-          title: note.title || 'Untitled',
-          type: 'note',
-          linkCount: linkCounts.get(note.id) || 0,
+          name: note.title || 'Untitled',
+          val: linkCounts.get(note.id) || 1,
         });
       }
     }
 
-    // Build edges
+    // Build links
     for (const link of allLinks) {
       if (includedNotes.has(link.sourceNoteId) && includedNotes.has(link.targetNoteId)) {
-        edges.push({
+        links.push({
           source: link.sourceNoteId,
           target: link.targetNoteId,
-          type: 'link',
         });
       }
     }
 
     return {
       nodes: Array.from(nodes.values()),
-      edges,
+      links,
     };
   }
 }

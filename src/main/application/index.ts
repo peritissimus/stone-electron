@@ -11,6 +11,3 @@
 
 // Use Cases
 export * from './usecases';
-
-// DTOs
-export * from './dto';

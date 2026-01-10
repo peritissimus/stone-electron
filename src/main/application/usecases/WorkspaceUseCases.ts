@@ -11,28 +11,65 @@ import {
   WorkspaceEntity,
   type WorkspaceProps,
   type IWorkspaceRepository,
+  type IWorkspaceUseCases,
+  type ICreateWorkspaceUseCase,
+  type IGetWorkspaceUseCase,
+  type IListWorkspacesUseCase,
+  type ISetActiveWorkspaceUseCase,
+  type IGetActiveWorkspaceUseCase,
+  type IDeleteWorkspaceUseCase,
+  type IUpdateWorkspaceUseCase,
+  type ISelectFolderUseCase,
+  type IValidatePathUseCase,
+  type ICreateFolderUseCase,
+  type IRenameFolderUseCase,
+  type IDeleteFolderUseCase,
+  type IMoveFolderUseCase,
+  type IScanWorkspaceUseCase,
+  type ISyncWorkspaceUseCase,
+  type CreateWorkspaceRequest,
+  type CreateWorkspaceResponse,
+  type GetWorkspaceRequest,
+  type GetWorkspaceResponse,
+  type ListWorkspacesResponse,
+  type SetActiveWorkspaceRequest,
+  type SetActiveWorkspaceResponse,
+  type DeleteWorkspaceRequest,
+  type UpdateWorkspaceRequest,
+  type UpdateWorkspaceResponse,
+  type SelectFolderRequest,
+  type SelectFolderResponse,
+  type ValidatePathRequest,
+  type ValidatePathResponse,
+  type CreateFolderRequest,
+  type CreateFolderResponse,
+  type RenameFolderRequest,
+  type RenameFolderResponse,
+  type DeleteFolderRequest,
+  type MoveFolderRequest,
+  type MoveFolderResponse,
+  type ScanWorkspaceRequest,
+  type ScanWorkspaceResponse,
+  type SyncWorkspaceRequest,
+  type SyncWorkspaceResponse,
   WorkspaceNotFoundError,
 } from '../../domain';
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
 import type { ISystemService } from '../../domain/ports/out/ISystemService';
 import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
-import type { NoteProps } from '../../domain/entities';
 
 // ============================================================================
 // Use Case Implementations
 // ============================================================================
 
-export class CreateWorkspaceUseCase {
+export class CreateWorkspaceUseCase implements ICreateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: {
-    name: string;
-    folderPath: string;
-  }): Promise<{ workspace: WorkspaceProps }> {
+  async execute(request: CreateWorkspaceRequest): Promise<CreateWorkspaceResponse> {
     const workspace = WorkspaceEntity.create({
       id: generateId(),
       name: request.name,
@@ -48,10 +85,10 @@ export class CreateWorkspaceUseCase {
   }
 }
 
-export class GetWorkspaceUseCase {
+export class GetWorkspaceUseCase implements IGetWorkspaceUseCase {
   constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
 
-  async execute(request: { id: string }): Promise<{ workspace: WorkspaceProps }> {
+  async execute(request: GetWorkspaceRequest): Promise<GetWorkspaceResponse> {
     const workspaceProps = await this.workspaceRepository.findById(request.id);
     if (!workspaceProps) {
       throw new WorkspaceNotFoundError(request.id);
@@ -61,22 +98,22 @@ export class GetWorkspaceUseCase {
   }
 }
 
-export class ListWorkspacesUseCase {
+export class ListWorkspacesUseCase implements IListWorkspacesUseCase {
   constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
 
-  async execute(): Promise<{ workspaces: WorkspaceProps[] }> {
+  async execute(): Promise<ListWorkspacesResponse> {
     const workspaces = await this.workspaceRepository.findAll();
     return { workspaces };
   }
 }
 
-export class SetActiveWorkspaceUseCase {
+export class SetActiveWorkspaceUseCase implements ISetActiveWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: { id: string }): Promise<{ workspace: WorkspaceProps }> {
+  async execute(request: SetActiveWorkspaceRequest): Promise<SetActiveWorkspaceResponse> {
     const workspaceProps = await this.workspaceRepository.findById(request.id);
     if (!workspaceProps) {
       throw new WorkspaceNotFoundError(request.id);
@@ -103,7 +140,7 @@ export class SetActiveWorkspaceUseCase {
   }
 }
 
-export class GetActiveWorkspaceUseCase {
+export class GetActiveWorkspaceUseCase implements IGetActiveWorkspaceUseCase {
   constructor(private readonly workspaceRepository: IWorkspaceRepository) {}
 
   async execute(): Promise<{ workspace: WorkspaceProps | null }> {
@@ -112,13 +149,13 @@ export class GetActiveWorkspaceUseCase {
   }
 }
 
-export class DeleteWorkspaceUseCase {
+export class DeleteWorkspaceUseCase implements IDeleteWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: { id: string }): Promise<void> {
+  async execute(request: DeleteWorkspaceRequest): Promise<void> {
     const exists = await this.workspaceRepository.exists(request.id);
     if (!exists) {
       throw new WorkspaceNotFoundError(request.id);
@@ -130,13 +167,13 @@ export class DeleteWorkspaceUseCase {
   }
 }
 
-export class UpdateWorkspaceUseCase {
+export class UpdateWorkspaceUseCase implements IUpdateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
-  async execute(request: { id: string; name?: string }): Promise<{ workspace: WorkspaceProps }> {
+  async execute(request: UpdateWorkspaceRequest): Promise<UpdateWorkspaceResponse> {
     const workspaceProps = await this.workspaceRepository.findById(request.id);
     if (!workspaceProps) {
       throw new WorkspaceNotFoundError(request.id);
@@ -156,13 +193,10 @@ export class UpdateWorkspaceUseCase {
   }
 }
 
-export class SelectFolderUseCase {
+export class SelectFolderUseCase implements ISelectFolderUseCase {
   constructor(private readonly systemService: ISystemService) {}
 
-  async execute(request?: {
-    title?: string;
-    defaultPath?: string;
-  }): Promise<{ canceled: boolean; folderPath?: string }> {
+  async execute(request?: SelectFolderRequest): Promise<SelectFolderResponse> {
     const folderPath = await this.systemService.selectFolder({
       title: request?.title || 'Select Workspace Folder',
       defaultPath: request?.defaultPath,
@@ -177,10 +211,10 @@ export class SelectFolderUseCase {
   }
 }
 
-export class ValidatePathUseCase {
+export class ValidatePathUseCase implements IValidatePathUseCase {
   constructor(private readonly systemService: ISystemService) {}
 
-  async execute(request: { folderPath: string }): Promise<{ valid: boolean; error?: string }> {
+  async execute(request: ValidatePathRequest): Promise<ValidatePathResponse> {
     const isValid = await this.systemService.validatePath(request.folderPath);
     if (!isValid) {
       return { valid: false, error: 'Path does not exist or is not accessible' };
@@ -189,13 +223,13 @@ export class ValidatePathUseCase {
   }
 }
 
-export class CreateFolderUseCase {
+export class CreateFolderUseCase implements ICreateFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: { name: string; parentPath?: string }): Promise<{ path: string }> {
+  async execute(request: CreateFolderRequest): Promise<CreateFolderResponse> {
     const activeWorkspace = await this.workspaceRepository.findActive();
     if (!activeWorkspace) {
       throw new Error('No active workspace');
@@ -214,16 +248,13 @@ export class CreateFolderUseCase {
   }
 }
 
-export class RenameFolderUseCase {
+export class RenameFolderUseCase implements IRenameFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: {
-    path: string;
-    name: string;
-  }): Promise<{ oldPath: string; newPath: string }> {
+  async execute(request: RenameFolderRequest): Promise<RenameFolderResponse> {
     const activeWorkspace = await this.workspaceRepository.findActive();
     if (!activeWorkspace) {
       throw new Error('No active workspace');
@@ -248,13 +279,13 @@ export class RenameFolderUseCase {
   }
 }
 
-export class DeleteFolderUseCase {
+export class DeleteFolderUseCase implements IDeleteFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: { path: string }): Promise<void> {
+  async execute(request: DeleteFolderRequest): Promise<void> {
     const activeWorkspace = await this.workspaceRepository.findActive();
     if (!activeWorkspace) {
       throw new Error('No active workspace');
@@ -274,16 +305,13 @@ export class DeleteFolderUseCase {
   }
 }
 
-export class MoveFolderUseCase {
+export class MoveFolderUseCase implements IMoveFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: {
-    sourcePath: string;
-    destinationPath: string | null;
-  }): Promise<{ oldPath: string; newPath: string }> {
+  async execute(request: MoveFolderRequest): Promise<MoveFolderResponse> {
     const activeWorkspace = await this.workspaceRepository.findActive();
     if (!activeWorkspace) {
       throw new Error('No active workspace');
@@ -317,31 +345,13 @@ export class MoveFolderUseCase {
   }
 }
 
-interface FileEntry {
-  relativePath: string;
-  path: string;
-}
-
-interface FolderStructure {
-  name: string;
-  path: string;
-  relativePath: string;
-  type: 'file' | 'folder';
-  children?: FolderStructure[];
-}
-
-export class ScanWorkspaceUseCase {
+export class ScanWorkspaceUseCase implements IScanWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request: { workspaceId: string }): Promise<{
-    files: FileEntry[];
-    structure: FolderStructure[];
-    total: number;
-    counts: Record<string, number>;
-  }> {
+  async execute(request: ScanWorkspaceRequest): Promise<ScanWorkspaceResponse> {
     const workspace = await this.workspaceRepository.findById(request.workspaceId);
     if (!workspace) {
       throw new WorkspaceNotFoundError(request.workspaceId);
@@ -351,7 +361,7 @@ export class ScanWorkspaceUseCase {
     const markdownPaths = await this.fileStorage.glob('**/*.md', workspace.folderPath);
 
     // Build files array with relativePath and absolute path
-    const files: FileEntry[] = markdownPaths.map((relativePath) => ({
+    const files: ScanWorkspaceResponse['files'] = markdownPaths.map((relativePath) => ({
       relativePath: relativePath.replace(/\\/g, '/'), // Normalize to posix
       path: path.join(workspace.folderPath, relativePath),
     }));
@@ -385,11 +395,11 @@ export class ScanWorkspaceUseCase {
   private async buildFolderStructure(
     basePath: string,
     relativePath: string,
-  ): Promise<FolderStructure[]> {
+  ): Promise<ScanWorkspaceResponse['structure']> {
     const currentPath = relativePath ? path.join(basePath, relativePath) : basePath;
     const items = await this.fileStorage.listFiles(currentPath);
 
-    const result: FolderStructure[] = [];
+    const result: ScanWorkspaceResponse['structure'] = [];
 
     for (const item of items) {
       // Skip hidden files/folders
@@ -420,23 +430,14 @@ export class ScanWorkspaceUseCase {
   }
 }
 
-export interface SyncResult {
-  notes: {
-    created: number;
-    updated: number;
-    deleted: number;
-  };
-  durationMs: number;
-}
-
-export class SyncWorkspaceUseCase {
+export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly noteRepository: INoteRepository,
     private readonly fileStorage: IFileStorage,
   ) {}
 
-  async execute(request?: { workspaceId?: string }): Promise<SyncResult> {
+  async execute(request?: SyncWorkspaceRequest): Promise<SyncWorkspaceResponse> {
     const startTime = Date.now();
 
     let workspace: WorkspaceProps | null;
@@ -502,24 +503,6 @@ export class SyncWorkspaceUseCase {
 // ============================================================================
 // Factory
 // ============================================================================
-
-export interface IWorkspaceUseCases {
-  createWorkspace: CreateWorkspaceUseCase;
-  getWorkspace: GetWorkspaceUseCase;
-  listWorkspaces: ListWorkspacesUseCase;
-  setActiveWorkspace: SetActiveWorkspaceUseCase;
-  getActiveWorkspace: GetActiveWorkspaceUseCase;
-  deleteWorkspace: DeleteWorkspaceUseCase;
-  updateWorkspace: UpdateWorkspaceUseCase;
-  selectFolder: SelectFolderUseCase;
-  validatePath: ValidatePathUseCase;
-  createFolder: CreateFolderUseCase;
-  renameFolder: RenameFolderUseCase;
-  deleteFolder: DeleteFolderUseCase;
-  moveFolder: MoveFolderUseCase;
-  scanWorkspace: ScanWorkspaceUseCase;
-  syncWorkspace: SyncWorkspaceUseCase;
-}
 
 export interface WorkspaceUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;

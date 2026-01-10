@@ -343,17 +343,21 @@ export function useNoteAPI() {
   const getGraphData = useCallback(async () => {
     try {
       const response = await noteAPI.getGraphData();
+      logger.info('[useNoteAPI.getGraphData] Response:', response);
       if (response.success && response.data) {
-        // GraphService returns { nodes, links } where nodes have { id, name, val }
+        logger.info('[useNoteAPI.getGraphData] Returning data:', {
+          nodes: response.data.nodes?.length,
+          links: response.data.links?.length,
+        });
         return {
-          nodes:
-            response.data.nodes?.map((n) => ({ id: n.id, name: n.name, val: n.val || 1 })) || [],
-          links: response.data.links?.map((e) => ({ source: e.source, target: e.target })) || [],
+          nodes: response.data.nodes || [],
+          links: response.data.links || [],
         };
       }
+      logger.warn('[useNoteAPI.getGraphData] No data in response');
       return { nodes: [], links: [] };
     } catch (error) {
-      logger.error('Failed to get graph data:', error);
+      logger.error('[useNoteAPI.getGraphData] Failed:', error);
       return { nodes: [], links: [] };
     }
   }, []);
