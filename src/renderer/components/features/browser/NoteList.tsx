@@ -7,7 +7,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { shallow } from 'zustand/shallow';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useNoteListUI } from '@renderer/hooks/useUI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Button } from '@renderer/components/base/ui/button';
@@ -36,7 +36,7 @@ export function NoteList() {
   const notesByPath = useNoteStore((state) => state.notesByPath);
   const setActiveNote = useNoteStore((state) => state.setActiveNote);
   const { viewMode, sortBy, sortOrder, showArchived, setViewMode, setSortBy, toggleSortOrder } =
-    useUIStore();
+    useNoteListUI();
   const {
     tree,
     activeFolder,

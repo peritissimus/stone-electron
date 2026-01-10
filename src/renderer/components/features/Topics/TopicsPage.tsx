@@ -8,7 +8,7 @@ import { CaretRight } from 'phosphor-react';
 import { useTopicStore } from '@renderer/stores/topicStore';
 import { useTopicAPI } from '@renderer/hooks/useTopicAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useSidebarUI } from '@renderer/hooks/useUI';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
@@ -87,7 +87,7 @@ function NoteRow({ note, onClick }: { note: TopicNote; onClick: () => void }) {
 }
 
 export function TopicsPage() {
-  const { toggleSidebar, sidebarOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { setActiveNote } = useNoteStore();
   const {
     topics,

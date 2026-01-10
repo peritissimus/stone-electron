@@ -28,7 +28,7 @@ const TopicsPage = lazy(() =>
     default: m.TopicsPage,
   })),
 );
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useUI } from '@renderer/hooks/useUI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
@@ -96,7 +96,7 @@ export function MainLayout() {
     activePage,
     setSidebarWidth,
     setNoteListWidth,
-  } = useUIStore();
+  } = useUI();
 
   const { activeNoteId, setActiveNote } = useNoteStore();
 

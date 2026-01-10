@@ -4,7 +4,7 @@
 
 import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useModals } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
@@ -49,7 +49,7 @@ export function LayoutContainer({
 
   className = '',
 }: LayoutContainerProps) {
-  const { openSettings } = useUIStore();
+  const { openSettings } = useModals();
   const { loadFileTree } = useFileTreeAPI();
   const { syncWorkspace, loadWorkspaces } = useWorkspaceAPI();
   const { loadNotes } = useNoteAPI();

@@ -3,12 +3,12 @@
  * Live preview of font settings showing headings, body text, and code
  */
 
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useTheme } from '@renderer/hooks/useUI';
 import { ContainerStack } from '@renderer/components/base/ui';
 import { Body } from '@renderer/components/base/ui/text';
 
 export function FontPreview() {
-  const { fontSettings } = useUIStore();
+  const { fontSettings } = useTheme();
 
   return (
     <ContainerStack gap="md" className="border border-border rounded-lg p-4 bg-card">

@@ -5,11 +5,12 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { quickCaptureAPI } from '@renderer/api';
+import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
 
 const DRAFT_KEY = 'quick-capture-draft';
 
 export function QuickCaptureWindow() {
+  const { appendToJournal } = useQuickCaptureAPI();
   const [text, setText] = useState(() => {
     // Restore draft on mount
     return localStorage.getItem(DRAFT_KEY) || '';
@@ -39,7 +40,7 @@ export function QuickCaptureWindow() {
     window.close();
 
     // Fire and forget - save happens in background
-    quickCaptureAPI.appendToJournal(trimmedText).catch((err) => {
+    appendToJournal(trimmedText).catch((err) => {
       // If save fails, restore draft so user doesn't lose content
       console.error('[QuickCapture] Save failed:', err);
       localStorage.setItem(DRAFT_KEY, trimmedText);

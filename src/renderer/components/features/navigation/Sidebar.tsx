@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import {
@@ -161,7 +161,7 @@ export function Sidebar() {
   const { setActiveNote, activeNoteId } = useNoteStore();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
-  const { toggleSidebar, activePage, setActivePage } = useUIStore();
+  const { toggleSidebar, activePage, setActivePage } = useUI();
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
 

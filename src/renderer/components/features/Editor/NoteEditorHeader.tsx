@@ -33,7 +33,7 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { cn } from '@renderer/lib/utils';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useSidebarUI, useEditorUI } from '@renderer/hooks/useUI';
 
 export interface NoteEditorHeaderProps {
   title: string;
@@ -70,7 +70,8 @@ export function NoteEditorHeader({
   onExportMarkdown,
   onModeToggle,
 }: NoteEditorHeaderProps) {
-  const { toggleSidebar, sidebarOpen, editorMode, toggleEditorMode } = useUIStore();
+  const { toggleSidebar, sidebarOpen } = useSidebarUI();
+  const { editorMode, toggleEditorMode } = useEditorUI();
 
   const handleModeToggle = useCallback(async () => {
     // If onModeToggle returns false, don't toggle
