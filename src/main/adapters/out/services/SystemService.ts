@@ -22,24 +22,26 @@ try {
  */
 export class SystemService implements ISystemService {
   async getFonts(): Promise<string[]> {
-    try {
-      const { getFonts } = await import('font-list');
-      const fonts = await getFonts();
-      return fonts.sort((a, b) => a.localeCompare(b));
-    } catch (error) {
-      logger.error('[SystemService] Failed to get fonts:', error);
-      // Return fallback fonts
-      return [
-        'Arial',
-        'Georgia',
-        'Helvetica',
-        'Monaco',
-        'Times New Roman',
-        'Courier New',
-        'Verdana',
-        'Tahoma',
-      ];
-    }
+    return await logger.withContext('out:SystemService.getFonts', async () => {
+      try {
+        const { getFonts } = await import('font-list');
+        const fonts = await getFonts();
+        return fonts.sort((a, b) => a.localeCompare(b));
+      } catch (error) {
+        logger.error('[SystemService] Failed to get fonts:', error);
+        // Return fallback fonts
+        return [
+          'Arial',
+          'Georgia',
+          'Helvetica',
+          'Monaco',
+          'Times New Roman',
+          'Courier New',
+          'Verdana',
+          'Tahoma',
+        ];
+      }
+    });
   }
 
   async selectFolder(options?: FolderPickerOptions): Promise<string | null> {

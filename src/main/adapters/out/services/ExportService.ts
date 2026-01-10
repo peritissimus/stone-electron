@@ -25,54 +25,56 @@ export class ExportService implements IExportService {
   }
 
   async renderToPdf(html: string, options?: PdfOptions): Promise<Buffer> {
-    if (!this.pdfAvailable) {
-      throw new Error('PDF export is not available in this environment');
-    }
-
-    let win: BrowserWindow | null = null;
-    try {
-      const { BrowserWindow } = require('electron');
-
-      // Create a hidden window for rendering
-      win = new BrowserWindow({
-        show: false,
-        webPreferences: {
-          offscreen: true,
-        },
-      });
-
-      if (!win) {
-        throw new Error('Failed to create BrowserWindow for PDF export');
+    return await logger.withContext('out:ExportService.renderToPdf', async () => {
+      if (!this.pdfAvailable) {
+        throw new Error('PDF export is not available in this environment');
       }
 
-      // Load the HTML content
-      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      let win: BrowserWindow | null = null;
+      try {
+        const { BrowserWindow } = require('electron');
 
-      // Wait for content to render
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        // Create a hidden window for rendering
+        win = new BrowserWindow({
+          show: false,
+          webPreferences: {
+            offscreen: true,
+          },
+        });
 
-      // Generate PDF
-      const pdfBuffer = await win.webContents.printToPDF({
-        margins: {
-          marginType: 'default',
-        },
-        printBackground: options?.printBackground ?? true,
-        landscape: options?.landscape ?? false,
-        pageSize: options?.format || 'A4',
-      });
+        if (!win) {
+          throw new Error('Failed to create BrowserWindow for PDF export');
+        }
 
-      win.close();
+        // Load the HTML content
+        await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-      logger.info('[ExportService] Generated PDF');
-      return Buffer.from(pdfBuffer);
-    } catch (error) {
-      logger.error('[ExportService] PDF generation failed:', error);
-      throw error;
-    } finally {
-      if (win && !win.isDestroyed()) {
-        win.destroy();
+        // Wait for content to render
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Generate PDF
+        const pdfBuffer = await win.webContents.printToPDF({
+          margins: {
+            marginType: 'default',
+          },
+          printBackground: options?.printBackground ?? true,
+          landscape: options?.landscape ?? false,
+          pageSize: options?.format || 'A4',
+        });
+
+        win.close();
+
+        logger.info('[ExportService] Generated PDF');
+        return Buffer.from(pdfBuffer);
+      } catch (error) {
+        logger.error('[ExportService] PDF generation failed:', error);
+        throw error;
+      } finally {
+        if (win && !win.isDestroyed()) {
+          win.destroy();
+        }
       }
-    }
+    });
   }
 
   generateHtmlDocument(content: string, options?: HtmlOptions): string {
