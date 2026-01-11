@@ -14,7 +14,6 @@ import type {
   AccentColor,
   EditorMode,
   SidebarPanel,
-  ActivePage,
 } from '@renderer/stores/uiStore';
 
 /**
@@ -56,9 +55,6 @@ export function useUI() {
   const accentColor = useUIStore((s) => s.accentColor);
   const fontSettings = useUIStore((s) => s.fontSettings);
 
-  // Page navigation
-  const activePage = useUIStore((s) => s.activePage);
-
   // Actions - using stable references from store
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);
@@ -91,7 +87,6 @@ export function useUI() {
   const setAccentColor = useUIStore((s) => s.setAccentColor);
   const setFontSettings = useUIStore((s) => s.setFontSettings);
   const resetFontSettings = useUIStore((s) => s.resetFontSettings);
-  const setActivePage = useUIStore((s) => s.setActivePage);
 
   return {
     // Sidebar
@@ -159,10 +154,6 @@ export function useUI() {
     setAccentColor,
     setFontSettings,
     resetFontSettings,
-
-    // Page navigation
-    activePage,
-    setActivePage,
   };
 }
 
@@ -316,4 +307,7 @@ export function useModals() {
 }
 
 // Re-export types for convenience
-export type { ViewMode, SortBy, Theme, AccentColor, EditorMode, SidebarPanel, ActivePage };
+export type { ViewMode, SortBy, Theme, AccentColor, EditorMode, SidebarPanel };
+
+// Re-export ActivePage from useAppNavigation (now derived from URL)
+export type { AppPage as ActivePage } from './useAppNavigation';

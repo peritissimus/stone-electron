@@ -1,0 +1,300 @@
+import React, { useState } from 'react';
+import {
+  FolderSimple,
+  FolderOpen,
+  DotsThreeVertical,
+  PencilSimple,
+  Trash,
+  Plus,
+  Files,
+} from 'phosphor-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@renderer/components/base/ui/dropdown-menu';
+import { IconButton } from '@renderer/components/composites';
+import { Text } from '@renderer/components/base/ui/text';
+import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { cn } from '@renderer/lib/utils';
+import { logger } from '@renderer/utils/logger';
+import { normalizePath, getParentPath } from '@renderer/utils/path';
+import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import { FileLeaf } from './FileLeaf';
+
+interface FolderNodeProps {
+  node: FileTreeNode;
+  level: number;
+  onCreateNote: (folderPath: string | null) => Promise<void>;
+  onRenameFile: (noteId: string, currentTitle: string) => void;
+  onDeleteFile: (noteId: string) => Promise<void>;
+  onMoveFile: (noteId: string, destinationPath: string | null) => Promise<void>;
+  onRenameFolder: (folderPath: string, currentName: string) => void;
+  onDeleteFolder: (folderPath: string) => Promise<void>;
+  onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
+}
+
+export const FolderNode = React.memo<FolderNodeProps>(
+  ({
+    node,
+    level,
+    onCreateNote,
+    onRenameFile,
+    onDeleteFile,
+    onMoveFile,
+    onRenameFolder,
+    onDeleteFolder,
+    onMoveFolder,
+  }) => {
+    const normalizedPath = normalizePath(node.path);
+
+    const expandedPaths = useFileTreeStore((state) => state.expandedPaths);
+    const activeFolder = useFileTreeStore((state) => state.activeFolder);
+    const isExpanded = expandedPaths.has(normalizedPath);
+    const isActive = normalizePath(activeFolder || '') === normalizedPath;
+    const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
+    const toggleExpanded = useFileTreeStore((state) => state.toggleExpanded);
+    const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
+
+    const [isDragOver, setIsDragOver] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+
+    const childFolders = node.children ?? [];
+    const hasChildren = childFolders.length > 0;
+    const isRootFolder = normalizedPath.length === 0;
+
+    const handleDragStart = (e: React.DragEvent) => {
+      if (isRootFolder) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData(
+        'application/stone-folder',
+        JSON.stringify({
+          folderPath: normalizedPath,
+          type: 'folder',
+        }),
+      );
+      (e.target as HTMLElement).style.opacity = '0.4';
+    };
+
+    const handleDragEnd = (e: React.DragEvent) => {
+      (e.target as HTMLElement).style.opacity = '';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      setIsDragOver(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      logger.info('[FileTree] Drop event on folder', {
+        targetPath: normalizedPath,
+        folderName: node.name,
+      });
+
+      const noteData = e.dataTransfer.getData('application/stone-note');
+      if (noteData) {
+        try {
+          const { noteId } = JSON.parse(noteData);
+          await onMoveFile(noteId, normalizedPath || null);
+        } catch (error) {
+          logger.error('[FileTree] Failed to move note', {
+            error,
+            noteData,
+            targetPath: normalizedPath,
+          });
+        }
+        return;
+      }
+
+      const folderData = e.dataTransfer.getData('application/stone-folder');
+      if (folderData) {
+        try {
+          const { folderPath } = JSON.parse(folderData);
+          if (folderPath === normalizedPath || normalizedPath.startsWith(folderPath + '/')) {
+            return;
+          }
+          await onMoveFolder(folderPath, normalizedPath || null);
+        } catch (error) {
+          logger.error('Failed to move folder:', error);
+        }
+      }
+    };
+
+    const handleClick = (event: React.MouseEvent) => {
+      event.stopPropagation();
+      const willExpand = !isExpanded;
+      if (!willExpand) {
+        const parent = getParentPath(normalizedPath);
+        setActiveFolder(parent || null);
+      }
+      toggleExpanded(normalizedPath);
+      if (willExpand) {
+        setActiveFolder(normalizedPath || null);
+      }
+      setSelectedFile(null);
+    };
+
+    return (
+      <>
+        <div
+          draggable={!isRootFolder}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={cn(
+            'relative group transition-all duration-150',
+            isDragOver && 'ring-2 ring-primary/20 ring-offset-1 rounded',
+          )}
+        >
+          <div
+            className={cn(
+              'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
+              'hover:bg-accent/20',
+            )}
+            onClick={handleClick}
+            style={{ paddingLeft: `${level * 20 + 8}px` }}
+          >
+            {isExpanded ? (
+              <FolderOpen
+                size={14}
+                className={cn(
+                  'mr-2 flex-shrink-0 transition-colors duration-150',
+                  'text-muted-foreground',
+                  isHovered && 'text-foreground/70',
+                )}
+              />
+            ) : (
+              <FolderSimple
+                size={14}
+                className={cn(
+                  'mr-2 flex-shrink-0 transition-colors duration-150',
+                  'text-muted-foreground',
+                  isHovered && 'text-foreground/70',
+                )}
+              />
+            )}
+            <span
+              className={cn(
+                'flex-1 text-xs truncate transition-colors duration-150',
+                isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
+              )}
+            >
+              {node.name}
+            </span>
+
+            <div
+              className={cn(
+                'ml-auto opacity-0 transition-opacity duration-150',
+                isHovered && 'opacity-100',
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <IconButton
+                    size="compact"
+                    icon={<DotsThreeVertical size={14} />}
+                    label="Folder options"
+                    className="h-5 w-5 hover:bg-accent"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setActiveFolder(null);
+                      setSelectedFile(null);
+                    }}
+                  >
+                    <Files size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Show All Notes</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={async () => {
+                      await onCreateNote(normalizedPath);
+                    }}
+                  >
+                    <Plus size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">New Note Here</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isRootFolder}
+                    onSelect={() => {
+                      if (!isRootFolder) {
+                        onRenameFolder(normalizedPath, node.name);
+                      }
+                    }}
+                  >
+                    <PencilSimple size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Rename Folder</Text>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={isRootFolder}
+                    onSelect={async () => {
+                      if (!isRootFolder) {
+                        await onDeleteFolder(normalizedPath);
+                      }
+                    }}
+                  >
+                    <Trash size={14} className="mr-2 text-muted-foreground" />
+                    <Text size="xs">Delete Folder</Text>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+        {hasChildren && isExpanded && (
+          <div>
+            {(node.children ?? []).map((child) =>
+              child.type === 'folder' ? (
+                <FolderNode
+                  key={`folder-${child.path}`}
+                  node={child}
+                  level={level + 1}
+                  onCreateNote={onCreateNote}
+                  onRenameFile={onRenameFile}
+                  onDeleteFile={onDeleteFile}
+                  onMoveFile={onMoveFile}
+                  onRenameFolder={onRenameFolder}
+                  onDeleteFolder={onDeleteFolder}
+                  onMoveFolder={onMoveFolder}
+                />
+              ) : (
+                <FileLeaf
+                  key={`file-${child.path}`}
+                  node={child}
+                  level={level + 1}
+                  onRename={onRenameFile}
+                  onDelete={onDeleteFile}
+                  onMove={onMoveFile}
+                />
+              ),
+            )}
+          </div>
+        )}
+      </>
+    );
+  },
+);
+
+FolderNode.displayName = 'FolderNode';

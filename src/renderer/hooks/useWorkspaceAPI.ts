@@ -3,15 +3,15 @@
  */
 
 import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useNoteStore } from '@renderer/stores/noteStore';
 import { workspaceAPI } from '@renderer/api';
 
 export function useWorkspaceAPI() {
+  const navigate = useNavigate();
   const { setWorkspaces, setActiveWorkspaceId, setLoading, setError } = useWorkspaceStore();
   const { setActiveFolder, setSelectedFile } = useFileTreeStore();
-  const { setActiveNote } = useNoteStore();
 
   const loadWorkspaces = useCallback(async () => {
     setLoading(true);
@@ -39,7 +39,7 @@ export function useWorkspaceAPI() {
           setActiveWorkspaceId(workspaceId);
           setActiveFolder(null);
           setSelectedFile(null);
-          setActiveNote(null);
+          navigate('/home');
           await loadWorkspaces();
         } else {
           setError(response.error?.message || 'Failed to switch workspace');
@@ -53,7 +53,7 @@ export function useWorkspaceAPI() {
       setActiveWorkspaceId,
       setActiveFolder,
       setSelectedFile,
-      setActiveNote,
+      navigate,
       setError,
     ],
   );

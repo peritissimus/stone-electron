@@ -16,13 +16,11 @@ import type {
   AccentColor,
   EditorMode,
   SidebarPanel,
-  ActivePage,
 } from '@/specs';
 
 // Re-export types from specs
 export type {
   EditorMode,
-  ActivePage,
   AccentColor,
   ViewMode,
   SortBy,
@@ -80,11 +78,7 @@ interface UIState {
   // Font settings
   fontSettings: FontSettings;
 
-  // Page navigation (when no note is active)
-  activePage: ActivePage;
-
   // Actions
-  setActivePage: (page: ActivePage) => void;
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   setSidebarPanel: (panel: SidebarPanel) => void;
@@ -158,12 +152,7 @@ export const useUIStore = create<UIState>()(
       // Font settings
       fontSettings: DEFAULT_FONT_SETTINGS,
 
-      // Page navigation
-      activePage: 'home',
-
       // Actions
-      setActivePage: (page) => set({ activePage: page }),
-
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 
       setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(400, width)) }),
@@ -248,7 +237,6 @@ export const useUIStore = create<UIState>()(
         theme: state.theme,
         accentColor: state.accentColor,
         fontSettings: state.fontSettings,
-        activePage: state.activePage,
       }),
     },
   ),

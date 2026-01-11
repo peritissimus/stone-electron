@@ -3,6 +3,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { MainLayout } from '@renderer/components/composites';
 import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
@@ -13,7 +14,7 @@ export const App: React.FC = () => {
   const accentColor = useUIStore((state) => state.accentColor);
   const fontSettings = useUIStore((state) => state.fontSettings);
 
-  // Check if this is the quick capture window
+  // Check if this is the quick capture window (check before router takes over)
   const [isQuickCapture] = useState(() => {
     const hash = window.location.hash;
     return hash === '#/quick-capture' || hash === '/quick-capture';
@@ -90,9 +91,12 @@ export const App: React.FC = () => {
   }
 
   return (
-    <>
-      <MainLayout />
+    <HashRouter>
+      <Routes>
+        {/* All routes render within MainLayout */}
+        <Route path="/*" element={<MainLayout />} />
+      </Routes>
       <Toaster position="top-center" richColors closeButton />
-    </>
+    </HashRouter>
   );
 };

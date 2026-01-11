@@ -1,10 +1,7 @@
-import React, { useRef, memo, useMemo } from 'react';
+import React, { memo } from 'react';
 import { FileText, BookOpen, ArrowRight, Sparkle, CaretRight, PencilSimple, Plus } from 'phosphor-react';
-import { useNoteStore } from '@renderer/stores/noteStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useSidebarUI } from '@renderer/hooks/useUI';
-import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { logger } from '@renderer/utils/logger';
+import { useHomePageData } from '@renderer/hooks/useHomePageData';
+import { formatRelativeDate, getGreeting, getFolderPath } from '@renderer/utils/dateFormat';
 import { TodoList } from './TodoList';
 import { IconButton, ListItem, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
@@ -19,35 +16,6 @@ interface RecentNoteProps {
   onClick: (id: string) => void;
 }
 
-// Format relative date
-const formatDate = (dateInput: Date | string) => {
-  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (hours < 1) {
-    const minutes = Math.floor(diff / (1000 * 60));
-    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
-  }
-  if (hours < 24) {
-    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
-  }
-  const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return days === 1 ? 'yesterday' : `${days} days ago`;
-  }
-  return date.toLocaleDateString();
-};
-
-// Extract folder path from file path
-const getFolderPath = (filePath: string | null) => {
-  if (!filePath) return null;
-  const normalizedPath = filePath.replace(/\\/g, '/');
-  const lastSlash = normalizedPath.lastIndexOf('/');
-  return lastSlash > 0 ? normalizedPath.substring(0, lastSlash) : null;
-};
-
 const RecentNote = memo<RecentNoteProps>(function RecentNote({ note, onClick }) {
   const folderPath = getFolderPath(note.filePath);
 
@@ -59,183 +27,27 @@ const RecentNote = memo<RecentNoteProps>(function RecentNote({ note, onClick }) 
       left={<FileText className="w-4 h-4" />}
       title={note.title || 'Untitled'}
       subtitle={folderPath}
-      right={<span className="text-xs text-muted-foreground">{formatDate(note.updatedAt)}</span>}
+      right={<span className="text-xs text-muted-foreground">{formatRelativeDate(note.updatedAt)}</span>}
     />
   );
 });
 
-// Get time-based greeting
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-// Normalize path for comparison (handle backslashes, leading slashes, case differences)
-function normalizePath(path: string | null): string {
-  if (!path) return '';
-  return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase();
-}
-
 export function HomePage() {
-  const { notes, setActiveNote } = useNoteStore();
-  const { setSelectedFile, setActiveFolder } = useFileTreeStore();
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
-  const { createNote } = useNoteAPI();
-
-  // Prevent double-click creating duplicate notes
-  const isCreatingNote = useRef(false);
-
-  // Get recent notes (last 5, sorted by update time)
-  const recentNotes = useMemo(
-    () =>
-      [...notes]
-        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-        .slice(0, 5),
-    [notes],
-  );
-
-  // Get the most recent note for "Continue writing"
-  const continueNote = recentNotes[0];
-
-  // Today's date info (memoized to avoid recalculating on each render)
-  const { journalFilename, journalTitle, todayDateString } = useMemo(() => {
-    const now = new Date();
-    return {
-      journalFilename: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`,
-      journalTitle: now.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      }),
-      todayDateString: now.toDateString(),
-    };
-  }, []);
-
-  // Check if we have today's journal
-  const todaysJournal = useMemo(() => {
-    const expectedJournalPath = `Journal/${journalFilename}.md`;
-    const normalizedExpectedPath = normalizePath(expectedJournalPath);
-    return notes.find((note) => normalizePath(note.filePath) === normalizedExpectedPath);
-  }, [notes, journalFilename]);
-
-  // Stats
-  const totalNotes = notes.length;
-  const todayNotes = useMemo(
-    () => notes.filter((n) => new Date(n.updatedAt).toDateString() === todayDateString).length,
-    [notes, todayDateString],
-  );
-
-  const handleNoteClick = (noteId: string) => {
-    logger.info('[HomePage] Note clicked', { noteId });
-
-    // Find the note to get its file path and folder
-    const note = notes.find((n) => n.id === noteId);
-    logger.info('[HomePage] Found note', {
-      note: note
-        ? {
-            id: note.id,
-            title: note.title,
-            filePath: note.filePath,
-            workspaceId: note.workspaceId,
-          }
-        : null,
-    });
-
-    if (note) {
-      // Set the selected file first - this will auto-expand parent folders
-      if (note.filePath) {
-        // Normalize the path to match FileTree's normalization
-        const normalizedPath = note.filePath
-          .replace(/\\/g, '/')
-          .replace(/^\/+/, '')
-          .replace(/\/+$/, '');
-        logger.info('[HomePage] Setting selected file (will auto-expand folders)', {
-          originalPath: note.filePath,
-          normalizedPath,
-        });
-        setSelectedFile(normalizedPath);
-
-        // Extract folder path from the file path (everything before the last /)
-        const lastSlash = normalizedPath.lastIndexOf('/');
-        if (lastSlash > 0) {
-          const folderPath = normalizedPath.substring(0, lastSlash);
-          logger.info('[HomePage] Setting active folder', { folderPath });
-          setActiveFolder(folderPath);
-        }
-      }
-    }
-
-    // Set the active note - this will trigger the editor to show
-    logger.info('[HomePage] Setting active note', { noteId });
-    setActiveNote(noteId);
-  };
-
-  // Handle creating or opening today's journal
-  const handleJournalClick = async () => {
-    logger.info('[HomePage] Journal clicked', { journalFilename, journalTitle });
-
-    // Check if today's journal already exists in Journal folder (by filename)
-    // Use the same normalized path we computed earlier
-    const existingJournal = todaysJournal;
-
-    if (existingJournal) {
-      // Open existing journal
-      logger.info('[HomePage] Opening existing journal', { id: existingJournal.id });
-      handleNoteClick(existingJournal.id);
-    } else {
-      // Prevent double-click
-      if (isCreatingNote.current) {
-        logger.info('[HomePage] Already creating note, ignoring click');
-        return;
-      }
-      isCreatingNote.current = true;
-
-      // Create new journal entry with ISO date as title (filename will be YYYY-MM-DD.md)
-      logger.info('[HomePage] Creating new journal entry');
-      try {
-        const newNote = await createNote({
-          title: journalFilename,
-          content: `# ${journalTitle}\n\n`,
-          folderPath: 'Journal',
-        });
-
-        if (newNote) {
-          logger.info('[HomePage] Journal created', { id: newNote.id });
-          handleNoteClick(newNote.id);
-        }
-      } finally {
-        isCreatingNote.current = false;
-      }
-    }
-  };
-
-  // Handle creating a work note
-  const handleWorkNoteClick = async () => {
-    // Prevent double-click
-    if (isCreatingNote.current) {
-      logger.info('[HomePage] Already creating note, ignoring click');
-      return;
-    }
-    isCreatingNote.current = true;
-
-    logger.info('[HomePage] Work note clicked');
-    try {
-      const newNote = await createNote({
-        title: 'Untitled',
-        content: '',
-        folderPath: 'Work',
-      });
-
-      if (newNote) {
-        logger.info('[HomePage] Work note created', { id: newNote.id });
-        handleNoteClick(newNote.id);
-      }
-    } finally {
-      isCreatingNote.current = false;
-    }
-  };
+  const {
+    notes,
+    recentNotes,
+    continueNote,
+    todaysJournal,
+    journalFilename,
+    journalTitle,
+    totalNotes,
+    todayNotes,
+    sidebarOpen,
+    toggleSidebar,
+    handleNoteClick,
+    handleJournalClick,
+    handleWorkNoteClick,
+  } = useHomePageData();
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

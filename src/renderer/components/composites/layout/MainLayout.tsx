@@ -3,12 +3,13 @@
  */
 
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
 
-// Lazy load heavy components - NoteEditor pulls in entire TipTap stack
+// Lazy load heavy components
 const NoteEditor = lazy(() =>
   import('@renderer/components/features/Editor/NoteEditor').then((m) => ({
     default: m.NoteEditor,
@@ -28,6 +29,7 @@ const TopicsPage = lazy(() =>
     default: m.TopicsPage,
   })),
 );
+
 import { useUI } from '@renderer/hooks/useUI';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
@@ -40,7 +42,7 @@ import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
 
-// Lazy load components not needed on initial render
+// Lazy load overlay components
 const SettingsModal = lazy(() =>
   import('@renderer/components/features/Settings/SettingsModal').then((m) => ({
     default: m.SettingsModal,
@@ -62,7 +64,7 @@ const FindReplaceModal = lazy(() =>
   })),
 );
 
-// Minimal loading skeletons for fast LCP
+// Loading skeletons
 const EditorSkeleton = () => (
   <div className="flex flex-col h-full animate-pulse">
     <div className="h-12 border-b border-border flex items-center px-4">
@@ -78,7 +80,7 @@ const EditorSkeleton = () => (
   </div>
 );
 
-const HomeSkeleton = () => (
+const PageSkeleton = () => (
   <div className="flex items-center justify-center h-full animate-pulse">
     <div className="text-center space-y-4">
       <div className="h-8 w-32 bg-muted rounded mx-auto" />
@@ -87,18 +89,31 @@ const HomeSkeleton = () => (
   </div>
 );
 
-export function MainLayout() {
-  const {
-    sidebarOpen,
-    sidebarWidth,
-    noteListWidth,
-    editorFullscreen,
-    activePage,
-    setSidebarWidth,
-    setNoteListWidth,
-  } = useUI();
+// Note route wrapper - syncs URL param with note store
+function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle> }) {
+  const { noteId } = useParams<{ noteId: string }>();
+  const { setActiveNote } = useNoteStore();
 
-  const { activeNoteId, setActiveNote } = useNoteStore();
+  // Sync URL noteId to store
+  useEffect(() => {
+    if (noteId) {
+      setActiveNote(noteId);
+    }
+  }, [noteId, setActiveNote]);
+
+  return (
+    <Suspense fallback={<EditorSkeleton />}>
+      <NoteEditor ref={editorRef} />
+    </Suspense>
+  );
+}
+
+export function MainLayout() {
+  const navigate = useNavigate();
+  const { sidebarOpen, sidebarWidth, noteListWidth, editorFullscreen, setSidebarWidth, setNoteListWidth } =
+    useUI();
+
+  const { setActiveNote } = useNoteStore();
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
@@ -106,8 +121,8 @@ export function MainLayout() {
   const { loadWorkspaces } = useWorkspaceAPI();
   const { openOrCreateTodayJournal } = useJournalActions();
 
-  // Enable document autosave (saves dirty buffers on blur, timer, and before close)
-  useDocumentAutosave(30000); // Autosave every 30 seconds
+  // Enable document autosave
+  useDocumentAutosave(30000);
 
   // Helper to create a note in a specific folder
   const createNoteInFolder = async (folderPath: string) => {
@@ -122,7 +137,7 @@ export function MainLayout() {
 
     if (note) {
       logger.info(`[MainLayout] Created note in ${folderPath}:`, note.id);
-      setActiveNote(note.id);
+      navigate(`/note/${note.id}`);
     }
   };
 
@@ -144,36 +159,26 @@ export function MainLayout() {
       }
     };
 
-    // Check initially and on activeNoteId change
     checkEditor();
-
-    // Also check periodically in case editor initializes asynchronously
     const interval = setInterval(checkEditor, 500);
     return () => clearInterval(interval);
-  }, [activeNoteId, currentEditor]);
+  }, [currentEditor]);
 
-  // Track if bootstrap is complete and if we've attempted to open the initial journal
+  // Track bootstrap state
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
-  const [initialJournalAttempted, setInitialJournalAttempted] = useState(false);
   const initialJournalOpenedRef = useRef(false);
 
-  // Load initial data and check for drafts
+  // Load initial data
   useEffect(() => {
     const bootstrap = async () => {
       const startTime = performance.now();
 
-      // Load workspace first (required for other operations)
       await loadWorkspaces();
-      logger.info(
-        `[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`,
-      );
+      logger.info(`[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
 
-      // Then load everything else in PARALLEL
       await Promise.all([
         loadFileTree().then(() => {
-          logger.info(
-            `[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`,
-          );
+          logger.info(`[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
         }),
         loadTags().then(() => {
           logger.info(`[MainLayout] Tags loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
@@ -183,41 +188,29 @@ export function MainLayout() {
         }),
       ]);
 
-      // Check for unsaved drafts after notes are loaded
       const drafts = getAllDrafts();
       if (drafts.length > 0) {
         logger.info('[MainLayout] Found unsaved drafts on startup:', drafts.length);
         setShowRecoveryDialog(true);
       }
 
-      logger.info(
-        `[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`,
-      );
-      // Mark bootstrap as complete
+      logger.info(`[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`);
       setBootstrapComplete(true);
     };
 
     void bootstrap();
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
-  // Auto-open today's journal on startup (after bootstrap completes)
+  // Auto-open today's journal on startup
   useEffect(() => {
-    if (bootstrapComplete && !initialJournalOpenedRef.current) {
-      if (showRecoveryDialog) {
-        // If recovery dialog is shown, mark as attempted so HomePage can render behind the dialog
-        setInitialJournalAttempted(true);
-      } else {
-        initialJournalOpenedRef.current = true;
-        // Open journal immediately - no delay needed
-        logger.info("[MainLayout] Auto-opening today's journal");
-        openOrCreateTodayJournal().finally(() => {
-          setInitialJournalAttempted(true);
-        });
-      }
+    if (bootstrapComplete && !initialJournalOpenedRef.current && !showRecoveryDialog) {
+      initialJournalOpenedRef.current = true;
+      logger.info("[MainLayout] Auto-opening today's journal");
+      openOrCreateTodayJournal();
     }
   }, [bootstrapComplete, showRecoveryDialog, openOrCreateTodayJournal]);
 
-  // Attach keyboard shortcuts using the store
+  // Keyboard shortcuts
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
     onNewNote: () => editorRef.current?.createSiblingNote(),
@@ -229,16 +222,15 @@ export function MainLayout() {
   // Handle draft recovery
   const handleRecoverDraft = (noteId: string, content: string) => {
     try {
-      // Open the note in the editor
+      navigate(`/note/${noteId}`);
       setActiveNote(noteId);
 
-      // Wait for editor to mount and load content, then restore draft
       setTimeout(() => {
         if (editorRef.current) {
           editorRef.current.restoreDraft(content);
           logger.info('[MainLayout] Recovered draft for note:', noteId);
         }
-      }, 1000); // Wait longer to ensure editor is fully initialized
+      }, 1000);
     } catch (error) {
       logger.error('[MainLayout] Failed to recover draft:', error);
     }
@@ -261,30 +253,48 @@ export function MainLayout() {
         showNoteList={false}
         mainContent={
           <MainContentArea>
-            {activeNoteId ? (
-              <Suspense fallback={<EditorSkeleton />}>
-                <NoteEditor ref={editorRef} />
-              </Suspense>
-            ) : activePage === 'tasks' ? (
-              <Suspense fallback={<HomeSkeleton />}>
-                <TasksPage />
-              </Suspense>
-            ) : activePage === 'graph' ? (
-              <Suspense fallback={<HomeSkeleton />}>
-                <GraphPage />
-              </Suspense>
-            ) : activePage === 'topics' ? (
-              <Suspense fallback={<HomeSkeleton />}>
-                <TopicsPage />
-              </Suspense>
-            ) : (
-              // Only show HomePage after initial bootstrap and journal open attempt
-              initialJournalAttempted && (
-                <Suspense fallback={<HomeSkeleton />}>
-                  <HomePage />
-                </Suspense>
-              )
-            )}
+            <Routes>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route
+                path="/home"
+                element={
+                  bootstrapComplete ? (
+                    <Suspense fallback={<PageSkeleton />}>
+                      <HomePage />
+                    </Suspense>
+                  ) : (
+                    <PageSkeleton />
+                  )
+                }
+              />
+              <Route
+                path="/tasks"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <TasksPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/graph"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <GraphPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/topics"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <TopicsPage />
+                  </Suspense>
+                }
+              />
+              <Route path="/note/:noteId" element={<NoteRoute editorRef={editorRef} />} />
+              {/* Catch-all redirect to home */}
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </Routes>
           </MainContentArea>
         }
         overlayContent={
@@ -302,7 +312,6 @@ export function MainLayout() {
         }
       />
 
-      {/* Draft Recovery Dialog - lazy loaded */}
       <Suspense fallback={null}>
         <DraftRecoveryDialog
           open={showRecoveryDialog}

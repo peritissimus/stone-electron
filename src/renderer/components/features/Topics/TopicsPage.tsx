@@ -2,12 +2,11 @@
  * TopicsPage - Minimal topic-based note organization
  */
 
-import { useEffect, useState, useCallback, memo } from 'react';
+import { useState, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Plus, CaretRight, X, FileText, ArrowsClockwise } from 'phosphor-react';
-import { useTopicStore } from '@renderer/stores/topicStore';
-import { useTopicAPI } from '@renderer/hooks/useTopicAPI';
-import { useNoteStore } from '@renderer/stores/noteStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
+import { useTopicsData } from '@renderer/hooks/useTopicsData';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
@@ -86,124 +85,52 @@ const NoteRow = memo(function NoteRow({ note, onClick }: { note: TopicNote; onCl
 });
 
 export function TopicsPage() {
+  const navigate = useNavigate();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
-  const { setActiveNote } = useNoteStore();
+
   const {
     topics,
     selectedTopicId,
+    selectedTopic,
+    topicNotes,
     embeddingStatus,
     searchResults,
     searchQuery,
+    searchInput,
     classifying,
     error,
+    initializing,
+    loadingNotes,
+    excludeJournal,
+    setSearchInput,
+    setExcludeJournal,
+    handleTopicClick,
+    handleReclassify,
+    handleCreateTopic,
     selectTopic,
-    setSearchQuery,
-  } = useTopicStore();
-
-  const {
-    initialize,
-    loadTopics,
-    createTopic,
-    semanticSearch,
-    reclassifyAllNotes,
-    getEmbeddingStatus,
-    getNotesForTopic,
-  } = useTopicAPI();
-
-  const [searchInput, setSearchInput] = useState('');
-  const [initializing, setInitializing] = useState(true);
-  const [topicNotes, setTopicNotes] = useState<TopicNote[]>([]);
-  const [loadingNotes, setLoadingNotes] = useState(false);
+  } = useTopicsData();
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newTopicName, setNewTopicName] = useState('');
   const [newTopicColor, setNewTopicColor] = useState('#6366f1');
   const [creating, setCreating] = useState(false);
-  const [excludeJournal, setExcludeJournal] = useState(true);
-
-  useEffect(() => {
-    const init = async () => {
-      setInitializing(true);
-      // Initialize first to seed predefined topics if they don't exist
-      await initialize();
-      await loadTopics({ excludeJournal });
-      await getEmbeddingStatus();
-      setInitializing(false);
-    };
-    init();
-  }, [initialize, loadTopics, getEmbeddingStatus, excludeJournal]);
-
-  useEffect(() => {
-    if (selectedTopicId) {
-      setLoadingNotes(true);
-      getNotesForTopic(selectedTopicId, { excludeJournal })
-        .then((notes) => setTopicNotes(notes as TopicNote[]))
-        .finally(() => setLoadingNotes(false));
-    } else {
-      setTopicNotes([]);
-    }
-  }, [selectedTopicId, getNotesForTopic, excludeJournal]);
-
-  useEffect(() => {
-    if (!searchInput.trim()) {
-      setSearchQuery('');
-      return;
-    }
-    const timeout = setTimeout(() => {
-      semanticSearch(searchInput);
-      setSearchQuery(searchInput);
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [searchInput, semanticSearch, setSearchQuery]);
-
-  const handleTopicClick = useCallback(
-    (topic: TopicWithCount) => selectTopic(topic.id === selectedTopicId ? null : topic.id),
-    [selectTopic, selectedTopicId],
-  );
-
-  const handleReclassify = useCallback(async () => {
-    const ready = await initialize();
-    if (ready) {
-      await reclassifyAllNotes({ excludeJournal });
-      await getEmbeddingStatus();
-      await loadTopics({ excludeJournal });
-    }
-  }, [initialize, reclassifyAllNotes, getEmbeddingStatus, loadTopics, excludeJournal]);
 
   const handleCreate = useCallback(async () => {
     if (!newTopicName.trim()) return;
     setCreating(true);
     try {
-      await createTopic({ name: newTopicName.trim(), color: newTopicColor });
+      await handleCreateTopic(newTopicName, newTopicColor);
       setShowCreateDialog(false);
       setNewTopicName('');
-      await loadTopics({ excludeJournal });
     } finally {
       setCreating(false);
     }
-  }, [newTopicName, newTopicColor, createTopic, loadTopics, excludeJournal]);
-
-  const selectedTopic = topics.find((t) => t.id === selectedTopicId);
+  }, [newTopicName, newTopicColor, handleCreateTopic]);
 
   if (initializing) {
     return (
       <div className="flex flex-col h-full">
-        <div
-          className={cn(
-            'px-4 border-b border-border/50 flex items-center gap-2',
-            sizeHeightClasses['spacious'],
-          )}
-        >
-          {!sidebarOpen && (
-            <IconButton
-              size="normal"
-              icon={<CaretRight size={16} weight="bold" />}
-              tooltip="Expand"
-              onClick={toggleSidebar}
-            />
-          )}
-          <span className="text-sm font-medium">Topics</span>
-        </div>
+        <TopicsHeader sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-muted-foreground/20 border-t-muted-foreground rounded-full animate-spin" />
         </div>
@@ -230,42 +157,12 @@ export function TopicsPage() {
         )}
         <span className="text-sm font-medium">Topics</span>
         <div className="flex-1" />
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={classifying}
-              className="h-7 px-2 text-xs"
-              title="Reclassify options"
-            >
-              <ArrowsClockwise size={14} className={cn(classifying && 'animate-spin')} />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-3" align="end">
-            <div className="space-y-3">
-              <div className="text-sm font-medium">Reclassify Options</div>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="exclude-journal"
-                  checked={excludeJournal}
-                  onCheckedChange={(checked) => setExcludeJournal(checked === true)}
-                />
-                <Label htmlFor="exclude-journal" className="text-xs cursor-pointer">
-                  Exclude Journal notes
-                </Label>
-              </div>
-              <Button
-                size="sm"
-                className="w-full h-7 text-xs"
-                onClick={handleReclassify}
-                disabled={classifying}
-              >
-                {classifying ? 'Reclassifying...' : 'Reclassify All'}
-              </Button>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <ReclassifyPopover
+          excludeJournal={excludeJournal}
+          setExcludeJournal={setExcludeJournal}
+          classifying={classifying}
+          onReclassify={handleReclassify}
+        />
         <Button
           variant="ghost"
           size="sm"
@@ -279,7 +176,10 @@ export function TopicsPage() {
       {/* Search */}
       <div className="px-4 py-2 border-b border-border/50 space-y-2">
         <div className="relative">
-          <MagnifyingGlass size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <MagnifyingGlass
+            size={14}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
           <Input
             type="text"
             placeholder="Search..."
@@ -323,7 +223,7 @@ export function TopicsPage() {
                 <NoteRow
                   key={r.noteId}
                   note={{ id: r.noteId, title: r.title, confidence: 1 - r.distance }}
-                  onClick={() => setActiveNote(r.noteId)}
+                  onClick={() => navigate(`/note/${r.noteId}`)}
                 />
               ))}
             </div>
@@ -352,7 +252,7 @@ export function TopicsPage() {
                 <TopicRow
                   key={topic.id}
                   topic={topic}
-                  onClick={() => handleTopicClick(topic)}
+                  onClick={() => handleTopicClick(topic.id)}
                   isSelected={topic.id === selectedTopicId}
                 />
               ))}
@@ -374,82 +274,214 @@ export function TopicsPage() {
 
         {/* Notes Panel */}
         {selectedTopicId && selectedTopic && (
-          <div className="w-1/2 flex flex-col overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-border/50 flex items-center gap-2">
-              <div
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: selectedTopic.color || '#6366f1' }}
-              />
-              <span className="text-sm font-medium flex-1">{selectedTopic.name}</span>
-              <span className="text-xs text-muted-foreground">{topicNotes.length}</span>
-              <IconButton
-                size="normal"
-                icon={<X size={14} />}
-                tooltip="Close"
-                onClick={() => selectTopic(null)}
-              />
-            </div>
-            <div className="flex-1 overflow-auto">
-              {loadingNotes ? (
-                <div className="p-4 space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-10" />
-                  ))}
-                </div>
-              ) : topicNotes.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                  No notes
-                </div>
-              ) : (
-                topicNotes.map((note) => (
-                  <NoteRow key={note.id} note={note} onClick={() => setActiveNote(note.id)} />
-                ))
-              )}
-            </div>
-          </div>
+          <TopicNotesPanel
+            topic={selectedTopic}
+            notes={topicNotes}
+            loading={loadingNotes}
+            onNoteClick={(id) => navigate(`/note/${id}`)}
+            onClose={() => selectTopic(null)}
+          />
         )}
       </div>
 
       {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base">New Topic</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <Input
-              value={newTopicName}
-              onChange={(e) => setNewTopicName(e.target.value)}
-              placeholder="Topic name"
-              className="h-9"
-              autoFocus
-            />
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setNewTopicColor(c)}
-                  className={cn(
-                    'w-6 h-6 rounded-full transition-transform',
-                    newTopicColor === c
-                      ? 'scale-125 ring-2 ring-offset-2 ring-offset-background ring-foreground/20'
-                      : 'hover:scale-110',
-                  )}
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleCreate} disabled={!newTopicName.trim() || creating}>
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateTopicDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        name={newTopicName}
+        setName={setNewTopicName}
+        color={newTopicColor}
+        setColor={setNewTopicColor}
+        creating={creating}
+        onCreate={handleCreate}
+      />
     </div>
+  );
+}
+
+// Sub-components
+
+function TopicsHeader({
+  sidebarOpen,
+  toggleSidebar,
+}: {
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        'px-4 border-b border-border/50 flex items-center gap-2',
+        sizeHeightClasses['spacious'],
+      )}
+    >
+      {!sidebarOpen && (
+        <IconButton
+          size="normal"
+          icon={<CaretRight size={16} weight="bold" />}
+          tooltip="Expand"
+          onClick={toggleSidebar}
+        />
+      )}
+      <span className="text-sm font-medium">Topics</span>
+    </div>
+  );
+}
+
+function ReclassifyPopover({
+  excludeJournal,
+  setExcludeJournal,
+  classifying,
+  onReclassify,
+}: {
+  excludeJournal: boolean;
+  setExcludeJournal: (v: boolean) => void;
+  classifying: boolean;
+  onReclassify: () => void;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={classifying}
+          className="h-7 px-2 text-xs"
+          title="Reclassify options"
+        >
+          <ArrowsClockwise size={14} className={cn(classifying && 'animate-spin')} />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-3" align="end">
+        <div className="space-y-3">
+          <div className="text-sm font-medium">Reclassify Options</div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="exclude-journal"
+              checked={excludeJournal}
+              onCheckedChange={(checked) => setExcludeJournal(checked === true)}
+            />
+            <Label htmlFor="exclude-journal" className="text-xs cursor-pointer">
+              Exclude Journal notes
+            </Label>
+          </div>
+          <Button
+            size="sm"
+            className="w-full h-7 text-xs"
+            onClick={onReclassify}
+            disabled={classifying}
+          >
+            {classifying ? 'Reclassifying...' : 'Reclassify All'}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TopicNotesPanel({
+  topic,
+  notes,
+  loading,
+  onNoteClick,
+  onClose,
+}: {
+  topic: TopicWithCount;
+  notes: TopicNote[];
+  loading: boolean;
+  onNoteClick: (id: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="w-1/2 flex flex-col overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border/50 flex items-center gap-2">
+        <div
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: topic.color || '#6366f1' }}
+        />
+        <span className="text-sm font-medium flex-1">{topic.name}</span>
+        <span className="text-xs text-muted-foreground">{notes.length}</span>
+        <IconButton size="normal" icon={<X size={14} />} tooltip="Close" onClick={onClose} />
+      </div>
+      <div className="flex-1 overflow-auto">
+        {loading ? (
+          <div className="p-4 space-y-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-10" />
+            ))}
+          </div>
+        ) : notes.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+            No notes
+          </div>
+        ) : (
+          notes.map((note) => (
+            <NoteRow key={note.id} note={note} onClick={() => onNoteClick(note.id)} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreateTopicDialog({
+  open,
+  onOpenChange,
+  name,
+  setName,
+  color,
+  setColor,
+  creating,
+  onCreate,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  name: string;
+  setName: (name: string) => void;
+  color: string;
+  setColor: (color: string) => void;
+  creating: boolean;
+  onCreate: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="text-base">New Topic</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Topic name"
+            className="h-9"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                onClick={() => setColor(c)}
+                className={cn(
+                  'w-6 h-6 rounded-full transition-transform',
+                  color === c
+                    ? 'scale-125 ring-2 ring-offset-2 ring-offset-background ring-foreground/20'
+                    : 'hover:scale-110',
+                )}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={onCreate} disabled={!name.trim() || creating}>
+            Create
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
