@@ -139,9 +139,6 @@ export function buildExportHTML(
   const cssVars = getExportCSS();
   const docStyles = getDocumentStyles();
 
-  // Check if content already starts with an H1 (title is already in content)
-  const _hasH1Title = renderedContent.trim().startsWith('<h1');
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

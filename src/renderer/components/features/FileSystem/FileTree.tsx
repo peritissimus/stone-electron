@@ -60,7 +60,6 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   // Active state based on whether this note is the currently active note
   const isActive = note?.id === activeNoteId;
 
-  const [isDragOver, _setIsDragOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const parentPath = getParentPath(normalizedPath);
@@ -128,7 +127,7 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
       onDragEnd={handleDragEnd}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={cn('relative group transition-all duration-150', isDragOver && 'opacity-50')}
+      className="relative group transition-all duration-150"
     >
       <div
         className={cn(
@@ -493,7 +492,7 @@ const FolderChildren = React.memo<FolderNodeProps>(
 FolderChildren.displayName = 'FolderChildren';
 
 export function FileTree() {
-  const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
+  const { tree, setActiveFolder, setSelectedFile } = useFileTreeStore();
   const { setActiveNote } = useNoteStore();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();

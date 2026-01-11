@@ -131,7 +131,6 @@ export function MainLayout() {
 
   // Draft recovery state
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
-  const _recoveryEditorRef = useRef<any>(null);
 
   // Track editor instance for FindReplaceModal
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
