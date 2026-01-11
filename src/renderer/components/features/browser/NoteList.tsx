@@ -46,7 +46,7 @@ export function NoteList() {
     setSelectedFile,
     toggleExpanded,
   } = useFileTreeStore();
-  const { createNote, loadNotes, loadNoteById } = useNoteAPI();
+  const { createNote, loadNotes } = useNoteAPI();
   const [isCreating, setIsCreating] = useState(false);
 
   // Helper to get note from Map (O(1) lookup)

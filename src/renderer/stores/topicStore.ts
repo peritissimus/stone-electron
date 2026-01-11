@@ -5,12 +5,7 @@
  */
 
 import { create } from 'zustand';
-import type {
-  TopicWithCount,
-  EmbeddingStatus,
-  SimilarNote,
-  ClassificationResult,
-} from '@shared/types';
+import type { TopicWithCount, EmbeddingStatus, SimilarNote } from '@shared/types';
 
 interface TopicState {
   // State

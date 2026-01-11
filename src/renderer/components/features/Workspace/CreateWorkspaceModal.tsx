@@ -51,7 +51,7 @@ export function CreateWorkspaceModal({
         setFolderPath(result.folderPath);
         setError(null);
       }
-    } catch (e) {
+    } catch {
       setError('Failed to open folder picker');
     }
   };

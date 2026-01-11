@@ -28,7 +28,7 @@ export interface HeaderProps extends React.HTMLAttributes<HTMLDivElement> {
  * <Header left={<Heading3>Notes</Heading3>} right={<Button>New</Button>} />
  */
 export const Header = React.forwardRef<HTMLDivElement, HeaderProps>(
-  ({ size = 'normal', divided = true, left, right, children, className, ...props }, ref) => {
+  ({ size = 'normal', divided: _divided = true, left, right, children, className, ...props }, ref) => {
     return (
       <div
         ref={ref}

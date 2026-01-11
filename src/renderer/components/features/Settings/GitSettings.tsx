@@ -16,7 +16,6 @@ import {
 } from 'phosphor-react';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
-import { logger } from '@renderer/utils/logger';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
 import { StatusCard } from './StatusCard';
@@ -24,7 +23,7 @@ import { Message } from './Message';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';
-import { Label, Body, Heading4 } from '@renderer/components/base/ui/text';
+import { Label, Body } from '@renderer/components/base/ui/text';
 
 export function GitSettings() {
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();

@@ -6,7 +6,7 @@
  * Reduces duplication between similar stores like tagStore and topicStore.
  */
 
-import { create, StateCreator } from 'zustand';
+import { create } from 'zustand';
 
 /**
  * Base entity interface - all entities must have an id

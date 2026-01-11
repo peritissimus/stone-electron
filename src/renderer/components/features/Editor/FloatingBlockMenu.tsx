@@ -121,7 +121,7 @@ export function FloatingBlockMenu({ editor }: FloatingBlockMenuProps) {
     // Store the node position for later
     const pos = selection.$anchor.pos;
     const resolvedPos = state.doc.resolve(pos);
-    const node = resolvedPos.node();
+    const _node = resolvedPos.node();
 
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', ''); // Required for Firefox

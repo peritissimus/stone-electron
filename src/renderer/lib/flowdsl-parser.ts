@@ -143,7 +143,7 @@ export function parseFlowDSL(content: string): ParsedDiagram {
   };
 
   let currentSubgraph: Subgraph | null = null;
-  let subgraphDepth = 0;
+  let _subgraphDepth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     let line = lines[i].trim();
@@ -179,7 +179,7 @@ export function parseFlowDSL(content: string): ParsedDiagram {
       if (currentSubgraph) {
         diagram.subgraphs.push(currentSubgraph);
         currentSubgraph = null;
-        subgraphDepth--;
+        _subgraphDepth--;
       }
       continue;
     }
@@ -204,7 +204,7 @@ export function parseFlowDSL(content: string): ParsedDiagram {
           color: props.color,
           icon: props.icon,
         };
-        subgraphDepth++;
+        _subgraphDepth++;
       }
       continue;
     }

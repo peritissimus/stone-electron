@@ -269,7 +269,7 @@ export const SearchAndReplace = Extension.create<SearchAndReplaceOptions, Search
           init() {
             return DecorationSet.empty;
           },
-          apply(tr, oldSet) {
+          apply(tr, _oldSet) {
             const { results, currentIndex } = storage;
 
             if (results.length === 0) {

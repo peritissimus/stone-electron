@@ -1,7 +1,6 @@
 import React, { useRef, memo, useMemo } from 'react';
 import { FileText, BookOpen, ArrowRight, Sparkle, CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
@@ -81,19 +80,12 @@ function normalizePath(path: string | null): string {
 
 export function HomePage() {
   const { notes, setActiveNote } = useNoteStore();
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { createNote } = useNoteAPI();
 
   // Prevent double-click creating duplicate notes
   const isCreatingNote = useRef(false);
-
-  // Get the active workspace
-  const activeWorkspace = useMemo(
-    () => workspaces.find((w) => w.id === activeWorkspaceId),
-    [workspaces, activeWorkspaceId],
-  );
 
   // Get recent notes (last 5, sorted by update time)
   const recentNotes = useMemo(

@@ -107,7 +107,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenu
 SlashCommandMenu.displayName = 'SlashCommandMenu';
 
 // Default slash command items
-export const defaultSlashCommands = (editor: any): SlashCommandItem[] => [
+export const defaultSlashCommands = (_editor: any): SlashCommandItem[] => [
   {
     title: 'Heading 1',
     description: 'Large section heading',

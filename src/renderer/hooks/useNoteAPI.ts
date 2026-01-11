@@ -4,7 +4,7 @@
 
 import { useCallback } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { Note, NoteVersion } from '@shared/types';
+import type { NoteVersion } from '@shared/types';
 import { logger } from '@renderer/utils/logger';
 import { noteAPI } from '@renderer/api';
 
@@ -394,7 +394,7 @@ export function useNoteAPI() {
     [updateNote, setError],
   );
 
-  const exportHtml = useCallback(async (id: string, content: string, title: string) => {
+  const exportHtml = useCallback(async (id: string, _content: string, _title: string) => {
     try {
       const response = await noteAPI.exportHtml(id);
       if (response.success && response.data) {
@@ -408,7 +408,7 @@ export function useNoteAPI() {
     }
   }, []);
 
-  const exportPdf = useCallback(async (id: string, content: string, title: string) => {
+  const exportPdf = useCallback(async (id: string, _content: string, _title: string) => {
     try {
       const response = await noteAPI.exportPdf(id);
       if (response.success && response.data) {
@@ -422,7 +422,7 @@ export function useNoteAPI() {
     }
   }, []);
 
-  const exportMarkdown = useCallback(async (id: string, title: string) => {
+  const exportMarkdown = useCallback(async (id: string, _title: string) => {
     try {
       const response = await noteAPI.exportMarkdown(id);
       if (response.success && response.data) {
