@@ -1,5 +1,7 @@
 /**
  * Editor Toolbar Component
+ *
+ * Uses command factory pattern to reduce handler boilerplate.
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -46,7 +48,8 @@ export interface EditorToolbarProps {
   className?: string;
 }
 
-const LANGUAGES = [
+/** Supported programming languages for code blocks */
+const CODE_LANGUAGES = [
   { value: 'javascript', label: 'JavaScript' },
   { value: 'typescript', label: 'TypeScript' },
   { value: 'python', label: 'Python' },
@@ -67,7 +70,61 @@ const LANGUAGES = [
   { value: 'markdown', label: 'Markdown' },
   { value: 'mermaid', label: 'Mermaid (Diagram)' },
   { value: 'plaintext', label: 'Plain Text' },
-];
+] as const;
+
+/**
+ * Hook that creates memoized editor command handlers.
+ * Uses factory pattern to reduce boilerplate - single dependency array instead of 20+.
+ */
+function useEditorCommands(editor: Editor | null) {
+  return useMemo(() => {
+    // Factory for simple toggle commands
+    const toggle = (command: string) => () => {
+      (editor?.chain().focus() as any)[command]?.().run();
+    };
+
+    // Factory for commands with arguments
+    const run = (command: string, args?: any) => () => {
+      (editor?.chain().focus() as any)[command]?.(args).run();
+    };
+
+    return {
+      // History
+      undo: toggle('undo'),
+      redo: toggle('redo'),
+
+      // Text formatting
+      toggleBold: toggle('toggleBold'),
+      toggleItalic: toggle('toggleItalic'),
+      toggleStrike: toggle('toggleStrike'),
+      toggleCode: toggle('toggleCode'),
+      toggleHighlight: toggle('toggleHighlight'),
+
+      // Headings
+      toggleH1: run('toggleHeading', { level: 1 }),
+      toggleH2: run('toggleHeading', { level: 2 }),
+      toggleH3: run('toggleHeading', { level: 3 }),
+
+      // Lists
+      toggleBulletList: toggle('toggleBulletList'),
+      toggleOrderedList: toggle('toggleOrderedList'),
+
+      // Blocks
+      toggleBlockquote: toggle('toggleBlockquote'),
+      setHorizontalRule: toggle('setHorizontalRule'),
+      toggleCodeBlock: toggle('toggleCodeBlock'),
+
+      // Table operations
+      insertTable: run('insertTable', { rows: 3, cols: 3, withHeaderRow: true }),
+      addRowBefore: toggle('addRowBefore'),
+      addRowAfter: toggle('addRowAfter'),
+      addColumnBefore: toggle('addColumnBefore'),
+      addColumnAfter: toggle('addColumnAfter'),
+      deleteRow: toggle('deleteRow'),
+      deleteColumn: toggle('deleteColumn'),
+    };
+  }, [editor]);
+}
 
 export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
@@ -76,97 +133,10 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
   const [imageUrl, setImageUrl] = useState('');
   const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
 
-  // History handlers
-  const handleUndo = useCallback(() => {
-    editor?.chain().focus().undo().run();
-  }, [editor]);
+  // Get all editor commands from factory hook
+  const cmd = useEditorCommands(editor);
 
-  const handleRedo = useCallback(() => {
-    editor?.chain().focus().redo().run();
-  }, [editor]);
-
-  // Text formatting handlers
-  const handleToggleBold = useCallback(() => {
-    editor?.chain().focus().toggleBold().run();
-  }, [editor]);
-
-  const handleToggleItalic = useCallback(() => {
-    editor?.chain().focus().toggleItalic().run();
-  }, [editor]);
-
-  const handleToggleStrike = useCallback(() => {
-    editor?.chain().focus().toggleStrike().run();
-  }, [editor]);
-
-  const handleToggleCode = useCallback(() => {
-    editor?.chain().focus().toggleCode().run();
-  }, [editor]);
-
-  const handleToggleHighlight = useCallback(() => {
-    editor?.chain().focus().toggleHighlight().run();
-  }, [editor]);
-
-  // Heading handlers
-  const handleToggleH1 = useCallback(() => {
-    editor?.chain().focus().toggleHeading({ level: 1 }).run();
-  }, [editor]);
-
-  const handleToggleH2 = useCallback(() => {
-    editor?.chain().focus().toggleHeading({ level: 2 }).run();
-  }, [editor]);
-
-  const handleToggleH3 = useCallback(() => {
-    editor?.chain().focus().toggleHeading({ level: 3 }).run();
-  }, [editor]);
-
-  // List handlers
-  const handleToggleBulletList = useCallback(() => {
-    editor?.chain().focus().toggleBulletList().run();
-  }, [editor]);
-
-  const handleToggleOrderedList = useCallback(() => {
-    editor?.chain().focus().toggleOrderedList().run();
-  }, [editor]);
-
-  // Block handlers
-  const handleToggleBlockquote = useCallback(() => {
-    editor?.chain().focus().toggleBlockquote().run();
-  }, [editor]);
-
-  const handleSetHorizontalRule = useCallback(() => {
-    editor?.chain().focus().setHorizontalRule().run();
-  }, [editor]);
-
-  // Table handlers
-  const handleInsertTable = useCallback(() => {
-    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
-  }, [editor]);
-
-  const handleAddRowBefore = useCallback(() => {
-    editor?.chain().focus().addRowBefore().run();
-  }, [editor]);
-
-  const handleAddRowAfter = useCallback(() => {
-    editor?.chain().focus().addRowAfter().run();
-  }, [editor]);
-
-  const handleAddColumnBefore = useCallback(() => {
-    editor?.chain().focus().addColumnBefore().run();
-  }, [editor]);
-
-  const handleAddColumnAfter = useCallback(() => {
-    editor?.chain().focus().addColumnAfter().run();
-  }, [editor]);
-
-  const handleDeleteRow = useCallback(() => {
-    editor?.chain().focus().deleteRow().run();
-  }, [editor]);
-
-  const handleDeleteColumn = useCallback(() => {
-    editor?.chain().focus().deleteColumn().run();
-  }, [editor]);
-
-  // Link handlers
+  // Link handlers (need state access, can't use factory)
   const handleInsertLink = useCallback(() => {
     if (linkUrl && editor) {
       editor.chain().focus().setLink({ href: linkUrl }).run();
@@ -189,7 +159,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
     setLinkPopoverOpen(false);
   }, []);
 
-  // Image handlers
+  // Image handlers (need state access, can't use factory)
   const handleInsertImage = useCallback(() => {
     if (imageUrl && editor) {
       editor.chain().focus().setImage({ src: imageUrl }).run();
@@ -275,7 +245,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
           size="compact"
-          onClick={handleUndo}
+          onClick={cmd.undo}
           disabled={!editor.can().undo()}
           tooltip="Undo (Ctrl+Z)"
         >
@@ -283,7 +253,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleRedo}
+          onClick={cmd.redo}
           disabled={!editor.can().redo()}
           tooltip="Redo (Ctrl+Y)"
         >
@@ -297,7 +267,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
           size="compact"
-          onClick={handleToggleBold}
+          onClick={cmd.toggleBold}
           active={editor.isActive('bold')}
           tooltip="Bold (Ctrl+B)"
         >
@@ -305,7 +275,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleItalic}
+          onClick={cmd.toggleItalic}
           active={editor.isActive('italic')}
           tooltip="Italic (Ctrl+I)"
         >
@@ -313,7 +283,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleStrike}
+          onClick={cmd.toggleStrike}
           active={editor.isActive('strike')}
           tooltip="Strikethrough"
         >
@@ -321,7 +291,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleCode}
+          onClick={cmd.toggleCode}
           active={editor.isActive('code')}
           tooltip="Inline Code"
         >
@@ -329,7 +299,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleHighlight}
+          onClick={cmd.toggleHighlight}
           active={editor.isActive('highlight')}
           tooltip="Highlight"
         >
@@ -343,7 +313,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
           size="compact"
-          onClick={handleToggleH1}
+          onClick={cmd.toggleH1}
           active={editor.isActive('heading', { level: 1 })}
           tooltip="Heading 1 (Ctrl+Alt+1)"
         >
@@ -351,7 +321,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleH2}
+          onClick={cmd.toggleH2}
           active={editor.isActive('heading', { level: 2 })}
           tooltip="Heading 2 (Ctrl+Alt+2)"
         >
@@ -359,7 +329,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleH3}
+          onClick={cmd.toggleH3}
           active={editor.isActive('heading', { level: 3 })}
           tooltip="Heading 3 (Ctrl+Alt+3)"
         >
@@ -373,7 +343,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
           size="compact"
-          onClick={handleToggleBulletList}
+          onClick={cmd.toggleBulletList}
           active={editor.isActive('bulletList')}
           tooltip="Bullet List"
         >
@@ -381,7 +351,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
         </ToolbarButton>
         <ToolbarButton
           size="compact"
-          onClick={handleToggleOrderedList}
+          onClick={cmd.toggleOrderedList}
           active={editor.isActive('orderedList')}
           tooltip="Numbered List"
         >
@@ -395,7 +365,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
       <div className="flex items-center gap-0.5 mr-2">
         <ToolbarButton
           size="compact"
-          onClick={handleToggleBlockquote}
+          onClick={cmd.toggleBlockquote}
           active={editor.isActive('blockquote')}
           tooltip="Blockquote"
         >
@@ -415,7 +385,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
               <SelectValue placeholder="Language" />
             </SelectTrigger>
             <SelectContent>
-              {LANGUAGES.map((lang) => (
+              {CODE_LANGUAGES.map((lang) => (
                 <SelectItem key={lang.value} value={lang.value} className="text-xs">
                   {lang.label}
                 </SelectItem>
@@ -423,11 +393,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </SelectContent>
           </Select>
         )}
-        <ToolbarButton
-          size="compact"
-          onClick={handleSetHorizontalRule}
-          tooltip="Horizontal Rule"
-        >
+        <ToolbarButton size="compact" onClick={cmd.setHorizontalRule} tooltip="Horizontal Rule">
           <Minus size={14} />
         </ToolbarButton>
       </div>
@@ -438,7 +404,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
           <div className="flex items-center gap-0.5 mr-2">
             <ToolbarButton
               size="compact"
-              onClick={handleAddRowBefore}
+              onClick={cmd.addRowBefore}
               disabled={!editor.can().chain().focus().addRowBefore().run()}
               tooltip="Insert row above"
             >
@@ -446,7 +412,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </ToolbarButton>
             <ToolbarButton
               size="compact"
-              onClick={handleAddRowAfter}
+              onClick={cmd.addRowAfter}
               disabled={!editor.can().chain().focus().addRowAfter().run()}
               tooltip="Insert row below"
             >
@@ -454,7 +420,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </ToolbarButton>
             <ToolbarButton
               size="compact"
-              onClick={handleAddColumnBefore}
+              onClick={cmd.addColumnBefore}
               disabled={!editor.can().chain().focus().addColumnBefore().run()}
               tooltip="Insert column before"
             >
@@ -462,7 +428,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </ToolbarButton>
             <ToolbarButton
               size="compact"
-              onClick={handleAddColumnAfter}
+              onClick={cmd.addColumnAfter}
               disabled={!editor.can().chain().focus().addColumnAfter().run()}
               tooltip="Insert column after"
             >
@@ -470,7 +436,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </ToolbarButton>
             <ToolbarButton
               size="compact"
-              onClick={handleDeleteRow}
+              onClick={cmd.deleteRow}
               disabled={!editor.can().chain().focus().deleteRow().run()}
               tooltip="Delete row"
             >
@@ -478,7 +444,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
             </ToolbarButton>
             <ToolbarButton
               size="compact"
-              onClick={handleDeleteColumn}
+              onClick={cmd.deleteColumn}
               disabled={!editor.can().chain().focus().deleteColumn().run()}
               tooltip="Delete column"
             >
@@ -492,11 +458,7 @@ export function EditorToolbar({ editor, className }: EditorToolbarProps) {
 
       {/* Insert Group */}
       <div className="flex items-center gap-0.5">
-        <ToolbarButton
-          size="compact"
-          onClick={handleInsertTable}
-          tooltip="Insert Table (3x3)"
-        >
+        <ToolbarButton size="compact" onClick={cmd.insertTable} tooltip="Insert Table (3x3)">
           <TableIcon size={14} />
         </ToolbarButton>
         <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
