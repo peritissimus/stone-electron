@@ -4,7 +4,7 @@
  * Follows architecture: Components → Hooks → Stores/API
  */
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { TodoItem } from '@shared/types';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';

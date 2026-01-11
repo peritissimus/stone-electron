@@ -83,7 +83,8 @@
     "sonner": "^2.0.7",
     "turndown": "^7.2.2",
     "turndown-plugin-gfm": "^1.0.2",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "@xenova/transformers": "^2.6.5"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
@@ -143,7 +144,6 @@
     "@vitest/coverage-v8": "^1.1.0",
     "@vitest/ui": "^1.1.0",
     "@welldone-software/why-did-you-render": "^10.0.1",
-    "@xenova/transformers": "^2.6.5",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^1.1.1",
