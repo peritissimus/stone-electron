@@ -3,7 +3,7 @@
  *
  * Implements: specs/components.ts#NoteHeaderProps
  */
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import {
   Star,
   PushPin,
@@ -53,7 +53,7 @@ export interface NoteEditorHeaderProps {
   onModeToggle?: () => Promise<boolean> | boolean; // Returns true if mode switch should proceed
 }
 
-export function NoteEditorHeader({
+export const NoteEditorHeader = memo(function NoteEditorHeader({
   title,
   onTitleChange,
   isFavorite,
@@ -260,4 +260,4 @@ export function NoteEditorHeader({
       </div>
     </div>
   );
-}
+});

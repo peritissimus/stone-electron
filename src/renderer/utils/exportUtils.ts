@@ -119,7 +119,7 @@ export function getDocumentStyles(): string {
           styles.push(ruleText);
         }
       }
-    } catch (e) {
+    } catch {
       // CORS errors for external stylesheets - skip
       continue;
     }
@@ -140,7 +140,7 @@ export function buildExportHTML(
   const docStyles = getDocumentStyles();
 
   // Check if content already starts with an H1 (title is already in content)
-  const hasH1Title = renderedContent.trim().startsWith('<h1');
+  const _hasH1Title = renderedContent.trim().startsWith('<h1');
 
   return `<!DOCTYPE html>
 <html lang="en">

@@ -182,6 +182,31 @@ Replaced all `alert()` calls with toast notifications:
 - `LayoutContainer.tsx` - replaced sync failure alerts with `toast.error()`
 - `Sidebar.tsx` - replaced workspace creation error alert with `toast.error()`
 
+### Editor Feature Architecture Fixes (Critical + High Priority)
+
+**Created `useNoteEditor` hook** (`src/renderer/hooks/useNoteEditor.ts`):
+- `useNoteEditor()` - active note state + setActiveNote
+- `useActiveWorkspace()` - workspace state
+- `useFileTreeActions()` - syncFileTreeSelection helper
+- `useDocumentBufferActions()` - removeBuffer
+- `useEditorOperations()` - combined hook for common operations
+
+**Refactored `NoteEditor.tsx`:**
+- Replaced 5 direct store imports with `useEditorOperations` hook
+- Removed `.getState()` calls (used reactive values instead)
+- Added 6 memoized handlers: `handleToggleFavorite`, `handleTogglePin`, `handleToggleArchive`, `handleExportHtml`, `handleExportPdf`, `handleExportMarkdown`
+- Passed `onCreateNote` callback to `NoteEditorEmptyState`
+
+**Memoized `NoteEditorHeader.tsx`:**
+- Wrapped component with `React.memo()` (receives 13+ props)
+
+**Fixed `BacklinksPanel.tsx`:**
+- Replaced `useNoteStore` import with `useNoteEditor` hook
+
+**Fixed `NoteEditorEmptyState.tsx`:**
+- Removed unsafe DOM query (`document.querySelector`)
+- Added `onCreateNote` callback prop
+
 ---
 
 # Part 2: Performance Inefficiencies

@@ -18,7 +18,7 @@ import {
 } from '@renderer/components/base/ui/select';
 import { Text } from '@renderer/components/base/ui/text';
 import { logger } from '@renderer/utils/logger';
-import { type Workspace, type Note } from '@shared/types';
+import type { Note } from '@shared/types';
 import {
   House,
   CaretLeft,

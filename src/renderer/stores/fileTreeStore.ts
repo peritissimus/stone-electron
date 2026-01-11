@@ -52,7 +52,7 @@ function collectFolderPaths(nodes: FileTreeNode[], acc: Set<string> = new Set())
   return acc;
 }
 
-export const useFileTreeStore = create<FileTreeState>((set, get) => ({
+export const useFileTreeStore = create<FileTreeState>((set, _get) => ({
   tree: [],
   activeFolder: null,
   selectedFile: null,

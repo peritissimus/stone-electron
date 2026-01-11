@@ -3,7 +3,6 @@
  */
 
 import { useCallback, useState } from 'react';
-import { searchAPI } from '@renderer/api';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import { Note } from '@shared/types';

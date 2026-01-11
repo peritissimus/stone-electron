@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Editor, JSONContent } from '@tiptap/react';
+import { Editor } from '@tiptap/react';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
@@ -47,17 +47,13 @@ export function useDocumentBuffer({
     if (!noteId || !editor) return;
 
     const loadContent = async () => {
-      console.log('heyyy');
       // Check if already in buffer
       const existingBuffer = getBuffer(noteId);
-      console.log(existingBuffer);
       if (existingBuffer) {
         logger.debug('[useDocumentBuffer] Loading from buffer:', noteId);
         editor.commands.setContent(existingBuffer.content);
         return;
       }
-
-      console.log('dope');
 
       // Prevent duplicate loads
       if (loadingNotes.has(noteId)) return;
@@ -67,7 +63,6 @@ export function useDocumentBuffer({
       try {
         logger.debug('[useDocumentBuffer] Loading from file:', noteId);
         const response = await noteAPI.getContent(noteId);
-        console.log(response);
 
         if (response.success && response.data) {
           const htmlContent = response.data.content;

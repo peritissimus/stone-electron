@@ -2,7 +2,7 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect, useRef, useState, lazy, Suspense, useMemo } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import type { Editor } from '@tiptap/react';
 import { Sidebar } from '@renderer/components/features/navigation';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
@@ -131,7 +131,7 @@ export function MainLayout() {
 
   // Draft recovery state
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
-  const recoveryEditorRef = useRef<any>(null);
+  const _recoveryEditorRef = useRef<any>(null);
 
   // Track editor instance for FindReplaceModal
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
@@ -170,7 +170,7 @@ export function MainLayout() {
       );
 
       // Then load everything else in PARALLEL
-      const [, , notesResult] = await Promise.all([
+      await Promise.all([
         loadFileTree().then(() => {
           logger.info(
             `[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`,

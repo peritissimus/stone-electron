@@ -4,7 +4,11 @@
 import { Article, Plus } from 'phosphor-react';
 import { Button } from '@renderer/components/base/ui/button';
 
-export function NoteEditorEmptyState() {
+interface NoteEditorEmptyStateProps {
+  onCreateNote?: () => void;
+}
+
+export function NoteEditorEmptyState({ onCreateNote }: NoteEditorEmptyStateProps) {
   return (
     <div className="flex-1 bg-background flex flex-col items-center justify-center px-8 py-16">
       <div className="text-center max-w-md">
@@ -26,12 +30,8 @@ export function NoteEditorEmptyState() {
 
         {/* CTA Button */}
         <Button
-          onClick={() => {
-            const noteListButton = document.querySelector(
-              '[title="Create a new note"]',
-            ) as HTMLButtonElement;
-            noteListButton?.click();
-          }}
+          onClick={onCreateNote}
+          disabled={!onCreateNote}
           className="h-10 px-6 text-sm font-medium"
           size="lg"
         >

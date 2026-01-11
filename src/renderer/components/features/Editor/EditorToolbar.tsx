@@ -22,7 +22,6 @@ import {
   TextHTwo,
   TextItalic,
   TextStrikethrough,
-  CaretDown,
   ArrowLineUp,
   ArrowLineDown,
   ArrowLineLeft,

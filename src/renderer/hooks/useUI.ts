@@ -6,7 +6,6 @@
  * granular selectors.
  */
 
-import { useCallback } from 'react';
 import { useUIStore } from '@renderer/stores/uiStore';
 import type {
   ViewMode,
@@ -17,7 +16,6 @@ import type {
   SidebarPanel,
   ActivePage,
 } from '@renderer/stores/uiStore';
-import type { FontSettings } from '@shared/types/settings';
 
 /**
  * Main UI hook - provides access to all UI state and actions

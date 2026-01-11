@@ -7,7 +7,6 @@
 import React from 'react';
 import { X } from 'phosphor-react';
 import { Button } from '@renderer/components/base/ui/button';
-import { Heading3 } from '@renderer/components/base/ui/text';
 
 export interface ModalLayoutProps {
   title: string;

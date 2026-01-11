@@ -24,7 +24,7 @@ interface CodeBlockComponentProps {
 export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   node,
   updateAttributes,
-  extension,
+  extension: _extension,
   editor,
   getPos,
   selected,

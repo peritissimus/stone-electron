@@ -7,7 +7,6 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
 import { ImageWithMenu } from '@renderer/extensions/ImageWithMenu';
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import TaskList from '@tiptap/extension-task-list';
 import LogseqTaskItem from '@renderer/extensions/LogseqTaskItem';
 import Placeholder from '@tiptap/extension-placeholder';

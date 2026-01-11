@@ -4,7 +4,7 @@
  * Implements: specs/components.ts#FileTreeProps
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   FileText,
   FolderSimple,
@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@renderer/components/base/ui/dropdown-menu';
-import { IconButton, TreeItem } from '@renderer/components/composites';
+import { IconButton } from '@renderer/components/composites';
 import { Text, Heading3 } from '@renderer/components/base/ui/text';
 import {
   useFileTreeStore,
@@ -43,7 +43,7 @@ interface FileTreeFileProps {
   onMove: (noteId: string, destinationPath: string | null) => Promise<void>;
 }
 
-const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelete, onMove }) => {
+const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelete, onMove: _onMove }) => {
   const normalizedPath = normalizePath(node.path);
 
   // Simplified selectors - Zustand handles equality checks internally
@@ -60,7 +60,7 @@ const FileLeaf = React.memo<FileTreeFileProps>(({ node, level, onRename, onDelet
   // Active state based on whether this note is the currently active note
   const isActive = note?.id === activeNoteId;
 
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDragOver, _setIsDragOver] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const parentPath = getParentPath(normalizedPath);
@@ -496,7 +496,7 @@ export function FileTree() {
   const { tree, activeFolder, setActiveFolder, setSelectedFile } = useFileTreeStore();
   const { setActiveNote } = useNoteStore();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
-  const { loadFileTree, createFolder, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
+  const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
   const [renameFolderTarget, setRenameFolderTarget] = useState<{
     path: string;

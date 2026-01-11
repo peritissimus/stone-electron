@@ -4,7 +4,6 @@
 
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
-import { Decoration, DecorationSet } from '@tiptap/pm/view';
 
 export interface DragHandleOptions {
   dragHandleWidth: number;
@@ -104,7 +103,7 @@ export const DragHandle = Extension.create<DragHandleOptions>({
           editorView.dom.parentElement?.appendChild(container);
 
           return {
-            update(view, prevState) {
+            update(view, _prevState) {
               // Update drag handle position based on cursor
               const { selection } = view.state;
               const { $from } = selection;

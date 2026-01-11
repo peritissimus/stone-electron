@@ -94,7 +94,7 @@ export function TopicsPage() {
     embeddingStatus,
     searchResults,
     searchQuery,
-    loading,
+    loading: _loading,
     classifying,
     error,
     selectTopic,

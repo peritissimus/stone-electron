@@ -7,7 +7,6 @@
 import React from 'react';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { ContainerStack } from '@renderer/components/base/ui';
-import { cn } from '@renderer/lib/utils';
 
 export interface SettingsSectionProps {
   title: string;

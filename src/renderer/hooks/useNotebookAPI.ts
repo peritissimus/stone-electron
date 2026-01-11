@@ -41,7 +41,7 @@ const useNotebookCRUD = createEntityAPI<Notebook>({
  * Notebook API hook with CRUD + notebook-specific operations
  */
 export function useNotebookAPI() {
-  const { loadAll, create, update, remove } = useNotebookCRUD();
+  const { loadAll, create, update, remove: _remove } = useNotebookCRUD();
   const { setError } = useNotebookStore();
 
   /**

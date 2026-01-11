@@ -8,12 +8,8 @@
 
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { marked } from 'marked';
-import { useNoteStore } from '@renderer/stores/noteStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
+import { useEditorOperations } from '@renderer/hooks/useNoteEditor';
 import { useEditorUI } from '@renderer/hooks/useUI';
-import { useUIStore } from '@renderer/stores/uiStore'; // Keep for .getState() in callbacks
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
@@ -29,7 +25,6 @@ import {
 import { Copy, Check } from 'phosphor-react';
 import { logger } from '@renderer/utils/logger';
 import { getRenderedEditorContent, buildExportHTML } from '@renderer/utils/exportUtils';
-import { normalizePath } from '@renderer/utils/path';
 import { jsonToMarkdown } from '@renderer/utils/jsonToMarkdown';
 
 import type { Editor } from '@tiptap/react';
@@ -44,22 +39,18 @@ export interface NoteEditorHandle {
   getEditor: () => Editor | null;
 }
 
-type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
-
 export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
-  const selectActiveNote = useCallback((state: NoteStoreState) => {
-    if (!state.activeNoteId) {
-      return null;
-    }
-    return state.notes.find((note) => note.id === state.activeNoteId) || null;
-  }, []);
+  // Use centralized editor operations hook
+  const {
+    activeNote,
+    activeNoteId,
+    activeNoteFilePath,
+    activeWorkspace,
+    setActiveNote,
+    syncFileTreeSelection,
+    removeBuffer,
+  } = useEditorOperations();
 
-  const activeNote = useNoteStore(selectActiveNote);
-  const activeNoteId = activeNote?.id || null;
-  const activeNoteFilePath = activeNote?.filePath ? activeNote.filePath.replace(/\\/g, '/') : '';
-  const setActiveNote = useNoteStore((state) => state.setActiveNote);
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
-  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const {
     updateNote,
     toggleFavorite,
@@ -142,14 +133,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
   // Reset to rich mode when switching notes
   useEffect(() => {
-    const { editorMode: currentMode, setEditorMode: setMode } = useUIStore.getState();
-    if (currentMode === 'raw') {
-      setMode('rich');
+    if (editorMode === 'raw') {
+      setEditorMode('rich');
     }
     setRawMarkdown('');
     lastSyncedMarkdownRef.current = '';
     setRawDirty(false);
-  }, [activeNoteId]);
+  }, [activeNoteId, editorMode, setEditorMode]);
 
   // Handle raw markdown changes
   const handleRawMarkdownChange = useCallback((value: string) => {
@@ -167,16 +157,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   // Sync selectedFile with activeNote to highlight the file in the tree
   useEffect(() => {
     if (!activeNoteFilePath) return;
-
-    const { setSelectedFile, setActiveFolder } = useFileTreeStore.getState();
-    const normalizedPath = normalizePath(activeNoteFilePath);
-    setSelectedFile(normalizedPath);
-
-    const lastSlash = normalizedPath.lastIndexOf('/');
-    if (lastSlash > 0) {
-      setActiveFolder(normalizedPath.substring(0, lastSlash));
-    }
-  }, [activeNoteFilePath]);
+    syncFileTreeSelection(activeNoteFilePath);
+  }, [activeNoteFilePath, syncFileTreeSelection]);
 
   // Handle save - works in both rich and raw modes
   const handleSave = useCallback(async () => {
@@ -315,8 +297,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   }, [activeNoteId, setActiveNote]);
 
   // Handle delete - remove buffer when note is deleted
-  const { removeBuffer } = useDocumentBufferStore();
-
   const handleDelete = useCallback(async () => {
     if (!activeNote) return;
 
@@ -337,8 +317,43 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     }
   }, [activeNote, deleteNote, removeBuffer, setActiveNote]);
 
+  // Memoized toggle handlers to prevent re-renders
+  const handleToggleFavorite = useCallback(() => {
+    if (activeNote) toggleFavorite(activeNote.id);
+  }, [activeNote, toggleFavorite]);
+
+  const handleTogglePin = useCallback(() => {
+    if (activeNote) togglePin(activeNote.id);
+  }, [activeNote, togglePin]);
+
+  const handleToggleArchive = useCallback(() => {
+    if (activeNote) {
+      toggleArchive(activeNote.id);
+      setActiveNote(null);
+    }
+  }, [activeNote, toggleArchive, setActiveNote]);
+
+  // Memoized export handlers
+  const handleExportHtml = useCallback(async () => {
+    if (!activeNote || !editor) return;
+    const htmlContent = editor.getHTML();
+    await exportHtml(activeNote.id, htmlContent, title);
+  }, [activeNote, editor, exportHtml, title]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!activeNote || !editor) return;
+    const renderedContent = getRenderedEditorContent(editor);
+    const fullHtml = buildExportHTML(title, renderedContent);
+    await exportPdf(activeNote.id, fullHtml, title);
+  }, [activeNote, editor, exportPdf, title]);
+
+  const handleExportMarkdown = useCallback(async () => {
+    if (!activeNote) return;
+    await exportMarkdown(activeNote.id, title);
+  }, [activeNote, exportMarkdown, title]);
+
   if (!activeNote) {
-    return <NoteEditorEmptyState />;
+    return <NoteEditorEmptyState onCreateNote={handleCreateSiblingNote} />;
   }
 
   return (
@@ -350,31 +365,16 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         isFavorite={activeNote.isFavorite || false}
         isPinned={activeNote.isPinned || false}
         isArchived={activeNote.isArchived || false}
-        onToggleFavorite={() => toggleFavorite(activeNote.id)}
-        onTogglePin={() => togglePin(activeNote.id)}
-        onToggleArchive={() => {
-          toggleArchive(activeNote.id);
-          setActiveNote(null);
-        }}
+        onToggleFavorite={handleToggleFavorite}
+        onTogglePin={handleTogglePin}
+        onToggleArchive={handleToggleArchive}
         onDelete={handleDelete}
         showSave={editorMode === 'raw' ? rawDirty : isDirty}
         onSave={handleSave}
         onModeToggle={handleModeToggle}
-        onExportHtml={async () => {
-          if (!activeNote || !editor) return;
-          const htmlContent = editor.getHTML();
-          await exportHtml(activeNote.id, htmlContent, title);
-        }}
-        onExportPdf={async () => {
-          if (!activeNote || !editor) return;
-          const renderedContent = getRenderedEditorContent(editor);
-          const fullHtml = buildExportHTML(title, renderedContent);
-          await exportPdf(activeNote.id, fullHtml, title);
-        }}
-        onExportMarkdown={async () => {
-          if (!activeNote) return;
-          await exportMarkdown(activeNote.id, title);
-        }}
+        onExportHtml={handleExportHtml}
+        onExportPdf={handleExportPdf}
+        onExportMarkdown={handleExportMarkdown}
       />
 
       {/* Editor Content - Rich or Raw mode */}
