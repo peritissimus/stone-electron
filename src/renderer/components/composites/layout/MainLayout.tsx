@@ -2,7 +2,7 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import { Sidebar } from '@renderer/components/features/navigation';
