@@ -4,9 +4,9 @@
  */
 
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShortcutsStore, type ShortcutAction } from '@renderer/stores/shortcutsStore';
 import { useUIStore } from '@renderer/stores/uiStore';
-import { useNoteStore } from '@renderer/stores/noteStore';
 import { useKeyboardShortcuts, ShortcutConfig, isMacOS } from './useKeyboardShortcuts';
 
 interface UseAppShortcutsOptions {
@@ -36,6 +36,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     onToggleEditorMode,
   } = options;
 
+  const navigate = useNavigate();
   const { getShortcut } = useShortcutsStore();
   const {
     openSettings,
@@ -46,7 +47,6 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     toggleFindReplace,
     toggleEditorMode,
   } = useUIStore();
-  const { setActiveNote } = useNoteStore();
 
   // Action handlers mapped by shortcut ID
   const actionHandlers = useMemo<Record<ShortcutAction, () => void>>(
@@ -64,10 +64,10 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       },
       commandCenter: () => toggleCommandCenter(),
       toggleSidebar: () => toggleSidebar(),
-      goHome: () => setActiveNote(null),
+      goHome: () => navigate('/home'),
       closeNote: () => {
         onCloseNote?.();
-        setActiveNote(null);
+        navigate('/home');
       },
       todayJournal: () => onTodayJournal?.(),
       findReplace: () => {
@@ -98,7 +98,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       toggleFindReplace,
       toggleEditorMode,
       toggleSidebar,
-      setActiveNote,
+      navigate,
     ],
   );
 

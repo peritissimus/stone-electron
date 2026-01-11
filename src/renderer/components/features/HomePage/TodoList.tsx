@@ -5,9 +5,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CheckSquare, Square, ArrowRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { logger } from '@renderer/utils/logger';
@@ -92,9 +92,9 @@ const StateLabel: React.FC<{ state: string }> = ({ state }) => {
 };
 
 export function TodoList({ onTodoClick }: TodoListProps) {
+  const navigate = useNavigate();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { setActiveNote } = useNoteStore();
   const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { getAllTodos } = useNoteAPI();
 
@@ -150,8 +150,8 @@ export function TodoList({ onTodoClick }: TodoListProps) {
       }
     }
 
-    // Set the active note
-    setActiveNote(todo.noteId);
+    // Navigate to note
+    navigate(`/note/${todo.noteId}`);
 
     // Call the optional callback
     if (onTodoClick) {
