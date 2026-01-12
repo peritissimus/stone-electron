@@ -41,6 +41,7 @@ import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
 import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/utils/draftStorage';
 import { logger } from '@renderer/utils/logger';
+import { useLocation } from 'react-router-dom';
 
 // Lazy load overlay components
 const SettingsModal = lazy(() =>
@@ -110,6 +111,7 @@ function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle>
 
 export function MainLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { sidebarOpen, sidebarWidth, noteListWidth, editorFullscreen, setSidebarWidth, setNoteListWidth } =
     useUI();
 
@@ -121,8 +123,26 @@ export function MainLayout() {
   const { loadWorkspaces } = useWorkspaceAPI();
   const { openOrCreateTodayJournal } = useJournalActions();
 
-  // Enable document autosave
-  useDocumentAutosave(30000);
+  // Enable document autosave (saves on blur, beforeunload, and note switch)
+  const { saveNote } = useDocumentAutosave();
+
+  // Track previous note to save when switching
+  const previousNoteIdRef = useRef<string | null>(null);
+
+  // Save previous note when navigating away
+  useEffect(() => {
+    // Extract noteId from path like /note/abc123
+    const match = location.pathname.match(/^\/note\/(.+)$/);
+    const currentNoteId = match ? match[1] : null;
+
+    // If we had a previous note and we're switching to a different one, save it
+    if (previousNoteIdRef.current && previousNoteIdRef.current !== currentNoteId) {
+      logger.debug('[MainLayout] Note switch detected, saving previous note:', previousNoteIdRef.current);
+      saveNote(previousNoteIdRef.current);
+    }
+
+    previousNoteIdRef.current = currentNoteId;
+  }, [location.pathname, saveNote]);
 
   // Helper to create a note in a specific folder
   const createNoteInFolder = async (folderPath: string) => {
