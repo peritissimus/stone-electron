@@ -1339,3 +1339,66 @@ textarea:focus {
 .mermaid-preview svg ellipse {
   stroke-width: 1.5px !important;
 }
+
+/* ER Diagram specific styles */
+.mermaid-preview svg .entityBox,
+.mermaid-preview svg [class*='entityBox'] {
+  fill: hsl(var(--card)) !important;
+  stroke: hsl(var(--border)) !important;
+}
+
+.mermaid-preview svg .attributeBoxOdd,
+.mermaid-preview svg [class*='attributeBoxOdd'] {
+  fill: hsl(var(--muted)) !important;
+  stroke: hsl(var(--border)) !important;
+}
+
+.mermaid-preview svg .attributeBoxEven,
+.mermaid-preview svg [class*='attributeBoxEven'] {
+  fill: hsl(var(--card)) !important;
+  stroke: hsl(var(--border)) !important;
+}
+
+.mermaid-preview svg .relationshipLine,
+.mermaid-preview svg [class*='relationshipLine'] {
+  stroke: hsl(var(--muted-foreground)) !important;
+}
+
+.mermaid-preview svg .relationshipLabel,
+.mermaid-preview svg [class*='relationshipLabel'] {
+  fill: hsl(var(--foreground)) !important;
+}
+
+/* Dark mode ER diagram styles */
+.dark .mermaid-preview svg .entityBox,
+.dark .mermaid-preview svg [class*='entityBox'] {
+  fill: hsl(0 0% 18%) !important;
+  stroke: hsl(0 0% 35%) !important;
+}
+
+.dark .mermaid-preview svg .attributeBoxOdd,
+.dark .mermaid-preview svg [class*='attributeBoxOdd'] {
+  fill: hsl(0 0% 22%) !important;
+  stroke: hsl(0 0% 35%) !important;
+}
+
+.dark .mermaid-preview svg .attributeBoxEven,
+.dark .mermaid-preview svg [class*='attributeBoxEven'] {
+  fill: hsl(0 0% 18%) !important;
+  stroke: hsl(0 0% 35%) !important;
+}
+
+.dark .mermaid-preview svg .relationshipLine,
+.dark .mermaid-preview svg [class*='relationshipLine'] {
+  stroke: hsl(0 0% 50%) !important;
+}
+
+.dark .mermaid-preview svg .entityLabel,
+.dark .mermaid-preview svg [class*='entityLabel'] {
+  fill: hsl(0 0% 90%) !important;
+}
+
+.dark .mermaid-preview svg g[id^='entity'] text,
+.dark .mermaid-preview svg .entityLabel text {
+  fill: hsl(0 0% 90%) !important;
+}

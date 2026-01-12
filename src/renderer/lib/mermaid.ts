@@ -221,6 +221,21 @@ export function initializeMermaid(
       nodeBkg: nodePrimary,
       nodeTextColor: nodeText,
       clusterBkg: nodeSecondary,
+      // ER diagram specific
+      attributeBackgroundColorOdd: nodePrimary,
+      attributeBackgroundColorEven: nodeSecondary,
+      entityBkg: nodePrimary,
+      entityBorderColor: lineTone,
+      relationshipColor: lineTone,
+      relationshipLabelBackground: labelBackground,
+      relationshipLabelColor: nodeText,
+    },
+    er: {
+      useMaxWidth: false,
+      entityPadding: 15,
+      fontSize: 14,
+      fill: nodePrimary,
+      stroke: lineTone,
     },
     flowchart: {
       curve: 'basis',
@@ -246,6 +261,89 @@ export function initializeMermaid(
       axisFormat: '%m/%d',
     },
   });
+}
+
+/**
+ * Post-process SVG to fix ER diagram colors for dark mode
+ */
+export function fixERDiagramColors(svg: string, isDark: boolean): string {
+  // Check if this is an ER diagram
+  if (!svg.includes('entity-') && !svg.includes('row-rect-')) {
+    return svg; // Not an ER diagram
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+
+  // Fix row-rect-odd paths (attribute rows) - these have light fill that needs to be dark
+  const rowOddGroups = doc.querySelectorAll('.row-rect-odd');
+  rowOddGroups.forEach((group) => {
+    const paths = group.querySelectorAll('path');
+    paths.forEach((path) => {
+      const fill = path.getAttribute('fill');
+      // Only fix if it has a light fill (high lightness value)
+      if (fill && (fill.includes('93%') || fill.includes('95%') || fill.includes('100%'))) {
+        path.setAttribute('fill', isDark ? 'hsl(0, 0%, 25%)' : 'hsl(0, 0%, 95%)');
+      }
+    });
+  });
+
+  // Fix row-rect-even paths
+  const rowEvenGroups = doc.querySelectorAll('.row-rect-even');
+  rowEvenGroups.forEach((group) => {
+    const paths = group.querySelectorAll('path');
+    paths.forEach((path) => {
+      const fill = path.getAttribute('fill');
+      if (fill) {
+        path.setAttribute('fill', isDark ? 'hsl(0, 0%, 18%)' : 'hsl(0, 0%, 100%)');
+      }
+    });
+  });
+
+  // Fix all path fills in entity nodes that have light colors in dark mode
+  if (isDark) {
+    const entityNodes = doc.querySelectorAll('g[id^="entity-"]');
+    entityNodes.forEach((node) => {
+      const paths = node.querySelectorAll('path[fill]');
+      paths.forEach((path) => {
+        const fill = path.getAttribute('fill');
+        // Fix any light fills (high percentage in hsl)
+        if (fill && /hsl\([^)]*(?:9\d|100)%\s*\)/.test(fill)) {
+          path.setAttribute('fill', 'hsl(0, 0%, 25%)');
+        }
+      });
+    });
+  }
+
+  // Fix text colors in ER diagrams
+  const textColor = isDark ? 'hsl(0, 0%, 90%)' : 'hsl(0, 0%, 15%)';
+
+  // Fix all text elements in entity nodes
+  const textElements = doc.querySelectorAll('g[id^="entity-"] text');
+  textElements.forEach((text) => {
+    text.setAttribute('fill', textColor);
+  });
+
+  // Fix tspan elements that might have their own fill
+  const tspanElements = doc.querySelectorAll('g[id^="entity-"] tspan');
+  tspanElements.forEach((tspan) => {
+    tspan.setAttribute('fill', textColor);
+  });
+
+  // Fix edge labels (relationship labels like "has", "owns", etc.)
+  const edgeLabels = doc.querySelectorAll('.edgeLabel text, .edgeLabel tspan');
+  edgeLabels.forEach((el) => {
+    el.setAttribute('fill', textColor);
+  });
+
+  // Fix background rects in labels
+  const labelBgs = doc.querySelectorAll('.edgeLabel .background, .label .background');
+  labelBgs.forEach((bg) => {
+    bg.setAttribute('fill', isDark ? 'hsl(0, 0%, 15%)' : 'hsl(0, 0%, 98%)');
+  });
+
+  const serializer = new XMLSerializer();
+  return serializer.serializeToString(doc.documentElement);
 }
 
 /**
@@ -330,7 +428,8 @@ export async function renderMermaidDiagram(
 
     const id = `mermaid-${++mermaidRenderCounter}`;
     const { svg } = await mermaid.render(id, code);
-    const fixedSvg = fixMermaidForeignObjects(svg);
+    let fixedSvg = fixMermaidForeignObjects(svg);
+    fixedSvg = fixERDiagramColors(fixedSvg, isDark);
 
     // Cache the result
     svgCache.set(cacheKey, fixedSvg);

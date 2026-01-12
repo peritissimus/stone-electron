@@ -209,8 +209,9 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
         contentEditable={false}
         suppressContentEditableWarning
         className={cn(
-          'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none',
+          'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none min-w-fit',
           isStateDiagram && 'mermaid-state-diagram',
+          '[&>svg]:max-w-none',
         )}
         onDoubleClick={(e) => {
           e.preventDefault();
