@@ -55,12 +55,17 @@ const levels: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 
 const minLevel: LogLevel = isDev ? 'debug' : 'info';
 
 if (app?.getPath) {
-  baseLog.transports.file.resolvePathFn = () => {
-    const userDataPath = app!.getPath('userData');
-    return path.join(userDataPath, 'logs', 'stone.log');
-  };
+  // Dev: console only, no file logging
+  // Prod: file logging only, no console
   baseLog.transports.console.level = isDev ? 'debug' : false;
-  baseLog.transports.file.level = isDev ? 'debug' : 'info';
+  baseLog.transports.file.level = isDev ? false : 'info';
+
+  if (!isDev) {
+    baseLog.transports.file.resolvePathFn = () => {
+      const userDataPath = app!.getPath('userData');
+      return path.join(userDataPath, 'logs', 'stone.log');
+    };
+  }
 } else {
   // Electron not available (e.g., in tests or scripts)
   baseLog.transports.file.level = false;
