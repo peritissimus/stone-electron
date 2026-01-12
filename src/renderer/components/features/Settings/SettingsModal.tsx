@@ -14,6 +14,7 @@ import {
   Info,
   Keyboard,
   GitBranch,
+  Activity,
 } from 'phosphor-react';
 import { useDatabaseAPI } from '@renderer/hooks/useDatabaseAPI';
 import { DatabaseStatus } from '@shared/types';
@@ -26,6 +27,7 @@ import { FontSettings } from './FontSettings';
 import { FontPreview } from './FontPreview';
 import { KeyboardShortcutsSettings } from './KeyboardShortcutsSettings';
 import { GitSettings } from './GitSettings';
+import { PerformanceSettings } from './PerformanceSettings';
 import {
   Select,
   SelectContent,
@@ -40,7 +42,7 @@ import { ContainerStack, ContainerCenter, Separator } from '@renderer/components
 export function SettingsModal() {
   const { settingsOpen, closeSettings } = useModals();
   const [activeTab, setActiveTab] = useState<
-    'database' | 'appearance' | 'shortcuts' | 'git' | 'about'
+    'database' | 'appearance' | 'shortcuts' | 'git' | 'performance' | 'about'
   >('appearance');
 
   // Close on Escape key
@@ -64,6 +66,7 @@ export function SettingsModal() {
     { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={16} /> },
     { id: 'git', label: 'Git Sync', icon: <GitBranch size={16} /> },
     { id: 'database', label: 'Database', icon: <Database size={16} /> },
+    { id: 'performance', label: 'Performance', icon: <Activity size={16} /> },
     { id: 'about', label: 'About', icon: <Info size={16} /> },
   ];
 
@@ -79,6 +82,7 @@ export function SettingsModal() {
       {activeTab === 'shortcuts' && <KeyboardShortcutsSettings />}
       {activeTab === 'git' && <GitSettings />}
       {activeTab === 'database' && <DatabaseSettings />}
+      {activeTab === 'performance' && <PerformanceSettings />}
       {activeTab === 'about' && <AboutSettings />}
     </TabbedModal>
   );

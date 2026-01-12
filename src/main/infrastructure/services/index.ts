@@ -12,3 +12,17 @@ export {
 } from './EmbeddingWorkerService';
 
 export { getMLStatusService, createMLStatusService } from './MLStatusService';
+
+export {
+  PerformanceMonitor,
+  getPerformanceMonitor,
+  type PerformanceSnapshot,
+  type StartupMetrics,
+  type MemoryMetrics,
+  type CPUMetrics,
+  type EventLoopMetrics,
+  type IPCMetrics,
+  type DatabaseMetrics,
+  type ChannelStats,
+  type OperationStats,
+} from './PerformanceMonitor';

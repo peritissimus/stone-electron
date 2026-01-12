@@ -18,6 +18,10 @@ import {
   unregisterIPCHandlers,
   getContainer,
 } from './infrastructure/di/container';
+import { getPerformanceMonitor } from './infrastructure/services/PerformanceMonitor';
+
+// Initialize performance monitoring immediately
+const perfMonitor = getPerformanceMonitor();
 
 // Log startup
 logger.info('='.repeat(60));
@@ -94,6 +98,11 @@ async function createWindow() {
     }
 
     logger.info('Window loaded successfully');
+
+    // Track when window is ready to show
+    mainWindow.once('ready-to-show', () => {
+      perfMonitor.markWindowReady();
+    });
 
     mainWindow.on('closed', () => {
       logger.info('Window closed');
@@ -172,6 +181,7 @@ app.on('ready', async () => {
     logger.info('🔄 Initializing database...');
     const dbManager = getDatabaseManager();
     await dbManager.initialize();
+    perfMonitor.markStartupPhase('dbInitTime');
     logger.info('✓ Database initialized');
 
     // Initialize hex DI container
@@ -180,15 +190,18 @@ app.on('ready', async () => {
       db: dbManager.getDrizzle(),
       dbManager: dbManager,
     });
+    perfMonitor.markStartupPhase('containerInitTime');
     logger.info('✓ Hex DI container initialized');
 
     // Register hex IPC handlers
     logger.info('🔄 Registering hex IPC handlers...');
     registerIPCHandlers();
+    perfMonitor.markStartupPhase('ipcRegistrationTime');
     logger.info('✓ Hex IPC handlers registered');
 
     // Create window
     await createWindow();
+    perfMonitor.markStartupPhase('windowCreationTime');
     logger.info('✓ Application window created');
 
     // Register global shortcut for quick capture
@@ -210,6 +223,10 @@ app.on('ready', async () => {
     } catch (e) {
       logger.error('Failed to start file watcher:', e);
     }
+
+    // Mark startup complete and start continuous monitoring
+    perfMonitor.markStartupComplete();
+    perfMonitor.startMonitoring();
   } catch (error) {
     logger.error('Failed to start application:', error);
     app.quit();
@@ -230,6 +247,9 @@ app.on('window-all-closed', () => {
  */
 app.on('before-quit', () => {
   logger.info('App quitting, cleaning up...');
+
+  // Stop performance monitoring
+  perfMonitor.stopMonitoring();
 
   // Unregister all global shortcuts
   globalShortcut.unregisterAll();

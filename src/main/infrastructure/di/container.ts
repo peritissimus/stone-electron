@@ -99,6 +99,9 @@ import {
   unregisterSystemHandlers,
   registerSettingsHandlers,
   unregisterSettingsHandlers,
+  registerPerformanceHandlers,
+  unregisterPerformanceHandlers,
+  setMainWindow,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   NotebookRepository,
@@ -123,6 +126,8 @@ import {
   GitOperations,
   EventPublisher,
 } from '../../adapters';
+
+import { getPerformanceMonitor } from '../services/PerformanceMonitor';
 
 // ============================================================================
 // Container Types
@@ -556,6 +561,19 @@ export function registerIPCHandlers(): void {
   registerSettingsHandlers({
     settingsUseCases: container.settingsUseCases,
   });
+
+  // Performance monitoring handlers
+  const perfMonitor = getPerformanceMonitor();
+  registerPerformanceHandlers({
+    getSnapshot: (sinceMs?: number) => perfMonitor.getSnapshot(sinceMs),
+    getMemoryMetrics: () => perfMonitor.getMemoryMetrics(),
+    getCPUMetrics: () => perfMonitor.getCPUMetrics(),
+    getIPCMetrics: (sinceMs?: number) => perfMonitor.getIPCMetrics(sinceMs),
+    getDatabaseMetrics: (sinceMs?: number) => perfMonitor.getDatabaseMetrics(sinceMs),
+    getStartupMetrics: () => ({ ...perfMonitor.getSnapshot().startup }),
+    clearHistory: () => perfMonitor.clearHistory(),
+    getRendererMetrics: (window) => perfMonitor.getRendererMetrics(window),
+  });
 }
 
 export function unregisterIPCHandlers(): void {
@@ -580,4 +598,5 @@ export function unregisterIPCHandlers(): void {
   unregisterQuickCaptureHandlers();
   unregisterSystemHandlers();
   unregisterSettingsHandlers();
+  unregisterPerformanceHandlers();
 }
