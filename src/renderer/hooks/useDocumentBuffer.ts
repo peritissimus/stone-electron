@@ -238,9 +238,11 @@ export function useDocumentBuffer({
 }
 
 /**
- * Hook for autosaving dirty buffers periodically and on blur/close
+ * Hook for autosaving dirty buffers on blur, note switch, and app close.
+ * No periodic autosave - saves only on explicit triggers to avoid
+ * unnecessary writes while user is actively editing.
  */
-export function useDocumentAutosave(intervalMs: number = 30000) {
+export function useDocumentAutosave() {
   const { getDirtyBuffers, markClean } = useDocumentBufferStore();
   const { updateNote } = useNoteAPI();
 
@@ -248,7 +250,7 @@ export function useDocumentAutosave(intervalMs: number = 30000) {
     const dirtyBuffers = getDirtyBuffers();
     if (dirtyBuffers.length === 0) return;
 
-    logger.info('[useDocumentAutosave] Autosaving dirty buffers:', dirtyBuffers.length);
+    logger.info('[useDocumentAutosave] Saving dirty buffers:', dirtyBuffers.length);
 
     for (const buffer of dirtyBuffers) {
       try {
@@ -265,11 +267,23 @@ export function useDocumentAutosave(intervalMs: number = 30000) {
     }
   }, [getDirtyBuffers, updateNote, markClean]);
 
-  // Periodic autosave
-  useEffect(() => {
-    const interval = setInterval(saveAllDirty, intervalMs);
-    return () => clearInterval(interval);
-  }, [saveAllDirty, intervalMs]);
+  // Save a specific note (used when switching notes)
+  const saveNote = useCallback(async (noteId: string) => {
+    const buffer = useDocumentBufferStore.getState().getBuffer(noteId);
+    if (!buffer || !buffer.isDirty) return;
+
+    logger.debug('[useDocumentAutosave] Saving note on switch:', noteId);
+    try {
+      const markdown = jsonToMarkdown(buffer.content as any);
+      const result = await updateNote(noteId, { content: markdown }, false);
+      if (result) {
+        markClean(noteId);
+        deleteDraft(noteId);
+      }
+    } catch (error) {
+      logger.error('[useDocumentAutosave] Failed to save on switch:', noteId, error);
+    }
+  }, [updateNote, markClean]);
 
   // Save on window blur
   useEffect(() => {
@@ -302,5 +316,5 @@ export function useDocumentAutosave(intervalMs: number = 30000) {
     };
   }, [saveAllDirty, getDirtyBuffers, updateNote]);
 
-  return { saveAllDirty };
+  return { saveAllDirty, saveNote };
 }
