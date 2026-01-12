@@ -10,18 +10,28 @@ import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
 import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
 
 export const App: React.FC = () => {
-  const theme = useUIStore((state) => state.theme);
-  const accentColor = useUIStore((state) => state.accentColor);
-  const fontSettings = useUIStore((state) => state.fontSettings);
-
-  // Check if this is the quick capture window (check before router takes over)
+  // Check if this is the quick capture window FIRST (before any store access)
   const [isQuickCapture] = useState(() => {
     const hash = window.location.hash;
     return hash === '#/quick-capture' || hash === '/quick-capture';
   });
 
-  // Apply theme
+  // Only access store for main window - quick capture doesn't need theme management
+  const theme = useUIStore((state) => (isQuickCapture ? 'system' : state.theme));
+  const accentColor = useUIStore((state) => (isQuickCapture ? 'blue' : state.accentColor));
+  const fontSettings = useUIStore((state) =>
+    isQuickCapture ? null : state.fontSettings,
+  );
+
+  // Apply theme (skip for quick capture - uses system default)
   useEffect(() => {
+    if (isQuickCapture) {
+      // Quick capture: just apply system theme immediately
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', isDark);
+      return;
+    }
+
     const root = document.documentElement;
 
     if (theme === 'dark') {
@@ -40,10 +50,12 @@ export const App: React.FC = () => {
         root.classList.remove('dark');
       }
     }
-  }, [theme]);
+  }, [theme, isQuickCapture]);
 
-  // Apply accent color
+  // Apply accent color (skip for quick capture)
   useEffect(() => {
+    if (isQuickCapture) return;
+
     const root = document.documentElement;
     const hue = ACCENT_COLORS[accentColor]?.hue ?? 211;
     const isDark = root.classList.contains('dark');
@@ -59,10 +71,12 @@ export const App: React.FC = () => {
       root.style.setProperty('--accent', `${hue} 100% 90% / 0.6`);
       root.style.setProperty('--accent-foreground', `${hue} 100% 40%`);
     }
-  }, [accentColor, theme]);
+  }, [accentColor, theme, isQuickCapture]);
 
-  // Apply font settings as CSS variables
+  // Apply font settings as CSS variables (skip for quick capture)
   useEffect(() => {
+    if (isQuickCapture || !fontSettings) return;
+
     const root = document.documentElement;
 
     // UI fonts
@@ -78,16 +92,11 @@ export const App: React.FC = () => {
     // Code fonts
     root.style.setProperty('--font-mono', fontSettings.monoFont);
     root.style.setProperty('--font-mono-size', `${fontSettings.monoFontSize}px`);
-  }, [fontSettings]);
+  }, [fontSettings, isQuickCapture]);
 
-  // Render quick capture window if that's the route
+  // Render quick capture window if that's the route (minimal UI, no toaster)
   if (isQuickCapture) {
-    return (
-      <>
-        <QuickCaptureWindow />
-        <Toaster position="top-center" richColors closeButton />
-      </>
-    );
+    return <QuickCaptureWindow />;
   }
 
   return (
