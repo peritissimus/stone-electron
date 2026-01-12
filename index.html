@@ -31,21 +31,43 @@
   </head>
   <body>
     <div id="root">
-      <!-- Static loading skeleton - shows before React loads, becomes LCP -->
-      <div id="app-skeleton" style="display: flex; height: 100vh; background: hsl(240 10% 4%); font-family: system-ui, -apple-system, sans-serif;">
-        <!-- Sidebar skeleton -->
-        <div style="width: 240px; border-right: 1px solid hsl(240 4% 16%); padding: 12px;">
-          <div style="height: 32px; background: hsl(240 4% 16%); border-radius: 6px; margin-bottom: 12px;"></div>
-          <div style="height: 24px; width: 60%; background: hsl(240 4% 16%); border-radius: 4px; margin-bottom: 8px;"></div>
-          <div style="height: 24px; width: 80%; background: hsl(240 4% 16%); border-radius: 4px; margin-bottom: 8px;"></div>
-          <div style="height: 24px; width: 70%; background: hsl(240 4% 16%); border-radius: 4px;"></div>
-        </div>
-        <!-- Main content with text for LCP -->
-        <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
-          <p style="color: hsl(240 5% 65%); font-size: 14px;">Loading Stone...</p>
-        </div>
+      <!-- Minimal loading screen -->
+      <div
+        id="app-loading"
+        style="
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          font-family:
+            system-ui,
+            -apple-system,
+            sans-serif;
+          color: hsl(240 5% 65%);
+          gap: 16px;
+        "
+      >
+        <div
+          style="
+            width: 24px;
+            height: 24px;
+            border: 2px solid hsl(240 5% 25%);
+            border-top-color: hsl(240 5% 65%);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+          "
+        ></div>
+        <span style="font-size: 14px; font-weight: 500">Loading Stone...</span>
       </div>
+      <style>
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      </style>
     </div>
-    <script type="module" src="/src/renderer/main.tsx"></script>
   </body>
+  <script type="module" src="/src/renderer/main.tsx"></script>
 </html>

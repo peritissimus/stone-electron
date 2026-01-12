@@ -76,14 +76,17 @@ export function useEditorMode({
   }, [editorMode, editor, rawMarkdown]);
 
   // Reset to rich mode when switching notes
+  const prevNoteIdRef = useRef(activeNoteId);
   useEffect(() => {
-    if (editorMode === 'raw') {
-      setEditorMode('rich');
-    }
+    // Only reset when note actually changes, not on every render
+    if (prevNoteIdRef.current === activeNoteId) return;
+    prevNoteIdRef.current = activeNoteId;
+
+    setEditorMode('rich');
     setRawMarkdown('');
     lastSyncedMarkdownRef.current = '';
     setRawDirty(false);
-  }, [activeNoteId, editorMode, setEditorMode]);
+  }, [activeNoteId, setEditorMode]);
 
   // Handle raw markdown changes
   const handleRawMarkdownChange = useCallback((value: string) => {
