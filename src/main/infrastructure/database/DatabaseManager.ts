@@ -33,9 +33,9 @@ try {
 import { sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
-import { nanoid } from 'nanoid';
 import * as schema from '../../shared/database';
 import { logger } from '../../shared/utils';
+import { seedDatabase } from '../seed/seedDatabase';
 
 export class DatabaseManager {
   private client: any = null;
@@ -75,7 +75,7 @@ export class DatabaseManager {
       logger.info(`Migrations path: ${migrationsPath}`);
       await migrate(this.db, { migrationsFolder: migrationsPath });
 
-      await this.seedDatabase();
+      await this.seedDatabaseData();
 
       logger.info('Database initialized successfully');
     } catch (error) {
@@ -84,7 +84,7 @@ export class DatabaseManager {
     }
   }
 
-  private async seedDatabase(): Promise<void> {
+  private async seedDatabaseData(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
     // Seed predefined topics
@@ -106,6 +106,17 @@ export class DatabaseManager {
         });
       }
       logger.info('Seeded predefined topics');
+    }
+
+    // Seed default workspace, notebooks, and notes if not present
+    const seedResult = await seedDatabase(this.db);
+    if (seedResult) {
+      logger.info('Seeded default workspace:', {
+        workspaceId: seedResult.workspaceId,
+        workspacePath: seedResult.workspacePath,
+        notebooks: seedResult.notebooks.length,
+        notes: seedResult.notes.length,
+      });
     }
   }
 

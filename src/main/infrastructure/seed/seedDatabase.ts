@@ -55,6 +55,7 @@ export async function seedDatabase(
   const workspaceId = nanoid();
   const personalNotebookId = nanoid();
   const workNotebookId = nanoid();
+  const journalNotebookId = nanoid();
   const welcomeNoteId = nanoid();
   const roadmapNoteId = nanoid();
   const ideasTagId = nanoid();
@@ -69,8 +70,10 @@ export async function seedDatabase(
       }
       const personalPath = path.join(workspaceFolderPath, 'Personal');
       const workPath = path.join(workspaceFolderPath, 'Work');
+      const journalPath = path.join(workspaceFolderPath, 'Journal');
       if (!fs.existsSync(personalPath)) fs.mkdirSync(personalPath, { recursive: true });
       if (!fs.existsSync(workPath)) fs.mkdirSync(workPath, { recursive: true });
+      if (!fs.existsSync(journalPath)) fs.mkdirSync(journalPath, { recursive: true });
     } catch (error) {
       console.warn('Could not create workspace directories:', error);
     }
@@ -109,6 +112,18 @@ export async function seedDatabase(
       icon: '💼',
       color: '#3b82f6',
       position: 1,
+      createdAt: now(),
+      updatedAt: now(),
+    },
+    {
+      id: journalNotebookId,
+      name: 'Journal',
+      parentId: null as string | null,
+      workspaceId: workspaceId,
+      folderPath: 'Journal',
+      icon: '📅',
+      color: '#22c55e',
+      position: 2,
       createdAt: now(),
       updatedAt: now(),
     },
