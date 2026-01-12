@@ -147,6 +147,17 @@ export const QUICK_CAPTURE_CHANNELS = {
   APPEND_TO_JOURNAL: 'quickCapture:appendToJournal',
 } as const;
 
+// Performance Monitoring Operations
+export const PERFORMANCE_CHANNELS = {
+  GET_SNAPSHOT: 'performance:getSnapshot',
+  GET_MEMORY: 'performance:getMemory',
+  GET_CPU: 'performance:getCPU',
+  GET_IPC_STATS: 'performance:getIPCStats',
+  GET_DB_STATS: 'performance:getDBStats',
+  GET_STARTUP: 'performance:getStartup',
+  CLEAR_HISTORY: 'performance:clearHistory',
+} as const;
+
 // Events
 export const EVENTS = {
   // Workspace events
@@ -223,6 +234,7 @@ export const ALL_CHANNELS = [
   ...Object.values(SYSTEM_CHANNELS),
   ...Object.values(GIT_CHANNELS),
   ...Object.values(QUICK_CAPTURE_CHANNELS),
+  ...Object.values(PERFORMANCE_CHANNELS),
 ];
 
 // Get all events as an array

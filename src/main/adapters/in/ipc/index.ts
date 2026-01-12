@@ -63,3 +63,11 @@ export {
   unregisterSettingsHandlers,
   type SettingsIPCDeps,
 } from './SettingsIPC';
+
+// Performance monitoring
+export {
+  registerPerformanceHandlers,
+  unregisterPerformanceHandlers,
+  setMainWindow,
+  type PerformanceIPCDeps,
+} from './PerformanceIPC';

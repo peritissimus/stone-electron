@@ -54,3 +54,19 @@ export type { GitStatus, GitCommitResult, GitSyncResult, GitCommit } from './git
 
 // Quick Capture API
 export { quickCaptureAPI } from './quickCaptureAPI';
+
+// Performance Monitoring API
+export { performanceAPI } from './performanceAPI';
+export type {
+  PerformanceSnapshot,
+  StartupMetrics,
+  MemoryMetrics,
+  CPUMetrics,
+  EventLoopMetrics,
+  IPCMetrics,
+  DatabaseMetrics,
+  RendererMetrics,
+  ChannelStats,
+  OperationStats,
+  LongTaskEntry,
+} from './performanceAPI';
