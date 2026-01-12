@@ -127,7 +127,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
             </div>
           ) : (
             // Diagram preview
-            <div className="p-4 bg-background relative">
+            <div className="p-4 bg-background relative overflow-x-auto">
               <MermaidRenderer
                 code={codeContent}
                 language={isFlowDSL ? 'flowdsl' : 'mermaid'}
