@@ -1,6 +1,7 @@
 /**
  * Note Editor Content Component
  */
+import { forwardRef } from 'react';
 import { Editor } from '@tiptap/react';
 import { EditorContent } from '@tiptap/react';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
@@ -45,23 +46,25 @@ function EditorSkeleton() {
   );
 }
 
-export function NoteEditorContent({ editor, isLoading }: NoteEditorContentProps) {
-  const { showBlockIndicators } = useEditorUI();
+export const NoteEditorContent = forwardRef<HTMLDivElement, NoteEditorContentProps>(
+  function NoteEditorContent({ editor, isLoading }, ref) {
+    const { showBlockIndicators } = useEditorUI();
 
-  return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-background relative">
-      {isLoading ? (
-        <EditorSkeleton />
-      ) : (
-        <div
-          className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}
-        >
-          <EditorContent
-            editor={editor}
-            className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
+    return (
+      <div ref={ref} className="flex-1 min-h-0 overflow-y-auto bg-background relative">
+        {isLoading ? (
+          <EditorSkeleton />
+        ) : (
+          <div
+            className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}
+          >
+            <EditorContent
+              editor={editor}
+              className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"
+            />
+          </div>
+        )}
+      </div>
+    );
+  },
+);

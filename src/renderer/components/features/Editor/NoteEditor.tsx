@@ -56,6 +56,11 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const creatingNoteRef = useRef(false);
   const titleSaveTimeoutRef = useRef<number | null>(null);
 
+  // Scroll container refs for preserving scroll position on mode switch
+  const richEditorScrollRef = useRef<HTMLDivElement>(null);
+  const rawEditorScrollRef = useRef<HTMLDivElement>(null);
+  const scrollPercentRef = useRef<number>(0);
+
   // Document buffer for content management
   const { isDirty, save } = useDocumentBuffer({
     noteId: activeNoteId,
@@ -93,6 +98,32 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     editor,
     title,
   });
+
+  // Preserve scroll position on mode switch
+  const previousModeRef = useRef(editorMode);
+  useEffect(() => {
+    const prevMode = previousModeRef.current;
+    previousModeRef.current = editorMode;
+
+    // Skip if mode hasn't changed
+    if (prevMode === editorMode) return;
+
+    // Capture scroll position from previous editor
+    const prevScrollContainer = prevMode === 'rich' ? richEditorScrollRef.current : rawEditorScrollRef.current;
+    if (prevScrollContainer && prevScrollContainer.scrollHeight > prevScrollContainer.clientHeight) {
+      const scrollableHeight = prevScrollContainer.scrollHeight - prevScrollContainer.clientHeight;
+      scrollPercentRef.current = scrollableHeight > 0 ? prevScrollContainer.scrollTop / scrollableHeight : 0;
+    }
+
+    // Restore scroll position in new editor after a brief delay (for render)
+    requestAnimationFrame(() => {
+      const newScrollContainer = editorMode === 'rich' ? richEditorScrollRef.current : rawEditorScrollRef.current;
+      if (newScrollContainer && newScrollContainer.scrollHeight > newScrollContainer.clientHeight) {
+        const scrollableHeight = newScrollContainer.scrollHeight - newScrollContainer.clientHeight;
+        newScrollContainer.scrollTop = scrollPercentRef.current * scrollableHeight;
+      }
+    });
+  }, [editorMode]);
 
   // Sync title from activeNote
   useEffect(() => {
@@ -274,9 +305,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       />
 
       {editorMode === 'raw' ? (
-        <RawMarkdownEditor value={rawMarkdown} onChange={handleRawMarkdownChange} />
+        <RawMarkdownEditor ref={rawEditorScrollRef} value={rawMarkdown} onChange={handleRawMarkdownChange} />
       ) : (
-        <NoteEditorContent editor={editor} isLoading={false} />
+        <NoteEditorContent ref={richEditorScrollRef} editor={editor} isLoading={false} />
       )}
 
       {activeNoteId && editorMode === 'rich' && <BacklinksPanel noteId={activeNoteId} />}
