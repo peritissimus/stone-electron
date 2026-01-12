@@ -7,6 +7,7 @@ import { cn } from '@renderer/lib/utils';
 import { renderMermaidDiagram } from '@renderer/lib/mermaid';
 import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
 import { logger } from '@renderer/utils/logger';
+import { DiagramFullscreenDialog } from './DiagramFullscreenDialog';
 
 interface EditingState {
   nodeId: string;
@@ -22,6 +23,8 @@ interface MermaidRendererProps {
   isDarkMode: boolean;
   onEditCode: () => void;
   onUpdateSource?: (nodeId: string, oldLabel: string, newLabel: string) => void;
+  isFullscreen?: boolean;
+  onFullscreenChange?: (open: boolean) => void;
 }
 
 export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
@@ -30,6 +33,8 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   isDarkMode,
   onEditCode,
   onUpdateSource,
+  isFullscreen = false,
+  onFullscreenChange,
 }) => {
   const [renderedSvg, setRenderedSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -209,9 +214,9 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
         contentEditable={false}
         suppressContentEditableWarning
         className={cn(
-          'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none min-w-fit',
+          'flex justify-center items-center min-h-[100px] mermaid-preview relative select-none w-full',
           isStateDiagram && 'mermaid-state-diagram',
-          '[&>svg]:max-w-none',
+          '[&>svg]:max-w-full [&>svg]:h-auto',
         )}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -220,6 +225,17 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
         }}
         dangerouslySetInnerHTML={{ __html: renderedSvg }}
       />
+
+      {/* Fullscreen dialog */}
+      {onFullscreenChange && (
+        <DiagramFullscreenDialog
+          open={isFullscreen}
+          onOpenChange={onFullscreenChange}
+          svgContent={renderedSvg}
+          title={isFlowDSL ? 'FlowDSL Diagram' : 'Mermaid Diagram'}
+        />
+      )}
+
       {/* Inline edit overlay */}
       {editing && (
         <div

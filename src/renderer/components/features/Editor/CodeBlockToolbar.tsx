@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check } from 'phosphor-react';
+import { Copy, Check, ArrowsOutSimple } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 
 /**
@@ -39,6 +39,7 @@ interface CodeBlockToolbarProps {
   isDiagram?: boolean;
   showCode?: boolean;
   onToggleView?: () => void;
+  onFullscreen?: () => void;
   codeContent?: string;
 }
 
@@ -48,6 +49,7 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
   isDiagram = false,
   showCode = false,
   onToggleView,
+  onFullscreen,
   codeContent = '',
 }) => {
   const [copied, setCopied] = useState(false);
@@ -66,6 +68,24 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
 
   return (
     <div className="absolute top-2 right-2 flex items-center gap-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+      {/* Fullscreen button (only for diagrams in preview mode) */}
+      {isDiagram && !showCode && onFullscreen && (
+        <button
+          type="button"
+          contentEditable={false}
+          onClick={onFullscreen}
+          className={cn(
+            'p-1.5 rounded bg-background/90 backdrop-blur-xs',
+            'border border-border text-foreground cursor-pointer',
+            'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
+            'hover:bg-accent transition-colors',
+          )}
+          title="View fullscreen"
+        >
+          <ArrowsOutSimple size={14} />
+        </button>
+      )}
+
       {/* Diagram toggle button (Mermaid or FlowDSL) */}
       {isDiagram && onToggleView && (
         <button
