@@ -8,6 +8,7 @@ import { useModals } from '@renderer/hooks/useUI';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { fuzzyFilter } from '@renderer/utils/fuzzyMatch';
 import {
   FileText,
@@ -17,6 +18,7 @@ import {
   SidebarSimple,
   Calendar,
   CalendarBlank,
+  Briefcase,
 } from 'phosphor-react';
 import type { ReactNode } from 'react';
 
@@ -36,6 +38,7 @@ export function useCommandCenter() {
   const { commandCenterOpen } = useModals();
   const { notes } = useNoteStore();
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
+  const { createNote } = useNoteAPI();
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -54,6 +57,20 @@ export function useCommandCenter() {
     },
     [navigate],
   );
+
+  const handleCreateWorkNote = useCallback(async () => {
+    const now = new Date();
+    const defaultTitle = `Untitled Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+    const note = await createNote({
+      title: defaultTitle,
+      content: '',
+      folderPath: 'Work',
+    });
+    if (note) {
+      navigate(`/note/${note.id}`);
+    }
+    useUIStore.getState().closeCommandCenter();
+  }, [createNote, navigate]);
 
   // Build static command list
   const commands = useMemo<CommandItem[]>(
@@ -126,8 +143,17 @@ export function useCommandCenter() {
           openOrCreateYesterdayJournal();
         },
       },
+      {
+        id: 'new-work-note',
+        type: 'command',
+        title: 'New Work Note',
+        subtitle: 'Create a new note in Work folder',
+        icon: <Briefcase size={18} />,
+        shortcut: '⌘⇧W',
+        action: handleCreateWorkNote,
+      },
     ],
-    [handleClose, navigate, openOrCreateTodayJournal, openOrCreateYesterdayJournal],
+    [handleClose, navigate, openOrCreateTodayJournal, openOrCreateYesterdayJournal, handleCreateWorkNote],
   );
 
   // Filtered notes with fuzzy matching
