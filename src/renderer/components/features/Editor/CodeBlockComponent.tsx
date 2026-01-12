@@ -30,6 +30,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   selected,
 }) => {
   const [showCode, setShowCode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() =>
     document.documentElement.classList.contains('dark'),
   );
@@ -127,13 +128,15 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
             </div>
           ) : (
             // Diagram preview
-            <div className="p-4 bg-background relative overflow-x-auto">
+            <div className="p-4 bg-background relative">
               <MermaidRenderer
                 code={codeContent}
                 language={isFlowDSL ? 'flowdsl' : 'mermaid'}
                 isDarkMode={isDarkMode}
                 onEditCode={() => setShowCode(true)}
                 onUpdateSource={handleUpdateSource}
+                isFullscreen={isFullscreen}
+                onFullscreenChange={setIsFullscreen}
               />
             </div>
           )
@@ -153,6 +156,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           isDiagram={isDiagram}
           showCode={showCode}
           onToggleView={() => setShowCode(!showCode)}
+          onFullscreen={() => setIsFullscreen(true)}
           codeContent={codeContent}
         />
       </div>
