@@ -6,6 +6,8 @@
  */
 
 import { Editor } from '@tiptap/react';
+import { decodeBase64ToUtf8 } from '@renderer/utils/base64';
+import { getEmbeddedFontFaces } from '@renderer/utils/fontLoader';
 
 /**
  * Google Fonts URL for all fonts used in the app
@@ -46,6 +48,13 @@ export function getRenderedEditorContent(editor: Editor): string {
 
   // Remove any drag handles or block menus
   clone.querySelectorAll('.block-menu, .drag-handle').forEach((el) => el.remove());
+
+  clone.querySelectorAll<HTMLElement>('.mermaid-preview').forEach((element) => {
+    const encodedSvg = element.dataset.mermaidSvg;
+    if (encodedSvg) {
+      element.innerHTML = decodeBase64ToUtf8(encodedSvg);
+    }
+  });
 
   return clone.innerHTML;
 }
@@ -170,6 +179,7 @@ export function getExportCSS(): string {
 
 /**
  * Get all stylesheet rules from the document that are relevant for export
+ * Note: Task styles are excluded because we define custom export-friendly styles
  */
 export function getDocumentStyles(): string {
   const styles: string[] = [];
@@ -183,6 +193,25 @@ export function getDocumentStyles(): string {
       for (const rule of sheet.cssRules) {
         const ruleText = rule.cssText;
 
+        // Skip task-related rules - we handle these separately with export-friendly styles
+        if (
+          ruleText.includes('.task-item') ||
+          ruleText.includes('.task-list') ||
+          ruleText.includes('.task-state') ||
+          ruleText.includes('taskItem') ||
+          ruleText.includes('taskList') ||
+          ruleText.includes('data-type="taskItem"') ||
+          ruleText.includes("data-type='taskItem'") ||
+          ruleText.includes('[data-type=taskItem]')
+        ) {
+          continue;
+        }
+
+        // Skip code block rules that use hsl(var(...)) - we define our own
+        if (ruleText.includes('.code-block-wrapper') || ruleText.includes('hsl(var(--code-')) {
+          continue;
+        }
+
         // Include rules that are relevant for the editor content
         if (
           ruleText.includes('.prose') ||
@@ -190,7 +219,6 @@ export function getDocumentStyles(): string {
           ruleText.includes('.hljs') ||
           ruleText.includes('.mermaid') ||
           ruleText.includes('.code-block') ||
-          ruleText.includes('.task-') ||
           ruleText.includes('.note-link') ||
           ruleText.includes('.stone-table') ||
           ruleText.includes('--code-') ||
@@ -215,18 +243,36 @@ export function getDocumentStyles(): string {
 }
 
 /**
+ * Always use light mode for exports (for now)
+ */
+function isDarkMode(): boolean {
+  return false;
+}
+
+/**
  * Build complete HTML for PDF export with pre-rendered content
  */
-export function buildExportHTML(
+export async function buildExportHTML(
   title: string,
   renderedContent: string,
   customCSS: string = '',
-): string {
+): Promise<string> {
   const cssVars = getExportCSS();
   const docStyles = getDocumentStyles();
+  const darkMode = isDarkMode();
+  let fontFaces = '';
+  try {
+    fontFaces = await getEmbeddedFontFaces();
+  } catch (error) {
+    console.warn('[exportUtils.buildExportHTML] Unable to load embedded fonts', error);
+  }
+
+  // Use specific export background colors
+  const resolvedBg = darkMode ? '#272727' : '#ffffff'; // Dark: charcoal, Light: dull white/cream
+  const resolvedFg = darkMode ? '#e8e8e8' : '#1a1a1a'; // Contrasting foreground
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en"${darkMode ? ' class="dark"' : ''}>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -236,8 +282,15 @@ export function buildExportHTML(
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="${GOOGLE_FONTS_URL}" rel="stylesheet">
   <style>
+    ${fontFaces}
     /* CSS Variables from app - resolved to actual values */
     ${cssVars}
+
+    /* Resolved background/foreground applied directly */
+    html, body {
+      background-color: ${resolvedBg} !important;
+      color: ${resolvedFg} !important;
+    }
 
     /* Document styles from app */
     ${docStyles}
@@ -247,14 +300,14 @@ export function buildExportHTML(
 
     body {
       font-family: 'Barlow', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: var(--font-editor-size, 16px);
-      line-height: var(--font-editor-line-height, 1.65);
-      color: var(--foreground);
-      background: white;
-      max-width: 900px;
+      font-size: 11pt;
+      line-height: 1.6;
+      min-height: 100vh;
       margin: 0 auto;
-      padding: 48px 64px;
+      padding: 24px 32px;
+      max-width: 100%;
       -webkit-font-smoothing: antialiased;
+      overflow: visible;
     }
 
     /* Headings use Barlow Semi Condensed */
@@ -264,15 +317,16 @@ export function buildExportHTML(
       color: var(--foreground);
     }
 
-    h1 { font-size: 2.5em; margin-top: 1.5em; margin-bottom: 0.5em; }
-    h2 { font-size: 2em; margin-top: 1.25em; margin-bottom: 0.5em; }
-    h3 { font-size: 1.5em; margin-top: 1em; margin-bottom: 0.5em; }
-    h4 { font-size: 1.25em; margin-top: 1em; margin-bottom: 0.5em; }
+    h1 { font-size: 2.5em; margin-top: 1.2em; margin-bottom: 0.4em; }
+    h2 { font-size: 1.5em; margin-top: 1em; margin-bottom: 0.4em; }
+    h3 { font-size: 1.25em; margin-top: 0.8em; margin-bottom: 0.3em; }
+    h4 { font-size: 1.1em; margin-top: 0.8em; margin-bottom: 0.3em; }
 
     /* Export title - the note title at the top */
     h1.export-title {
+      font-size: 2em;
       margin-top: 0;
-      margin-bottom: 1.5em;
+      margin-bottom: 1em;
       padding-bottom: 0.5em;
       border-bottom: 1px solid var(--border);
     }
@@ -293,7 +347,7 @@ export function buildExportHTML(
       justify-content: center;
       align-items: center;
       padding: 1.5rem;
-      background: var(--card, #ffffff);
+      background: var(--card);
     }
 
     .mermaid-preview svg {
@@ -311,29 +365,43 @@ export function buildExportHTML(
       font-family: 'Patrick Hand', 'Bradley Hand', cursive !important;
     }
 
+    /* Code block wrapper */
+    .code-block-wrapper {
+      margin: 1em 0 !important;
+      border-radius: 8px !important;
+      overflow: hidden !important;
+    }
+
     /* Ensure code blocks are styled */
-    pre, .hljs {
+    pre, .hljs, .code-block-wrapper pre {
       font-family: 'Fira Code', 'SF Mono', Monaco, monospace !important;
       background: var(--code-bg) !important;
       color: var(--code-text) !important;
-      padding: 24px !important;
+      padding: 20px 24px !important;
       border-radius: 8px !important;
-      overflow-x: auto;
-      font-size: 14px;
-      line-height: 1.7;
+      border: none !important;
+      overflow-x: auto !important;
+      font-size: 13px !important;
+      line-height: 1.6 !important;
+      margin: 0 !important;
+      white-space: pre-wrap !important;
+      word-wrap: break-word !important;
     }
 
-    code {
-      font-family: 'Fira Code', 'SF Mono', Monaco, monospace;
+    code, .code-block-wrapper code {
+      font-family: 'Fira Code', 'SF Mono', Monaco, monospace !important;
+      background: transparent !important;
+      padding: 0 !important;
+      border: none !important;
     }
 
     /* Inline code */
     :not(pre) > code {
-      background: var(--muted);
-      color: var(--foreground);
-      padding: 0.2em 0.4em;
-      border-radius: 4px;
-      font-size: 0.875em;
+      background: var(--muted) !important;
+      color: var(--foreground) !important;
+      padding: 0.15em 0.4em !important;
+      border-radius: 4px !important;
+      font-size: 0.85em !important;
     }
 
     /* Syntax highlighting */
@@ -361,54 +429,65 @@ export function buildExportHTML(
     }
 
     /* Task list - remove default list styling */
+    ul[data-type="taskList"],
     .task-list {
       list-style: none !important;
       padding-left: 0 !important;
       margin: 0.5em 0 !important;
     }
 
-    /* Task list items - inline-block for reliable inline layout */
-    .task-item {
+    /* Task list items - target by data-type attribute (from TipTap) */
+    li[data-type="taskItem"] {
       display: block !important;
-      padding: 0.2rem 0 !important;
-      margin-bottom: 0.2rem !important;
+      padding: 0.35rem 0 !important;
+      margin-bottom: 0.1rem !important;
       list-style: none !important;
-      white-space: nowrap !important;
     }
 
-    /* Task state button/badge - inline with text */
-    .task-state-button {
+    /* Task state button/badge - MUST be inline with text */
+    li[data-type="taskItem"] > button,
+    button.task-state-button {
       display: inline-block !important;
-      vertical-align: middle !important;
-      padding: 0.15rem 0.5rem !important;
+      vertical-align: baseline !important;
+      padding: 0.2rem 0.6rem !important;
       min-width: 2.8rem !important;
       font-size: 0.55rem !important;
-      font-weight: 600 !important;
-      letter-spacing: 0.08em !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.06em !important;
       text-transform: uppercase !important;
       text-align: center !important;
       border-radius: 9999px !important;
-      border: 1px solid hsl(0, 0%, 85%) !important;
-      background-color: white !important;
-      color: hsl(0, 0%, 45%) !important;
-      margin-right: 0.6rem !important;
+      border: 0.5px solid var(--border) !important;
+      background-color: var(--card) !important;
+      color: var(--muted-foreground) !important;
+      margin-right: 0.75rem !important;
+      position: relative !important;
+      top: -1px !important;
+    }
+
+    /* Task content div and its children - MUST be inline */
+    li[data-type="taskItem"] > div,
+    li[data-type="taskItem"] > div > p {
+      display: inline !important;
+      vertical-align: baseline !important;
+      margin: 0 !important;
     }
 
     /* TODO state - dashed border */
-    .task-item[data-state='todo'] .task-state-button {
+    li[data-state='todo'] > button {
       border-style: dashed !important;
     }
 
     /* DOING state */
-    .task-item[data-state='doing'] .task-state-button {
-      background-color: hsl(211, 100%, 95%) !important;
+    li[data-state='doing'] > button {
+      background-color: hsla(211, 100%, 50%, 0.15) !important;
       border-color: hsl(211, 100%, 50%) !important;
       border-style: solid !important;
       color: hsl(211, 100%, 50%) !important;
     }
 
     /* DONE state - solid blue */
-    .task-item[data-state='done'] .task-state-button {
+    li[data-state='done'] > button {
       background-color: hsl(211, 100%, 50%) !important;
       border-color: hsl(211, 100%, 50%) !important;
       border-style: solid !important;
@@ -416,49 +495,42 @@ export function buildExportHTML(
     }
 
     /* WAIT state */
-    .task-item[data-state='waiting'] .task-state-button {
-      background-color: white !important;
+    li[data-state='waiting'] > button {
+      background-color: var(--card) !important;
       border-color: hsl(211, 100%, 50%) !important;
       border-style: solid !important;
       color: hsl(211, 100%, 50%) !important;
     }
 
     /* HOLD state - dashed gray */
-    .task-item[data-state='hold'] .task-state-button {
+    li[data-state='hold'] > button {
       border-style: dashed !important;
-      background-color: hsl(0, 0%, 96%) !important;
-      border-color: hsl(0, 0%, 70%) !important;
-      color: hsl(0, 0%, 45%) !important;
+      background-color: var(--muted) !important;
+      border-color: var(--border) !important;
+      color: var(--muted-foreground) !important;
     }
 
     /* CANCELED state - red */
-    .task-item[data-state='canceled'] .task-state-button {
+    li[data-state='canceled'] > button {
       border-style: solid !important;
-      background-color: hsl(0, 84%, 95%) !important;
+      background-color: hsla(0, 84%, 60%, 0.1) !important;
       border-color: hsl(0, 84%, 60%) !important;
       color: hsl(0, 84%, 60%) !important;
     }
 
     /* IDEA state */
-    .task-item[data-state='idea'] .task-state-button {
-      background-color: white !important;
+    li[data-state='idea'] > button {
+      background-color: var(--card) !important;
       border-color: hsl(211, 100%, 50%) !important;
       border-style: solid !important;
       color: hsl(211, 100%, 50%) !important;
     }
 
-    /* Task content - inline */
-    .task-item > div {
-      display: inline !important;
-      vertical-align: middle !important;
-      white-space: normal !important;
-    }
-
-    /* Done/canceled tasks - strikethrough */
-    .task-item[data-state='done'] > div,
-    .task-item[data-state='canceled'] > div {
+    /* Done/canceled tasks - strikethrough text */
+    li[data-state='done'] > div,
+    li[data-state='canceled'] > div {
       text-decoration: line-through !important;
-      color: hsl(0, 0%, 45%) !important;
+      color: hsl(0, 0%, 55%) !important;
     }
 
     /* Blockquote */
@@ -499,6 +571,23 @@ export function buildExportHTML(
     a {
       color: var(--primary);
       text-decoration: none;
+    }
+
+    /* Note links - wiki-style internal links */
+    span[data-type="note-link"],
+    .note-link {
+      color: var(--primary) !important;
+      background-color: hsla(211, 100%, 50%, 0.1) !important;
+      padding: 0.1em 0.4em !important;
+      border-radius: 4px !important;
+      font-weight: 500 !important;
+    }
+
+    /* Highlights */
+    mark, .highlight {
+      background-color: hsla(50, 100%, 50%, 0.3) !important;
+      padding: 0.1em 0.2em !important;
+      border-radius: 2px !important;
     }
 
     /* Horizontal rule */

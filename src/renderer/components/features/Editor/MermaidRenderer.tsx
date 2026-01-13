@@ -8,6 +8,7 @@ import { renderMermaidDiagram } from '@renderer/lib/mermaid';
 import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
 import { logger } from '@renderer/utils/logger';
 import { DiagramFullscreenDialog } from './DiagramFullscreenDialog';
+import { encodeToBase64 } from '@renderer/utils/base64';
 
 interface EditingState {
   nodeId: string;
@@ -168,6 +169,15 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   const handleEditCancel = () => {
     setEditing(null);
   };
+
+  useEffect(() => {
+    if (!diagramRef.current) return;
+    if (renderedSvg) {
+      diagramRef.current.setAttribute('data-mermaid-svg', encodeToBase64(renderedSvg));
+    } else {
+      diagramRef.current.removeAttribute('data-mermaid-svg');
+    }
+  }, [renderedSvg]);
 
   if (isRendering) {
     return (

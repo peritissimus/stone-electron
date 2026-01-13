@@ -20,14 +20,15 @@ export function useNoteExport({ activeNoteId, editor, title }: UseNoteExportOpti
 
   const handleExportHtml = useCallback(async () => {
     if (!activeNoteId || !editor) return;
-    const htmlContent = editor.getHTML();
-    await exportHtml(activeNoteId, htmlContent, title);
+    const renderedContent = getRenderedEditorContent(editor);
+    const fullHtml = await buildExportHTML(title, renderedContent);
+    await exportHtml(activeNoteId, fullHtml, title);
   }, [activeNoteId, editor, exportHtml, title]);
 
   const handleExportPdf = useCallback(async () => {
     if (!activeNoteId || !editor) return;
     const renderedContent = getRenderedEditorContent(editor);
-    const fullHtml = buildExportHTML(title, renderedContent);
+    const fullHtml = await buildExportHTML(title, renderedContent);
     await exportPdf(activeNoteId, fullHtml, title);
   }, [activeNoteId, editor, exportPdf, title]);
 

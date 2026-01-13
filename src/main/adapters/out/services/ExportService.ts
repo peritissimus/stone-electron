@@ -69,14 +69,14 @@ export class ExportService implements IExportService {
           });
         `);
 
-        // Generate PDF
+        // Generate PDF with no margins (content has its own padding)
         const pdfBuffer = await win.webContents.printToPDF({
           margins: {
-            marginType: 'default',
+            marginType: 'none',
           },
           printBackground: options?.printBackground ?? true,
           landscape: options?.landscape ?? false,
-          pageSize: options?.format || 'A4',
+          pageSize: options?.format || 'Letter',
         });
 
         win.close();
