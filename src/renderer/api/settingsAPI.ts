@@ -5,6 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
+import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import {
   SETTINGS_CHANNELS,
@@ -20,86 +21,124 @@ import type {
   Migration,
   IpcResponse,
 } from '@shared/types';
+import { validateResponse } from './validation';
+import {
+  SettingsSchema,
+  DatabaseStatusSchema,
+  BackupResultSchema,
+  VacuumResultSchema,
+  IntegrityResultSchema,
+  MigrationSchema,
+} from './schemas';
 
 export const settingsAPI = {
   /**
    * Get a setting by key
    */
-  get: <T = string>(key: string): Promise<IpcResponse<{ value: T | null }>> =>
-    invokeIpc(SETTINGS_CHANNELS.GET, { key }),
+  get: async <T = string>(key: string): Promise<IpcResponse<{ value: T | null }>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET, { key });
+    return validateResponse(response, z.object({ value: z.unknown().nullable() })) as IpcResponse<{
+      value: T | null;
+    }>;
+  },
 
   /**
    * Set a setting
    */
-  set: <T = string>(key: string, value: T): Promise<IpcResponse<void>> =>
-    invokeIpc(SETTINGS_CHANNELS.SET, { key, value }),
+  set: async <T = string>(key: string, value: T): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET, { key, value });
+    return validateResponse(response, z.void());
+  },
 
   /**
    * Get all settings
    */
-  getAll: (): Promise<IpcResponse<{ settings: Settings[] }>> =>
-    invokeIpc(SETTINGS_CHANNELS.GET_ALL, {}),
+  getAll: async (): Promise<IpcResponse<{ settings: Settings[] }>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_ALL, {});
+    return validateResponse(response, z.object({ settings: z.array(SettingsSchema) }));
+  },
 };
 
 export const databaseAPI = {
   /**
    * Get database status
    */
-  getStatus: (): Promise<IpcResponse<DatabaseStatus>> =>
-    invokeIpc(DATABASE_CHANNELS.GET_STATUS, {}),
+  getStatus: async (): Promise<IpcResponse<DatabaseStatus>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.GET_STATUS, {});
+    return validateResponse(response, DatabaseStatusSchema);
+  },
 
   /**
    * Run pending migrations
    */
-  runMigrations: (): Promise<IpcResponse<{ applied: number }>> =>
-    invokeIpc(DATABASE_CHANNELS.RUN_MIGRATIONS, {}),
+  runMigrations: async (): Promise<IpcResponse<{ applied: number }>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.RUN_MIGRATIONS, {});
+    return validateResponse(response, z.object({ applied: z.number() }));
+  },
 
   /**
    * Create a backup
    */
-  backup: (path?: string): Promise<IpcResponse<BackupResult>> =>
-    invokeIpc(DATABASE_CHANNELS.BACKUP, { path }),
+  backup: async (path?: string): Promise<IpcResponse<BackupResult>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.BACKUP, { path });
+    return validateResponse(response, BackupResultSchema);
+  },
 
   /**
    * Restore from backup
    */
-  restore: (path: string): Promise<IpcResponse<void>> =>
-    invokeIpc(DATABASE_CHANNELS.RESTORE, { path }),
+  restore: async (path: string): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.RESTORE, { path });
+    return validateResponse(response, z.void());
+  },
 
   /**
    * Export database
    */
-  export: (format: 'json' | 'sqlite'): Promise<IpcResponse<{ path: string }>> =>
-    invokeIpc(DATABASE_CHANNELS.EXPORT, { format }),
+  export: async (format: 'json' | 'sqlite'): Promise<IpcResponse<{ path: string }>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.EXPORT, { format });
+    return validateResponse(response, z.object({ path: z.string() }));
+  },
 
   /**
    * Import database
    */
-  import: (path: string): Promise<IpcResponse<void>> =>
-    invokeIpc(DATABASE_CHANNELS.IMPORT, { path }),
+  import: async (path: string): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.IMPORT, { path });
+    return validateResponse(response, z.void());
+  },
 
   /**
    * Vacuum database (optimize)
    */
-  vacuum: (): Promise<IpcResponse<VacuumResult>> => invokeIpc(DATABASE_CHANNELS.VACUUM, {}),
+  vacuum: async (): Promise<IpcResponse<VacuumResult>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.VACUUM, {});
+    return validateResponse(response, VacuumResultSchema);
+  },
 
   /**
    * Check database integrity
    */
-  checkIntegrity: (): Promise<IpcResponse<IntegrityResult>> =>
-    invokeIpc(DATABASE_CHANNELS.CHECK_INTEGRITY, {}),
+  checkIntegrity: async (): Promise<IpcResponse<IntegrityResult>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.CHECK_INTEGRITY, {});
+    return validateResponse(response, IntegrityResultSchema);
+  },
 
   /**
    * Get migration history
    */
-  getMigrationHistory: (): Promise<IpcResponse<{ migrations: Migration[] }>> =>
-    invokeIpc(DATABASE_CHANNELS.GET_MIGRATION_HISTORY, {}),
+  getMigrationHistory: async (): Promise<IpcResponse<{ migrations: Migration[] }>> => {
+    const response = await invokeIpc(DATABASE_CHANNELS.GET_MIGRATION_HISTORY, {});
+    return validateResponse(response, z.object({ migrations: z.array(MigrationSchema) }));
+  },
 };
 
 export const systemAPI = {
   /**
    * Get available system fonts
    */
-  getFonts: (): Promise<IpcResponse<{ fonts: string[] }>> =>
-    invokeIpc(SYSTEM_CHANNELS.GET_FONTS, {}),
+  getFonts: async (): Promise<IpcResponse<{ fonts: string[] }>> => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.GET_FONTS, {});
+    return validateResponse(response, z.object({ fonts: z.array(z.string()) }));
+  },
 };

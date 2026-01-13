@@ -5,39 +5,54 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
+import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { ATTACHMENT_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Attachment, IpcResponse } from '@shared/types';
+import { validateResponse } from './validation';
+import { AttachmentSchema } from './schemas';
 
 export const attachmentAPI = {
   /**
    * Get all attachments for a note
    */
-  getAll: (noteId: string): Promise<IpcResponse<{ attachments: Attachment[] }>> =>
-    invokeIpc(ATTACHMENT_CHANNELS.GET_ALL, { noteId }),
+  getAll: async (noteId: string): Promise<IpcResponse<{ attachments: Attachment[] }>> => {
+    const response = await invokeIpc(ATTACHMENT_CHANNELS.GET_ALL, { noteId });
+    return validateResponse(response, z.object({ attachments: z.array(AttachmentSchema) }));
+  },
 
   /**
    * Add an attachment to a note
    */
-  add: (noteId: string, filePath: string): Promise<IpcResponse<Attachment>> =>
-    invokeIpc(ATTACHMENT_CHANNELS.ADD, { noteId, filePath }),
+  add: async (noteId: string, filePath: string): Promise<IpcResponse<Attachment>> => {
+    const response = await invokeIpc(ATTACHMENT_CHANNELS.ADD, { noteId, filePath });
+    return validateResponse(response, AttachmentSchema);
+  },
 
   /**
    * Delete an attachment
    */
-  delete: (id: string): Promise<IpcResponse<void>> => invokeIpc(ATTACHMENT_CHANNELS.DELETE, { id }),
+  delete: async (id: string): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(ATTACHMENT_CHANNELS.DELETE, { id });
+    return validateResponse(response, z.void());
+  },
 
   /**
    * Upload an image and attach to note
    */
-  uploadImage: (
+  uploadImage: async (
     noteId: string,
     imageData: string,
     filename: string,
-  ): Promise<IpcResponse<{ url: string; attachment: Attachment }>> =>
-    invokeIpc(ATTACHMENT_CHANNELS.UPLOAD_IMAGE, {
+  ): Promise<IpcResponse<{ url: string; attachment: Attachment }>> => {
+    const response = await invokeIpc(ATTACHMENT_CHANNELS.UPLOAD_IMAGE, {
       noteId,
       imageData,
       filename,
-    }),
+    });
+    return validateResponse(
+      response,
+      z.object({ url: z.string(), attachment: AttachmentSchema }),
+    );
+  },
 };

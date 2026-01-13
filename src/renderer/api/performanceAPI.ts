@@ -4,9 +4,19 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
+import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { PERFORMANCE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
+import { validateResponse } from './validation';
+import {
+  PerformanceSnapshotSchema,
+  MemoryMetricsSchema,
+  CPUMetricsSchema,
+  IPCMetricsSchema,
+  DatabaseMetricsSchema,
+  StartupMetricsSchema,
+} from './schemas';
 
 // ============================================================================
 // Types
@@ -125,44 +135,58 @@ export const performanceAPI = {
    * Get full performance snapshot (main process + renderer)
    * @param sinceMs - Only include IPC/DB stats from last N milliseconds
    */
-  getSnapshot: (sinceMs?: number): Promise<IpcResponse<PerformanceSnapshot>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_SNAPSHOT, sinceMs),
+  getSnapshot: async (sinceMs?: number): Promise<IpcResponse<PerformanceSnapshot>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_SNAPSHOT, sinceMs);
+    return validateResponse(response, PerformanceSnapshotSchema);
+  },
 
   /**
    * Get memory metrics only
    */
-  getMemory: (): Promise<IpcResponse<MemoryMetrics>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_MEMORY, {}),
+  getMemory: async (): Promise<IpcResponse<MemoryMetrics>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_MEMORY, {});
+    return validateResponse(response, MemoryMetricsSchema);
+  },
 
   /**
    * Get CPU metrics only
    */
-  getCPU: (): Promise<IpcResponse<CPUMetrics>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_CPU, {}),
+  getCPU: async (): Promise<IpcResponse<CPUMetrics>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_CPU, {});
+    return validateResponse(response, CPUMetricsSchema);
+  },
 
   /**
    * Get IPC call statistics
    * @param sinceMs - Only include stats from last N milliseconds
    */
-  getIPCStats: (sinceMs?: number): Promise<IpcResponse<IPCMetrics>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_IPC_STATS, sinceMs),
+  getIPCStats: async (sinceMs?: number): Promise<IpcResponse<IPCMetrics>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_IPC_STATS, sinceMs);
+    return validateResponse(response, IPCMetricsSchema);
+  },
 
   /**
    * Get database query statistics
    * @param sinceMs - Only include stats from last N milliseconds
    */
-  getDBStats: (sinceMs?: number): Promise<IpcResponse<DatabaseMetrics>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_DB_STATS, sinceMs),
+  getDBStats: async (sinceMs?: number): Promise<IpcResponse<DatabaseMetrics>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_DB_STATS, sinceMs);
+    return validateResponse(response, DatabaseMetricsSchema);
+  },
 
   /**
    * Get startup timing metrics
    */
-  getStartup: (): Promise<IpcResponse<StartupMetrics>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.GET_STARTUP, {}),
+  getStartup: async (): Promise<IpcResponse<StartupMetrics>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.GET_STARTUP, {});
+    return validateResponse(response, StartupMetricsSchema);
+  },
 
   /**
    * Clear performance history (resets IPC/DB stats)
    */
-  clearHistory: (): Promise<IpcResponse<{ success: boolean }>> =>
-    invokeIpc(PERFORMANCE_CHANNELS.CLEAR_HISTORY, {}),
+  clearHistory: async (): Promise<IpcResponse<{ success: boolean }>> => {
+    const response = await invokeIpc(PERFORMANCE_CHANNELS.CLEAR_HISTORY, {});
+    return validateResponse(response, z.object({ success: z.boolean() }));
+  },
 };

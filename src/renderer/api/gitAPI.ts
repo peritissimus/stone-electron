@@ -4,9 +4,17 @@
  * Pure functions that wrap IPC channels for workspace git sync.
  */
 
+import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { GIT_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
+import { validateResponse } from './validation';
+import {
+  GitStatusSchema,
+  GitCommitResultSchema,
+  GitSyncResultSchema,
+  GitCommitSchema,
+} from './schemas';
 
 export interface GitStatus {
   isRepo: boolean;
@@ -46,51 +54,73 @@ export const gitAPI = {
   /**
    * Get git status for a workspace
    */
-  getStatus: (workspaceId: string): Promise<IpcResponse<GitStatus>> =>
-    invokeIpc(GIT_CHANNELS.GET_STATUS, { workspaceId }),
+  getStatus: async (workspaceId: string): Promise<IpcResponse<GitStatus>> => {
+    const response = await invokeIpc(GIT_CHANNELS.GET_STATUS, { workspaceId });
+    return validateResponse(response, GitStatusSchema);
+  },
 
   /**
    * Initialize a git repository in workspace
    */
-  init: (workspaceId: string): Promise<IpcResponse<{ success: boolean }>> =>
-    invokeIpc(GIT_CHANNELS.INIT, { workspaceId }),
+  init: async (workspaceId: string): Promise<IpcResponse<{ success: boolean }>> => {
+    const response = await invokeIpc(GIT_CHANNELS.INIT, { workspaceId });
+    return validateResponse(response, z.object({ success: z.boolean() }));
+  },
 
   /**
    * Commit all changes in workspace
    */
-  commit: (workspaceId: string, message?: string): Promise<IpcResponse<GitCommitResult>> =>
-    invokeIpc(GIT_CHANNELS.COMMIT, { workspaceId, message }),
+  commit: async (
+    workspaceId: string,
+    message?: string,
+  ): Promise<IpcResponse<GitCommitResult>> => {
+    const response = await invokeIpc(GIT_CHANNELS.COMMIT, { workspaceId, message });
+    return validateResponse(response, GitCommitResultSchema);
+  },
 
   /**
    * Pull changes from remote
    */
-  pull: (workspaceId: string): Promise<IpcResponse<GitSyncResult>> =>
-    invokeIpc(GIT_CHANNELS.PULL, { workspaceId }),
+  pull: async (workspaceId: string): Promise<IpcResponse<GitSyncResult>> => {
+    const response = await invokeIpc(GIT_CHANNELS.PULL, { workspaceId });
+    return validateResponse(response, GitSyncResultSchema);
+  },
 
   /**
    * Push changes to remote
    */
-  push: (workspaceId: string): Promise<IpcResponse<GitSyncResult>> =>
-    invokeIpc(GIT_CHANNELS.PUSH, { workspaceId }),
+  push: async (workspaceId: string): Promise<IpcResponse<GitSyncResult>> => {
+    const response = await invokeIpc(GIT_CHANNELS.PUSH, { workspaceId });
+    return validateResponse(response, GitSyncResultSchema);
+  },
 
   /**
    * Full sync: commit, pull, push
    */
-  sync: (workspaceId: string, message?: string): Promise<IpcResponse<GitSyncResult>> =>
-    invokeIpc(GIT_CHANNELS.SYNC, { workspaceId, message }),
+  sync: async (workspaceId: string, message?: string): Promise<IpcResponse<GitSyncResult>> => {
+    const response = await invokeIpc(GIT_CHANNELS.SYNC, { workspaceId, message });
+    return validateResponse(response, GitSyncResultSchema);
+  },
 
   /**
    * Set remote URL for workspace repo
    */
-  setRemote: (workspaceId: string, url: string): Promise<IpcResponse<{ success: boolean }>> =>
-    invokeIpc(GIT_CHANNELS.SET_REMOTE, { workspaceId, url }),
+  setRemote: async (
+    workspaceId: string,
+    url: string,
+  ): Promise<IpcResponse<{ success: boolean }>> => {
+    const response = await invokeIpc(GIT_CHANNELS.SET_REMOTE, { workspaceId, url });
+    return validateResponse(response, z.object({ success: z.boolean() }));
+  },
 
   /**
    * Get recent commits
    */
-  getCommits: (
+  getCommits: async (
     workspaceId: string,
     limit?: number,
-  ): Promise<IpcResponse<{ commits: GitCommit[] }>> =>
-    invokeIpc(GIT_CHANNELS.GET_COMMITS, { workspaceId, limit }),
+  ): Promise<IpcResponse<{ commits: GitCommit[] }>> => {
+    const response = await invokeIpc(GIT_CHANNELS.GET_COMMITS, { workspaceId, limit });
+    return validateResponse(response, z.object({ commits: z.array(GitCommitSchema) }));
+  },
 };

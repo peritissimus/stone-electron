@@ -70,3 +70,7 @@ export type {
   OperationStats,
   LongTaskEntry,
 } from './performanceAPI';
+
+// Validation utilities and schemas
+export { validateResponse, validateAndExtractData, createValidatedAPI } from './validation';
+export * from './schemas';
