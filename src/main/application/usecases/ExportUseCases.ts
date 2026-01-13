@@ -72,12 +72,33 @@ class ExportPdfUseCase implements IExportPdfUseCase {
   constructor(private deps: ExportUseCasesDeps) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
-    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } =
-      this.deps;
+    const { noteRepository, exportService } = this.deps;
 
     if (!exportService.isPdfAvailable()) {
       throw new Error('PDF export is not available');
     }
+
+    // If pre-rendered HTML is provided from the renderer, use it directly
+    // This preserves Mermaid diagrams, syntax highlighting, and applied styles
+    if (options?.renderedHtml) {
+      const pdfBuffer = await exportService.renderToPdf(options.renderedHtml, {
+        format: 'A4',
+        printBackground: true,
+      });
+
+      const filename = `${options.title || 'note'}.pdf`;
+
+      logger.info(`[ExportUseCases] Exported note ${noteId} to PDF (using pre-rendered HTML)`);
+
+      return {
+        content: pdfBuffer,
+        filename,
+        mimeType: 'application/pdf',
+      };
+    }
+
+    // Fallback: re-parse markdown (for API/non-UI exports)
+    const { workspaceRepository, fileStorage, markdownProcessor } = this.deps;
 
     const note = await noteRepository.findById(noteId);
     if (!note || !note.filePath || !note.workspaceId) {

@@ -9,6 +9,10 @@ export interface ExportOptions {
   includeMetadata?: boolean;
   includeFrontmatter?: boolean;
   theme?: 'light' | 'dark';
+  /** Pre-rendered HTML from the renderer (with diagrams, styles, fonts already applied) */
+  renderedHtml?: string;
+  /** Note title for the export filename */
+  title?: string;
 }
 
 /**

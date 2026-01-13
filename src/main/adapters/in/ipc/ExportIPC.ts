@@ -51,10 +51,22 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
 
   ipcMain.handle(
     NOTE_CHANNELS.EXPORT_PDF,
-    async (event, { id, options }: { id: string; options?: ExportOptions }) => {
+    async (
+      event,
+      {
+        id,
+        renderedHtml,
+        title,
+        options,
+      }: { id: string; renderedHtml?: string; title?: string; options?: ExportOptions },
+    ) => {
       return handleRequest(
         async () => {
-          const result = await exportUseCases.exportPdf.execute(id, options);
+          const result = await exportUseCases.exportPdf.execute(id, {
+            ...options,
+            renderedHtml,
+            title,
+          });
           const pdfBuffer = Buffer.isBuffer(result.content)
             ? result.content
             : Buffer.from(result.content);
