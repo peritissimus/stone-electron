@@ -11,7 +11,7 @@ import os from 'node:os';
 import fs from 'node:fs';
 import type { Database } from '../../shared/database';
 import { workspaces, notebooks, notes, tags, noteTags } from '../../shared/database/schema';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 export interface SeedOptions {
   /** Custom workspace folder path. Defaults to ~/NoteBook */
@@ -52,7 +52,10 @@ export async function seedDatabase(
   const createFiles = options.createFiles ?? true;
 
   // Generate IDs
-  const workspaceId = nanoid();
+  const existingWorkspace = await db.query.workspaces.findFirst({
+    where: eq(workspaces.folderPath, workspaceFolderPath),
+  });
+  const workspaceId = existingWorkspace?.id ?? nanoid();
   const personalNotebookId = nanoid();
   const workNotebookId = nanoid();
   const journalNotebookId = nanoid();
@@ -174,7 +177,12 @@ export async function seedDatabase(
   ];
 
   // Insert into database
-  await db.insert(workspaces).values(workspaceData);
+  if (!existingWorkspace) {
+    await db
+      .insert(workspaces)
+      .values(workspaceData)
+      .onConflictDoNothing({ target: workspaces.folderPath });
+  }
   await db.insert(notebooks).values(notebooksData);
   await db.insert(notes).values(notesData);
   await db.insert(tags).values(tagsData);
