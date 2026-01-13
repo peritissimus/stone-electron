@@ -57,7 +57,22 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
     return handleRequest(
-      async () => getGitStatus.execute({ workspaceId }),
+      async () => {
+        const status = await getGitStatus.execute({ workspaceId });
+        // Transform domain response to frontend-expected format
+        return {
+          isRepo: status.isRepo,
+          branch: status.branch,
+          hasRemote: !!status.remote,
+          remoteUrl: status.remote,
+          ahead: status.ahead,
+          behind: status.behind,
+          staged: status.staged.length,
+          unstaged: status.modified.length,
+          untracked: status.untracked.length,
+          hasChanges: status.hasChanges,
+        };
+      },
       { channel: GIT_CHANNELS.GET_STATUS, workspaceId },
     );
   });
