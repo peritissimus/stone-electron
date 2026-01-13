@@ -8,6 +8,8 @@
 import { invokeIpc } from '@renderer/lib/ipc';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import type { SearchResults, IpcResponse } from '@shared/types';
+import { validateResponse } from './validation';
+import { SearchResultsSchema } from './schemas';
 
 export interface SearchParams {
   query: string;
@@ -26,33 +28,43 @@ export const searchAPI = {
   /**
    * Full-text search
    */
-  fullText: (params: SearchParams): Promise<IpcResponse<SearchResults>> =>
-    invokeIpc(SEARCH_CHANNELS.FULL_TEXT, params),
+  fullText: async (params: SearchParams): Promise<IpcResponse<SearchResults>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.FULL_TEXT, params);
+    return validateResponse(response, SearchResultsSchema);
+  },
 
   /**
    * Semantic search using embeddings
    */
-  semantic: (params: SearchParams): Promise<IpcResponse<SearchResults>> =>
-    invokeIpc(SEARCH_CHANNELS.SEMANTIC, params),
+  semantic: async (params: SearchParams): Promise<IpcResponse<SearchResults>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.SEMANTIC, params);
+    return validateResponse(response, SearchResultsSchema);
+  },
 
   /**
    * Hybrid search (combines full-text and semantic)
    */
-  hybrid: (params: SearchParams): Promise<IpcResponse<SearchResults>> =>
-    invokeIpc(SEARCH_CHANNELS.HYBRID, params),
+  hybrid: async (params: SearchParams): Promise<IpcResponse<SearchResults>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.HYBRID, params);
+    return validateResponse(response, SearchResultsSchema);
+  },
 
   /**
    * Search by tag
    */
-  byTag: (
+  byTag: async (
     tagId: string,
     options?: { limit?: number; offset?: number },
-  ): Promise<IpcResponse<SearchResults>> =>
-    invokeIpc(SEARCH_CHANNELS.BY_TAG, { tagId, ...options }),
+  ): Promise<IpcResponse<SearchResults>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.BY_TAG, { tagId, ...options });
+    return validateResponse(response, SearchResultsSchema);
+  },
 
   /**
    * Search by date range
    */
-  byDateRange: (params: DateRangeParams): Promise<IpcResponse<SearchResults>> =>
-    invokeIpc(SEARCH_CHANNELS.BY_DATE_RANGE, params),
+  byDateRange: async (params: DateRangeParams): Promise<IpcResponse<SearchResults>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.BY_DATE_RANGE, params);
+    return validateResponse(response, SearchResultsSchema);
+  },
 };
