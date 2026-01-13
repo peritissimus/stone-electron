@@ -132,6 +132,24 @@ describe('ExportUseCases', () => {
       expect(result.content).toContain('<html>');
     });
 
+    it('exports note as HTML using pre-rendered content when provided', async () => {
+      const note = createNoteProps();
+      vi.mocked(noteRepo.findById).mockResolvedValue(note);
+
+      const renderedHtml = '<html><body><h1>Rendered</h1></body></html>';
+      const result = await useCases.exportHtml.execute('note-1', {
+        renderedHtml,
+        title: 'Custom Title',
+      });
+
+      expect(result.mimeType).toBe('text/html');
+      expect(result.filename).toBe('Custom Title.html');
+      expect(result.content).toBe(renderedHtml);
+      expect(exportService.generateHtmlDocument).not.toHaveBeenCalled();
+      expect(fileStorage.read).not.toHaveBeenCalled();
+      expect(markdownProcessor.markdownToHtml).not.toHaveBeenCalled();
+    });
+
     it('uses theme option when provided', async () => {
       const note = createNoteProps();
       const workspace = createWorkspaceProps();
