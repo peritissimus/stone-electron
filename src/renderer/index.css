@@ -185,7 +185,7 @@
   --border: 0 0% 50% / 0.2;
   --input: 0 0% 0% / 0.3;
   --ring: 0 0% 65%;
-  --background: 0 0% 0% / 0.01;
+  --background: 0 0% 15% / 0.01;
   --foreground: 0 0% 92%;
   --sidebar: 0 0% 0% / 0.01;
   --sidebar-vibrancy: 0 0% 0% / 0.01;
@@ -578,8 +578,8 @@ textarea:focus {
   color: hsl(var(--muted-foreground));
   opacity: 0.6;
   position: absolute;
-  left: 16px;  /* Match the paragraph's left padding */
-  top: 3px;    /* Match the paragraph's top padding */
+  left: 16px; /* Match the paragraph's left padding */
+  top: 3px; /* Match the paragraph's top padding */
   width: auto !important;
   border-radius: 0 !important;
   background-color: transparent !important;

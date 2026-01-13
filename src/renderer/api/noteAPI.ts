@@ -201,9 +201,20 @@ export const noteAPI = {
 
   /**
    * Export note as HTML
+   * @param id - Note ID
+   * @param renderedHtml - Pre-rendered HTML content (includes fonts, diagrams, and styles)
+   * @param title - Note title for filename
    */
-  exportHtml: async (id: string): Promise<IpcResponse<{ html: string; path: string }>> => {
-    const response = await invokeIpc(NOTE_CHANNELS.EXPORT_HTML, { id });
+  exportHtml: async (
+    id: string,
+    renderedHtml?: string,
+    title?: string,
+  ): Promise<IpcResponse<{ html: string; path: string }>> => {
+    const response = await invokeIpc(NOTE_CHANNELS.EXPORT_HTML, {
+      id,
+      renderedHtml,
+      title,
+    });
     return validateResponse(response, z.object({ html: z.string(), path: z.string() }));
   },
 

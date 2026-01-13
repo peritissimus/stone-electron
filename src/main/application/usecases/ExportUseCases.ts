@@ -38,6 +38,17 @@ class ExportHtmlUseCase implements IExportHtmlUseCase {
       throw new Error(`Note not found: ${noteId}`);
     }
 
+    const filename = `${options?.title || note.title || 'note'}.html`;
+
+    if (options?.renderedHtml) {
+      logger.info(`[ExportUseCases] Exported note ${noteId} to HTML (pre-rendered)`);
+      return {
+        content: options.renderedHtml,
+        filename,
+        mimeType: 'text/html',
+      };
+    }
+
     const workspace = await workspaceRepository.findById(note.workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${note.workspaceId}`);
@@ -55,8 +66,6 @@ class ExportHtmlUseCase implements IExportHtmlUseCase {
       theme: options?.theme || 'light',
       includeStyles: true,
     });
-
-    const filename = `${note.title || 'note'}.html`;
 
     logger.info(`[ExportUseCases] Exported note ${noteId} to HTML`);
 

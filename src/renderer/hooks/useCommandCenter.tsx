@@ -19,6 +19,8 @@ import {
   Calendar,
   CalendarBlank,
   Briefcase,
+  FilePdf,
+  Moon,
 } from 'phosphor-react';
 import type { ReactNode } from 'react';
 
@@ -36,9 +38,9 @@ export interface CommandItem {
 export function useCommandCenter() {
   const navigate = useNavigate();
   const { commandCenterOpen } = useModals();
-  const { notes } = useNoteStore();
+  const { notes, activeNoteId } = useNoteStore();
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
-  const { createNote } = useNoteAPI();
+  const { createNote, exportPdf } = useNoteAPI();
 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -71,6 +73,27 @@ export function useCommandCenter() {
     }
     useUIStore.getState().closeCommandCenter();
   }, [createNote, navigate]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!activeNoteId) return;
+    const activeNote = notes.find((n) => n.id === activeNoteId);
+    const title = activeNote?.title || 'Untitled';
+    handleClose();
+    // Use empty string for renderedHtml - backend will use markdown fallback
+    await exportPdf(activeNoteId, '', title);
+  }, [activeNoteId, notes, exportPdf, handleClose]);
+
+  const handleToggleTheme = useCallback(() => {
+    const currentTheme = useUIStore.getState().theme;
+    // If system, check actual preference and toggle to opposite
+    if (currentTheme === 'system') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      useUIStore.getState().setTheme(prefersDark ? 'light' : 'dark');
+    } else {
+      useUIStore.getState().setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    }
+    handleClose();
+  }, [handleClose]);
 
   // Build static command list
   const commands = useMemo<CommandItem[]>(
@@ -152,8 +175,25 @@ export function useCommandCenter() {
         shortcut: '⌘⇧W',
         action: handleCreateWorkNote,
       },
+      {
+        id: 'export-pdf',
+        type: 'command',
+        title: 'Export as PDF',
+        subtitle: activeNoteId ? 'Export current note to PDF' : 'Open a note first',
+        icon: <FilePdf size={18} />,
+        action: handleExportPdf,
+      },
+      {
+        id: 'toggle-theme',
+        type: 'command',
+        title: 'Toggle Theme',
+        subtitle: 'Switch between light and dark mode',
+        icon: <Moon size={18} />,
+        shortcut: '⌘⇧T',
+        action: handleToggleTheme,
+      },
     ],
-    [handleClose, navigate, openOrCreateTodayJournal, openOrCreateYesterdayJournal, handleCreateWorkNote],
+    [handleClose, navigate, openOrCreateTodayJournal, openOrCreateYesterdayJournal, handleCreateWorkNote, handleExportPdf, handleToggleTheme, activeNoteId],
   );
 
   // Filtered notes with fuzzy matching
@@ -206,12 +246,12 @@ export function useCommandCenter() {
     return fuzzyFilter(commands, query, (cmd) => [cmd.title, cmd.subtitle || '']);
   }, [commands, query]);
 
-  // Combined items list
+  // Combined items list - commands take priority over notes
   const items = useMemo<CommandItem[]>(() => {
     if (query.length === 0) {
-      return [...filteredNotes, ...commands];
+      return [...commands, ...filteredNotes];
     }
-    return [...filteredNotes, ...filteredCommands];
+    return [...filteredCommands, ...filteredNotes];
   }, [query, filteredNotes, filteredCommands, commands]);
 
   // Reset selection when items change
