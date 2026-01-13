@@ -34,11 +34,14 @@ export class ExportService implements IExportService {
       try {
         const { BrowserWindow } = require('electron');
 
-        // Create a hidden window for rendering
+        // Create a hidden window for rendering with web security enabled for font loading
         win = new BrowserWindow({
           show: false,
+          width: 1200,
+          height: 800,
           webPreferences: {
             offscreen: true,
+            webSecurity: true, // Allow loading external resources (Google Fonts)
           },
         });
 
@@ -49,8 +52,22 @@ export class ExportService implements IExportService {
         // Load the HTML content
         await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
 
-        // Wait for content to render
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Wait for fonts to load - Google Fonts need more time
+        // We wait for both DOMContentLoaded and font loading
+        await win.webContents.executeJavaScript(`
+          new Promise((resolve) => {
+            // Wait for document ready and fonts
+            if (document.fonts && document.fonts.ready) {
+              document.fonts.ready.then(() => {
+                // Additional delay for any remaining rendering
+                setTimeout(resolve, 500);
+              });
+            } else {
+              // Fallback: wait a fixed time if fonts API not available
+              setTimeout(resolve, 2000);
+            }
+          });
+        `);
 
         // Generate PDF
         const pdfBuffer = await win.webContents.printToPDF({
@@ -64,7 +81,7 @@ export class ExportService implements IExportService {
 
         win.close();
 
-        logger.info('[ExportService] Generated PDF');
+        logger.info('[ExportService] Generated PDF with fonts loaded');
         return Buffer.from(pdfBuffer);
       } catch (error) {
         logger.error('[ExportService] PDF generation failed:', error);

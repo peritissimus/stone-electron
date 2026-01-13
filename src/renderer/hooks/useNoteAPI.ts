@@ -408,9 +408,9 @@ export function useNoteAPI() {
     }
   }, []);
 
-  const exportPdf = useCallback(async (id: string, _content: string, _title: string) => {
+  const exportPdf = useCallback(async (id: string, renderedHtml: string, title: string) => {
     try {
-      const response = await noteAPI.exportPdf(id);
+      const response = await noteAPI.exportPdf(id, renderedHtml, title);
       if (response.success && response.data) {
         logger.info('[useNoteAPI.exportPdf] Exported PDF', { filePath: response.data.path });
         return { success: true, filePath: response.data.path };

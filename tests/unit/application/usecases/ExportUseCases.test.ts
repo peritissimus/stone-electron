@@ -181,7 +181,30 @@ describe('ExportUseCases', () => {
   });
 
   describe('exportPdf', () => {
-    it('exports note as PDF', async () => {
+    it('exports note as PDF using pre-rendered HTML when provided', async () => {
+      const pdfBuffer = Buffer.from('fake pdf content');
+      vi.mocked(exportService.isPdfAvailable).mockReturnValue(true);
+      vi.mocked(exportService.renderToPdf).mockResolvedValue(pdfBuffer);
+
+      const result = await useCases.exportPdf.execute('note-1', {
+        renderedHtml: '<html><body>Pre-rendered content with diagrams</body></html>',
+        title: 'My Note',
+      });
+
+      expect(result.mimeType).toBe('application/pdf');
+      expect(result.filename).toBe('My Note.pdf');
+      expect(result.content).toBe(pdfBuffer);
+      // Should use the pre-rendered HTML directly
+      expect(exportService.renderToPdf).toHaveBeenCalledWith(
+        '<html><body>Pre-rendered content with diagrams</body></html>',
+        expect.any(Object),
+      );
+      // Should NOT read from file when pre-rendered HTML is provided
+      expect(fileStorage.read).not.toHaveBeenCalled();
+      expect(markdownProcessor.markdownToHtml).not.toHaveBeenCalled();
+    });
+
+    it('exports note as PDF by parsing markdown when no pre-rendered HTML provided', async () => {
       const note = createNoteProps();
       const workspace = createWorkspaceProps();
       const pdfBuffer = Buffer.from('fake pdf content');
@@ -208,7 +231,7 @@ describe('ExportUseCases', () => {
       );
     });
 
-    it('throws error when note not found', async () => {
+    it('throws error when note not found (fallback path)', async () => {
       vi.mocked(exportService.isPdfAvailable).mockReturnValue(true);
       vi.mocked(noteRepo.findById).mockResolvedValue(null);
 
