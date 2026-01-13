@@ -29,11 +29,12 @@ export interface SeedResult {
 }
 
 /**
- * Check if database already has data
+ * Check if database already has data (workspaces OR notebooks)
  */
 async function isDatabaseSeeded(db: Database): Promise<boolean> {
-  const result = await db.select({ count: sql<number>`COUNT(*)` }).from(notebooks);
-  return (result[0]?.count ?? 0) > 0;
+  const workspaceResult = await db.select({ count: sql<number>`COUNT(*)` }).from(workspaces);
+  const notebookResult = await db.select({ count: sql<number>`COUNT(*)` }).from(notebooks);
+  return (workspaceResult[0]?.count ?? 0) > 0 || (notebookResult[0]?.count ?? 0) > 0;
 }
 
 /**
@@ -178,15 +179,20 @@ export async function seedDatabase(
 
   // Insert into database
   if (!existingWorkspace) {
-    await db
-      .insert(workspaces)
-      .values(workspaceData)
-      .onConflictDoNothing({ target: workspaces.folderPath });
+    try {
+      await db
+        .insert(workspaces)
+        .values(workspaceData)
+        .onConflictDoNothing({ target: workspaces.folderPath });
+    } catch (error) {
+      // Workspace might already exist due to race condition, continue with seeding
+      console.warn('Could not insert workspace (may already exist):', error);
+    }
   }
-  await db.insert(notebooks).values(notebooksData);
-  await db.insert(notes).values(notesData);
-  await db.insert(tags).values(tagsData);
-  await db.insert(noteTags).values(noteTagsData);
+  await db.insert(notebooks).values(notebooksData).onConflictDoNothing();
+  await db.insert(notes).values(notesData).onConflictDoNothing();
+  await db.insert(tags).values(tagsData).onConflictDoNothing();
+  await db.insert(noteTags).values(noteTagsData).onConflictDoNothing();
 
   // Create markdown files on disk
   if (createFiles) {
