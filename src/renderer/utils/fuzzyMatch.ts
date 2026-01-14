@@ -2,9 +2,17 @@
  * Fuzzy matching utility for search functionality
  */
 
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const findWordBoundaryIndex = (target: string, query: string) => {
+  if (!query) return -1;
+  const pattern = new RegExp(`\\b${escapeRegExp(query)}`);
+  return target.search(pattern);
+};
+
 /**
- * Simple fuzzy match - checks if query chars appear in order in target
- * Returns match score (higher = better) or 0 if no match
+ * Fuzzy match - favors starts-with and word boundaries before subsequence matching.
+ * Returns match score (higher = better) or 0 if no match.
  */
 export function fuzzyMatch(query: string, target: string): number {
   const q = query.toLowerCase();
@@ -14,15 +22,30 @@ export function fuzzyMatch(query: string, target: string): number {
   if (q.length === 0) return 1;
 
   // Exact match gets highest score
-  if (t === q) return 100;
+  if (t === q) return 300;
 
-  // Starts with gets high score
-  if (t.startsWith(q)) return 90 + (q.length / t.length) * 10;
+  const coverage = Math.min(1, q.length / Math.max(t.length, q.length));
 
-  // Contains gets medium score
-  if (t.includes(q)) return 70 + (q.length / t.length) * 10;
+  // Starts with gets strong score
+  if (t.startsWith(q)) {
+    return 240 + coverage * 60;
+  }
 
-  // Fuzzy match - chars in order
+  // Word boundary match (e.g., matches start of words)
+  const boundaryIndex = findWordBoundaryIndex(t, q);
+  if (boundaryIndex >= 0) {
+    const proximityBonus = Math.max(0, 40 - boundaryIndex * 1.5);
+    return 200 + coverage * 50 + proximityBonus;
+  }
+
+  // Contains gets medium score with position penalty
+  const containsIndex = t.indexOf(q);
+  if (containsIndex >= 0) {
+    const positionPenalty = Math.min(40, containsIndex * 1.2);
+    return 150 + coverage * 40 - positionPenalty;
+  }
+
+  // Fuzzy subsequence match
   let qi = 0;
   let consecutiveMatches = 0;
   let maxConsecutive = 0;
@@ -32,10 +55,10 @@ export function fuzzyMatch(query: string, target: string): number {
     if (t[ti] === q[qi]) {
       if (ti === lastMatchIndex + 1) {
         consecutiveMatches++;
-        maxConsecutive = Math.max(maxConsecutive, consecutiveMatches);
       } else {
         consecutiveMatches = 1;
       }
+      maxConsecutive = Math.max(maxConsecutive, consecutiveMatches);
       lastMatchIndex = ti;
       qi++;
     }
@@ -43,9 +66,11 @@ export function fuzzyMatch(query: string, target: string): number {
 
   // All chars matched
   if (qi === q.length) {
-    // Score based on consecutive matches and coverage
-    const coverage = q.length / t.length;
-    return 30 + maxConsecutive * 10 + coverage * 20;
+    const spreadPenalty = Math.max(0, lastMatchIndex - maxConsecutive);
+    const adjacencyBonus = maxConsecutive * 10;
+    const coverageBonus = coverage * 30;
+    const base = 80 + adjacencyBonus + coverageBonus - spreadPenalty;
+    return Math.max(0, base);
   }
 
   return 0;

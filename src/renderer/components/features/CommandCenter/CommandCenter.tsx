@@ -18,12 +18,17 @@ export function CommandCenter() {
     selectedIndex,
     noteItems,
     commandItems,
+    recentCommandCount,
     inputRef,
     listRef,
     setQuery,
     setSelectedIndex,
     handleClose,
   } = useCommandCenter();
+
+  const trimmedQuery = query.trim();
+  const hasRecentCommands = trimmedQuery.length === 0 && recentCommandCount > 0;
+  const regularCommandCount = Math.max(0, commandItems.length - recentCommandCount);
 
   if (!isOpen) return null;
 
@@ -70,21 +75,48 @@ export function CommandCenter() {
           {/* Commands Section - shown first */}
           {commandItems.length > 0 && (
             <>
-              <div className="px-4 py-1.5">
-                <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                  Commands
-                </span>
-              </div>
-              {commandItems.map((item, idx) => (
-                <CommandItemRow
-                  key={item.id}
-                  item={item}
-                  index={idx}
-                  isSelected={selectedIndex === idx}
-                  onClick={item.action}
-                  onMouseEnter={() => setSelectedIndex(idx)}
-                />
-              ))}
+              {hasRecentCommands && (
+                <>
+                  <div className="px-4 py-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                      Recent Commands
+                    </span>
+                  </div>
+                  {commandItems.slice(0, recentCommandCount).map((item, idx) => (
+                    <CommandItemRow
+                      key={item.id}
+                      item={item}
+                      index={idx}
+                      isSelected={selectedIndex === idx}
+                      onClick={item.action}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                    />
+                  ))}
+                </>
+              )}
+
+              {regularCommandCount > 0 && (
+                <>
+                  <div className="px-4 py-1.5">
+                    <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                      {hasRecentCommands ? 'All Commands' : 'Commands'}
+                    </span>
+                  </div>
+                  {commandItems.slice(recentCommandCount).map((item, idx) => {
+                    const actualIndex = recentCommandCount + idx;
+                    return (
+                      <CommandItemRow
+                        key={item.id}
+                        item={item}
+                        index={actualIndex}
+                        isSelected={selectedIndex === actualIndex}
+                        onClick={item.action}
+                        onMouseEnter={() => setSelectedIndex(actualIndex)}
+                      />
+                    );
+                  })}
+                </>
+              )}
             </>
           )}
 

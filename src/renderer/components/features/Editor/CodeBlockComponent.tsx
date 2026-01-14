@@ -5,12 +5,13 @@
  * - FlowDSL: Custom simplified syntax that converts to Mermaid
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
 import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
 import { MermaidRenderer } from './MermaidRenderer';
 import { CodeBlockToolbar } from './CodeBlockToolbar';
+import { downloadElementAsPng } from '@renderer/utils/download';
 
 interface CodeBlockComponentProps {
   node: any;
@@ -29,6 +30,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   getPos,
   selected,
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [showCode, setShowCode] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() =>
@@ -50,6 +52,16 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   const isDiagram = isMermaid || isFlowDSL;
 
   const codeContent = node.textContent || '';
+
+  const handleDownload = useCallback(() => {
+    if (!containerRef.current) return;
+
+    const fileName = `code-block${language ? `-${language}` : ''}.png`;
+    downloadElementAsPng(containerRef.current, {
+      fileName,
+      filterSelectors: ['.code-block-toolbar'],
+    });
+  }, [language]);
 
   // Load language on demand (lazy loading)
   useEffect(() => {
@@ -111,6 +123,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
   return (
     <NodeViewWrapper className="code-block-wrapper" data-language={language}>
       <div
+        ref={containerRef}
         className={cn(
           'group relative my-4 rounded-lg border border-border bg-muted/30 overflow-hidden',
           selected && 'ring-2 ring-primary ring-offset-2',
@@ -158,6 +171,7 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           onToggleView={() => setShowCode(!showCode)}
           onFullscreen={() => setIsFullscreen(true)}
           codeContent={codeContent}
+          onDownload={handleDownload}
         />
       </div>
     </NodeViewWrapper>
