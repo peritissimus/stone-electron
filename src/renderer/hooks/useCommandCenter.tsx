@@ -7,6 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { useModals } from '@renderer/hooks/useUI';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { useCommandStore } from '@renderer/stores/commandStore';
+import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { fuzzyFilter } from '@renderer/utils/fuzzyMatch';
@@ -32,6 +34,7 @@ export interface CommandItem {
   icon: ReactNode;
   shortcut?: string;
   score?: number;
+  isRecent?: boolean;
   action: () => void;
 }
 
@@ -39,6 +42,11 @@ export function useCommandCenter() {
   const navigate = useNavigate();
   const { commandCenterOpen } = useModals();
   const { notes, activeNoteId } = useNoteStore();
+  const registerCommands = useCommandStore((state) => state.register);
+  const unregisterCommands = useCommandStore((state) => state.unregister);
+  const setContext = useCommandStore((state) => state.setContext);
+  const getVisibleCommands = useCommandStore((state) => state.getVisibleCommands);
+  const recordUsage = useCommandStore((state) => state.recordUsage);
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
   const { createNote, exportPdf } = useNoteAPI();
 
@@ -95,106 +103,116 @@ export function useCommandCenter() {
     handleClose();
   }, [handleClose]);
 
+  useEffect(() => {
+    setContext('hasActiveNote', Boolean(activeNoteId));
+  }, [activeNoteId, setContext]);
+
   // Build static command list
-  const commands = useMemo<CommandItem[]>(
+  const commandDefinitions = useMemo<CommandDefinition[]>(
     () => [
       {
         id: 'new-note',
-        type: 'command',
         title: 'New Note',
         subtitle: 'Create a new note',
         icon: <Plus size={18} weight="bold" />,
         shortcut: '⌘N',
-        action: handleClose,
+        run: handleClose,
       },
       {
         id: 'go-home',
-        type: 'command',
         title: 'Go Home',
         subtitle: 'Navigate to home view',
         icon: <House size={18} />,
         shortcut: '⌘⇧H',
-        action: () => {
+        run: () => {
           navigate('/home');
           handleClose();
         },
       },
       {
         id: 'toggle-sidebar',
-        type: 'command',
         title: 'Toggle Sidebar',
         subtitle: 'Show or hide the sidebar',
         icon: <SidebarSimple size={18} />,
         shortcut: '⌘\\',
-        action: () => {
+        run: () => {
           useUIStore.getState().toggleSidebar();
           handleClose();
         },
       },
       {
         id: 'open-settings',
-        type: 'command',
         title: 'Open Settings',
         subtitle: 'Configure app preferences',
         icon: <Gear size={18} />,
         shortcut: '⌘,',
-        action: () => {
+        run: () => {
           handleClose();
           useUIStore.getState().openSettings();
         },
       },
       {
         id: 'today-journal',
-        type: 'command',
         title: "Today's Journal",
         subtitle: "Open or create today's journal entry",
         icon: <Calendar size={18} />,
         shortcut: '⌘J',
-        action: () => {
+        run: () => {
           handleClose();
           openOrCreateTodayJournal();
         },
       },
       {
         id: 'yesterday-journal',
-        type: 'command',
         title: "Yesterday's Journal",
         subtitle: "Open or create yesterday's journal entry",
         icon: <CalendarBlank size={18} />,
-        action: () => {
+        run: () => {
           handleClose();
           openOrCreateYesterdayJournal();
         },
       },
       {
         id: 'new-work-note',
-        type: 'command',
         title: 'New Work Note',
         subtitle: 'Create a new note in Work folder',
         icon: <Briefcase size={18} />,
         shortcut: '⌘⇧W',
-        action: handleCreateWorkNote,
+        run: handleCreateWorkNote,
       },
       {
         id: 'export-pdf',
-        type: 'command',
         title: 'Export as PDF',
         subtitle: activeNoteId ? 'Export current note to PDF' : 'Open a note first',
         icon: <FilePdf size={18} />,
-        action: handleExportPdf,
+        when: 'hasActiveNote',
+        run: handleExportPdf,
       },
       {
         id: 'toggle-theme',
-        type: 'command',
         title: 'Toggle Theme',
         subtitle: 'Switch between light and dark mode',
         icon: <Moon size={18} />,
         shortcut: '⌘⇧T',
-        action: handleToggleTheme,
+        run: handleToggleTheme,
       },
     ],
-    [handleClose, navigate, openOrCreateTodayJournal, openOrCreateYesterdayJournal, handleCreateWorkNote, handleExportPdf, handleToggleTheme, activeNoteId],
+    [
+      handleClose,
+      navigate,
+      openOrCreateTodayJournal,
+      openOrCreateYesterdayJournal,
+      handleCreateWorkNote,
+      handleExportPdf,
+      handleToggleTheme,
+      activeNoteId,
+    ],
   );
+
+  useEffect(() => {
+    registerCommands(commandDefinitions);
+    return () => unregisterCommands(commandDefinitions.map((command) => command.id));
+  }, [registerCommands, unregisterCommands, commandDefinitions]);
 
   // Filtered notes with fuzzy matching
   const filteredNotes = useMemo<CommandItem[]>(() => {
@@ -222,11 +240,7 @@ export function useCommandCenter() {
     }
 
     // Fuzzy match against titles and file paths
-    return fuzzyFilter(
-      activeNotes,
-      q,
-      (note) => [note.title || 'Untitled', note.filePath || ''],
-    )
+    return fuzzyFilter(activeNotes, q, (note) => [note.title || 'Untitled', note.filePath || ''])
       .slice(0, 15)
       .map(({ score, ...note }) => ({
         id: `note-${note.id}`,
@@ -239,20 +253,35 @@ export function useCommandCenter() {
       }));
   }, [notes, query, handleSelectNote]);
 
-  // Filtered commands
-  const filteredCommands = useMemo<CommandItem[]>(() => {
-    if (query.length === 0) return commands;
+  const visibleCommands = useMemo(() => getVisibleCommands(query), [getVisibleCommands, query]);
 
-    return fuzzyFilter(commands, query, (cmd) => [cmd.title, cmd.subtitle || '']);
-  }, [commands, query]);
+  const commandItems = useMemo<CommandItem[]>(() => {
+    return visibleCommands.map((command) => ({
+      id: command.id,
+      type: 'command' as const,
+      title: command.title,
+      subtitle: command.subtitle,
+      icon: command.icon,
+      shortcut: command.shortcut,
+      score: command.score,
+      isRecent: command.isRecent,
+      action: () => {
+        recordUsage(command.id);
+        command.run();
+      },
+    }));
+  }, [visibleCommands, recordUsage]);
+
+  const recentCommandCount = useMemo(
+    () => (query.trim().length === 0 ? commandItems.filter((item) => item.isRecent).length : 0),
+    [commandItems, query],
+  );
 
   // Combined items list - commands take priority over notes
-  const items = useMemo<CommandItem[]>(() => {
-    if (query.length === 0) {
-      return [...commands, ...filteredNotes];
-    }
-    return [...filteredCommands, ...filteredNotes];
-  }, [query, filteredNotes, filteredCommands, commands]);
+  const items = useMemo<CommandItem[]>(
+    () => [...commandItems, ...filteredNotes],
+    [commandItems, filteredNotes],
+  );
 
   // Reset selection when items change
   useEffect(() => {
@@ -309,8 +338,7 @@ export function useCommandCenter() {
     }
   }, [selectedIndex]);
 
-  const noteItems = items.filter((i) => i.type === 'note');
-  const commandItems = items.filter((i) => i.type === 'command');
+  const noteItems = filteredNotes;
 
   return {
     // State
@@ -320,6 +348,7 @@ export function useCommandCenter() {
     items,
     noteItems,
     commandItems,
+    recentCommandCount,
     // Refs
     inputRef,
     listRef,
