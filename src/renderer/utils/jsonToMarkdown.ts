@@ -205,8 +205,10 @@ function processOrderedListItems(items: ProseMirrorNode[]): string {
 
       // Handle nested lists
       const lines = itemText.trim().split('\n');
-      const firstLine = `${index + 1}. ${lines[0]}`;
-      const restLines = lines.slice(1).map((line) => '   ' + line);
+      const marker = `${index + 1}. `;
+      const firstLine = `${marker}${lines[0]}`;
+      const indent = ' '.repeat(marker.length);
+      const restLines = lines.slice(1).map((line) => indent + line);
 
       return [firstLine, ...restLines].join('\n');
     })
