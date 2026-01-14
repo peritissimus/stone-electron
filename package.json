@@ -1,6 +1,6 @@
 {
   "name": "stone",
-  "version": "0.2.26",
+  "version": "0.2.27",
   "description": "Production-ready note-taking desktop application",
   "main": "./dist/main/index.cjs",
   "type": "module",
