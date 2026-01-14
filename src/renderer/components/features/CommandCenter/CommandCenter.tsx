@@ -67,15 +67,15 @@ export function CommandCenter() {
             </div>
           )}
 
-          {/* Notes Section */}
-          {noteItems.length > 0 && (
+          {/* Commands Section - shown first */}
+          {commandItems.length > 0 && (
             <>
               <div className="px-4 py-1.5">
                 <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                  {query.length > 0 ? 'Notes' : 'Recent'}
+                  Commands
                 </span>
               </div>
-              {noteItems.map((item, idx) => (
+              {commandItems.map((item, idx) => (
                 <CommandItemRow
                   key={item.id}
                   item={item}
@@ -88,16 +88,16 @@ export function CommandCenter() {
             </>
           )}
 
-          {/* Commands Section */}
-          {commandItems.length > 0 && (
+          {/* Notes Section */}
+          {noteItems.length > 0 && (
             <>
               <div className="px-4 py-1.5 mt-1">
                 <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
-                  Commands
+                  {query.length > 0 ? 'Notes' : 'Recent'}
                 </span>
               </div>
-              {commandItems.map((item, idx) => {
-                const actualIndex = noteItems.length + idx;
+              {noteItems.map((item, idx) => {
+                const actualIndex = commandItems.length + idx;
                 return (
                   <CommandItemRow
                     key={item.id}
