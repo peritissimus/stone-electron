@@ -442,8 +442,6 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
   ) {}
 
   async execute(request?: SyncWorkspaceRequest): Promise<SyncWorkspaceResponse> {
-    const startTime = Date.now();
-
     let workspace: WorkspaceProps | null;
     if (request?.workspaceId) {
       workspace = await this.workspaceRepository.findById(request.workspaceId);
@@ -468,6 +466,7 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
     let created = 0;
     let updated = 0;
     let deleted = 0;
+    const errors: string[] = [];
 
     // Process each file
     for (const relativePath of markdownFiles) {
@@ -538,11 +537,14 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       }
     }
 
-    const durationMs = Date.now() - startTime;
-
     return {
-      notes: { created, updated, deleted },
-      durationMs,
+      workspaceId: workspace.id,
+      notebooks: {
+        created: 0,
+        updated: 0,
+        errors: [],
+      },
+      notes: { created, updated, deleted, errors },
     };
   }
 }

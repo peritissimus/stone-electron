@@ -2,50 +2,29 @@
  * Sidebar Component - Navigation and organization
  */
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
 import { useUI } from '@renderer/hooks/useUI';
-import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from '@renderer/components/base/ui/select';
 import { Text } from '@renderer/components/base/ui/text';
-import { logger } from '@renderer/utils/logger';
 import { House, CaretLeft, Graph, CheckSquare, Tag } from 'phosphor-react';
 import { QuickLink, sizeHeightClasses, sizePaddingClasses } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { FileTree } from '@renderer/components/features/FileSystem';
-import { CreateWorkspaceModal } from '@renderer/components/features/Workspace';
 import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
 import { GitSyncButton } from './GitSyncButton';
 import { cn } from '@renderer/lib/utils';
-
-const CREATE_WORKSPACE_OPTION = '__create__';
 
 export function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { loadFileTree } = useFileTreeAPI();
-  const { loadWorkspaces, setActiveWorkspace, createWorkspace } = useWorkspaceAPI();
-  const { loadNotes } = useNoteAPI();
+  const { loadWorkspaces } = useWorkspaceAPI();
   const { activeFolder } = useFileTreeStore();
   const { workspaces, activeWorkspaceId } = useWorkspaceStore();
   const { toggleSidebar } = useUI();
-
-  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
-  const [isWorkspaceModalProcessing, setIsWorkspaceModalProcessing] = useState(false);
 
   // Determine active page from current route
   const currentPath = location.pathname;
@@ -59,50 +38,7 @@ export function Sidebar() {
     loadWorkspaces();
   }, [loadWorkspaces]);
 
-  const handleWorkspaceChange = async (value: string) => {
-    if (value === CREATE_WORKSPACE_OPTION) {
-      setWorkspaceModalOpen(true);
-      return;
-    }
-    if (!value) return;
-
-    await setActiveWorkspace(value);
-    await loadFileTree();
-    await loadNotes();
-  };
-
-  const handleCreateWorkspace = async ({
-    name,
-    folderPath,
-  }: {
-    name: string;
-    folderPath: string;
-  }) => {
-    setIsWorkspaceModalProcessing(true);
-    try {
-      const createdWorkspace = await createWorkspace({ name, path: folderPath });
-
-      if (!createdWorkspace) {
-        throw new Error('Failed to create workspace');
-      }
-
-      logger.info('Workspace created:', createdWorkspace.name);
-
-      if (createdWorkspace.id) {
-        await setActiveWorkspace(createdWorkspace.id);
-      }
-      await loadFileTree();
-      await loadNotes();
-      setWorkspaceModalOpen(false);
-    } catch (error) {
-      logger.error('Failed to create workspace:', error);
-      toast.error(
-        `Failed to create workspace: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      );
-    } finally {
-      setIsWorkspaceModalProcessing(false);
-    }
-  };
+  const activeWorkspaceName = workspaces.find((w) => w.id === activeWorkspaceId)?.name;
 
   return (
     <div className="flex flex-col h-full bg-sidebar">
@@ -114,28 +50,11 @@ export function Sidebar() {
           sizePaddingClasses['compact'],
         )}
       >
-        <Select value={activeWorkspaceId ?? ''} onValueChange={handleWorkspaceChange}>
-          <SelectTrigger className="h-8 text-xs flex-1">
-            <SelectValue placeholder="Select workspace" />
-          </SelectTrigger>
-          <SelectContent>
-            {workspaces.length > 0 && (
-              <>
-                <SelectGroup>
-                  {workspaces.map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
-                      <Text size="xs">{workspace.name}</Text>
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-                <SelectSeparator />
-              </>
-            )}
-            <SelectItem value={CREATE_WORKSPACE_OPTION}>
-              <Text size="xs">+ Create workspace…</Text>
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex-1 px-2">
+          <Text size="sm" weight="medium" className="truncate">
+            {activeWorkspaceName || 'Select workspace'}
+          </Text>
+        </div>
         <button
           onClick={toggleSidebar}
           className="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-colors"
@@ -183,16 +102,6 @@ export function Sidebar() {
 
       {/* ML Status Indicator */}
       <MLStatusIndicator />
-
-      <CreateWorkspaceModal
-        isOpen={workspaceModalOpen}
-        isSubmitting={isWorkspaceModalProcessing}
-        onClose={() => {
-          if (isWorkspaceModalProcessing) return;
-          setWorkspaceModalOpen(false);
-        }}
-        onSubmit={handleCreateWorkspace}
-      />
     </div>
   );
 }

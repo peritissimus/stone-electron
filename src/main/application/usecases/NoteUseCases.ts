@@ -43,7 +43,6 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -101,9 +100,9 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     const absolutePath = path.join(workspace.folderPath, relativePath);
 
     // Write initial content to file
+    // Content is already plain text or markdown from the frontend, no conversion needed
     const content = request.content || '';
-    const markdown = this.markdownProcessor.htmlToMarkdown(content);
-    await this.fileStorage.write(absolutePath, markdown);
+    await this.fileStorage.write(absolutePath, content);
 
     // Save to repository
     await this.noteRepository.save(note);
@@ -120,7 +119,6 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -167,7 +165,10 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
       }
 
       const absolutePath = path.join(workspace.folderPath, note.filePath);
-      const bodyMarkdown = this.markdownProcessor.htmlToMarkdown(request.content);
+      // Content is already markdown from the frontend (via jsonToMarkdown),
+      // no conversion needed. Calling htmlToMarkdown would incorrectly convert
+      // literal <br/> tags in code blocks (e.g., Mermaid diagrams) to newlines.
+      const bodyMarkdown = request.content;
 
       // Prepend title heading - the editor only contains body content
       const titleHeading = `# ${note.title}\n\n`;
@@ -470,7 +471,6 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: { id: string; content: string }): Promise<void> {
@@ -492,7 +492,10 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
     }
 
     const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
-    const bodyMarkdown = this.markdownProcessor.htmlToMarkdown(request.content);
+    // Content is already markdown from the frontend (via jsonToMarkdown),
+    // no conversion needed. Calling htmlToMarkdown would incorrectly convert
+    // literal <br/> tags in code blocks (e.g., Mermaid diagrams) to newlines.
+    const bodyMarkdown = request.content;
 
     // Prepend title heading - the editor only contains body content
     const titleHeading = `# ${noteProps.title}\n\n`;
@@ -655,14 +658,12 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       noteRepository,
       workspaceRepository,
       fileStorage,
-      markdownProcessor,
       eventPublisher,
     ),
     updateNote: new UpdateNoteUseCase(
       noteRepository,
       workspaceRepository,
       fileStorage,
-      markdownProcessor,
       eventPublisher,
     ),
     getNote: new GetNoteUseCase(
@@ -691,7 +692,6 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       noteRepository,
       workspaceRepository,
       fileStorage,
-      markdownProcessor,
     ),
     getNoteByPath: new GetNoteByPathUseCase(
       noteRepository,

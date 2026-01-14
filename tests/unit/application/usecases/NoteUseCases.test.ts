@@ -199,7 +199,6 @@ describe('NoteUseCases', () => {
         noteRepo,
         workspaceRepo,
         fileStorage,
-        markdownProcessor,
         eventPublisher,
       );
     });
@@ -254,7 +253,6 @@ describe('NoteUseCases', () => {
         noteRepo,
         workspaceRepo,
         fileStorage,
-        markdownProcessor,
         eventPublisher,
       );
     });
@@ -458,7 +456,7 @@ describe('NoteUseCases', () => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
       markdownProcessor = createMockMarkdownProcessor();
-      useCase = new SaveNoteContentUseCase(noteRepo, workspaceRepo, fileStorage, markdownProcessor);
+      useCase = new SaveNoteContentUseCase(noteRepo, workspaceRepo, fileStorage);
     });
 
     it('saves content to file', async () => {
