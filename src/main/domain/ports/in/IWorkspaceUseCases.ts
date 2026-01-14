@@ -136,12 +136,18 @@ export interface SyncWorkspaceRequest {
 }
 
 export interface SyncWorkspaceResponse {
+  workspaceId: string;
+  notebooks: {
+    created: number;
+    updated: number;
+    errors: string[];
+  };
   notes: {
     created: number;
     updated: number;
     deleted: number;
+    errors: string[];
   };
-  durationMs: number;
 }
 
 // =============================================================================
