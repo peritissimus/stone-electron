@@ -3,13 +3,23 @@
  * A plain text editor for editing raw markdown without formatting
  */
 
-import React, { useCallback, useEffect, useRef, forwardRef } from 'react';
+import React, { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { cn } from '@renderer/lib/utils';
+import type { CursorPosition } from '@renderer/stores/documentBufferStore';
 
 export interface RawMarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  initialCursorPosition?: CursorPosition;
+  onCursorChange?: (position: CursorPosition) => void;
+}
+
+export interface RawMarkdownEditorHandle {
+  focus: () => void;
+  getCursorPosition: () => CursorPosition;
+  setCursorPosition: (position: CursorPosition) => void;
+  getTextarea: () => HTMLTextAreaElement | null;
 }
 
 export const RawMarkdownEditor = forwardRef<HTMLDivElement, RawMarkdownEditorProps>(
