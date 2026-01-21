@@ -11,12 +11,22 @@ import { create } from 'zustand';
 import { JSONContent } from '@tiptap/react';
 import { logger } from '@renderer/utils/logger';
 
+export interface CursorPosition {
+  // For rich editor (TipTap) - character-based position
+  from: number;
+  to: number;
+  // For raw editor - line and column for better accuracy
+  line?: number;
+  column?: number;
+}
+
 export interface DocumentBuffer {
   noteId: string;
   content: JSONContent;
   isDirty: boolean;
   lastModified: number;
   title?: string;
+  cursorPosition?: CursorPosition;
 }
 
 interface DocumentBufferState {
@@ -34,6 +44,9 @@ interface DocumentBufferState {
   getDirtyBuffers: () => DocumentBuffer[];
   hasBuffer: (noteId: string) => boolean;
   isDirty: (noteId: string) => boolean;
+  // Cursor position management
+  setCursorPosition: (noteId: string, position: CursorPosition) => void;
+  getCursorPosition: (noteId: string) => CursorPosition | undefined;
 }
 
 export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) => ({
@@ -171,5 +184,25 @@ export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) =
   isDirty: (noteId: string) => {
     const buffer = get().buffers.get(noteId);
     return buffer?.isDirty ?? false;
+  },
+
+  setCursorPosition: (noteId: string, position: CursorPosition) => {
+    set((state) => {
+      const existing = state.buffers.get(noteId);
+      if (!existing) return state;
+
+      const newBuffers = new Map(state.buffers);
+      newBuffers.set(noteId, {
+        ...existing,
+        cursorPosition: position,
+      });
+
+      return { buffers: newBuffers };
+    });
+  },
+
+  getCursorPosition: (noteId: string) => {
+    const buffer = get().buffers.get(noteId);
+    return buffer?.cursorPosition;
   },
 }));
