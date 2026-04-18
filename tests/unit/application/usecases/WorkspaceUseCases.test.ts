@@ -21,7 +21,7 @@ import {
   MoveFolderUseCase,
   ScanWorkspaceUseCase,
   SyncWorkspaceUseCase,
-} from '../../../../src/main/application/usecases/WorkspaceUseCases';
+} from '../../../../src/main/application/usecases/workspace';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
