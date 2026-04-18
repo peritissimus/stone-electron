@@ -8,6 +8,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
+import type { CursorPosition } from '@renderer/stores/documentBufferStore';
+export type { CursorPosition };
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
