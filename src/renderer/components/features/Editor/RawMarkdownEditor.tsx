@@ -5,7 +5,7 @@
 
 import React, { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { cn } from '@renderer/lib/utils';
-import type { CursorPosition } from '@renderer/stores/documentBufferStore';
+import type { CursorPosition } from '@renderer/hooks/useDocumentBuffer';
 
 export interface RawMarkdownEditorProps {
   value: string;
