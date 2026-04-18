@@ -3,10 +3,10 @@
  */
 
 import { useEffect, useCallback } from 'react';
-import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
+import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { cn } from '@renderer/lib/utils';
 import {
   GitBranch,
@@ -16,7 +16,7 @@ import {
 } from 'phosphor-react';
 
 export function GitSyncButton() {
-  const { activeWorkspaceId } = useWorkspaceStore();
+  const { activeWorkspaceId } = useWorkspaces();
   const { status, syncing, getStatus, sync } = useGitAPI();
 
   const loadStatus = useCallback(async () => {

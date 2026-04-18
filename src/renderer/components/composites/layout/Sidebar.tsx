@@ -9,8 +9,8 @@ import { Text } from '@renderer/components/base/ui/text';
 import { House, CaretLeft, Graph, CheckSquare, Tag } from 'phosphor-react';
 import { QuickLink, sizeHeightClasses, sizePaddingClasses } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
+import { useFileTree } from '@renderer/hooks/useFileTree';
+import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { MLStatusIndicator } from '@renderer/components/features/MLStatus';
@@ -22,8 +22,8 @@ export function Sidebar() {
   const location = useLocation();
 
   const { loadWorkspaces } = useWorkspaceAPI();
-  const { activeFolder } = useFileTreeStore();
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const { activeFolder } = useFileTree();
+  const { workspaces, activeWorkspaceId } = useWorkspaces();
   const { toggleSidebar } = useUI();
 
   // Determine active page from current route
