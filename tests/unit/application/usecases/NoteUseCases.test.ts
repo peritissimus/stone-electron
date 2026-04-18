@@ -20,7 +20,7 @@ import {
   TogglePinUseCase,
   ToggleArchiveUseCase,
   ListNotesUseCase,
-} from '../../../../src/main/application/usecases/NoteUseCases';
+} from '../../../../src/main/application/usecases/note';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
