@@ -1,7 +1,7 @@
 import React, { memo } from 'react';
 import { FileText, BookOpen, ArrowRight, Sparkle, CaretRight, PencilSimple, Plus } from 'phosphor-react';
 import { useHomePageData } from '@renderer/hooks/useHomePageData';
-import { formatRelativeDate, getGreeting, getFolderPath } from '@renderer/utils/dateFormat';
+import { formatRelativeDate, getGreeting, getFolderPath } from '@renderer/lib/dateFormat';
 import { TodoList } from './TodoList';
 import { IconButton, ListItem, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';

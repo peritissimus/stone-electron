@@ -7,7 +7,7 @@
  * - Compose: TokenMap.kt (maps to Compose Modifiers)
  */
 
-import { type SizeVariant } from '@/specs';
+import { type SizeVariant } from '@renderer/specs';
 
 // =============================================================================
 // SPACING → Tailwind

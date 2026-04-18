@@ -1,6 +1,8 @@
 /**
  * CommandCenter - Cmd+K command palette for quick navigation and actions
  *
+ * Implements: specs/components.ts#CommandCenterProps
+ *
  * Performance optimizations:
  * - In-memory filtering for instant results (no API calls)
  * - Fuzzy matching for typo-tolerant search

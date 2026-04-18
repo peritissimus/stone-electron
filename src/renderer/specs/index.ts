@@ -17,7 +17,7 @@
  *
  * Usage:
  * ```typescript
- * import { tokens, entities, stores, components, api } from '@/specs';
+ * import { tokens, entities, stores, components, api } from '@renderer/specs';
  *
  * // Use token values
  * const padding = tokens.spacing.md; // 16

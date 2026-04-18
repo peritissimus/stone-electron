@@ -1,12 +1,12 @@
 /**
  * Note Store - Zustand state management for notes
  *
- * Pattern: specs/stores.ts#NoteStoreState
+ * Implements: specs/stores.ts#NoteStoreState
  */
 
 import { create } from 'zustand';
 import { Note } from '@shared/types';
-import { normalizePath } from '@renderer/utils/pathCache';
+import { normalizePath } from '@renderer/lib/pathCache';
 
 interface NoteState {
   notes: Note[];

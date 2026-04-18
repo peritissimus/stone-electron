@@ -1,11 +1,11 @@
 /**
  * File Tree Store - Zustand state management for file system tree
  *
- * Pattern: specs/stores.ts#FileTreeStoreState
+ * Implements: specs/stores.ts#FileTreeStoreState
  */
 
 import { create } from 'zustand';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 export interface FileTreeNode {
   name: string;

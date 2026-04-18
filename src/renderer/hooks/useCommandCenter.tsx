@@ -11,7 +11,7 @@ import { useCommandStore } from '@renderer/stores/commandStore';
 import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { fuzzyFilter } from '@renderer/utils/fuzzyMatch';
+import { fuzzyFilter } from '@renderer/lib/fuzzyMatch';
 import {
   FileText,
   Gear,

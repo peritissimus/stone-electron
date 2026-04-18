@@ -1,7 +1,7 @@
 /**
  * Workspace Store - Zustand state management for workspaces
  *
- * Pattern: specs/stores.ts#WorkspaceStoreState
+ * Implements: specs/stores.ts#WorkspaceStoreState
  */
 
 import { create } from 'zustand';

@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 /**
  * Get journal info for a specific date

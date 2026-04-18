@@ -12,7 +12,7 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { TextSelection } from '@tiptap/pm/state';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 function isInTable(state: any): boolean {
   const { $from } = state.selection;

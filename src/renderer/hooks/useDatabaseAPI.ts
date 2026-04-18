@@ -4,7 +4,7 @@
 
 import { useCallback, useState } from 'react';
 import { databaseAPI } from '@renderer/api';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import type { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
 
 interface UseDatabaseAPIState {

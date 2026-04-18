@@ -9,7 +9,7 @@ import { TodoItem } from '@shared/types';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 // State configuration in priority order
 export const TASK_STATES: readonly { key: string; label: string; done: boolean; color: string }[] = [

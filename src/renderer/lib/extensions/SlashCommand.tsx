@@ -14,7 +14,7 @@ import {
   SlashCommandMenu,
   SlashCommandMenuRef,
   defaultSlashCommands,
-} from '../components/features/Editor/SlashCommandMenu';
+} from '@renderer/components/features/Editor/SlashCommandMenu';
 
 export const SlashCommand = Extension.create({
   name: 'slashCommand',

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UseAutosaveOptions<T> {
   saveFn: (data: T) => Promise<void>;

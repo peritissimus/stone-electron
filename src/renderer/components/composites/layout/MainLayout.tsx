@@ -5,9 +5,13 @@
 import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
-import { Sidebar } from '@renderer/components/features/navigation';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
-import { LayoutContainer, SidebarPanel, MainContentArea } from '@renderer/components/composites';
+import {
+  LayoutContainer,
+  SidebarPanel,
+  MainContentArea,
+  Sidebar,
+} from '@renderer/components/composites';
 
 // Lazy load heavy components
 const NoteEditor = lazy(() =>
@@ -31,7 +35,7 @@ const TopicsPage = lazy(() =>
 );
 
 import { useUI } from '@renderer/hooks/useUI';
-import { useNoteStore } from '@renderer/stores/noteStore';
+import { useNotes } from '@renderer/hooks/useNotes';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -39,8 +43,8 @@ import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
 import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
-import { getAllDrafts } from '@renderer/utils/draftStorage';
-import { logger } from '@renderer/utils/logger';
+import { getAllDrafts } from '@renderer/lib/draftStorage';
+import { logger } from '@renderer/lib/logger';
 import { useLocation } from 'react-router-dom';
 
 // Lazy load overlay components
@@ -93,7 +97,7 @@ const PageSkeleton = () => (
 // Note route wrapper - syncs URL param with note store
 function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle> }) {
   const { noteId } = useParams<{ noteId: string }>();
-  const { setActiveNote } = useNoteStore();
+  const { setActiveNote } = useNotes();
 
   // Sync URL noteId to store
   useEffect(() => {
@@ -115,7 +119,7 @@ export function MainLayout() {
   const { sidebarOpen, sidebarWidth, noteListWidth, editorFullscreen, setSidebarWidth, setNoteListWidth } =
     useUI();
 
-  const { setActiveNote } = useNoteStore();
+  const { setActiveNote } = useNotes();
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();

@@ -5,7 +5,7 @@
 import { useCallback, useRef } from 'react';
 import { noteAPI } from '@renderer/api';
 import type { Note } from '@shared/types';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface NoteCacheEntry {
   notes: Note[];

@@ -1,7 +1,7 @@
 /**
  * Notebook Store - Zustand state management for notebooks
  *
- * Pattern: specs/stores.ts#NotebookStoreState
+ * Implements: specs/stores.ts#NotebookStoreState
  */
 
 import { create } from 'zustand';

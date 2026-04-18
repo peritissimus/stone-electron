@@ -5,8 +5,8 @@
  */
 
 import React, { useCallback } from 'react';
-import { logger } from '@renderer/utils/logger';
-import { useNotebookStore } from '@renderer/stores/notebookStore';
+import { logger } from '@renderer/lib/logger';
+import { useNotebooks } from '@renderer/hooks/useNotebooks';
 import { CaretRight, CaretDown } from 'phosphor-react';
 import { Notebook } from '@shared/types';
 import { Button } from '@renderer/components/base/ui/button';
@@ -14,7 +14,7 @@ import { Text } from '@renderer/components/base/ui/text';
 import { TreeItem } from '@renderer/components/composites';
 
 export function NotebookTree() {
-  const notebooks = useNotebookStore((state) => state.notebooks);
+  const { notebooks } = useNotebooks();
 
   if (notebooks.length === 0) {
     return <div className="p-3 text-xs text-muted-foreground text-center">No notebooks yet</div>;
@@ -42,10 +42,7 @@ interface NotebookTreeItemProps {
 // Memoized tree item - only re-renders when notebook or level changes
 const NotebookTreeItem = React.memo<NotebookTreeItemProps>(({ notebook, level }) => {
   // Get state and actions directly from store (avoids prop drilling)
-  const activeNotebookId = useNotebookStore((state) => state.activeNotebookId);
-  const expandedIds = useNotebookStore((state) => state.expandedIds);
-  const setActiveNotebook = useNotebookStore((state) => state.setActiveNotebook);
-  const toggleExpanded = useNotebookStore((state) => state.toggleExpanded);
+  const { activeNotebookId, expandedIds, setActiveNotebook, toggleExpanded } = useNotebooks();
 
   const isActive = notebook.id === activeNotebookId;
   const isExpanded = expandedIds.has(notebook.id);

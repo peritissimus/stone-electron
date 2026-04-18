@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 import { invokeIpc, handleIpcResponse, IpcResult } from '@renderer/lib/ipc';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 /**
  * Store actions that API hooks typically need

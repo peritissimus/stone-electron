@@ -14,7 +14,7 @@ import {
   Plus,
   Clock,
 } from 'phosphor-react';
-import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
+import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { SettingsSection } from './SettingsSection';
 import { ActionCard } from './ActionCard';
@@ -26,7 +26,7 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Label, Body } from '@renderer/components/base/ui/text';
 
 export function GitSettings() {
-  const { workspaces, activeWorkspaceId } = useWorkspaceStore();
+  const { workspaces, activeWorkspaceId } = useWorkspaces();
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
 
   const {

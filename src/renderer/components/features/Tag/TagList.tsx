@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { useTagStore } from '@renderer/stores/tagStore';
+import { useTags } from '@renderer/hooks/useTags';
 import { Button } from '@renderer/components/base/ui/button';
 import { Text } from '@renderer/components/base/ui/text';
 import { cn } from '@renderer/lib/utils';
@@ -15,7 +15,7 @@ export interface TagListProps {
 }
 
 export function TagList({ className }: TagListProps) {
-  const { tags, selectedTagIds, toggleTag } = useTagStore();
+  const { tags, selectedTagIds, toggleTag } = useTags();
 
   if (tags.length === 0) {
     return (

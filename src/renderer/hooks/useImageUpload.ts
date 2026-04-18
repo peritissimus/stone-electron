@@ -6,7 +6,7 @@ import { useEffect, useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { ATTACHMENT_CHANNELS } from '@shared/constants/ipcChannels';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UseImageUploadOptions {
   editor: Editor | null;

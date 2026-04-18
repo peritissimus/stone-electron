@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem } from '@shared/types';
-import type { NoteFilters, GraphData as SpecGraphData } from '@/specs';
+import type { NoteFilters, GraphData as SpecGraphData } from '@renderer/specs';
 import { validateResponse } from './validation';
 import { NoteSchema, NoteWithMetaSchema, TodoItemSchema, GraphDataSchema } from './schemas';
 

@@ -6,8 +6,8 @@
  */
 
 import { Editor } from '@tiptap/react';
-import { decodeBase64ToUtf8 } from '@renderer/utils/base64';
-import { getEmbeddedFontFaces } from '@renderer/utils/fontLoader';
+import { decodeBase64ToUtf8 } from '@renderer/lib/base64';
+import { getEmbeddedFontFaces } from '@renderer/lib/fontLoader';
 
 /**
  * Google Fonts URL for all fonts used in the app

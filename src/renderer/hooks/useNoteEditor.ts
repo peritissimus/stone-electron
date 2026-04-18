@@ -10,7 +10,7 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
-import { normalizePath } from '@renderer/utils/path';
+import { normalizePath } from '@renderer/lib/path';
 
 type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
 

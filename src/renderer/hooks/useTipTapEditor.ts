@@ -6,29 +6,29 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
-import { ImageWithMenu } from '@renderer/extensions/ImageWithMenu';
+import { ImageWithMenu } from '@renderer/lib/extensions/ImageWithMenu';
 import TaskList from '@tiptap/extension-task-list';
-import LogseqTaskItem from '@renderer/extensions/LogseqTaskItem';
+import LogseqTaskItem from '@renderer/lib/extensions/LogseqTaskItem';
 import Placeholder from '@tiptap/extension-placeholder';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import { lowlight } from 'lowlight';
-import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid';
+import { CodeBlockWithMermaid } from '@renderer/lib/extensions/CodeBlockWithMermaid';
 
 // Import slash command extension
-import { SlashCommand } from '@renderer/extensions/SlashCommand';
-import { NoteLink } from '@renderer/extensions/NoteLink';
-import { Timestamp } from '@renderer/extensions/Timestamp';
-import { TaskMarker } from '@renderer/extensions/TaskMarker';
-import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
-import { SearchAndReplace } from '@renderer/extensions/SearchAndReplace';
-import { MarkdownPaste } from '@renderer/extensions/MarkdownPaste';
-import { TableNavigation } from '@renderer/extensions/TableNavigation';
-import { BlockDragDrop } from '@renderer/extensions/BlockDragDrop';
+import { SlashCommand } from '@renderer/lib/extensions/SlashCommand';
+import { NoteLink } from '@renderer/lib/extensions/NoteLink';
+import { Timestamp } from '@renderer/lib/extensions/Timestamp';
+import { TaskMarker } from '@renderer/lib/extensions/TaskMarker';
+import { IndentableBlock } from '@renderer/lib/extensions/IndentableBlock';
+import { SearchAndReplace } from '@renderer/lib/extensions/SearchAndReplace';
+import { MarkdownPaste } from '@renderer/lib/extensions/MarkdownPaste';
+import { TableNavigation } from '@renderer/lib/extensions/TableNavigation';
+import { BlockDragDrop } from '@renderer/lib/extensions/BlockDragDrop';
 import { useNoteCache } from '@renderer/hooks/useNoteCache';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
 // Language loader map for dynamic imports

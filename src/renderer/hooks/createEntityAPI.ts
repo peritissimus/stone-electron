@@ -7,7 +7,7 @@
 
 import { useCallback } from 'react';
 import { invokeIpc, handleIpcResponse } from '@renderer/lib/ipc';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 /**
  * Channel configuration for entity operations

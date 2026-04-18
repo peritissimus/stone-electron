@@ -1,22 +1,24 @@
 /**
  * FileTree Component - container that wires actions and renders folder/file nodes.
+ *
+ * Implements: specs/components.ts#FileTreeProps
  */
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { InputModal } from '@renderer/components/composites';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useFileTree } from '@renderer/hooks/useFileTree';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
-import { logger } from '@renderer/utils/logger';
-import { normalizePath, getParentPath } from '@renderer/utils/path';
+import { logger } from '@renderer/lib/logger';
+import { normalizePath, getParentPath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
 export function FileTree() {
   const navigate = useNavigate();
-  const { tree, setActiveFolder, setSelectedFile } = useFileTreeStore();
+  const { tree, setActiveFolder, setSelectedFile } = useFileTree();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);

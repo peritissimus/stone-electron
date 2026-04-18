@@ -16,7 +16,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteEditor } from '@renderer/hooks/useNoteEditor';
 import { cn } from '@renderer/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { ListItem, SectionHeader } from '@renderer/components/composites';
 
 export interface BacklinksPanelProps {

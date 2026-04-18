@@ -1,7 +1,7 @@
 /**
  * Document Buffer Store - In-memory buffer for note content
  *
- * Pattern: specs/stores.ts#DocumentBufferStoreState
+ * Implements: specs/stores.ts#DocumentBufferStoreState
  *
  * Keeps recently edited documents in memory for instant switching.
  * Saves to disk only on explicit save, blur, timer, or app close.
@@ -9,7 +9,7 @@
 
 import { create } from 'zustand';
 import { JSONContent } from '@tiptap/react';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 export interface CursorPosition {
   // For rich editor (TipTap) - character-based position

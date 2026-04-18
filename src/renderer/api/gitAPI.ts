@@ -2,6 +2,7 @@
  * Git API - IPC channel wrappers for git operations
  *
  * Pure functions that wrap IPC channels for workspace git sync.
+ * No spec counterpart: git sync is desktop-only.
  */
 
 import { z } from 'zod';

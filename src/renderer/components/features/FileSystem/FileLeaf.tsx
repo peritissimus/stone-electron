@@ -9,13 +9,12 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
-import { useNoteStore } from '@renderer/stores/noteStore';
+import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
+import { useNotes, getNotesByPathSnapshot } from '@renderer/hooks/useNotes';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { cn } from '@renderer/lib/utils';
-import { logger } from '@renderer/utils/logger';
-import { normalizePath, getParentPath, getDisplayName } from '@renderer/utils/path';
-import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import { logger } from '@renderer/lib/logger';
+import { normalizePath, getParentPath, getDisplayName } from '@renderer/lib/path';
 
 interface FileLeafProps {
   node: FileTreeNode;
@@ -29,11 +28,8 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
   const navigate = useNavigate();
   const normalizedPath = normalizePath(node.path);
 
-  const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
-  const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
-
-  const activeNoteId = useNoteStore((state) => state.activeNoteId);
-  const notesByPath = useNoteStore((state) => state.notesByPath);
+  const { setSelectedFile, setActiveFolder } = useFileTree();
+  const { activeNoteId, notesByPath } = useNotes();
   const note = notesByPath.get(normalizedPath);
 
   const { loadNoteByPath } = useNoteAPI();
@@ -54,7 +50,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
     setActiveFolder(folderForSelection);
     setSelectedFile(normalizedPath);
 
-    const currentNotesByPath = useNoteStore.getState().notesByPath;
+    const currentNotesByPath = getNotesByPathSnapshot();
     const cachedNote = currentNotesByPath.get(normalizedPath);
 
     if (cachedNote) {
@@ -104,11 +100,11 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
       onDragEnd={handleDragEnd}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="relative group transition-all duration-150"
+      className="relative group transition-colors duration-150"
     >
       <div
         className={cn(
-          'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
+          'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
           isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
         )}
         onClick={handleOpen}

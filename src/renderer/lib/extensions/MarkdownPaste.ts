@@ -10,7 +10,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Slice } from '@tiptap/pm/model';
 import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 export const MarkdownPaste = Extension.create({
   name: 'markdownPaste',

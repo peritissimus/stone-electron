@@ -16,11 +16,10 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
 import { cn } from '@renderer/lib/utils';
-import { logger } from '@renderer/utils/logger';
-import { normalizePath, getParentPath } from '@renderer/utils/path';
-import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import { logger } from '@renderer/lib/logger';
+import { normalizePath, getParentPath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 
 interface FolderNodeProps {
@@ -49,13 +48,15 @@ export const FolderNode = React.memo<FolderNodeProps>(
   }) => {
     const normalizedPath = normalizePath(node.path);
 
-    const expandedPaths = useFileTreeStore((state) => state.expandedPaths);
-    const activeFolder = useFileTreeStore((state) => state.activeFolder);
+    const {
+      expandedPaths,
+      activeFolder,
+      setActiveFolder,
+      toggleExpanded,
+      setSelectedFile,
+    } = useFileTree();
     const isExpanded = expandedPaths.has(normalizedPath);
     const isActive = normalizePath(activeFolder || '') === normalizedPath;
-    const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
-    const toggleExpanded = useFileTreeStore((state) => state.toggleExpanded);
-    const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
 
     const [isDragOver, setIsDragOver] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -162,13 +163,13 @@ export const FolderNode = React.memo<FolderNodeProps>(
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           className={cn(
-            'relative group transition-all duration-150',
+            'relative group transition-colors duration-150',
             isDragOver && 'ring-2 ring-primary/20 ring-offset-1 rounded',
           )}
         >
           <div
             className={cn(
-              'relative flex items-center h-7 px-2 rounded cursor-pointer transition-all duration-150',
+              'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
               'hover:bg-accent/20',
             )}
             onClick={handleClick}

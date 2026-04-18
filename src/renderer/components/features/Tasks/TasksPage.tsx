@@ -6,10 +6,10 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckSquare, Funnel } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useFileTree } from '@renderer/hooks/useFileTree';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTasks, TASK_STATES } from '@renderer/hooks/useTasks';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Button } from '@renderer/components/base/ui/button';
 import { TaskSection } from './TaskSection';
@@ -37,7 +37,7 @@ export function TasksPage() {
     handleToggleTask,
   } = useTasks();
 
-  const { setSelectedFile, setActiveFolder } = useFileTreeStore();
+  const { setSelectedFile, setActiveFolder } = useFileTree();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
 
   const handleTodoClick = useCallback(

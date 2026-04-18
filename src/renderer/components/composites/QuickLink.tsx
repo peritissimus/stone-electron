@@ -44,7 +44,7 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
           gap,
           'flex items-center justify-start',
           'rounded-md',
-          'transition-all duration-150',
+          'transition-colors duration-150',
           isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
           isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
           className,

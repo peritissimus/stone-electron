@@ -1,6 +1,7 @@
 /**
  * Spacer Component - layout spacing without divs
  *
+ * Implements: specs/components.ts#SpacerProps
  * Replaces: style={{ paddingLeft: "..." }} and other manual spacing
  */
 
