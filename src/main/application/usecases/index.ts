@@ -44,8 +44,18 @@ export {
   SetActiveWorkspaceUseCase,
   GetActiveWorkspaceUseCase,
   DeleteWorkspaceUseCase,
+  UpdateWorkspaceUseCase,
+  SelectFolderUseCase,
+  ValidatePathUseCase,
+  CreateFolderUseCase,
+  RenameFolderUseCase,
+  DeleteFolderUseCase,
+  MoveFolderUseCase,
+  ScanWorkspaceUseCase,
+  SyncWorkspaceUseCase,
   createWorkspaceUseCases,
-} from './WorkspaceUseCases';
+  type WorkspaceUseCasesDeps,
+} from './workspace';
 
 // Tag Use Cases
 export {

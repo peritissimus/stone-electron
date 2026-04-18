@@ -1,0 +1,16 @@
+export { CreateWorkspaceUseCase } from './CreateWorkspaceUseCase';
+export { GetWorkspaceUseCase } from './GetWorkspaceUseCase';
+export { ListWorkspacesUseCase } from './ListWorkspacesUseCase';
+export { SetActiveWorkspaceUseCase } from './SetActiveWorkspaceUseCase';
+export { GetActiveWorkspaceUseCase } from './GetActiveWorkspaceUseCase';
+export { DeleteWorkspaceUseCase } from './DeleteWorkspaceUseCase';
+export { UpdateWorkspaceUseCase } from './UpdateWorkspaceUseCase';
+export { SelectFolderUseCase } from './SelectFolderUseCase';
+export { ValidatePathUseCase } from './ValidatePathUseCase';
+export { CreateFolderUseCase } from './CreateFolderUseCase';
+export { RenameFolderUseCase } from './RenameFolderUseCase';
+export { DeleteFolderUseCase } from './DeleteFolderUseCase';
+export { MoveFolderUseCase } from './MoveFolderUseCase';
+export { ScanWorkspaceUseCase } from './ScanWorkspaceUseCase';
+export { SyncWorkspaceUseCase } from './SyncWorkspaceUseCase';
+export { createWorkspaceUseCases, type WorkspaceUseCasesDeps } from './createWorkspaceUseCases';
