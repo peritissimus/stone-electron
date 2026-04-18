@@ -52,7 +52,7 @@ export const Timestamp = Node.create<TimestampOptions>({
     return {
       time: {
         default: '00:00',
-        parseHTML: (element) => element.dataset.time || element.textContent?.replace(/[\[\]]/g, ''),
+        parseHTML: (element) => element.dataset.time || element.textContent?.replace(/[[\]]/g, ''),
         renderHTML: (attributes) => ({
           'data-time': attributes.time,
         }),
