@@ -14,13 +14,13 @@ import type {
   SearchOptions,
   DateRangeOptions,
   INoteRepository,
-  IEmbeddingService,
+  IEmbedder,
 } from '../../../domain';
 
 export interface SearchEngineDeps {
   db: Database;
   noteRepository: INoteRepository;
-  embeddingService: IEmbeddingService;
+  embeddingService: IEmbedder;
 }
 
 export class SearchEngine implements ISearchEngine {

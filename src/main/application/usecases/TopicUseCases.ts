@@ -6,7 +6,7 @@ import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
 import type { ITopicRepository } from '../../domain/ports/out/ITopicRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
-import type { IEmbeddingService } from '../../domain/ports/out/IEmbeddingService';
+import type { IEmbedder } from '../../domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 import type { ITopicUseCases } from '../../domain/ports/in/ITopicUseCases';
@@ -22,7 +22,7 @@ export interface TopicUseCasesDeps {
   topicRepository: ITopicRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
-  embeddingService: IEmbeddingService;
+  embeddingService: IEmbedder;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher?: IEventPublisher;
 }

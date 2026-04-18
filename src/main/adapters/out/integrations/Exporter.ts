@@ -3,14 +3,14 @@
  */
 
 import type { BrowserWindow } from 'electron';
-import type { IExportService, PdfOptions, HtmlOptions } from '../../../domain';
+import type { IExporter, PdfOptions, HtmlOptions } from '../../../domain';
 import { logger } from '../../../shared';
 
 /**
  * Export Service implementation
  * Note: PDF export requires electron's printToPDF or a headless browser
  */
-export class ExportService implements IExportService {
+export class Exporter implements IExporter {
   private pdfAvailable: boolean = false;
 
   constructor() {
@@ -25,7 +25,7 @@ export class ExportService implements IExportService {
   }
 
   async renderToPdf(html: string, options?: PdfOptions): Promise<Buffer> {
-    return await logger.withContext('out:ExportService.renderToPdf', async () => {
+    return await logger.withContext('out:Exporter.renderToPdf', async () => {
       if (!this.pdfAvailable) {
         throw new Error('PDF export is not available in this environment');
       }
@@ -81,10 +81,10 @@ export class ExportService implements IExportService {
 
         win.close();
 
-        logger.info('[ExportService] Generated PDF with fonts loaded');
+        logger.info('[Exporter] Generated PDF with fonts loaded');
         return Buffer.from(pdfBuffer);
       } catch (error) {
-        logger.error('[ExportService] PDF generation failed:', error);
+        logger.error('[Exporter] PDF generation failed:', error);
         throw error;
       } finally {
         if (win && !win.isDestroyed()) {

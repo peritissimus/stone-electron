@@ -2,12 +2,12 @@
  * System Use Cases - System-level operations
  */
 
-import type { ISystemService } from '../../domain/ports/out/ISystemService';
+import type { ISystemBridge } from '../../domain/ports/out/ISystemBridge';
 import type { ISystemUseCases } from '../../domain/ports/in/ISystemUseCases';
 import { logger } from '../../shared/utils';
 
 export interface SystemUseCasesDeps {
-  systemService: ISystemService;
+  systemService: ISystemBridge;
 }
 
 class SystemUseCasesImpl implements ISystemUseCases {

@@ -10,8 +10,8 @@ export * from './persistence';
 // Storage
 export * from './storage';
 
-// Services
-export * from './services';
+// Integrations
+export * from './integrations';
 
 // External
 export * from './external';

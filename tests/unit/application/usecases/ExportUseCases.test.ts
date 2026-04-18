@@ -10,7 +10,7 @@ import type { INoteRepository } from '../../../../src/main/domain/ports/out/INot
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
-import type { IExportService } from '../../../../src/main/domain/ports/out/IExportService';
+import type { IExporter } from '../../../../src/main/domain/ports/out/IExporter';
 import type { IExportUseCases } from '../../../../src/main/domain/ports/in/IExportUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -52,12 +52,12 @@ function createMockMarkdownProcessor(): IMarkdownProcessor {
   } as unknown as IMarkdownProcessor;
 }
 
-function createMockExportService(): IExportService {
+function createMockExporter(): IExporter {
   return {
     isPdfAvailable: vi.fn(),
     generateHtmlDocument: vi.fn(),
     renderToPdf: vi.fn(),
-  } as unknown as IExportService;
+  } as unknown as IExporter;
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -95,7 +95,7 @@ describe('ExportUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
   let markdownProcessor: IMarkdownProcessor;
-  let exportService: IExportService;
+  let exportService: IExporter;
   let useCases: IExportUseCases;
 
   beforeEach(() => {
@@ -103,7 +103,7 @@ describe('ExportUseCases', () => {
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
     markdownProcessor = createMockMarkdownProcessor();
-    exportService = createMockExportService();
+    exportService = createMockExporter();
     useCases = createExportUseCases({
       noteRepository: noteRepo,
       workspaceRepository: workspaceRepo,

@@ -3,9 +3,9 @@
  */
 
 import type {
-  IGitService,
-  GitServiceStatus as GitStatus,
-  GitServiceCommit as GitCommit,
+  IGitClient,
+  GitClientStatus as GitStatus,
+  GitClientCommit as GitCommit,
   GitOperationResult,
   GitFileChange,
 } from '../../../domain';
@@ -25,9 +25,9 @@ async function getSimpleGit() {
 /**
  * Git Service implementation using simple-git
  */
-export class GitService implements IGitService {
+export class GitClient implements IGitClient {
   async isRepository(path: string): Promise<boolean> {
-    return await logger.withContext('out:GitService.isRepository', async () => {
+    return await logger.withContext('out:GitClient.isRepository', async () => {
       try {
         const git = (await getSimpleGit())(path);
         return await git.checkIsRepo();
@@ -38,22 +38,22 @@ export class GitService implements IGitService {
   }
 
   async init(path: string): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.init', async () => {
+    return await logger.withContext('out:GitClient.init', async () => {
       try {
         const git = (await getSimpleGit())(path);
         await git.init();
-        logger.info(`[GitService] Initialized repository at ${path}`);
+        logger.info(`[GitClient] Initialized repository at ${path}`);
         return { success: true, message: 'Repository initialized' };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Init failed:', error);
+        logger.error('[GitClient] Init failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async getStatus(path: string): Promise<GitStatus> {
-    return await logger.withContext('out:GitService.getStatus', async () => {
+    return await logger.withContext('out:GitClient.getStatus', async () => {
       try {
         const git = (await getSimpleGit())(path);
         const isRepo = await git.checkIsRepo();
@@ -119,7 +119,7 @@ export class GitService implements IGitService {
           hasUncommittedChanges: !status.isClean(),
         };
       } catch (error) {
-        logger.error('[GitService] getStatus failed:', error);
+        logger.error('[GitClient] getStatus failed:', error);
         return {
           isRepo: false,
           branch: null,
@@ -135,7 +135,7 @@ export class GitService implements IGitService {
   }
 
   async stage(path: string, files?: string[]): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.stage', async () => {
+    return await logger.withContext('out:GitClient.stage', async () => {
       try {
         const git = (await getSimpleGit())(path);
         if (files && files.length > 0) {
@@ -146,62 +146,62 @@ export class GitService implements IGitService {
         return { success: true, message: 'Files staged' };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Stage failed:', error);
+        logger.error('[GitClient] Stage failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async commit(path: string, message: string): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.commit', async () => {
+    return await logger.withContext('out:GitClient.commit', async () => {
       try {
         const git = (await getSimpleGit())(path);
         const result = await git.commit(message);
-        logger.info(`[GitService] Committed: ${result.commit}`);
+        logger.info(`[GitClient] Committed: ${result.commit}`);
         return { success: true, message: `Committed ${result.commit}` };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Commit failed:', error);
+        logger.error('[GitClient] Commit failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async pull(path: string): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.pull', async () => {
+    return await logger.withContext('out:GitClient.pull', async () => {
       try {
         const git = (await getSimpleGit())(path);
         const result = await git.pull();
-        logger.info('[GitService] Pulled changes');
+        logger.info('[GitClient] Pulled changes');
         return {
           success: true,
           message: `Pulled ${result.summary.changes} changes, ${result.summary.insertions} insertions, ${result.summary.deletions} deletions`,
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Pull failed:', error);
+        logger.error('[GitClient] Pull failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async push(path: string): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.push', async () => {
+    return await logger.withContext('out:GitClient.push', async () => {
       try {
         const git = (await getSimpleGit())(path);
         await git.push();
-        logger.info('[GitService] Pushed changes');
+        logger.info('[GitClient] Pushed changes');
         return { success: true, message: 'Pushed to remote' };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Push failed:', error);
+        logger.error('[GitClient] Push failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async setRemote(path: string, url: string, name: string = 'origin'): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.setRemote', async () => {
+    return await logger.withContext('out:GitClient.setRemote', async () => {
       try {
         const git = (await getSimpleGit())(path);
         const remotes = await git.getRemotes();
@@ -212,18 +212,18 @@ export class GitService implements IGitService {
           await git.addRemote(name, url);
         }
 
-        logger.info(`[GitService] Set remote ${name} to ${url}`);
+        logger.info(`[GitClient] Set remote ${name} to ${url}`);
         return { success: true, message: `Remote ${name} set to ${url}` };
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] setRemote failed:', error);
+        logger.error('[GitClient] setRemote failed:', error);
         return { success: false, error: message };
       }
     });
   }
 
   async getCommits(path: string, limit: number = 50): Promise<GitCommit[]> {
-    return await logger.withContext('out:GitService.getCommits', async () => {
+    return await logger.withContext('out:GitClient.getCommits', async () => {
       try {
         const git = (await getSimpleGit())(path);
         const log = await git.log({ maxCount: limit });
@@ -237,14 +237,14 @@ export class GitService implements IGitService {
           date: new Date(entry.date),
         }));
       } catch (error) {
-        logger.error('[GitService] getCommits failed:', error);
+        logger.error('[GitClient] getCommits failed:', error);
         return [];
       }
     });
   }
 
   async sync(path: string, message?: string): Promise<GitOperationResult> {
-    return await logger.withContext('out:GitService.sync', async () => {
+    return await logger.withContext('out:GitClient.sync', async () => {
       try {
         const git = (await getSimpleGit())(path);
 
@@ -261,11 +261,11 @@ export class GitService implements IGitService {
         await git.pull();
         await git.push();
 
-        logger.info('[GitService] Synced repository');
+        logger.info('[GitClient] Synced repository');
         return { success: true, message: 'Repository synced' };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitService] Sync failed:', error);
+        logger.error('[GitClient] Sync failed:', error);
         return { success: false, error: errorMessage };
       }
     });

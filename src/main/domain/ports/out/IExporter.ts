@@ -30,7 +30,7 @@ export interface HtmlOptions {
 /**
  * Export Service - Handles rendering to various formats
  */
-export interface IExportService {
+export interface IExporter {
   /**
    * Render HTML content to PDF
    */

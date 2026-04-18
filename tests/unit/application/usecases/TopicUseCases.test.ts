@@ -10,7 +10,7 @@ import type { INoteRepository } from '../../../../src/main/domain/ports/out/INot
 import type { ITopicRepository } from '../../../../src/main/domain/ports/out/ITopicRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
-import type { IEmbeddingService } from '../../../../src/main/domain/ports/out/IEmbeddingService';
+import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import type { ITopicUseCases } from '../../../../src/main/domain/ports/in/ITopicUseCases';
@@ -65,13 +65,13 @@ function createMockFileStorage(): IFileStorage {
   } as unknown as IFileStorage;
 }
 
-function createMockEmbeddingService(): IEmbeddingService {
+function createMockEmbedder(): IEmbedder {
   return {
     initialize: vi.fn(),
     isReady: vi.fn(),
     generateEmbedding: vi.fn(),
     generateEmbeddings: vi.fn(),
-  } as unknown as IEmbeddingService;
+  } as unknown as IEmbedder;
 }
 
 function createMockMarkdownProcessor(): IMarkdownProcessor {
@@ -142,7 +142,7 @@ describe('TopicUseCases', () => {
   let topicRepo: ITopicRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
-  let embeddingService: IEmbeddingService;
+  let embeddingService: IEmbedder;
   let markdownProcessor: IMarkdownProcessor;
   let eventPublisher: IEventPublisher;
   let useCases: ITopicUseCases;
@@ -152,7 +152,7 @@ describe('TopicUseCases', () => {
     topicRepo = createMockTopicRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
-    embeddingService = createMockEmbeddingService();
+    embeddingService = createMockEmbedder();
     markdownProcessor = createMockMarkdownProcessor();
     eventPublisher = createMockEventPublisher();
     useCases = createTopicUseCases({

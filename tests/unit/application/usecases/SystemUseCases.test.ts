@@ -6,26 +6,26 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSystemUseCases } from '../../../../src/main/application/usecases/SystemUseCases';
-import type { ISystemService } from '../../../../src/main/domain/ports/out/ISystemService';
+import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
 import type { ISystemUseCases } from '../../../../src/main/domain/ports/in/ISystemUseCases';
 
 // Mock factories
-function createMockSystemService(): ISystemService {
+function createMockSystemBridge(): ISystemBridge {
   return {
     getFonts: vi.fn(),
     selectFolder: vi.fn(),
     validatePath: vi.fn(),
     showInFolder: vi.fn(),
     openExternal: vi.fn(),
-  } as unknown as ISystemService;
+  } as unknown as ISystemBridge;
 }
 
 describe('SystemUseCases', () => {
-  let systemService: ISystemService;
+  let systemService: ISystemBridge;
   let useCases: ISystemUseCases;
 
   beforeEach(() => {
-    systemService = createMockSystemService();
+    systemService = createMockSystemBridge();
     useCases = createSystemUseCases({ systemService });
   });
 

@@ -56,7 +56,7 @@ import {
   WorkspaceNotFoundError,
 } from '../../domain';
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
-import type { ISystemService } from '../../domain/ports/out/ISystemService';
+import type { ISystemBridge } from '../../domain/ports/out/ISystemBridge';
 import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
@@ -196,7 +196,7 @@ export class UpdateWorkspaceUseCase implements IUpdateWorkspaceUseCase {
 }
 
 export class SelectFolderUseCase implements ISelectFolderUseCase {
-  constructor(private readonly systemService: ISystemService) {}
+  constructor(private readonly systemService: ISystemBridge) {}
 
   async execute(request?: SelectFolderRequest): Promise<SelectFolderResponse> {
     const folderPath = await this.systemService.selectFolder({
@@ -214,7 +214,7 @@ export class SelectFolderUseCase implements ISelectFolderUseCase {
 }
 
 export class ValidatePathUseCase implements IValidatePathUseCase {
-  constructor(private readonly systemService: ISystemService) {}
+  constructor(private readonly systemService: ISystemBridge) {}
 
   async execute(request: ValidatePathRequest): Promise<ValidatePathResponse> {
     const isValid = await this.systemService.validatePath(request.folderPath);
@@ -557,7 +557,7 @@ export interface WorkspaceUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   noteRepository: INoteRepository;
   fileStorage: IFileStorage;
-  systemService: ISystemService;
+  systemService: ISystemBridge;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher?: IEventPublisher;
 }

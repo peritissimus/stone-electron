@@ -3,7 +3,7 @@
  *
  * The app needs the ability to observe its own runtime: startup phases, memory,
  * CPU, event-loop lag, IPC throughput, DB query latency. The concrete adapter
- * lives in adapters/out/services/PerformanceMonitor.
+ * lives in adapters/out/integrations/PerformanceMonitor.
  */
 
 import type { BrowserWindow } from 'electron';

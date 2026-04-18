@@ -1,5 +1,5 @@
 /**
- * FileWatcherService - Watches workspace folders for Markdown file changes
+ * FileWatcher - Watches workspace folders for Markdown file changes
  * and triggers database sync + renderer notifications.
  */
 
@@ -22,24 +22,24 @@ type WatchEntry = {
 };
 
 /**
- * Dependencies for FileWatcherService
+ * Dependencies for FileWatcher
  */
-export interface FileWatcherServiceDeps {
+export interface FileWatcherDeps {
   workspaceRepository: IWorkspaceRepository;
   noteRepository: INoteRepository;
   notebookRepository: INotebookRepository;
   eventPublisher: IEventPublisher;
 }
 
-export class FileWatcherService implements IFileWatcher {
+export class FileWatcher implements IFileWatcher {
   private readonly watchers = new Map<string, WatchEntry>();
   private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private started = false;
 
-  constructor(private readonly deps: FileWatcherServiceDeps) {}
+  constructor(private readonly deps: FileWatcherDeps) {}
 
   async start(): Promise<void> {
-    return await logger.withContext('out:FileWatcherService.start', async () => {
+    return await logger.withContext('out:FileWatcher.start', async () => {
       if (this.started) return;
       this.started = true;
 
@@ -53,7 +53,7 @@ export class FileWatcherService implements IFileWatcher {
   }
 
   async stopAll(): Promise<void> {
-    return await logger.withContext('out:FileWatcherService.stopAll', async () => {
+    return await logger.withContext('out:FileWatcher.stopAll', async () => {
       this.clearAllTimers();
       for (const [id, entry] of this.watchers) {
         await entry.watcher.close();
@@ -65,7 +65,7 @@ export class FileWatcherService implements IFileWatcher {
   }
 
   async watchWorkspace(workspace: WorkspaceProps): Promise<void> {
-    return await logger.withContext('out:FileWatcherService.watchWorkspace', async () => {
+    return await logger.withContext('out:FileWatcher.watchWorkspace', async () => {
       if (!workspace?.id || !workspace.folderPath) return;
       // Avoid duplicate watchers
       if (this.watchers.has(workspace.id)) {
@@ -86,7 +86,7 @@ export class FileWatcherService implements IFileWatcher {
       };
 
       const onFsEvent = (kind: 'add' | 'change' | 'unlink', fullPath: string) => {
-        return logger.withContext(`out:FileWatcherService.fs.${kind}`, () => {
+        return logger.withContext(`out:FileWatcher.fs.${kind}`, () => {
           if (!fullPath.endsWith('.md')) return;
           const rel = path.relative(folder, fullPath).split(path.sep).filter(Boolean).join('/');
 
@@ -114,7 +114,7 @@ export class FileWatcherService implements IFileWatcher {
         .on('change', (p) => onFsEvent('change', p))
         .on('unlink', (p) => onFsEvent('unlink', p))
         .on('error', (err) =>
-          logger.withContext('out:FileWatcherService.fs.error', () =>
+          logger.withContext('out:FileWatcher.fs.error', () =>
             logger.error(`[Watcher] Error for ${folder}:`, err),
           ),
         );
@@ -125,7 +125,7 @@ export class FileWatcherService implements IFileWatcher {
   }
 
   async unwatchWorkspace(workspaceId: string): Promise<void> {
-    return await logger.withContext('out:FileWatcherService.unwatchWorkspace', async () => {
+    return await logger.withContext('out:FileWatcher.unwatchWorkspace', async () => {
       const entry = this.watchers.get(workspaceId);
       if (!entry) return;
       this.clearTimer(workspaceId);
@@ -140,7 +140,7 @@ export class FileWatcherService implements IFileWatcher {
     if (prev) clearTimeout(prev);
 
     const timer = setTimeout(() => {
-      void logger.withContext(`out:FileWatcherService.sync.${workspaceId}`, async () => {
+      void logger.withContext(`out:FileWatcher.sync.${workspaceId}`, async () => {
         this.debounceTimers.delete(workspaceId);
         try {
           await this.syncWorkspace(workspaceId);
@@ -168,7 +168,7 @@ export class FileWatcherService implements IFileWatcher {
   }
 
   private async syncWorkspace(workspaceId: string) {
-    return await logger.withContext('out:FileWatcherService.syncWorkspace', async () => {
+    return await logger.withContext('out:FileWatcher.syncWorkspace', async () => {
       const ws = await this.deps.workspaceRepository.findById(workspaceId);
       if (!ws) return;
 

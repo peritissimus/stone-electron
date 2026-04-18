@@ -7,7 +7,7 @@
 import {
   type INoteRepository,
   type ISearchEngine,
-  type IEmbeddingService,
+  type IEmbedder,
   type ISearchUseCases,
   type IFullTextSearchUseCase,
   type ISemanticSearchUseCase,
@@ -53,7 +53,7 @@ export class FullTextSearchUseCase implements IFullTextSearchUseCase {
 export class SemanticSearchUseCase implements ISemanticSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbeddingService,
+    private readonly embeddingService: IEmbedder,
   ) {}
 
   async execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse> {
@@ -81,7 +81,7 @@ export class SemanticSearchUseCase implements ISemanticSearchUseCase {
 export class FindSimilarNotesUseCase implements IFindSimilarNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbeddingService,
+    private readonly embeddingService: IEmbedder,
   ) {}
 
   async execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse> {
@@ -125,7 +125,7 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly searchEngine: ISearchEngine,
-    private readonly embeddingService: IEmbeddingService,
+    private readonly embeddingService: IEmbedder,
   ) {}
 
   async execute(request: HybridSearchRequest): Promise<HybridSearchResponse> {
@@ -210,7 +210,7 @@ export class SearchByDateRangeUseCase implements ISearchByDateRangeUseCase {
 export function createSearchUseCases(
   noteRepository: INoteRepository,
   searchEngine: ISearchEngine,
-  embeddingService: IEmbeddingService,
+  embeddingService: IEmbedder,
 ): ISearchUseCases {
   return {
     fullTextSearch: new FullTextSearchUseCase(noteRepository, searchEngine),

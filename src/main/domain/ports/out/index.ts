@@ -18,18 +18,18 @@ export * from './IVersionRepository';
 export * from './INoteLinkRepository';
 export * from './ISearchEngine';
 export * from './IGitOperations';
-export * from './IEmbeddingService';
-export * from './IExportService';
-export * from './ISystemService';
-// Explicitly export IGitService types with aliases to avoid conflicts with IGitOperations
+export * from './IEmbedder';
+export * from './IExporter';
+export * from './ISystemBridge';
+// Explicitly export IGitClient types with aliases to avoid conflicts with IGitOperations
 export type {
-  IGitService,
+  IGitClient,
   GitFileStatus,
   GitFileChange,
   GitOperationResult,
-  GitStatus as GitServiceStatus,
-  GitCommit as GitServiceCommit,
-} from './IGitService';
+  GitStatus as GitClientStatus,
+  GitCommit as GitClientCommit,
+} from './IGitClient';
 export * from './ISettingsRepository';
 export * from './IFileWatcher';
 export * from './IPerformanceMonitor';

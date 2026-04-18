@@ -24,7 +24,7 @@ export interface SimilarNote {
   distance: number;
 }
 
-export interface IEmbeddingService {
+export interface IEmbedder {
   /**
    * Initialize the embedding service
    */

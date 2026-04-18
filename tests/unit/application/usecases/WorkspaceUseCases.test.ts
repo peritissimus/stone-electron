@@ -24,7 +24,7 @@ import {
 } from '../../../../src/main/application/usecases/WorkspaceUseCases';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
-import type { ISystemService } from '../../../../src/main/domain/ports/out/ISystemService';
+import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
@@ -62,7 +62,7 @@ function createMockFileStorage(): IFileStorage {
   } as unknown as IFileStorage;
 }
 
-function createMockSystemService(): ISystemService {
+function createMockSystemBridge(): ISystemBridge {
   return {
     selectFolder: vi.fn(),
     validatePath: vi.fn(),
@@ -70,7 +70,7 @@ function createMockSystemService(): ISystemService {
     revealInFinder: vi.fn(),
     getAppVersion: vi.fn(),
     getPlatformInfo: vi.fn(),
-  } as unknown as ISystemService;
+  } as unknown as ISystemBridge;
 }
 
 function createMockNoteRepository(): INoteRepository {
@@ -314,11 +314,11 @@ describe('WorkspaceUseCases', () => {
   });
 
   describe('SelectFolderUseCase', () => {
-    let systemService: ISystemService;
+    let systemService: ISystemBridge;
     let useCase: SelectFolderUseCase;
 
     beforeEach(() => {
-      systemService = createMockSystemService();
+      systemService = createMockSystemBridge();
       useCase = new SelectFolderUseCase(systemService);
     });
 
@@ -342,11 +342,11 @@ describe('WorkspaceUseCases', () => {
   });
 
   describe('ValidatePathUseCase', () => {
-    let systemService: ISystemService;
+    let systemService: ISystemBridge;
     let useCase: ValidatePathUseCase;
 
     beforeEach(() => {
-      systemService = createMockSystemService();
+      systemService = createMockSystemBridge();
       useCase = new ValidatePathUseCase(systemService);
     });
 
