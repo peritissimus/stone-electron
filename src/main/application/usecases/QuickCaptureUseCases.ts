@@ -53,7 +53,7 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
       hour12: false,
     });
 
-    const entryContent = `\n\n${timestamp} - ${content}`;
+    const entryContent = `\n\n[${timestamp}] ${content}`;
     const absolutePath = path.join(workspace.folderPath, journalFilePath);
 
     if (journalNote) {

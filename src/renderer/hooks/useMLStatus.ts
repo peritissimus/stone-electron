@@ -17,8 +17,16 @@ export function useMLStatus() {
   const currentOperation = useMLStatusStore((s) => s.currentOperation);
   const recentOperations = useMLStatusStore((s) => s.recentOperations);
 
-  // Computed values (call these as functions in the store)
-  const store = useMLStatusStore.getState();
+  // Computed values using selectors
+  const isInitializing = useMLStatusStore((s) => s.serviceState.status === 'initializing');
+  const isReady = useMLStatusStore((s) => s.serviceState.status === 'ready');
+  const hasError = useMLStatusStore((s) => s.serviceState.status === 'error');
+  const isRunning = useMLStatusStore((s) => s.currentOperation?.status === 'running');
+  const progressPercent = useMLStatusStore((s) => {
+    const progress = s.currentOperation?.progress;
+    if (!progress || progress.total === 0) return null;
+    return Math.round((progress.current / progress.total) * 100);
+  });
 
   return {
     // State
@@ -27,11 +35,11 @@ export function useMLStatus() {
     recentOperations,
 
     // Computed
-    isInitializing: store.isInitializing(),
-    isReady: store.isReady(),
-    hasError: store.hasError(),
-    isRunning: store.isRunning(),
-    progressPercent: store.getProgressPercent(),
+    isInitializing,
+    isReady,
+    hasError,
+    isRunning,
+    progressPercent,
   };
 }
 
@@ -40,13 +48,15 @@ export function useMLStatus() {
  */
 export function useMLServiceState() {
   const serviceState = useMLStatusStore((s) => s.serviceState);
-  const store = useMLStatusStore.getState();
+  const isInitializing = useMLStatusStore((s) => s.serviceState.status === 'initializing');
+  const isReady = useMLStatusStore((s) => s.serviceState.status === 'ready');
+  const hasError = useMLStatusStore((s) => s.serviceState.status === 'error');
 
   return {
     serviceState,
-    isInitializing: store.isInitializing(),
-    isReady: store.isReady(),
-    hasError: store.hasError(),
+    isInitializing,
+    isReady,
+    hasError,
   };
 }
 
@@ -56,13 +66,18 @@ export function useMLServiceState() {
 export function useMLOperation() {
   const currentOperation = useMLStatusStore((s) => s.currentOperation);
   const recentOperations = useMLStatusStore((s) => s.recentOperations);
-  const store = useMLStatusStore.getState();
+  const isRunning = useMLStatusStore((s) => s.currentOperation?.status === 'running');
+  const progressPercent = useMLStatusStore((s) => {
+    const progress = s.currentOperation?.progress;
+    if (!progress || progress.total === 0) return null;
+    return Math.round((progress.current / progress.total) * 100);
+  });
 
   return {
     currentOperation,
     recentOperations,
-    isRunning: store.isRunning(),
-    progressPercent: store.getProgressPercent(),
+    isRunning,
+    progressPercent,
   };
 }
 

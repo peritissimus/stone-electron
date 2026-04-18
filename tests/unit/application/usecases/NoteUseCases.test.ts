@@ -387,18 +387,16 @@ describe('NoteUseCases', () => {
     let noteRepo: INoteRepository;
     let workspaceRepo: IWorkspaceRepository;
     let fileStorage: IFileStorage;
-    let markdownProcessor: IMarkdownProcessor;
     let useCase: GetNoteContentUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      markdownProcessor = createMockMarkdownProcessor();
-      useCase = new GetNoteContentUseCase(noteRepo, workspaceRepo, fileStorage, markdownProcessor);
+      useCase = new GetNoteContentUseCase(noteRepo, workspaceRepo, fileStorage);
     });
 
-    it('returns content when file exists', async () => {
+    it('returns raw markdown body when file exists', async () => {
       const noteProps = createNoteProps();
       vi.mocked(noteRepo.findById).mockResolvedValue(noteProps);
       vi.mocked(workspaceRepo.findById).mockResolvedValue({
@@ -406,12 +404,11 @@ describe('NoteUseCases', () => {
         folderPath: '/workspace',
       } as any);
       vi.mocked(fileStorage.exists).mockResolvedValue(true);
-      vi.mocked(fileStorage.read).mockResolvedValue('# Content');
-      vi.mocked(markdownProcessor.markdownToHtml).mockResolvedValue('<h1>Content</h1>');
+      vi.mocked(fileStorage.read).mockResolvedValue('# Title\n\nBody text');
 
       const result = await useCase.execute({ id: 'note-1' });
 
-      expect(result.content).toBe('<h1>Content</h1>');
+      expect(result.content).toBe('Body text');
     });
 
     it('returns empty string when file does not exist', async () => {

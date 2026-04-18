@@ -221,10 +221,16 @@ export function useCommandCenter() {
 
     if (q.length === 0) {
       // No query - return recent notes (top 3)
+      const getTime = (date: Date | string | number | undefined) => {
+        if (!date) return 0;
+        if (date instanceof Date) return date.getTime();
+        if (typeof date === 'string') return new Date(date).getTime();
+        return date;
+      };
       return activeNotes
         .sort((a, b) => {
-          const aTime = a.updatedAt instanceof Date ? a.updatedAt.getTime() : a.updatedAt;
-          const bTime = b.updatedAt instanceof Date ? b.updatedAt.getTime() : b.updatedAt;
+          const aTime = getTime(a.updatedAt);
+          const bTime = getTime(b.updatedAt);
           return bTime - aTime;
         })
         .slice(0, 3)

@@ -15,6 +15,7 @@ import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
 import { useImageUpload } from '@renderer/hooks/useImageUpload';
 import { useEditorMode } from '@renderer/hooks/useEditorMode';
 import { useNoteExport } from '@renderer/hooks/useNoteExport';
+import { useAutosave } from '@renderer/hooks/useAutosave';
 import {
   NoteEditorHeader,
   NoteEditorEmptyState,
@@ -54,7 +55,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
   const editor = useTipTapEditor();
   const creatingNoteRef = useRef(false);
-  const titleSaveTimeoutRef = useRef<number | null>(null);
+
+  const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
+    saveFn: async ({ noteId, title: nextTitle }) => {
+      await updateNote(noteId, { title: nextTitle }, false);
+    },
+  });
 
   // Scroll container refs for preserving scroll position on mode switch
   const richEditorScrollRef = useRef<HTMLDivElement>(null);
@@ -200,36 +206,14 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     [handleSave, handleCreateSiblingNote, handleRestoreDraft, editor],
   );
 
-  // Title change with debounced save
   const handleTitleChange = useCallback(
-    async (newTitle: string) => {
+    (newTitle: string) => {
       setTitle(newTitle);
       if (!activeNoteId) return;
-
-      if (titleSaveTimeoutRef.current) {
-        clearTimeout(titleSaveTimeoutRef.current);
-      }
-
-      titleSaveTimeoutRef.current = window.setTimeout(async () => {
-        titleSaveTimeoutRef.current = null;
-        try {
-          await updateNote(activeNoteId, { title: newTitle }, false);
-        } catch (error) {
-          logger.error('Title autosave failed:', error);
-        }
-      }, 500);
+      saveTitleDebounced({ noteId: activeNoteId, title: newTitle });
     },
-    [activeNoteId, updateNote],
+    [activeNoteId, saveTitleDebounced],
   );
-
-  // Cleanup title save timeout
-  useEffect(() => {
-    return () => {
-      if (titleSaveTimeoutRef.current) {
-        clearTimeout(titleSaveTimeoutRef.current);
-      }
-    };
-  }, []);
 
   // Handle note link clicks
   useEffect(() => {

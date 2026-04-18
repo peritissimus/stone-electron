@@ -224,14 +224,8 @@ Decision > Process: No`,
     description: 'Insert the current time',
     icon: <Clock size={18} />,
     command: ({ editor, range }: any) => {
-      const now = new Date();
-      const timeString = now.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
-      editor.chain().focus().deleteRange(range).insertContent(timeString).run();
+      editor.chain().focus().deleteRange(range).insertCurrentTime().run();
     },
-    searchTerms: ['time', 'clock', 'now'],
+    searchTerms: ['time', 'clock', 'now', 'timestamp'],
   },
 ];

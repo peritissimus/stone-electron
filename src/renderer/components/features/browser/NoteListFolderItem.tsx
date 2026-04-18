@@ -4,11 +4,11 @@
  * Implements: specs/components.ts#FolderItemProps
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Button } from '@renderer/components/base/ui/button';
 import { Text } from '@renderer/components/base/ui/text';
 import { TreeItem } from '@renderer/components/composites';
-import { CaretDown, CaretRight } from 'phosphor-react';
+import { CaretRight } from 'phosphor-react';
 
 import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
 
@@ -23,7 +23,7 @@ export interface NoteListFolderItemProps {
   children?: React.ReactNode;
 }
 
-export function NoteListFolderItem({
+export const NoteListFolderItem = memo(function NoteListFolderItem({
   node,
   level,
   isActive,
@@ -56,7 +56,10 @@ export function NoteListFolderItem({
                 }}
                 aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
               >
-                {isExpanded ? <CaretDown size={10} /> : <CaretRight size={10} />}
+                <CaretRight
+                  size={10}
+                  className={`motion-safe:transition-transform duration-200 ease-out ${isExpanded ? 'rotate-90' : ''}`}
+                />
               </Button>
             )}
             <Text size="xs" variant="muted" className="text-[10px]">
@@ -65,7 +68,15 @@ export function NoteListFolderItem({
           </>
         }
       />
-      {isExpanded && children && <div>{children}</div>}
+      {children && (
+        <div
+          className={`grid motion-safe:transition-[grid-template-rows] duration-200 ease-out ${
+            isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          }`}
+        >
+          <div className="overflow-hidden">{children}</div>
+        </div>
+      )}
     </div>
   );
-}
+});

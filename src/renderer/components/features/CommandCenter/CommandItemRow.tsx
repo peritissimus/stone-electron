@@ -4,7 +4,7 @@
  * Implements: specs/components.ts#CommandItemRowProps
  */
 
-import React from 'react';
+import React, { memo } from 'react';
 import { ArrowRight } from 'phosphor-react';
 
 export interface CommandItem {
@@ -26,7 +26,7 @@ export interface CommandItemRowProps {
   onMouseEnter: () => void;
 }
 
-export function CommandItemRow({
+export const CommandItemRow = memo(function CommandItemRow({
   item,
   index,
   isSelected,
@@ -38,7 +38,7 @@ export function CommandItemRow({
       data-index={index}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${
+      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition duration-150 ease-out motion-safe:active:scale-[0.98] ${
         isSelected ? 'bg-accent' : 'hover:bg-accent/50'
       }`}
     >
@@ -77,4 +77,4 @@ export function CommandItemRow({
       )}
     </button>
   );
-}
+});

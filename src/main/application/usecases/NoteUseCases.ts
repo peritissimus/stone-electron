@@ -398,7 +398,6 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: { id: string }): Promise<{ content: string }> {
@@ -430,11 +429,9 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
       return { content: '' };
     }
 
-    // Strip the first H1 heading from markdown since title is edited separately
-    const bodyMarkdown = this.stripFirstHeading(markdown);
-    const html = await this.markdownProcessor.markdownToHtml(bodyMarkdown);
-
-    return { content: html };
+    // Return raw markdown - the renderer parses it to ProseMirror JSON.
+    // The title heading is stripped because the title is edited separately.
+    return { content: this.stripFirstHeading(markdown) };
   }
 
   /**
@@ -686,7 +683,6 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       noteRepository,
       workspaceRepository,
       fileStorage,
-      markdownProcessor,
     ),
     saveNoteContent: new SaveNoteContentUseCase(
       noteRepository,

@@ -1,67 +1,89 @@
 /**
- * Autosave Hook - Handles title autosave only
+ * Autosave Hook - Generic debounced save orchestrator
  *
- * Content is saved via useDocumentAutosave (on blur, note switch, app close).
- * This hook only handles title changes with a short debounce.
+ * Provides saveDebounced, saveImmediate, cancel, and pending/saving
+ * introspection so callers don't have to manage their own timeouts.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { logger } from '@renderer/utils/logger';
 
-export interface UseAutosaveOptions {
-  updateNote: (
-    noteId: string,
-    data: { content?: string; title?: string; folderPath?: string; notebookId?: string },
-    silent?: boolean,
-  ) => Promise<any>;
-  activeNoteId: string | undefined;
+interface UseAutosaveOptions<T> {
+  saveFn: (data: T) => Promise<void>;
+  delay?: number;
+  onError?: (error: unknown) => void;
 }
 
-export function useAutosave({ updateNote, activeNoteId }: UseAutosaveOptions) {
-  const saveTimeoutRef = useRef<number | null>(null);
+export function useAutosave<T = Record<string, unknown>>({
+  saveFn,
+  delay = 500,
+  onError,
+}: UseAutosaveOptions<T>) {
+  const timeoutRef = useRef<number | null>(null);
   const isSavingRef = useRef(false);
 
-  // Cleanup timeouts on unmount
+  const saveDebounced = useCallback(
+    (data: T) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+
+      timeoutRef.current = window.setTimeout(async () => {
+        timeoutRef.current = null;
+        isSavingRef.current = true;
+        try {
+          await saveFn(data);
+        } catch (error) {
+          logger.error('Autosave failed:', error);
+          onError?.(error);
+        } finally {
+          isSavingRef.current = false;
+        }
+      }, delay);
+    },
+    [saveFn, delay, onError],
+  );
+
+  const saveImmediate = useCallback(
+    async (data: T) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
+      isSavingRef.current = true;
+      try {
+        await saveFn(data);
+      } catch (error) {
+        logger.error('Immediate save failed:', error);
+        onError?.(error);
+      } finally {
+        isSavingRef.current = false;
+      }
+    },
+    [saveFn, onError],
+  );
+
+  const cancel = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
       }
     };
   }, []);
 
-  // Debounced title save (shorter debounce for titles since they're small)
-  const saveTitle = useCallback(
-    async (title: string) => {
-      if (!activeNoteId) return;
-
-      // Clear any pending save
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-
-      const noteId = activeNoteId;
-      const timeout = window.setTimeout(async () => {
-        saveTimeoutRef.current = null;
-        isSavingRef.current = true;
-        try {
-          // Use silent=true to save without triggering store update/re-render
-          const result = await updateNote(noteId, { title }, true);
-          if (!result) {
-            logger.error('Title autosave failed: updateNote returned falsy result');
-          }
-        } catch (error) {
-          logger.error('Title autosave failed:', error);
-        } finally {
-          isSavingRef.current = false;
-        }
-      }, 500);
-      saveTimeoutRef.current = timeout;
-    },
-    [activeNoteId, updateNote],
-  );
-
   return {
-    saveTitle,
+    saveDebounced,
+    saveImmediate,
+    cancel,
+    isPending: () => timeoutRef.current !== null,
+    isSaving: () => isSavingRef.current,
   };
 }

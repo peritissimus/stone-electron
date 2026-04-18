@@ -907,6 +907,91 @@ textarea:focus {
   border-top-width: 1px;
 }
 
+/* Timestamp Badge Styles */
+span[data-type="timestamp"] {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8em;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  user-select: none;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* Task Marker Badge Styles */
+span[data-type="task-marker"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.18rem 0;
+  width: 3.5rem;
+  margin-right: 0.24rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border));
+  background-color: hsl(var(--background));
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  user-select: none;
+  vertical-align: middle;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+span[data-type="task-marker"]:hover {
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+span[data-type="task-marker"][data-state="todo"] {
+  border-style: dashed;
+}
+
+span[data-type="task-marker"][data-state="doing"] {
+  background-color: hsl(var(--primary) / 0.16);
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+span[data-type="task-marker"][data-state="done"] {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+span[data-type="task-marker"][data-state="waiting"] {
+  background-color: hsl(var(--accent) / 0.6);
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
+}
+
+span[data-type="task-marker"][data-state="hold"] {
+  border-style: dashed;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+
+span[data-type="task-marker"][data-state="canceled"] {
+  background-color: hsl(var(--destructive) / 0.16);
+  border-color: hsl(var(--destructive));
+  color: hsl(var(--destructive));
+  text-decoration: line-through;
+}
+
+span[data-type="task-marker"][data-state="idea"] {
+  background-color: hsl(var(--accent));
+  border-color: hsl(var(--accent-foreground));
+  color: hsl(var(--accent-foreground));
+}
+
 /* Task List Styles */
 .prose ul[data-type='taskList'] {
   @apply list-none pl-0;
@@ -1170,50 +1255,44 @@ textarea:focus {
 /* Mermaid Diagram Styles - Excalidraw-inspired */
 .mermaid-preview {
   background: hsl(var(--background));
-  padding: 1.5rem;
+  padding: 2rem 2.5rem;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow-x: auto;
+  border-radius: 12px;
+  margin: 0.25rem 0;
 }
 
 .mermaid-preview svg {
   height: auto;
   flex-shrink: 0;
-  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.08));
+  filter: drop-shadow(0 1px 2px hsl(var(--shadow-color) / 0.06));
   overflow: visible;
 }
 
 /* Excalidraw-style rounded shapes */
 .mermaid-preview svg .node rect {
-  rx: 8 !important;
-  ry: 8 !important;
-  stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
+  rx: 10 !important;
+  ry: 10 !important;
+  stroke-width: 2 !important;
+  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.05));
 }
 
 .mermaid-preview svg .node circle,
 .mermaid-preview svg .node ellipse {
-  stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
+  stroke-width: 2 !important;
+  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.05));
 }
 
 .mermaid-preview svg .node polygon {
-  stroke-width: 2.5 !important;
-  filter: drop-shadow(0 2px 4px hsl(var(--shadow-color) / 0.06));
+  stroke-width: 2 !important;
+  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.05));
 }
 
 /* Mermaid diagram text styling - Excalidraw feel */
 .mermaid-preview .nodeLabel,
 .mermaid-preview .edgeLabel {
-  font-family:
-    ui-rounded,
-    'SF Pro Rounded',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    system-ui,
-    sans-serif;
   font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.01em;
@@ -1238,36 +1317,52 @@ textarea:focus {
 
 /* Softer edge lines */
 .mermaid-preview svg .edgePath path {
-  stroke-width: 2.5 !important;
+  stroke-width: 2 !important;
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
 }
 
 .mermaid-preview svg .edgePath marker path {
   stroke-width: 1.5 !important;
 }
 
+/* Edge labels - clean background pill */
+.mermaid-preview .edgeLabel {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.85;
+}
+
 /* StateDiagram-v2 tweaks */
 .mermaid-preview svg g[class*='state'] rect {
-  rx: 8 !important;
-  ry: 8 !important;
-  stroke-width: 2.5 !important;
+  rx: 10 !important;
+  ry: 10 !important;
+  stroke-width: 2 !important;
 }
 
 .mermaid-preview svg g[class*='state'] path {
-  stroke-width: 2.5 !important;
+  stroke-width: 2 !important;
 }
 
 .mermaid-preview svg .transition path {
-  stroke-width: 2.5 !important;
+  stroke-width: 2 !important;
 }
 
 /* Dark mode adjustments for Mermaid */
 .dark .mermaid-preview svg {
-  filter: drop-shadow(0 1px 3px hsl(var(--shadow-color) / 0.3)) brightness(0.95);
+  filter: drop-shadow(0 1px 2px hsl(0 0% 0% / 0.4));
 }
 
 .dark .mermaid-preview .nodeLabel,
 .dark .mermaid-preview .edgeLabel {
   color: hsl(var(--foreground));
+}
+
+.dark .mermaid-preview svg .node rect,
+.dark .mermaid-preview svg .node circle,
+.dark .mermaid-preview svg .node ellipse,
+.dark .mermaid-preview svg .node polygon {
+  filter: drop-shadow(0 1px 3px hsl(0 0% 0% / 0.25));
 }
 
 /* Excalidraw-style hover effects - double-click to edit */
@@ -1279,29 +1374,32 @@ textarea:focus {
 .mermaid-preview svg .node circle,
 .mermaid-preview svg .node ellipse,
 .mermaid-preview svg .node polygon {
-  transition: all 0.2s ease;
+  transition: filter 0.2s ease, stroke-width 0.2s ease;
 }
 
 .mermaid-preview svg .node:hover rect,
 .mermaid-preview svg .node:hover circle,
 .mermaid-preview svg .node:hover ellipse,
 .mermaid-preview svg .node:hover polygon {
-  filter: drop-shadow(0 4px 8px hsl(var(--shadow-color) / 0.12)) brightness(1.02);
-  stroke-width: 3px !important;
+  filter: drop-shadow(0 3px 6px hsl(var(--shadow-color) / 0.1));
+  stroke-width: 2.5px !important;
 }
 
-.mermaid-preview svg .node:hover .nodeLabel {
-  font-weight: 600;
-}
-
-/* Add subtle background grid effect (optional, Excalidraw-like) */
+/* Subtle background grid - Excalidraw-like */
 .mermaid-preview {
-  background-color: hsl(var(--card) / 0.65);
+  background-color: hsl(var(--card) / 0.5);
   background-image:
-    linear-gradient(hsl(var(--shadow-color) / 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--shadow-color) / 0.02) 1px, transparent 1px);
-  background-size: 20px 20px;
-  background-position: -1px -1px;
+    radial-gradient(circle, hsl(var(--shadow-color) / 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border: 1px solid hsl(var(--border) / 0.5);
+}
+
+.dark .mermaid-preview {
+  background-color: hsl(var(--card) / 0.35);
+  background-image:
+    radial-gradient(circle, hsl(0 0% 100% / 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  border-color: hsl(var(--border) / 0.3);
 }
 
 /* Mermaid code editor in edit mode */
@@ -1332,12 +1430,9 @@ textarea:focus {
 
 .mermaid-preview svg path,
 .mermaid-preview svg line,
-.mermaid-preview svg polyline,
-.mermaid-preview svg polygon,
-.mermaid-preview svg rect,
-.mermaid-preview svg circle,
-.mermaid-preview svg ellipse {
-  stroke-width: 1.5px !important;
+.mermaid-preview svg polyline {
+  stroke-linecap: round !important;
+  stroke-linejoin: round !important;
 }
 
 /* ER Diagram specific styles */
