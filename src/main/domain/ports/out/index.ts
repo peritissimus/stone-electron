@@ -32,3 +32,4 @@ export type {
 } from './IGitService';
 export * from './ISettingsRepository';
 export * from './IFileWatcher';
+export * from './IPerformanceMonitor';

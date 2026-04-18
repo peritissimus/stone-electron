@@ -13,7 +13,7 @@ import type {
   IPCMetrics,
   DatabaseMetrics,
   StartupMetrics,
-} from '../../../infrastructure/services/PerformanceMonitor';
+} from '../../../domain/ports/out/IPerformanceMonitor';
 
 export interface PerformanceIPCDeps {
   getSnapshot: (sinceMs?: number) => PerformanceSnapshot;

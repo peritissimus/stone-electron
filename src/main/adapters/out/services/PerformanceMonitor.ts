@@ -1,97 +1,26 @@
 /**
- * Performance Monitor Service
+ * PerformanceMonitor — adapter implementing IPerformanceMonitor.
  *
- * Collects and aggregates performance metrics from the main process.
- * Tracks: startup time, memory, CPU, event loop lag, IPC stats, DB stats.
+ * Implements: domain/ports/out/IPerformanceMonitor.ts#IPerformanceMonitor
  */
 
-import { performance, PerformanceObserver, PerformanceEntry } from 'node:perf_hooks';
-import { BrowserWindow } from 'electron';
+import { performance, PerformanceObserver } from 'node:perf_hooks';
+import type { BrowserWindow } from 'electron';
+import type {
+  IPerformanceMonitor,
+  StartupMetrics,
+  MemoryMetrics,
+  CPUMetrics,
+  EventLoopMetrics,
+  IPCMetrics,
+  ChannelStats,
+  DatabaseMetrics,
+  OperationStats,
+  PerformanceSnapshot,
+} from '../../../domain/ports/out/IPerformanceMonitor';
+import { logger } from '../../../shared/utils/logger';
 
 type CpuUsage = ReturnType<typeof process.cpuUsage>;
-import { logger } from '../../shared/utils/logger';
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface StartupMetrics {
-  appStartTime: number;
-  dbInitTime?: number;
-  containerInitTime?: number;
-  ipcRegistrationTime?: number;
-  windowCreationTime?: number;
-  totalStartupTime?: number;
-  windowReadyTime?: number;
-}
-
-export interface MemoryMetrics {
-  heapUsed: number;
-  heapTotal: number;
-  external: number;
-  rss: number;
-  arrayBuffers: number;
-  heapUsedMB: number;
-  rssMB: number;
-}
-
-export interface CPUMetrics {
-  user: number;
-  system: number;
-  percentCPU: number;
-}
-
-export interface EventLoopMetrics {
-  lagMs: number;
-  utilizationPercent: number;
-}
-
-export interface IPCMetrics {
-  totalCalls: number;
-  totalErrors: number;
-  avgDurationMs: number;
-  p50DurationMs: number;
-  p95DurationMs: number;
-  p99DurationMs: number;
-  callsByChannel: Record<string, ChannelStats>;
-}
-
-export interface ChannelStats {
-  calls: number;
-  errors: number;
-  totalDurationMs: number;
-  avgDurationMs: number;
-  minDurationMs: number;
-  maxDurationMs: number;
-}
-
-export interface DatabaseMetrics {
-  totalQueries: number;
-  totalErrors: number;
-  avgDurationMs: number;
-  slowQueries: number; // > 100ms
-  queriesByOperation: Record<string, OperationStats>;
-}
-
-export interface OperationStats {
-  count: number;
-  errors: number;
-  totalDurationMs: number;
-  avgDurationMs: number;
-  minDurationMs: number;
-  maxDurationMs: number;
-}
-
-export interface PerformanceSnapshot {
-  timestamp: number;
-  uptime: number;
-  startup: StartupMetrics;
-  memory: MemoryMetrics;
-  cpu: CPUMetrics;
-  eventLoop: EventLoopMetrics;
-  ipc: IPCMetrics;
-  database: DatabaseMetrics;
-}
 
 interface IPCCall {
   channel: string;
@@ -108,11 +37,7 @@ interface DBQuery {
   timestamp: number;
 }
 
-// ============================================================================
-// Performance Monitor
-// ============================================================================
-
-export class PerformanceMonitor {
+export class PerformanceMonitor implements IPerformanceMonitor {
   private startupMetrics: StartupMetrics;
   private ipcCalls: IPCCall[] = [];
   private dbQueries: DBQuery[] = [];

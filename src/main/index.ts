@@ -18,7 +18,7 @@ import {
   unregisterIPCHandlers,
   getContainer,
 } from './infrastructure/di/container';
-import { getPerformanceMonitor } from './infrastructure/services/PerformanceMonitor';
+import { getPerformanceMonitor } from './adapters/out/services/PerformanceMonitor';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();
