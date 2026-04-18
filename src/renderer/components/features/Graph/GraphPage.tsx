@@ -7,12 +7,12 @@ import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { GitFork, CaretRight } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { useNoteStore } from '@renderer/stores/noteStore';
+import { useNotes } from '@renderer/hooks/useNotes';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface GraphNode {
   id: string;
@@ -36,7 +36,7 @@ interface GraphData {
 export function GraphPage() {
   const navigate = useNavigate();
   const { getGraphData } = useNoteAPI();
-  const { activeNoteId } = useNoteStore();
+  const { activeNoteId } = useNotes();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);

@@ -5,7 +5,7 @@
 import { useCallback } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import type { NoteVersion } from '@shared/types';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { noteAPI } from '@renderer/api';
 
 // Module-level deduplication for loadNotes calls

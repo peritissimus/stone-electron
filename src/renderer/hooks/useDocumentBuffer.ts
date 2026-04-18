@@ -13,8 +13,8 @@ import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
 import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
 import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { logger } from '@renderer/utils/logger';
-import { deleteDraft } from '@renderer/utils/draftStorage';
+import { logger } from '@renderer/lib/logger';
+import { deleteDraft } from '@renderer/lib/draftStorage';
 import { noteAPI } from '@renderer/api';
 import { useNoteStore } from '@renderer/stores/noteStore';
 

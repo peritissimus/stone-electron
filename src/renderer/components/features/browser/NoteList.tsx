@@ -18,13 +18,13 @@ import {
   SelectValue,
 } from '@renderer/components/base/ui/select';
 import { Toggle } from '@renderer/components/base/ui/toggle';
-import { logger } from '@renderer/utils/logger';
-import { normalizePath } from '@renderer/utils/path';
+import { logger } from '@renderer/lib/logger';
+import { normalizePath } from '@renderer/lib/path';
 import { List, GridFour, Article, CaretUp, CaretDown, Plus } from 'phosphor-react';
 import { Header, ControlGroup, ListContainer } from '@renderer/components/composites';
 import { NoteListFolderItem } from './NoteListFolderItem';
 import { NoteListFileItem } from './NoteListFileItem';
-import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import type { FileTreeNode } from '@renderer/hooks/useFileTree';
 
 export function NoteList() {
   const navigate = useNavigate();

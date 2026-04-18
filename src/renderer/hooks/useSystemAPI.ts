@@ -4,7 +4,7 @@
 
 import { useCallback, useState } from 'react';
 import { systemAPI } from '@renderer/api';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UseSystemAPIState {
   fonts: string[];

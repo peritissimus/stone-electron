@@ -6,7 +6,7 @@
  * granular selectors.
  */
 
-import { useUIStore } from '@renderer/stores/uiStore';
+import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
 import type {
   ViewMode,
   SortBy,
@@ -15,6 +15,8 @@ import type {
   EditorMode,
   SidebarPanel,
 } from '@renderer/stores/uiStore';
+
+export { ACCENT_COLORS };
 
 /**
  * Main UI hook - provides access to all UI state and actions

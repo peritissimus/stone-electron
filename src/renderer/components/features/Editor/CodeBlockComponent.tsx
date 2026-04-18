@@ -11,7 +11,7 @@ import { cn } from '@renderer/lib/utils';
 import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
 import { MermaidRenderer } from './MermaidRenderer';
 import { CodeBlockToolbar } from './CodeBlockToolbar';
-import { downloadElementAsPng } from '@renderer/utils/download';
+import { downloadElementAsPng } from '@renderer/lib/download';
 
 interface CodeBlockComponentProps {
   node: any;

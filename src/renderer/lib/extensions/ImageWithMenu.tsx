@@ -13,7 +13,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@renderer/components/base/ui/context-menu';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 // Extend TipTap's Commands interface to include setImage
 declare module '@tiptap/core' {

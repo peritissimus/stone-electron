@@ -1,6 +1,7 @@
 /**
  * PanelFooter Component - consistent footer styling
  *
+ * Implements: specs/components.ts#PanelFooterProps
  * Replaces: className="px-2.5 py-2 border-t border-border flex-shrink-0"
  */
 

@@ -2,6 +2,7 @@
  * Performance API - IPC channel wrappers for performance monitoring
  *
  * Pure functions that wrap IPC channels. No React, no stores.
+ * No spec counterpart: dev/diagnostic telemetry, not a cross-platform contract.
  */
 
 import { z } from 'zod';

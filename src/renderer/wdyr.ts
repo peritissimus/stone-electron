@@ -12,7 +12,7 @@ import React from 'react';
 // why-did-you-render for detecting unnecessary re-renders
 if (import.meta.env.DEV && import.meta.env.VITE_WDYR) {
   const whyDidYouRender = await import('@welldone-software/why-did-you-render');
-  const { logger } = await import('@renderer/utils/logger');
+  const { logger } = await import('@renderer/lib/logger');
   whyDidYouRender.default(React, {
     trackAllPureComponents: true,
     trackHooks: true,

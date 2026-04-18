@@ -381,7 +381,7 @@ export function convertFlowDSLToMermaid(content: string): string {
     return toMermaid(diagram);
   } catch (error) {
     // Import logger lazily to avoid circular dependencies
-    import('@renderer/utils/logger').then(({ logger }) => {
+    import('@renderer/lib/logger').then(({ logger }) => {
       logger.error('FlowDSL parse error:', error);
     });
     throw new Error(

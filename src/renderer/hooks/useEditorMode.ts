@@ -13,7 +13,7 @@ import { Editor } from '@tiptap/react';
 import { useEditorUI } from '@renderer/hooks/useUI';
 import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
 import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UseEditorModeOptions {
   editor: Editor | null;

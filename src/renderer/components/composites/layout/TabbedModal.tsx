@@ -41,7 +41,7 @@ export function TabbedModal({
         <button
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all duration-150 ${
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors duration-150 active:scale-[0.98] ${
             activeTab === tab.id
               ? 'bg-accent/40 text-foreground font-medium'
               : 'text-muted-foreground hover:bg-accent/20 hover:text-foreground'

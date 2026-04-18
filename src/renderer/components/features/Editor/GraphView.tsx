@@ -5,10 +5,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { useNoteStore } from '@renderer/stores/noteStore';
+import { useNotes } from '@renderer/hooks/useNotes';
 import { ModalLayout } from '@renderer/components/composites/layout/ModalLayout';
 import { CircleNotch } from 'phosphor-react';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface GraphNode {
   id: string;
@@ -37,8 +37,7 @@ interface GraphViewProps {
 
 export function GraphView({ isOpen, onClose }: GraphViewProps) {
   const { getGraphData } = useNoteAPI();
-  const setActiveNote = useNoteStore((state) => state.setActiveNote);
-  const activeNoteId = useNoteStore((state) => state.activeNoteId);
+  const { setActiveNote, activeNoteId } = useNotes();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 550 });

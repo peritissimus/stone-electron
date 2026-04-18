@@ -46,3 +46,5 @@ export { NoteListPanel } from './layout/NoteListPanel';
 export { ResizablePanel, type ResizablePanelProps } from './layout/ResizablePanel';
 export { SidebarPanel } from './layout/SidebarPanel';
 export { TabbedModal, type TabbedModalProps, type TabItem } from './layout/TabbedModal';
+export { Sidebar } from './layout/Sidebar';
+export { GitSyncButton } from './layout/GitSyncButton';

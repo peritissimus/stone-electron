@@ -16,16 +16,14 @@ import { useImageUpload } from '@renderer/hooks/useImageUpload';
 import { useEditorMode } from '@renderer/hooks/useEditorMode';
 import { useNoteExport } from '@renderer/hooks/useNoteExport';
 import { useAutosave } from '@renderer/hooks/useAutosave';
-import {
-  NoteEditorHeader,
-  NoteEditorEmptyState,
-  NoteEditorContent,
-  RawMarkdownEditor,
-  EditorStats,
-  BacklinksPanel,
-} from '@renderer/components/features/Editor';
+import { NoteEditorHeader } from './NoteEditorHeader';
+import { NoteEditorEmptyState } from './NoteEditorEmptyState';
+import { NoteEditorContent } from './NoteEditorContent';
+import { RawMarkdownEditor } from './RawMarkdownEditor';
+import { EditorStats } from './EditorStats';
+import { BacklinksPanel } from './BacklinksPanel';
 import { Copy, Check } from 'phosphor-react';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 import type { Editor } from '@tiptap/react';
 

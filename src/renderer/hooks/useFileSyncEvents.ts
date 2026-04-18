@@ -7,7 +7,7 @@
 
 import { useEffect, useRef } from 'react';
 import { subscribe } from '@renderer/lib/events';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 export type FileSyncOperation = 'created' | 'updated' | 'deleted';
 

@@ -3,7 +3,7 @@
  * Stores unsaved editor content to prevent data loss on crashes
  */
 
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface Draft {
   noteId: string;

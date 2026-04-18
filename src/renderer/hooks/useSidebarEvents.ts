@@ -10,7 +10,7 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
 
 interface UseSidebarEventsOptions {

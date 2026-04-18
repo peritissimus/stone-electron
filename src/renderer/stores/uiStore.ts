@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings';
-import { tokens } from '@/specs';
+import { tokens } from '@renderer/specs';
 import type {
   ViewMode,
   SortBy,
@@ -16,7 +16,7 @@ import type {
   AccentColor,
   EditorMode,
   SidebarPanel,
-} from '@/specs';
+} from '@renderer/specs';
 
 // Re-export types from specs
 export type {

@@ -2,7 +2,7 @@
  * Mermaid Utilities - Initialization and rendering helpers for Mermaid diagrams
  */
 
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 // Lazy load Mermaid - 800KB saved from initial bundle!
 let mermaidModule: typeof import('mermaid') | null = null;

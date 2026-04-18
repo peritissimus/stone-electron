@@ -21,7 +21,7 @@ import {
   getRendererPerformance,
   getWebVitals,
 } from '@renderer/lib/performance';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UsePerformanceState {
   snapshot: PerformanceSnapshot | null;

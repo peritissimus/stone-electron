@@ -1,8 +1,8 @@
 /**
  * CommandMenuItem Component - Menu item with icon, title, and description
  *
+ * Implements: specs/components.ts#CommandItemRowProps
  * Used in: SlashCommandMenu, BlockMenu, FloatingBlockMenu
- * Pattern: icon + title + description in a consistent layout
  */
 
 import * as React from 'react';

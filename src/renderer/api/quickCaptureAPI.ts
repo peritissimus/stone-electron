@@ -2,6 +2,7 @@
  * Quick Capture API - IPC channel wrappers for quick capture operations
  *
  * Pure functions that wrap IPC channels. No React, no stores.
+ * No spec counterpart: desktop-tray feature, not in cross-platform contract yet.
  */
 
 import { z } from 'zod';

@@ -21,7 +21,7 @@ import {
   NoteLinkMenu,
   NoteLinkMenuRef,
   NoteLinkItem,
-} from '../components/features/Editor/NoteLinkMenu';
+} from '@renderer/components/features/Editor/NoteLinkMenu';
 import { NodeViewWrapper } from '@tiptap/react';
 import { Link } from 'phosphor-react';
 

@@ -9,7 +9,7 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
 
 /**

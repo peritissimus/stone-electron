@@ -8,12 +8,12 @@ import { toast } from 'sonner';
 import { useModals } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Heading3 } from '@renderer/components/base/ui/text';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { Gear, ArrowsClockwise } from 'phosphor-react';
 import { Header, IconButton, ControlGroup } from '@renderer/components/composites';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
+import { useFileTree } from '@renderer/hooks/useFileTree';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
 
 export interface LayoutContainerProps {
@@ -54,7 +54,7 @@ export function LayoutContainer({
   const { loadFileTree } = useFileTreeAPI();
   const { syncWorkspace, loadWorkspaces } = useWorkspaceAPI();
   const { loadNotes } = useNoteAPI();
-  const { activeFolder } = useFileTreeStore();
+  const { activeFolder } = useFileTree();
 
   return (
     <>
@@ -110,7 +110,7 @@ export function LayoutContainer({
             onWidthChange={onSidebarWidthChange}
             minWidth={200}
             maxWidth={400}
-            className="bg-sidebar border-r border-border transition-all duration-300 ease-in-out"
+            className="bg-sidebar border-r border-border transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
           >
             {sidebar}
           </ResizablePanel>

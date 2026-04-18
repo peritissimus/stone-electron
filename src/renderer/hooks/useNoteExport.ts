@@ -7,7 +7,7 @@
 import { useCallback } from 'react';
 import { Editor } from '@tiptap/react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { getRenderedEditorContent, buildExportHTML } from '@renderer/utils/exportUtils';
+import { getRenderedEditorContent, buildExportHTML } from '@renderer/lib/exportUtils';
 
 interface UseNoteExportOptions {
   activeNoteId: string | null;

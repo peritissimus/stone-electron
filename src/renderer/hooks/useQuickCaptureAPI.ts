@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { quickCaptureAPI } from '@renderer/api';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 export function useQuickCaptureAPI() {
   const [isSubmitting, setIsSubmitting] = useState(false);

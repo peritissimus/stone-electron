@@ -1,7 +1,8 @@
 /**
  * ML Status Store - Zustand state management for ML service status
  *
- * Tracks embedding service initialization and classification operations
+ * Tracks embedding service initialization and classification operations.
+ * No spec counterpart: ML pipeline is platform-specific runtime telemetry.
  */
 
 import { create } from 'zustand';

@@ -1,6 +1,12 @@
+/**
+ * Command Store - registry + recent-usage tracking for the command palette.
+ *
+ * No spec counterpart: command palette is renderer-only UI infrastructure.
+ */
+
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { fuzzyMatch } from '@renderer/utils/fuzzyMatch';
+import { fuzzyMatch } from '@renderer/lib/fuzzyMatch';
 import type { ReactNode } from 'react';
 
 const RECENT_LIMIT = 5;

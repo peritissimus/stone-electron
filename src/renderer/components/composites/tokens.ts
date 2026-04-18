@@ -12,7 +12,7 @@
  */
 
 import { tw } from '@renderer/lib/tokenMap';
-import type { SizeVariant } from '@/specs';
+import type { SizeVariant } from '@renderer/specs';
 
 // Re-export SizeVariant from specs
 export type { SizeVariant };

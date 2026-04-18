@@ -9,8 +9,8 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteListUI } from '@renderer/hooks/useUI';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { logger } from '@renderer/utils/logger';
-import { normalizePath, getParentPath } from '@renderer/utils/path';
+import { logger } from '@renderer/lib/logger';
+import { normalizePath, getParentPath } from '@renderer/lib/path';
 import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
 import type { Note } from '@shared/types';
 

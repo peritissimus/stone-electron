@@ -6,9 +6,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { cn } from '@renderer/lib/utils';
 import { renderMermaidDiagram } from '@renderer/lib/mermaid';
 import { convertFlowDSLToMermaid } from '@renderer/lib/flowdsl-parser';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { DiagramFullscreenDialog } from './DiagramFullscreenDialog';
-import { encodeToBase64 } from '@renderer/utils/base64';
+import { encodeToBase64 } from '@renderer/lib/base64';
 
 interface EditingState {
   nodeId: string;

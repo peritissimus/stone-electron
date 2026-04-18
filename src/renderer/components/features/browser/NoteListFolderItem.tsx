@@ -10,7 +10,7 @@ import { Text } from '@renderer/components/base/ui/text';
 import { TreeItem } from '@renderer/components/composites';
 import { CaretRight } from 'phosphor-react';
 
-import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import type { FileTreeNode } from '@renderer/hooks/useFileTree';
 
 export interface NoteListFolderItemProps {
   node: FileTreeNode;

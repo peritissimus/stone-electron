@@ -9,7 +9,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Slice, Fragment } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 // Store drag state globally
 let draggedNodePos: number | null = null;

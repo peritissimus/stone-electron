@@ -3,8 +3,8 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getAllDrafts, deleteDraft, clearAllDrafts } from '@renderer/utils/draftStorage';
-import { useNoteStore } from '@renderer/stores/noteStore';
+import { getAllDrafts, deleteDraft, clearAllDrafts } from '@renderer/lib/draftStorage';
+import { useNotes } from '@renderer/hooks/useNotes';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,7 @@ import {
 } from '@renderer/components/base/ui/dialog';
 import { Button } from '@renderer/components/base/ui/button';
 import { FileText, X, CheckCircle } from 'phosphor-react';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface DraftRecoveryDialogProps {
   open: boolean;
@@ -27,7 +27,7 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
   const [drafts, setDrafts] = useState<
     Array<{ noteId: string; title?: string; timestamp: number; content: string }>
   >([]);
-  const notes = useNoteStore((state) => state.notes);
+  const { notes } = useNotes();
 
   useEffect(() => {
     if (open) {

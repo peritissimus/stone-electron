@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useFileTreeStore, FileTreeNode } from '@renderer/stores/fileTreeStore';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 import { workspaceAPI } from '@renderer/api';
 
 // Module-level deduplication for loadFileTree calls

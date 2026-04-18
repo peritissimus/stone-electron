@@ -10,7 +10,7 @@ import {
   type GitSyncResult,
   type GitCommitResult,
 } from '@renderer/api';
-import { logger } from '@renderer/utils/logger';
+import { logger } from '@renderer/lib/logger';
 
 interface UseGitAPIState {
   status: GitStatus | null;

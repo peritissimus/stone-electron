@@ -3,8 +3,13 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useModals, useTheme, useEditorUI, type AccentColor } from '@renderer/hooks/useUI';
-import { ACCENT_COLORS } from '@renderer/stores/uiStore';
+import {
+  useModals,
+  useTheme,
+  useEditorUI,
+  ACCENT_COLORS,
+  type AccentColor,
+} from '@renderer/hooks/useUI';
 import {
   Database,
   HardDrive,
@@ -326,7 +331,7 @@ function AccentColorPicker({ value, onChange }: AccentColorPickerProps) {
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`w-8 h-8 rounded-full transition-all duration-150 ${
+          className={`w-8 h-8 rounded-full transition-[box-shadow,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 ${
             value === key
               ? 'ring-2 ring-offset-2 ring-offset-popover ring-foreground scale-110'
               : 'hover:scale-105'
