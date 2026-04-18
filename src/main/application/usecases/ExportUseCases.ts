@@ -6,7 +6,7 @@ import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcessor';
-import type { IExportService } from '../../domain/ports/out/IExportService';
+import type { IExporter } from '../../domain/ports/out/IExporter';
 import type {
   IExportUseCases,
   IExportHtmlUseCase,
@@ -23,7 +23,7 @@ export interface ExportUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
-  exportService: IExportService;
+  exportService: IExporter;
 }
 
 class ExportHtmlUseCase implements IExportHtmlUseCase {

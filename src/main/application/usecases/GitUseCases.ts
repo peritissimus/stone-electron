@@ -3,7 +3,7 @@
  */
 
 import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
-import type { IGitService } from '../../domain/ports/out/IGitService';
+import type { IGitClient } from '../../domain/ports/out/IGitClient';
 import type {
   IGitUseCases,
   GitStatusResponse,
@@ -19,7 +19,7 @@ import { logger } from '../../shared/utils';
 
 export interface GitUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
-  gitService: IGitService;
+  gitService: IGitClient;
 }
 
 export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {

@@ -2,7 +2,7 @@
  * System Service Adapter - OS-level operations (fonts, dialogs, shell)
  */
 
-import type { ISystemService, FilePickerOptions, FolderPickerOptions } from '../../../domain';
+import type { ISystemBridge, FilePickerOptions, FolderPickerOptions } from '../../../domain';
 import { logger } from '../../../shared';
 
 // Conditionally import Electron modules
@@ -14,21 +14,21 @@ try {
   dialog = electron.dialog;
   shell = electron.shell;
 } catch {
-  logger.warn('[SystemService] Running outside Electron context');
+  logger.warn('[SystemBridge] Running outside Electron context');
 }
 
 /**
  * System Service implementation
  */
-export class SystemService implements ISystemService {
+export class SystemBridge implements ISystemBridge {
   async getFonts(): Promise<string[]> {
-    return await logger.withContext('out:SystemService.getFonts', async () => {
+    return await logger.withContext('out:SystemBridge.getFonts', async () => {
       try {
         const { getFonts } = await import('font-list');
         const fonts = await getFonts();
         return fonts.sort((a, b) => a.localeCompare(b));
       } catch (error) {
-        logger.error('[SystemService] Failed to get fonts:', error);
+        logger.error('[SystemBridge] Failed to get fonts:', error);
         // Return fallback fonts
         return [
           'Arial',
@@ -117,7 +117,7 @@ export class SystemService implements ISystemService {
 
   showInFolder(path: string): void {
     if (!shell) {
-      logger.warn('[SystemService] Shell not available');
+      logger.warn('[SystemBridge] Shell not available');
       return;
     }
 

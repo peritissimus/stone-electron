@@ -1,5 +1,5 @@
 /**
- * EmbeddingWorkerService - Generates text embeddings using Transformers.js in a worker thread
+ * EmbeddingWorker - Generates text embeddings using Transformers.js in a worker thread
  *
  * Uses a worker thread to run @xenova/transformers, which:
  * 1. Avoids the 'self is not defined' issue (workers have `self`)
@@ -7,14 +7,14 @@
  * 3. Isolates heavy ML operations from the UI thread
  *
  * Note: This is the infrastructure-level ML implementation.
- * The adapter in adapters/out/services/EmbeddingService.ts implements the IEmbeddingService port.
+ * The adapter in adapters/out/integrations/Embedder.ts implements the IEmbedder port.
  * This worker service can be injected into that adapter when ML functionality is enabled.
  */
 
 import { Worker } from 'worker_threads';
 import path from 'node:path';
 import { logger } from '../../../shared/utils';
-import { getMLStatusService } from './MLStatusService';
+import { getMLStatusTracker } from './MLStatusTracker';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
@@ -32,7 +32,7 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class EmbeddingWorkerService {
+export class EmbeddingWorker {
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -66,15 +66,15 @@ export class EmbeddingWorkerService {
   }
 
   private async doInitialize(): Promise<void> {
-    const mlStatus = getMLStatusService();
+    const mlStatus = getMLStatusTracker();
 
     try {
       mlStatus.setServiceStatus('initializing');
-      logger.info('[EmbeddingService] Starting worker thread...');
+      logger.info('[Embedder] Starting worker thread...');
 
       // Spawn worker
       const workerPath = this.getWorkerPath();
-      logger.info(`[EmbeddingService] Worker path: ${workerPath}`);
+      logger.info(`[Embedder] Worker path: ${workerPath}`);
 
       this.worker = new Worker(workerPath);
 
@@ -117,7 +117,7 @@ export class EmbeddingWorkerService {
       });
 
       this.worker.on('error', (err) => {
-        logger.error('[EmbeddingService] Worker error:', err);
+        logger.error('[Embedder] Worker error:', err);
         // Reject all pending requests
         for (const [id, pending] of this.pendingRequests) {
           pending.reject(err);
@@ -127,7 +127,7 @@ export class EmbeddingWorkerService {
 
       this.worker.on('exit', (code) => {
         if (code !== 0) {
-          logger.error(`[EmbeddingService] Worker exited with code ${code}`);
+          logger.error(`[Embedder] Worker exited with code ${code}`);
         }
         this.worker = null;
         this.initialized = false;
@@ -135,9 +135,9 @@ export class EmbeddingWorkerService {
       });
 
       // Initialize the model in the worker
-      logger.info('[EmbeddingService] Initializing model in worker...');
+      logger.info('[Embedder] Initializing model in worker...');
       const result = await this.sendMessage<{ model: string; dims: number }>('init', {});
-      logger.info(`[EmbeddingService] Model ready: ${result.model} (${result.dims} dims)`);
+      logger.info(`[Embedder] Model ready: ${result.model} (${result.dims} dims)`);
 
       mlStatus.setServiceStatus('ready', {
         model: { name: result.model, dims: result.dims },
@@ -147,7 +147,7 @@ export class EmbeddingWorkerService {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       mlStatus.setServiceStatus('error', { error: errorMessage });
-      logger.error('[EmbeddingService] Failed to initialize:', error);
+      logger.error('[Embedder] Failed to initialize:', error);
       this.initialized = false;
       throw error;
     } finally {
@@ -179,7 +179,7 @@ export class EmbeddingWorkerService {
    * Shutdown the embedding service
    */
   async shutdown(): Promise<void> {
-    logger.info('[EmbeddingService] Shutting down...');
+    logger.info('[Embedder] Shutting down...');
 
     if (this.worker && this.workerReady) {
       try {
@@ -195,7 +195,7 @@ export class EmbeddingWorkerService {
     this.workerReady = false;
     this.pendingRequests.clear();
 
-    getMLStatusService().setServiceStatus('idle');
+    getMLStatusTracker().setServiceStatus('idle');
   }
 
   /**
@@ -250,19 +250,19 @@ export class EmbeddingWorkerService {
 // Singleton for backward compatibility (IPC handlers)
 // ==========================================================================
 
-let instance: EmbeddingWorkerService | null = null;
+let instance: EmbeddingWorker | null = null;
 
 /**
  * Get or create embedding worker service instance
  */
-export function getEmbeddingWorkerService(): EmbeddingWorkerService {
-  instance ??= new EmbeddingWorkerService();
+export function getEmbeddingWorker(): EmbeddingWorker {
+  instance ??= new EmbeddingWorker();
   return instance;
 }
 
 /**
- * Create EmbeddingWorkerService instance (for DI container)
+ * Create EmbeddingWorker instance (for DI container)
  */
-export function createEmbeddingWorkerService(): EmbeddingWorkerService {
-  return new EmbeddingWorkerService();
+export function createEmbeddingWorker(): EmbeddingWorker {
+  return new EmbeddingWorker();
 }

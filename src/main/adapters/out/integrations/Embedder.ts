@@ -1,36 +1,36 @@
 /**
  * Embedding Service Adapter
  *
- * Implements IEmbeddingService port using EmbeddingWorkerService
+ * Implements IEmbedder port using EmbeddingWorker
  * for real ML embedding generation via Transformers.js.
  */
 
 import type {
-  IEmbeddingService,
+  IEmbedder,
   ClassificationResult,
   SimilarNote,
   INoteRepository,
   IMarkdownProcessor,
 } from '../../../domain';
-import { EmbeddingWorkerService, createEmbeddingWorkerService } from './EmbeddingWorkerService';
+import { EmbeddingWorker, createEmbeddingWorker } from './EmbeddingWorker';
 import { logger } from '../../../shared/utils';
 
-export interface EmbeddingServiceDeps {
+export interface EmbedderDeps {
   noteRepository: INoteRepository;
   markdownProcessor: IMarkdownProcessor;
 }
 
-export class EmbeddingService implements IEmbeddingService {
-  private workerService: EmbeddingWorkerService;
+export class Embedder implements IEmbedder {
+  private workerService: EmbeddingWorker;
 
-  constructor(private readonly deps: EmbeddingServiceDeps) {
-    this.workerService = createEmbeddingWorkerService();
+  constructor(private readonly deps: EmbedderDeps) {
+    this.workerService = createEmbeddingWorker();
   }
 
   async initialize(): Promise<void> {
-    logger.info('[EmbeddingService] Initializing with worker service...');
+    logger.info('[Embedder] Initializing with worker service...');
     await this.workerService.initialize();
-    logger.info('[EmbeddingService] Worker service initialized');
+    logger.info('[Embedder] Worker service initialized');
   }
 
   isReady(): boolean {

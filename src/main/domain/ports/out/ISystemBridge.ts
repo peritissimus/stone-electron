@@ -27,7 +27,7 @@ export interface FolderPickerOptions {
 /**
  * System Service - Handles OS-level operations
  */
-export interface ISystemService {
+export interface ISystemBridge {
   /**
    * Get available system fonts
    */

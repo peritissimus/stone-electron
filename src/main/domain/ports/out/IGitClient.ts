@@ -54,7 +54,7 @@ export interface GitOperationResult {
 /**
  * Git Service - Handles git operations
  */
-export interface IGitService {
+export interface IGitClient {
   /**
    * Check if a directory is a git repository
    */

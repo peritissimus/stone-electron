@@ -25,11 +25,11 @@ import type {
   IMarkdownProcessor,
   IEventPublisher,
   ISearchEngine,
-  IEmbeddingService,
+  IEmbedder,
   IGitOperations,
-  IExportService,
-  ISystemService,
-  IGitService,
+  IExporter,
+  ISystemBridge,
+  IGitClient,
   // Inbound Ports (Use Cases)
   INoteUseCases,
   INotebookUseCases,
@@ -117,11 +117,11 @@ import {
   // Outbound (Secondary) - Services
   MarkdownProcessor,
   SearchEngine,
-  EmbeddingService,
-  ExportService,
-  SystemService,
-  GitService,
-  FileWatcherService,
+  Embedder,
+  Exporter,
+  SystemBridge,
+  GitClient,
+  FileWatcher,
   getPerformanceMonitor,
   // Outbound (Secondary) - External
   GitOperations,
@@ -165,12 +165,12 @@ export interface Container {
   markdownProcessor: IMarkdownProcessor;
   eventPublisher: IEventPublisher;
   searchEngine: ISearchEngine;
-  embeddingService: IEmbeddingService;
+  embeddingService: IEmbedder;
   gitOperations: IGitOperations;
-  exportService: IExportService;
-  systemService: ISystemService;
-  gitService: IGitService;
-  fileWatcherService: FileWatcherService;
+  exportService: IExporter;
+  systemService: ISystemBridge;
+  gitService: IGitClient;
+  fileWatcherService: FileWatcher;
 
   // Use Cases - Core
   noteUseCases: INoteUseCases;
@@ -260,9 +260,9 @@ export function createContainer(deps: ContainerDeps): Container {
   const markdownProcessor: IMarkdownProcessor = new MarkdownProcessor();
   const eventPublisher: IEventPublisher = new EventPublisher();
   const gitOperations: IGitOperations = new GitOperations();
-  const exportService: IExportService = new ExportService();
-  const systemService: ISystemService = new SystemService();
-  const gitService: IGitService = new GitService();
+  const exportService: IExporter = new Exporter();
+  const systemService: ISystemBridge = new SystemBridge();
+  const gitService: IGitClient = new GitClient();
 
   // ---------------------------------------------------------------------------
   // Layer 2: Repositories (depend on db, some services)
@@ -283,7 +283,7 @@ export function createContainer(deps: ContainerDeps): Container {
     getWorkspacePath,
   });
 
-  const fileWatcherService = new FileWatcherService({
+  const fileWatcherService = new FileWatcher({
     workspaceRepository,
     noteRepository,
     notebookRepository,
@@ -293,7 +293,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // ---------------------------------------------------------------------------
   // Layer 3: Domain Services (depend on repositories)
   // ---------------------------------------------------------------------------
-  const embeddingService: IEmbeddingService = new EmbeddingService({
+  const embeddingService: IEmbedder = new Embedder({
     noteRepository,
     markdownProcessor,
   });

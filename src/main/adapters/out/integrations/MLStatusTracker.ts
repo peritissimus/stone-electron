@@ -1,5 +1,5 @@
 /**
- * MLStatusService - Tracks and broadcasts ML operation status
+ * MLStatusTracker - Tracks and broadcasts ML operation status
  *
  * Provides a central place to track embedding service status and
  * classification operations, broadcasting updates to the renderer.
@@ -23,7 +23,7 @@ import { logger } from '../../../shared/utils';
 
 const MAX_RECENT_OPERATIONS = 10;
 
-class MLStatusService {
+class MLStatusTracker {
   private serviceState: MLServiceState = {
     status: 'idle',
   };
@@ -207,13 +207,13 @@ class MLStatusService {
 }
 
 // Singleton instance
-let instance: MLStatusService | null = null;
+let instance: MLStatusTracker | null = null;
 
-export function getMLStatusService(): MLStatusService {
-  instance ??= new MLStatusService();
+export function getMLStatusTracker(): MLStatusTracker {
+  instance ??= new MLStatusTracker();
   return instance;
 }
 
-export function createMLStatusService(): MLStatusService {
-  return new MLStatusService();
+export function createMLStatusTracker(): MLStatusTracker {
+  return new MLStatusTracker();
 }

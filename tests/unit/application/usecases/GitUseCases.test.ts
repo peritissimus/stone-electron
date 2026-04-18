@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createGitUseCases } from '../../../../src/main/application/usecases/GitUseCases';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
-import type { IGitService } from '../../../../src/main/domain/ports/out/IGitService';
+import type { IGitClient } from '../../../../src/main/domain/ports/out/IGitClient';
 import type { IGitUseCases } from '../../../../src/main/domain/ports/in/IGitUseCases';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 
@@ -22,7 +22,7 @@ function createMockWorkspaceRepository(): IWorkspaceRepository {
   } as unknown as IWorkspaceRepository;
 }
 
-function createMockGitService(): IGitService {
+function createMockGitClient(): IGitClient {
   return {
     getStatus: vi.fn(),
     init: vi.fn(),
@@ -33,7 +33,7 @@ function createMockGitService(): IGitService {
     sync: vi.fn(),
     setRemote: vi.fn(),
     getCommits: vi.fn(),
-  } as unknown as IGitService;
+  } as unknown as IGitClient;
 }
 
 function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
@@ -50,12 +50,12 @@ function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): Workspac
 
 describe('GitUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
-  let gitService: IGitService;
+  let gitService: IGitClient;
   let useCases: IGitUseCases;
 
   beforeEach(() => {
     workspaceRepo = createMockWorkspaceRepository();
-    gitService = createMockGitService();
+    gitService = createMockGitClient();
     useCases = createGitUseCases({
       workspaceRepository: workspaceRepo,
       gitService,

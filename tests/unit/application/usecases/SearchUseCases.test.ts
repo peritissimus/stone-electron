@@ -16,7 +16,7 @@ import {
 } from '../../../../src/main/application/usecases/SearchUseCases';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ISearchEngine } from '../../../../src/main/domain/ports/out/ISearchEngine';
-import type { IEmbeddingService } from '../../../../src/main/domain/ports/out/IEmbeddingService';
+import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 
 // Mock factories
@@ -57,11 +57,11 @@ function createMockSearchEngine(): ISearchEngine {
   } as unknown as ISearchEngine;
 }
 
-function createMockEmbeddingService(): IEmbeddingService {
+function createMockEmbedder(): IEmbedder {
   return {
     generateEmbedding: vi.fn(),
     isAvailable: vi.fn(),
-  } as unknown as IEmbeddingService;
+  } as unknown as IEmbedder;
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -135,12 +135,12 @@ describe('SearchUseCases', () => {
 
   describe('SemanticSearchUseCase', () => {
     let noteRepo: INoteRepository;
-    let embeddingService: IEmbeddingService;
+    let embeddingService: IEmbedder;
     let useCase: SemanticSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      embeddingService = createMockEmbeddingService();
+      embeddingService = createMockEmbedder();
       useCase = new SemanticSearchUseCase(noteRepo, embeddingService);
     });
 
@@ -170,12 +170,12 @@ describe('SearchUseCases', () => {
 
   describe('FindSimilarNotesUseCase', () => {
     let noteRepo: INoteRepository;
-    let embeddingService: IEmbeddingService;
+    let embeddingService: IEmbedder;
     let useCase: FindSimilarNotesUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      embeddingService = createMockEmbeddingService();
+      embeddingService = createMockEmbedder();
       useCase = new FindSimilarNotesUseCase(noteRepo, embeddingService);
     });
 
@@ -234,13 +234,13 @@ describe('SearchUseCases', () => {
   describe('HybridSearchUseCase', () => {
     let noteRepo: INoteRepository;
     let searchEngine: ISearchEngine;
-    let embeddingService: IEmbeddingService;
+    let embeddingService: IEmbedder;
     let useCase: HybridSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       searchEngine = createMockSearchEngine();
-      embeddingService = createMockEmbeddingService();
+      embeddingService = createMockEmbedder();
       useCase = new HybridSearchUseCase(noteRepo, searchEngine, embeddingService);
     });
 
