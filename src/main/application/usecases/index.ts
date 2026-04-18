@@ -17,8 +17,13 @@ export {
   SearchNotesUseCase,
   GetNoteContentUseCase,
   SaveNoteContentUseCase,
+  GetNoteByPathUseCase,
+  ToggleFavoriteUseCase,
+  TogglePinUseCase,
+  ToggleArchiveUseCase,
   createNoteUseCases,
-} from './NoteUseCases';
+  type NoteUseCasesDeps,
+} from './note';
 
 // Notebook Use Cases
 export {
