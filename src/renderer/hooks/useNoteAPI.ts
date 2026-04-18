@@ -19,6 +19,9 @@ export function useNoteAPI() {
   const deleteNote = useNoteStore((state) => state.deleteNote);
   const setLoading = useNoteStore((state) => state.setLoading);
   const setError = useNoteStore((state) => state.setError);
+  const getNoteById = useCallback((id: string) => {
+    return useNoteStore.getState().notes.find((n) => n.id === id);
+  }, []);
 
   const loadNotes = useCallback(
     async (filters?: {
@@ -182,7 +185,7 @@ export function useNoteAPI() {
     async (id: string) => {
       setError(null);
       try {
-        const note = useNoteStore.getState().notes.find((n) => n.id === id);
+        const note = getNoteById(id);
         const response = await noteAPI.favorite(id, !note?.isFavorite);
         if (response.success && response.data) {
           updateNote(response.data);
@@ -196,14 +199,14 @@ export function useNoteAPI() {
         return null;
       }
     },
-    [updateNote, setError],
+    [updateNote, setError, getNoteById],
   );
 
   const togglePin = useCallback(
     async (id: string) => {
       setError(null);
       try {
-        const note = useNoteStore.getState().notes.find((n) => n.id === id);
+        const note = getNoteById(id);
         const response = await noteAPI.pin(id, !note?.isPinned);
         if (response.success && response.data) {
           updateNote(response.data);
@@ -217,14 +220,14 @@ export function useNoteAPI() {
         return null;
       }
     },
-    [updateNote, setError],
+    [updateNote, setError, getNoteById],
   );
 
   const toggleArchive = useCallback(
     async (id: string) => {
       setError(null);
       try {
-        const note = useNoteStore.getState().notes.find((n) => n.id === id);
+        const note = getNoteById(id);
         const response = await noteAPI.archive(id, !note?.isArchived);
         if (response.success && response.data) {
           updateNote(response.data);
@@ -238,7 +241,7 @@ export function useNoteAPI() {
         return null;
       }
     },
-    [updateNote, setError],
+    [updateNote, setError, getNoteById],
   );
 
   const getVersions = useCallback(async (noteId: string) => {

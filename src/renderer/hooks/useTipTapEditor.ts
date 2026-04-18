@@ -20,11 +20,15 @@ import { CodeBlockWithMermaid } from '@renderer/extensions/CodeBlockWithMermaid'
 // Import slash command extension
 import { SlashCommand } from '@renderer/extensions/SlashCommand';
 import { NoteLink } from '@renderer/extensions/NoteLink';
-import { Note } from '@shared/types';
+import { Timestamp } from '@renderer/extensions/Timestamp';
+import { TaskMarker } from '@renderer/extensions/TaskMarker';
 import { IndentableBlock } from '@renderer/extensions/IndentableBlock';
 import { SearchAndReplace } from '@renderer/extensions/SearchAndReplace';
+import { MarkdownPaste } from '@renderer/extensions/MarkdownPaste';
+import { TableNavigation } from '@renderer/extensions/TableNavigation';
+import { BlockDragDrop } from '@renderer/extensions/BlockDragDrop';
+import { useNoteCache } from '@renderer/hooks/useNoteCache';
 import { logger } from '@renderer/utils/logger';
-import { noteAPI } from '@renderer/api';
 
 // Lazy load languages on demand (saves ~150KB from initial bundle!)
 // Language loader map for dynamic imports
@@ -93,68 +97,9 @@ preloadCommonLanguages();
 // Note: 'mermaid' language is handled by CodeBlockWithMermaid extension
 // which auto-renders diagrams when language is set to 'mermaid'
 
-// Cache for notes autocomplete (avoids fetching ALL notes on every keystroke)
-let notesCache: { notes: Note[]; timestamp: number } | null = null;
-const NOTES_CACHE_TTL_MS = 30000; // 30 seconds
-
-// Fetch notes for NoteLink autocomplete (with caching)
-async function fetchNotesForAutocomplete(query: string) {
-  try {
-    const now = Date.now();
-
-    // Use cache if valid
-    if (!notesCache || now - notesCache.timestamp > NOTES_CACHE_TTL_MS) {
-      const response = await noteAPI.getAll({ includeArchived: false });
-
-      if (response.success && response.data) {
-        notesCache = {
-          notes: response.data.notes || [],
-          timestamp: now,
-        };
-      } else {
-        return [];
-      }
-    }
-
-    const notes = notesCache.notes;
-    const lowerQuery = query.toLowerCase();
-
-    // Filter notes by query
-    const filtered = query
-      ? notes.filter((note) => note.title?.toLowerCase().includes(lowerQuery))
-      : notes;
-
-    // Sort by relevance (title starts with query first, then contains)
-    const sorted = filtered.sort((a, b) => {
-      const aTitle = (a.title || '').toLowerCase();
-      const bTitle = (b.title || '').toLowerCase();
-      const aStarts = aTitle.startsWith(lowerQuery);
-      const bStarts = bTitle.startsWith(lowerQuery);
-
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      return aTitle.localeCompare(bTitle);
-    });
-
-    // Limit results
-    return sorted.slice(0, 10).map((note) => ({
-      id: note.id,
-      title: note.title || 'Untitled',
-      filePath: note.filePath,
-      note,
-    }));
-  } catch (error) {
-    logger.error('Failed to fetch notes for autocomplete:', error);
-    return [];
-  }
-}
-
-// Export function to invalidate cache when notes change
-export function invalidateNotesAutocompleteCache() {
-  notesCache = null;
-}
-
 export function useTipTapEditor() {
+  const { fetchNotesForAutocomplete } = useNoteCache();
+
   const editor = useEditor({
     // Prevent flushSync warning in React 18 Strict Mode
     // This defers rendering until after the initial React render cycle
@@ -238,6 +183,11 @@ export function useTipTapEditor() {
         highlightClass: 'search-highlight',
         activeHighlightClass: 'search-highlight-active',
       }),
+      Timestamp,
+      TaskMarker,
+      MarkdownPaste,
+      TableNavigation,
+      BlockDragDrop,
     ],
     content: '',
     editorProps: {

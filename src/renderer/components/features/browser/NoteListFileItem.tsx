@@ -4,6 +4,7 @@
  * Implements: specs/components.ts#NoteListItemProps
  */
 
+import { memo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { TreeItem } from '@renderer/components/composites';
 import { Star, PushPin } from 'phosphor-react';
@@ -18,7 +19,7 @@ export interface NoteListFileItemProps {
   onClick: () => void;
 }
 
-export function NoteListFileItem({
+export const NoteListFileItem = memo(function NoteListFileItem({
   note,
   fileName,
   level,
@@ -46,4 +47,4 @@ export function NoteListFileItem({
       }
     />
   );
-}
+});

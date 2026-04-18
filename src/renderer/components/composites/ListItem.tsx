@@ -38,7 +38,7 @@ export interface ListItemProps extends Omit<React.HTMLAttributes<HTMLButtonEleme
  *   right={<Star />}
  * />
  */
-export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
+export const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemProps>(
   (
     {
       size = 'normal',
@@ -64,7 +64,8 @@ export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
           'w-full text-left',
           padding,
           textSize,
-          'transition-colors border-b border-border',
+          'transition duration-150 ease-out motion-safe:active:scale-[0.98]',
+          'border-b border-border',
           'flex items-center gap-2',
           isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
           className,
@@ -91,5 +92,5 @@ export const ListItem = React.forwardRef<HTMLButtonElement, ListItemProps>(
       </button>
     );
   },
-);
+));
 ListItem.displayName = 'ListItem';

@@ -45,7 +45,7 @@ export interface TreeItemProps extends React.ButtonHTMLAttributes<HTMLButtonElem
  *   right={<Badge>{count}</Badge>}
  * />
  */
-export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
+export const TreeItem = React.memo(React.forwardRef<HTMLButtonElement, TreeItemProps>(
   (
     {
       size = 'normal',
@@ -133,5 +133,5 @@ export const TreeItem = React.forwardRef<HTMLButtonElement, TreeItemProps>(
       </>
     );
   },
-);
+));
 TreeItem.displayName = 'TreeItem';

@@ -2,7 +2,7 @@
  * TaskSection - Collapsible section for tasks grouped by state
  */
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { CaretRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
 import { TaskItem } from './TaskItem';
@@ -31,7 +31,7 @@ const STATE_COLORS: Record<string, string> = {
   all: 'bg-foreground/5 text-foreground',
 };
 
-export function TaskSection({
+export const TaskSection = memo(function TaskSection({
   state,
   label,
   todos,
@@ -54,25 +54,31 @@ export function TaskSection({
       >
         <CaretRight
           size={16}
-          className={`text-muted-foreground transition-transform ${expanded ? 'rotate-90' : ''}`}
+          className={`text-muted-foreground motion-safe:transition-transform duration-200 ease-out ${expanded ? 'rotate-90' : ''}`}
         />
         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${colorClass}`}>{label}</span>
         <span className="text-xs text-muted-foreground">{todos.length}</span>
       </button>
 
-      {expanded && (
-        <div className="mt-1 ml-2">
-          {todos.map((todo) => (
-            <TaskItem
-              key={todo.id}
-              todo={todo}
-              onClick={() => onTodoClick(todo)}
-              onToggle={onToggle ? (newState) => onToggle(todo, newState) : undefined}
-              isToggling={togglingTodoId === todo.id}
-            />
-          ))}
+      <div
+        className={`grid motion-safe:transition-[grid-template-rows] duration-200 ease-out ${
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="mt-1 ml-2">
+            {todos.map((todo) => (
+              <TaskItem
+                key={todo.id}
+                todo={todo}
+                onClick={() => onTodoClick(todo)}
+                onToggle={onToggle ? (newState) => onToggle(todo, newState) : undefined}
+                isToggling={togglingTodoId === todo.id}
+              />
+            ))}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
-}
+});
