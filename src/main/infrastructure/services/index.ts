@@ -1,28 +1,10 @@
 /**
  * Infrastructure Services
  *
- * Note: MarkdownService has been moved to adapters/out/services/MarkdownProcessor
- * following hexagonal architecture (adapters contain external library implementations)
+ * All long-lived service implementations have been moved to adapters/out/services/
+ * to comply with hexagonal architecture (adapters fulfill domain ports).
+ * This file is intentionally empty; kept as a placeholder for any future
+ * truly-infrastructure-only utilities (DI helpers, bootstrap glue, etc).
  */
 
-export {
-  EmbeddingWorkerService,
-  getEmbeddingWorkerService,
-  createEmbeddingWorkerService,
-} from './EmbeddingWorkerService';
-
-export { getMLStatusService, createMLStatusService } from './MLStatusService';
-
-export {
-  PerformanceMonitor,
-  getPerformanceMonitor,
-  type PerformanceSnapshot,
-  type StartupMetrics,
-  type MemoryMetrics,
-  type CPUMetrics,
-  type EventLoopMetrics,
-  type IPCMetrics,
-  type DatabaseMetrics,
-  type ChannelStats,
-  type OperationStats,
-} from './PerformanceMonitor';
+export {};

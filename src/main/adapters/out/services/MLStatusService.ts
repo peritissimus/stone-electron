@@ -19,7 +19,7 @@ import {
   MLOperationCompletedPayload,
   MLOperationErrorPayload,
 } from '@shared/types/mlStatus';
-import { logger } from '../../shared/utils';
+import { logger } from '../../../shared/utils';
 
 const MAX_RECENT_OPERATIONS = 10;
 

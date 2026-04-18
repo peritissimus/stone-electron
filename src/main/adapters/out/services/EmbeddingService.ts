@@ -12,10 +12,7 @@ import type {
   INoteRepository,
   IMarkdownProcessor,
 } from '../../../domain';
-import {
-  EmbeddingWorkerService,
-  createEmbeddingWorkerService,
-} from '../../../infrastructure/services/EmbeddingWorkerService';
+import { EmbeddingWorkerService, createEmbeddingWorkerService } from './EmbeddingWorkerService';
 import { logger } from '../../../shared/utils';
 
 export interface EmbeddingServiceDeps {

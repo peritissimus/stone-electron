@@ -122,12 +122,11 @@ import {
   SystemService,
   GitService,
   FileWatcherService,
+  getPerformanceMonitor,
   // Outbound (Secondary) - External
   GitOperations,
   EventPublisher,
 } from '../../adapters';
-
-import { getPerformanceMonitor } from '../services/PerformanceMonitor';
 
 // ============================================================================
 // Container Types
