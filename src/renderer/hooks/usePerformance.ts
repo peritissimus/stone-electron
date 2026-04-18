@@ -55,7 +55,7 @@ export function usePerformance(options: UsePerformanceOptions = {}) {
     isPolling: false,
   });
 
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
 
   // Fetch performance snapshot

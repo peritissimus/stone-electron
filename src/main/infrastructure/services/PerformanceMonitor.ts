@@ -7,6 +7,8 @@
 
 import { performance, PerformanceObserver, PerformanceEntry } from 'node:perf_hooks';
 import { BrowserWindow } from 'electron';
+
+type CpuUsage = ReturnType<typeof process.cpuUsage>;
 import { logger } from '../../shared/utils/logger';
 
 // ============================================================================
@@ -114,10 +116,10 @@ export class PerformanceMonitor {
   private startupMetrics: StartupMetrics;
   private ipcCalls: IPCCall[] = [];
   private dbQueries: DBQuery[] = [];
-  private lastCPUUsage: NodeJS.CpuUsage | null = null;
+  private lastCPUUsage: CpuUsage | null = null;
   private lastCPUTime: number = 0;
   private eventLoopLag: number = 0;
-  private lagCheckInterval: NodeJS.Timeout | null = null;
+  private lagCheckInterval: ReturnType<typeof setInterval> | null = null;
   private gcObserver: PerformanceObserver | null = null;
   private readonly maxHistorySize = 10000; // Keep last 10k records
   private readonly slowQueryThresholdMs = 100;
