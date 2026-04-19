@@ -4,52 +4,34 @@
  * Defines the contract for database maintenance operations.
  */
 
-// Request/Response types
 export interface DatabaseStatusResponse {
-  databaseSize: number;
-  databasePath: string;
-  isMigrating: boolean;
-  vectorSize: number;
-  lastBackup?: Date;
-  lastDefrag?: Date;
+  path: string;
+  size: number;
+  isOpen: boolean;
 }
 
-export interface VacuumResponse {
-  success: boolean;
-  sizeBefore: number;
-  sizeAfter: number;
-  freedBytes: number;
-}
-
-export interface IntegrityCheckRequest {
-  detailed?: boolean;
-}
-
-export interface IntegrityCheckResponse {
+export interface DatabaseIntegrityResponse {
   ok: boolean;
-  foreignKeysOk: boolean;
   errors: string[];
-  warnings: string[];
 }
 
-// Use case interfaces
 export interface IGetDatabaseStatusUseCase {
   execute(): Promise<DatabaseStatusResponse>;
 }
 
 export interface IVacuumDatabaseUseCase {
-  execute(): Promise<VacuumResponse>;
+  execute(): Promise<void>;
 }
 
 export interface ICheckDatabaseIntegrityUseCase {
-  execute(request: IntegrityCheckRequest): Promise<IntegrityCheckResponse>;
+  execute(): Promise<DatabaseIntegrityResponse>;
 }
 
 /**
  * Aggregated database use cases interface for DI container
  */
 export interface IDatabaseUseCases {
-  getStatus(): Promise<{ path: string; size: number; isOpen: boolean }>;
-  vacuum(): Promise<void>;
-  checkIntegrity(): Promise<{ ok: boolean; errors: string[] }>;
+  getStatus: IGetDatabaseStatusUseCase;
+  vacuum: IVacuumDatabaseUseCase;
+  checkIntegrity: ICheckDatabaseIntegrityUseCase;
 }

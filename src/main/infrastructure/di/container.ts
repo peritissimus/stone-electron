@@ -541,9 +541,9 @@ export function registerIPCHandlers(): void {
     getGitCommits: container.gitUseCases.getCommits,
   });
   registerDatabaseHandlers({
-    getDatabaseStatus: () => container.databaseUseCases.getStatus(),
-    vacuumDatabase: () => container.databaseUseCases.vacuum(),
-    checkDatabaseIntegrity: () => container.databaseUseCases.checkIntegrity(),
+    getDatabaseStatus: container.databaseUseCases.getStatus,
+    vacuumDatabase: container.databaseUseCases.vacuum,
+    checkDatabaseIntegrity: container.databaseUseCases.checkIntegrity,
   });
   registerQuickCaptureHandlers({
     appendToJournal: (content: string, workspaceId?: string) =>
