@@ -18,19 +18,15 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     handleIpcRequest(fn, { loggerPrefix: 'TopicIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(TOPIC_CHANNELS.INITIALIZE, async () => {
-    return handleRequest(
-      async () => {
-        const result = await topicUseCases.initialize();
-        return result;
-      },
-      { channel: TOPIC_CHANNELS.INITIALIZE },
-    );
+    return handleRequest(async () => topicUseCases.initialize.execute(), {
+      channel: TOPIC_CHANNELS.INITIALIZE,
+    });
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_ALL, async () => {
     return handleRequest(
       async () => {
-        const topics = await topicUseCases.getAllTopics();
+        const topics = await topicUseCases.getAllTopics.execute();
         return { topics };
       },
       { channel: TOPIC_CHANNELS.GET_ALL },
@@ -38,25 +34,19 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_BY_ID, async (_event, { id }: { id: string }) => {
-    return handleRequest(
-      async () => {
-        const topic = await topicUseCases.getTopicById(id);
-        return topic;
-      },
-      { channel: TOPIC_CHANNELS.GET_BY_ID, topicId: id },
-    );
+    return handleRequest(async () => topicUseCases.getTopicById.execute(id), {
+      channel: TOPIC_CHANNELS.GET_BY_ID,
+      topicId: id,
+    });
   });
 
   ipcMain.handle(
     TOPIC_CHANNELS.CREATE,
     async (_event, data: { name: string; description?: string; color?: string }) => {
-      return handleRequest(
-        async () => {
-          const topic = await topicUseCases.createTopic(data);
-          return topic;
-        },
-        { channel: TOPIC_CHANNELS.CREATE, name: data.name },
-      );
+      return handleRequest(async () => topicUseCases.createTopic.execute(data), {
+        channel: TOPIC_CHANNELS.CREATE,
+        name: data.name,
+      });
     },
   );
 
@@ -66,20 +56,17 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
       _event,
       { id, ...data }: { id: string; name?: string; description?: string; color?: string },
     ) => {
-      return handleRequest(
-        async () => {
-          const topic = await topicUseCases.updateTopic(id, data);
-          return topic;
-        },
-        { channel: TOPIC_CHANNELS.UPDATE, topicId: id },
-      );
+      return handleRequest(async () => topicUseCases.updateTopic.execute(id, data), {
+        channel: TOPIC_CHANNELS.UPDATE,
+        topicId: id,
+      });
     },
   );
 
   ipcMain.handle(TOPIC_CHANNELS.DELETE, async (_event, { id }: { id: string }) => {
     return handleRequest(
       async () => {
-        await topicUseCases.deleteTopic(id);
+        await topicUseCases.deleteTopic.execute(id);
         return { success: true };
       },
       { channel: TOPIC_CHANNELS.DELETE, topicId: id },
@@ -91,7 +78,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
       return handleRequest(
         async () => {
-          await topicUseCases.assignTopicToNote(noteId, topicId);
+          await topicUseCases.assignTopicToNote.execute(noteId, topicId);
           return { success: true };
         },
         { channel: TOPIC_CHANNELS.ASSIGN_TO_NOTE, noteId, topicId },
@@ -104,7 +91,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
       return handleRequest(
         async () => {
-          await topicUseCases.removeTopicFromNote(noteId, topicId);
+          await topicUseCases.removeTopicFromNote.execute(noteId, topicId);
           return { success: true };
         },
         { channel: TOPIC_CHANNELS.REMOVE_FROM_NOTE, noteId, topicId },
@@ -115,32 +102,24 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(
     TOPIC_CHANNELS.CLASSIFY_NOTE,
     async (_event, { noteId, force }: { noteId: string; force?: boolean }) => {
-      return handleRequest(
-        async () => {
-          const result = await topicUseCases.classifyNote(noteId, force);
-          return result;
-        },
-        { channel: TOPIC_CHANNELS.CLASSIFY_NOTE, noteId, force },
-      );
+      return handleRequest(async () => topicUseCases.classifyNote.execute(noteId, force), {
+        channel: TOPIC_CHANNELS.CLASSIFY_NOTE,
+        noteId,
+        force,
+      });
     },
   );
 
   ipcMain.handle(TOPIC_CHANNELS.CLASSIFY_ALL, async (_event, options?: { force?: boolean }) => {
-    return handleRequest(
-      async () => {
-        const result = await topicUseCases.classifyAllNotes(options);
-        return result;
-      },
-      { channel: TOPIC_CHANNELS.CLASSIFY_ALL, force: options?.force },
-    );
+    return handleRequest(async () => topicUseCases.classifyAllNotes.execute(options), {
+      channel: TOPIC_CHANNELS.CLASSIFY_ALL,
+      force: options?.force,
+    });
   });
 
   ipcMain.handle(TOPIC_CHANNELS.RECLASSIFY_ALL, async () => {
     return handleRequest(
-      async () => {
-        const result = await topicUseCases.classifyAllNotes({ force: true });
-        return result;
-      },
+      async () => topicUseCases.classifyAllNotes.execute({ force: true }),
       { channel: TOPIC_CHANNELS.RECLASSIFY_ALL, force: true },
     );
   });
@@ -150,7 +129,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     async (_event, { query, limit }: { query: string; limit?: number }) => {
       return handleRequest(
         async () => {
-          const results = await topicUseCases.semanticSearch(query, limit);
+          const results = await topicUseCases.semanticSearch.execute(query, limit);
           return { results };
         },
         { channel: TOPIC_CHANNELS.SEMANTIC_SEARCH, limit },
@@ -163,7 +142,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     async (_event, { noteId, limit }: { noteId: string; limit?: number }) => {
       return handleRequest(
         async () => {
-          const similar = await topicUseCases.getSimilarNotes(noteId, limit);
+          const similar = await topicUseCases.getSimilarNotes.execute(noteId, limit);
           return { similar };
         },
         { channel: TOPIC_CHANNELS.GET_SIMILAR_NOTES, noteId, limit },
@@ -174,7 +153,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, async () => {
     return handleRequest(
       async () => {
-        await topicUseCases.recomputeCentroids();
+        await topicUseCases.recomputeCentroids.execute();
         return { success: true };
       },
       { channel: TOPIC_CHANNELS.RECOMPUTE_CENTROIDS },
@@ -182,13 +161,9 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_EMBEDDING_STATUS, async () => {
-    return handleRequest(
-      async () => {
-        const status = await topicUseCases.getEmbeddingStatus();
-        return status;
-      },
-      { channel: TOPIC_CHANNELS.GET_EMBEDDING_STATUS },
-    );
+    return handleRequest(async () => topicUseCases.getEmbeddingStatus.execute(), {
+      channel: TOPIC_CHANNELS.GET_EMBEDDING_STATUS,
+    });
   });
 
   ipcMain.handle(
@@ -202,7 +177,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     ) => {
       return handleRequest(
         async () => {
-          const notes = await topicUseCases.getNotesForTopic(topicId, options);
+          const notes = await topicUseCases.getNotesForTopic.execute(topicId, options);
           return { notes };
         },
         { channel: TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, topicId, ...options },
@@ -215,7 +190,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     async (_event, { noteId }: { noteId: string }) => {
       return handleRequest(
         async () => {
-          const topics = await topicUseCases.getTopicsForNote(noteId);
+          const topics = await topicUseCases.getTopicsForNote.execute(noteId);
           return {
             topics: topics.map((t) => ({
               ...t,

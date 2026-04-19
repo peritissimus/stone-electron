@@ -88,8 +88,27 @@ export { createGraphUseCases, type GraphUseCasesDeps } from './graph';
 // Version Use Cases
 export { createVersionUseCases, type VersionUseCasesDeps } from './version';
 
-// Topic Use Cases (still monolithic — port/impl shapes don't align for a mechanical split; deferred)
-export { createTopicUseCases, type TopicUseCasesDeps } from './TopicUseCases';
+// Topic Use Cases
+export {
+  InitializeTopicsUseCase,
+  GetAllTopicsUseCase,
+  GetTopicByIdUseCase,
+  CreateTopicUseCase,
+  UpdateTopicUseCase,
+  DeleteTopicUseCase,
+  ClassifyNoteUseCase,
+  ClassifyAllNotesUseCase,
+  AssignTopicToNoteUseCase,
+  RemoveTopicFromNoteUseCase,
+  GetTopicSimilarNotesUseCase,
+  TopicSemanticSearchUseCase,
+  RecomputeCentroidsUseCase,
+  GetEmbeddingStatusUseCase,
+  GetNotesForTopicUseCase,
+  GetTopicsForNoteUseCase,
+  createTopicUseCases,
+  type TopicUseCasesDeps,
+} from './topic';
 
 // Attachment Use Cases
 export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './attachment';

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTopicUseCases } from '../../../../src/main/application/usecases/TopicUseCases';
+import { createTopicUseCases } from '../../../../src/main/application/usecases/topic';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ITopicRepository } from '../../../../src/main/domain/ports/out/ITopicRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -170,7 +170,7 @@ describe('TopicUseCases', () => {
     it('initializes embedding service', async () => {
       vi.mocked(embedder.initialize).mockResolvedValue(undefined);
 
-      await useCases.initialize();
+      await useCases.initialize.execute();
 
       expect(embedder.initialize).toHaveBeenCalled();
     });
@@ -184,7 +184,7 @@ describe('TopicUseCases', () => {
       ];
       vi.mocked(topicRepo.findAllWithCounts).mockResolvedValue(topics);
 
-      const result = await useCases.getAllTopics();
+      const result = await useCases.getAllTopics.execute();
 
       expect(result).toHaveLength(2);
       expect(result[0].noteCount).toBe(5);
@@ -197,7 +197,7 @@ describe('TopicUseCases', () => {
       vi.mocked(topicRepo.findById).mockResolvedValue(topic);
       vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue([]);
 
-      const result = await useCases.getTopicById('topic-1');
+      const result = await useCases.getTopicById.execute('topic-1');
 
       expect(result).not.toBeNull();
       expect(result?.name).toBe('Test Topic');
@@ -206,7 +206,7 @@ describe('TopicUseCases', () => {
     it('returns null when topic not found', async () => {
       vi.mocked(topicRepo.findById).mockResolvedValue(null);
 
-      const result = await useCases.getTopicById('nonexistent');
+      const result = await useCases.getTopicById.execute('nonexistent');
 
       expect(result).toBeNull();
     });
@@ -216,7 +216,7 @@ describe('TopicUseCases', () => {
     it('creates new topic', async () => {
       vi.mocked(topicRepo.save).mockResolvedValue(undefined);
 
-      const result = await useCases.createTopic({ name: 'New Topic' });
+      const result = await useCases.createTopic.execute({ name: 'New Topic' });
 
       expect(result.name).toBe('New Topic');
       expect(topicRepo.save).toHaveBeenCalled();
@@ -226,7 +226,7 @@ describe('TopicUseCases', () => {
     it('uses custom color when provided', async () => {
       vi.mocked(topicRepo.save).mockResolvedValue(undefined);
 
-      const result = await useCases.createTopic({ name: 'Topic', color: '#ff0000' });
+      const result = await useCases.createTopic.execute({ name: 'Topic', color: '#ff0000' });
 
       expect(result.color).toBe('#ff0000');
     });
@@ -239,7 +239,7 @@ describe('TopicUseCases', () => {
       vi.mocked(topicRepo.save).mockResolvedValue(undefined);
       vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue([]);
 
-      const result = await useCases.updateTopic('topic-1', { name: 'Updated Name' });
+      const result = await useCases.updateTopic.execute('topic-1', { name: 'Updated Name' });
 
       expect(result.name).toBe('Updated Name');
       expect(eventPublisher.emit).toHaveBeenCalled();
@@ -248,7 +248,7 @@ describe('TopicUseCases', () => {
     it('throws error when topic not found', async () => {
       vi.mocked(topicRepo.findById).mockResolvedValue(null);
 
-      await expect(useCases.updateTopic('nonexistent', { name: 'New' })).rejects.toThrow(
+      await expect(useCases.updateTopic.execute('nonexistent', { name: 'New' })).rejects.toThrow(
         'Topic not found: nonexistent',
       );
     });
@@ -260,7 +260,7 @@ describe('TopicUseCases', () => {
       vi.mocked(topicRepo.findById).mockResolvedValue(topic);
       vi.mocked(topicRepo.delete).mockResolvedValue(undefined);
 
-      await useCases.deleteTopic('topic-1');
+      await useCases.deleteTopic.execute('topic-1');
 
       expect(topicRepo.delete).toHaveBeenCalledWith('topic-1');
       expect(eventPublisher.emit).toHaveBeenCalled();
@@ -269,7 +269,7 @@ describe('TopicUseCases', () => {
     it('throws error when topic not found', async () => {
       vi.mocked(topicRepo.findById).mockResolvedValue(null);
 
-      await expect(useCases.deleteTopic('nonexistent')).rejects.toThrow(
+      await expect(useCases.deleteTopic.execute('nonexistent')).rejects.toThrow(
         'Topic not found: nonexistent',
       );
     });
@@ -278,7 +278,7 @@ describe('TopicUseCases', () => {
       const topic = createTopicProps({ isPredefined: true });
       vi.mocked(topicRepo.findById).mockResolvedValue(topic);
 
-      await expect(useCases.deleteTopic('topic-1')).rejects.toThrow(
+      await expect(useCases.deleteTopic.execute('topic-1')).rejects.toThrow(
         'Cannot delete predefined topics',
       );
     });
@@ -303,7 +303,7 @@ describe('TopicUseCases', () => {
       vi.mocked(topicRepo.findAll).mockResolvedValue([topic]);
       vi.mocked(topicRepo.assignToNote).mockResolvedValue(undefined);
 
-      const result = await useCases.classifyNote('note-1');
+      const result = await useCases.classifyNote.execute('note-1');
 
       expect(result.noteId).toBe('note-1');
       expect(noteRepo.updateEmbedding).toHaveBeenCalled();
@@ -314,7 +314,7 @@ describe('TopicUseCases', () => {
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
       vi.mocked(noteRepo.getEmbedding).mockResolvedValue([0.1, 0.2, 0.3]);
 
-      const result = await useCases.classifyNote('note-1', false);
+      const result = await useCases.classifyNote.execute('note-1', false);
 
       expect(result.topics).toHaveLength(0);
       expect(noteRepo.updateEmbedding).not.toHaveBeenCalled();
@@ -323,7 +323,7 @@ describe('TopicUseCases', () => {
     it('throws error when note not found', async () => {
       vi.mocked(noteRepo.findById).mockResolvedValue(null);
 
-      await expect(useCases.classifyNote('nonexistent')).rejects.toThrow(
+      await expect(useCases.classifyNote.execute('nonexistent')).rejects.toThrow(
         'Note not found: nonexistent',
       );
     });
@@ -333,7 +333,7 @@ describe('TopicUseCases', () => {
     it('manually assigns topic to note', async () => {
       vi.mocked(topicRepo.assignToNote).mockResolvedValue(undefined);
 
-      await useCases.assignTopicToNote('note-1', 'topic-1');
+      await useCases.assignTopicToNote.execute('note-1', 'topic-1');
 
       expect(topicRepo.assignToNote).toHaveBeenCalledWith('note-1', 'topic-1', {
         confidence: 1.0,
@@ -347,7 +347,7 @@ describe('TopicUseCases', () => {
     it('removes topic from note', async () => {
       vi.mocked(topicRepo.removeFromNote).mockResolvedValue(undefined);
 
-      await useCases.removeTopicFromNote('note-1', 'topic-1');
+      await useCases.removeTopicFromNote.execute('note-1', 'topic-1');
 
       expect(topicRepo.removeFromNote).toHaveBeenCalledWith('note-1', 'topic-1');
       expect(eventPublisher.emit).toHaveBeenCalled();
@@ -363,7 +363,7 @@ describe('TopicUseCases', () => {
         { noteId: 'note-2', title: 'Similar Note', distance: 0.2 },
       ]);
 
-      const result = await useCases.getSimilarNotes('note-1');
+      const result = await useCases.getSimilarNotes.execute('note-1');
 
       expect(result).toHaveLength(1);
       expect(result[0].noteId).toBe('note-2');
@@ -372,7 +372,7 @@ describe('TopicUseCases', () => {
     it('returns empty array when note not found', async () => {
       vi.mocked(noteRepo.findById).mockResolvedValue(null);
 
-      const result = await useCases.getSimilarNotes('nonexistent');
+      const result = await useCases.getSimilarNotes.execute('nonexistent');
 
       expect(result).toHaveLength(0);
     });
@@ -382,7 +382,7 @@ describe('TopicUseCases', () => {
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
       vi.mocked(noteRepo.getEmbedding).mockResolvedValue(null);
 
-      const result = await useCases.getSimilarNotes('note-1');
+      const result = await useCases.getSimilarNotes.execute('note-1');
 
       expect(result).toHaveLength(0);
     });
@@ -401,7 +401,7 @@ describe('TopicUseCases', () => {
       ]);
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
 
-      const result = await useCases.semanticSearch('search query');
+      const result = await useCases.semanticSearch.execute('search query');
 
       expect(result).toHaveLength(1);
       expect(embedder.generateEmbedding).toHaveBeenCalledWith('search query');
@@ -410,7 +410,7 @@ describe('TopicUseCases', () => {
     it('returns empty array when no active workspace', async () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
 
-      const result = await useCases.semanticSearch('query');
+      const result = await useCases.semanticSearch.execute('query');
 
       expect(result).toHaveLength(0);
     });
@@ -431,7 +431,7 @@ describe('TopicUseCases', () => {
         .mockResolvedValueOnce([0.4, 0.5, 0.6]);
       vi.mocked(topicRepo.updateCentroid).mockResolvedValue(undefined);
 
-      await useCases.recomputeCentroids();
+      await useCases.recomputeCentroids.execute();
 
       expect(topicRepo.findAll).toHaveBeenCalled();
       expect(topicRepo.getNotesForTopic).toHaveBeenCalledWith('topic-1');
@@ -459,7 +459,7 @@ describe('TopicUseCases', () => {
       );
       vi.mocked(topicRepo.findAll).mockResolvedValue([]);
 
-      const result = await useCases.classifyAllNotes();
+      const result = await useCases.classifyAllNotes.execute();
 
       expect(result.processed).toBe(2);
       expect(eventPublisher.emit).toHaveBeenCalledWith(
@@ -475,7 +475,7 @@ describe('TopicUseCases', () => {
     it('returns zeros when no active workspace', async () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
 
-      const result = await useCases.classifyAllNotes();
+      const result = await useCases.classifyAllNotes.execute();
 
       expect(result.processed).toBe(0);
       expect(result.total).toBe(0);
@@ -494,7 +494,7 @@ describe('TopicUseCases', () => {
         .mockResolvedValueOnce(null);
       vi.mocked(embedder.isReady).mockResolvedValue(true);
 
-      const result = await useCases.getEmbeddingStatus();
+      const result = await useCases.getEmbeddingStatus.execute();
 
       expect(result.totalNotes).toBe(2);
       expect(result.embeddedNotes).toBe(1);
@@ -506,7 +506,7 @@ describe('TopicUseCases', () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
       vi.mocked(embedder.isReady).mockResolvedValue(false);
 
-      const result = await useCases.getEmbeddingStatus();
+      const result = await useCases.getEmbeddingStatus.execute();
 
       expect(result.totalNotes).toBe(0);
       expect(result.embeddedNotes).toBe(0);
@@ -522,7 +522,7 @@ describe('TopicUseCases', () => {
       vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue(notesForTopic);
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
 
-      const result = await useCases.getNotesForTopic('topic-1');
+      const result = await useCases.getNotesForTopic.execute('topic-1');
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('note-1');
@@ -546,7 +546,7 @@ describe('TopicUseCases', () => {
       ];
       vi.mocked(topicRepo.getTopicsForNote).mockResolvedValue(topics);
 
-      const result = await useCases.getTopicsForNote('note-1');
+      const result = await useCases.getTopicsForNote.execute('note-1');
 
       expect(result).toHaveLength(1);
       expect(result[0].topicId).toBe('topic-1');
