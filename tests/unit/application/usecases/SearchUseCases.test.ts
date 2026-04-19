@@ -13,7 +13,7 @@ import {
   HybridSearchUseCase,
   SearchByTagsUseCase,
   SearchByDateRangeUseCase,
-} from '../../../../src/main/application/usecases/SearchUseCases';
+} from '../../../../src/main/application/usecases/search';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ISearchEngine } from '../../../../src/main/domain/ports/out/ISearchEngine';
 import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';

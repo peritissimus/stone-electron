@@ -1,37 +1,28 @@
-/**
- * Quick Capture Use Cases - Fast note capture (journal append)
- */
-
-import type { INoteRepository } from '../../domain/ports/out/INoteRepository';
-import type { IWorkspaceRepository } from '../../domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../domain/ports/out/IFileStorage';
-import type { IQuickCaptureUseCases } from '../../domain/ports/in/IQuickCaptureUseCases';
-import { NoteEntity } from '../../domain/entities/Note';
-import { logger } from '../../shared/utils';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
+import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import { NoteEntity } from '../../../domain/entities/Note';
+import { logger } from '../../../shared/utils';
 
-export interface QuickCaptureUseCasesDeps {
-  noteRepository: INoteRepository;
-  workspaceRepository: IWorkspaceRepository;
-  fileStorage: IFileStorage;
-}
+export class AppendToJournalUseCase {
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly fileStorage: IFileStorage,
+  ) {}
 
-class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
-  constructor(private deps: QuickCaptureUseCasesDeps) {}
-
-  async appendToJournal(
+  async execute(
     content: string,
     workspaceId?: string,
   ): Promise<{ noteId: string; appended: boolean }> {
-    const { noteRepository, workspaceRepository, fileStorage } = this.deps;
-
     // Get active workspace
     let workspace;
     if (workspaceId) {
-      workspace = await workspaceRepository.findById(workspaceId);
+      workspace = await this.workspaceRepository.findById(workspaceId);
     } else {
-      workspace = await workspaceRepository.findActive();
+      workspace = await this.workspaceRepository.findActive();
     }
 
     if (!workspace) {
@@ -45,7 +36,7 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
     const journalFilePath = `Journal/${dateStr}.md`;
 
     // Fast lookup: directly query by file path instead of fetching all notes
-    const journalNote = await noteRepository.findByFilePath(journalFilePath, workspace.id);
+    const journalNote = await this.noteRepository.findByFilePath(journalFilePath, workspace.id);
 
     const timestamp = today.toLocaleTimeString('en-US', {
       hour: '2-digit',
@@ -58,23 +49,23 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
 
     if (journalNote) {
       // Append to existing journal
-      const existingContent = (await fileStorage.read(absolutePath)) || '';
-      await fileStorage.write(absolutePath, existingContent + entryContent);
+      const existingContent = (await this.fileStorage.read(absolutePath)) || '';
+      await this.fileStorage.write(absolutePath, existingContent + entryContent);
 
       // Update timestamp - reconstruct entity and save
       const noteEntity = NoteEntity.fromPersistence(journalNote);
-      await noteRepository.save(noteEntity);
+      await this.noteRepository.save(noteEntity);
 
       logger.info(`[QuickCapture] Appended to journal ${journalNote.id}`);
       return { noteId: journalNote.id, appended: true };
     } else {
       // Check if file exists on disk (may not be in DB yet)
-      const fileExists = await fileStorage.exists(absolutePath);
+      const fileExists = await this.fileStorage.exists(absolutePath);
 
       if (fileExists) {
         // File exists but not in DB - append to file and create DB entry
-        const existingContent = (await fileStorage.read(absolutePath)) || '';
-        await fileStorage.write(absolutePath, existingContent + entryContent);
+        const existingContent = (await this.fileStorage.read(absolutePath)) || '';
+        await this.fileStorage.write(absolutePath, existingContent + entryContent);
 
         // Create DB entry for existing file
         const note = NoteEntity.create({
@@ -83,7 +74,7 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
           workspaceId: workspace.id,
         });
         note.updateFilePath(journalFilePath);
-        await noteRepository.save(note);
+        await this.noteRepository.save(note);
 
         logger.info(`[QuickCapture] Appended to existing file and created DB entry ${note.id}`);
         return { noteId: note.id, appended: true };
@@ -98,21 +89,17 @@ class QuickCaptureUseCasesImpl implements IQuickCaptureUseCases {
 
       // Ensure journal directory exists
       const journalDir = path.join(workspace.folderPath, 'Journal');
-      await fileStorage.createDirectory(journalDir);
+      await this.fileStorage.createDirectory(journalDir);
 
       const initialContent = `# ${journalTitle}${entryContent}`;
-      await fileStorage.write(absolutePath, initialContent);
+      await this.fileStorage.write(absolutePath, initialContent);
 
       // Set the file path on the entity and save
       note.updateFilePath(journalFilePath);
-      await noteRepository.save(note);
+      await this.noteRepository.save(note);
 
       logger.info(`[QuickCapture] Created new journal ${note.id}`);
       return { noteId: note.id, appended: false };
     }
   }
-}
-
-export function createQuickCaptureUseCases(deps: QuickCaptureUseCasesDeps): IQuickCaptureUseCases {
-  return new QuickCaptureUseCasesImpl(deps);
 }

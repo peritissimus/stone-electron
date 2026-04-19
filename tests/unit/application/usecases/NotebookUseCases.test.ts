@@ -12,7 +12,7 @@ import {
   ListNotebooksUseCase,
   DeleteNotebookUseCase,
   MoveNotebookUseCase,
-} from '../../../../src/main/application/usecases/NotebookUseCases';
+} from '../../../../src/main/application/usecases/notebook';
 import type { INotebookRepository } from '../../../../src/main/domain/ports/out/INotebookRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { NotebookNotFoundError } from '../../../../src/main/domain/errors';

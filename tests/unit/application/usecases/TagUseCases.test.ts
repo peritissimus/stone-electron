@@ -14,7 +14,7 @@ import {
   AddTagToNoteUseCase,
   RemoveTagFromNoteUseCase,
   GetNoteTagsUseCase,
-} from '../../../../src/main/application/usecases/TagUseCases';
+} from '../../../../src/main/application/usecases/tag';
 import type { ITagRepository } from '../../../../src/main/domain/ports/out/ITagRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { TagNotFoundError } from '../../../../src/main/domain/errors';

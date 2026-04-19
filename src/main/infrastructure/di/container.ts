@@ -330,7 +330,11 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
   });
 
-  const searchUseCases = createSearchUseCases(noteRepository, searchEngine, embedder);
+  const searchUseCases = createSearchUseCases({
+    noteRepository,
+    searchEngine,
+    embedder,
+  });
 
   // Task use cases
   const taskUseCases = createTaskUseCases({

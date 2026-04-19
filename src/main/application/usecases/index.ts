@@ -34,7 +34,7 @@ export {
   DeleteNotebookUseCase,
   MoveNotebookUseCase,
   createNotebookUseCases,
-} from './NotebookUseCases';
+} from './notebook';
 
 // Workspace Use Cases
 export {
@@ -68,7 +68,7 @@ export {
   RemoveTagFromNoteUseCase,
   GetNoteTagsUseCase,
   createTagUseCases,
-} from './TagUseCases';
+} from './tag';
 
 // Search Use Cases
 export {
@@ -77,22 +77,22 @@ export {
   FindSimilarNotesUseCase,
   RebuildSearchIndexUseCase,
   createSearchUseCases,
-} from './SearchUseCases';
+} from './search';
 
 // Task Use Cases
-export { createTaskUseCases, type TaskUseCasesDeps } from './TaskUseCases';
+export { createTaskUseCases, type TaskUseCasesDeps } from './task';
 
 // Graph Use Cases
-export { createGraphUseCases, type GraphUseCasesDeps } from './GraphUseCases';
+export { createGraphUseCases, type GraphUseCasesDeps } from './graph';
 
 // Version Use Cases
-export { createVersionUseCases, type VersionUseCasesDeps } from './VersionUseCases';
+export { createVersionUseCases, type VersionUseCasesDeps } from './version';
 
-// Topic Use Cases
+// Topic Use Cases (still monolithic — port/impl shapes don't align for a mechanical split; deferred)
 export { createTopicUseCases, type TopicUseCasesDeps } from './TopicUseCases';
 
 // Attachment Use Cases
-export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './AttachmentUseCases';
+export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './attachment';
 
 // Git Use Cases
 export {
@@ -119,10 +119,10 @@ export {
 } from './database';
 
 // Quick Capture Use Cases
-export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './QuickCaptureUseCases';
+export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './quickCapture';
 
 // Export Use Cases
-export { createExportUseCases, type ExportUseCasesDeps } from './ExportUseCases';
+export { createExportUseCases, type ExportUseCasesDeps } from './export';
 
 // System Use Cases
 export {
