@@ -118,7 +118,21 @@ export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './Qui
 export { createExportUseCases, type ExportUseCasesDeps } from './ExportUseCases';
 
 // System Use Cases
-export { createSystemUseCases, type SystemUseCasesDeps } from './SystemUseCases';
+export {
+  GetSystemFontsUseCase,
+  ShowFolderPickerUseCase,
+  ValidateSystemPathUseCase,
+  OpenInFolderUseCase,
+  OpenExternalUseCase,
+  createSystemUseCases,
+  type SystemUseCasesDeps,
+} from './system';
 
 // Settings Use Cases
-export { createSettingsUseCases, type SettingsUseCasesDeps } from './SettingsUseCases';
+export {
+  GetSettingUseCase,
+  SetSettingUseCase,
+  GetAllSettingsUseCase,
+  createSettingsUseCases,
+  type SettingsUseCasesDeps,
+} from './settings';

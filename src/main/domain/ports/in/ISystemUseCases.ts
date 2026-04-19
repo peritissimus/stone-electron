@@ -4,23 +4,33 @@
  * Defines the contract for system-level operations.
  */
 
-// Request/Response types
-export interface GetFontsResponse {
-  fonts: string[];
+export interface IGetSystemFontsUseCase {
+  execute(): Promise<{ fonts: string[] }>;
 }
 
-// Use case interfaces
-export interface IGetSystemFontsUseCase {
-  execute(): Promise<GetFontsResponse>;
+export interface IShowFolderPickerUseCase {
+  execute(request?: { title?: string; defaultPath?: string }): Promise<{ folderPath: string | null }>;
+}
+
+export interface IValidateSystemPathUseCase {
+  execute(request: { path: string }): Promise<{ isValid: boolean }>;
+}
+
+export interface IOpenInFolderUseCase {
+  execute(request: { path: string }): Promise<void>;
+}
+
+export interface IOpenExternalUseCase {
+  execute(request: { url: string }): Promise<void>;
 }
 
 /**
  * Aggregated system use cases interface for DI container
  */
 export interface ISystemUseCases {
-  getFonts(): Promise<string[]>;
-  selectFolder(options?: { title?: string; defaultPath?: string }): Promise<string | null>;
-  validatePath(path: string): Promise<boolean>;
-  openInFolder(path: string): void;
-  openExternal(url: string): Promise<void>;
+  getFonts: IGetSystemFontsUseCase;
+  selectFolder: IShowFolderPickerUseCase;
+  validatePath: IValidateSystemPathUseCase;
+  openInFolder: IOpenInFolderUseCase;
+  openExternal: IOpenExternalUseCase;
 }

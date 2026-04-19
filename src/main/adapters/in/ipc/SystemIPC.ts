@@ -4,11 +4,12 @@
 
 import { ipcMain } from 'electron';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
+import type { IGetSystemFontsUseCase } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
 export interface SystemIPCDeps {
-  getSystemFonts: () => Promise<string[]>;
+  getSystemFonts: IGetSystemFontsUseCase;
 }
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
@@ -17,10 +18,13 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
     handleIpcRequest(fn, { loggerPrefix: 'SystemIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
-    return handleRequest(async () => {
-      const fonts = await getSystemFonts();
-      return fonts;
-    }, { channel: SYSTEM_CHANNELS.GET_FONTS });
+    return handleRequest(
+      async () => {
+        const result = await getSystemFonts.execute();
+        return result.fonts;
+      },
+      { channel: SYSTEM_CHANNELS.GET_FONTS },
+    );
   });
 
   logger.info('[IPC] System handlers registered');
