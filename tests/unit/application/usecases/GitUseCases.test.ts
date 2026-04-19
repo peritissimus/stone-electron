@@ -50,15 +50,15 @@ function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): Workspac
 
 describe('GitUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
-  let gitService: IGitClient;
+  let gitClient: IGitClient;
   let useCases: IGitUseCases;
 
   beforeEach(() => {
     workspaceRepo = createMockWorkspaceRepository();
-    gitService = createMockGitClient();
+    gitClient = createMockGitClient();
     useCases = createGitUseCases({
       workspaceRepository: workspaceRepo,
-      gitService,
+      gitClient,
     });
   });
 
@@ -66,7 +66,7 @@ describe('GitUseCases', () => {
     it('returns git status for workspace', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.getStatus).mockResolvedValue({
+      vi.mocked(gitClient.getStatus).mockResolvedValue({
         isRepo: true,
         hasUncommittedChanges: true,
         branch: 'main',
@@ -102,12 +102,12 @@ describe('GitUseCases', () => {
     it('initializes git repository', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.init).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.init).mockResolvedValue({ success: true });
 
       const result = await useCases.init.execute({ workspaceId: 'ws-1' });
 
       expect(result.success).toBe(true);
-      expect(gitService.init).toHaveBeenCalledWith('/test/workspace');
+      expect(gitClient.init).toHaveBeenCalledWith('/test/workspace');
     });
 
     it('throws error when workspace not found', async () => {
@@ -123,9 +123,9 @@ describe('GitUseCases', () => {
     it('stages and commits changes', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.stage).mockResolvedValue({ success: true });
-      vi.mocked(gitService.commit).mockResolvedValue({ success: true });
-      vi.mocked(gitService.getCommits).mockResolvedValue([
+      vi.mocked(gitClient.stage).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.commit).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.getCommits).mockResolvedValue([
         {
           hash: 'abc123',
           shortHash: 'abc',
@@ -140,15 +140,15 @@ describe('GitUseCases', () => {
 
       expect(result).not.toBeNull();
       expect(result?.message).toBe('Test commit');
-      expect(gitService.stage).toHaveBeenCalledWith('/test/workspace');
-      expect(gitService.commit).toHaveBeenCalledWith('/test/workspace', 'Test commit');
+      expect(gitClient.stage).toHaveBeenCalledWith('/test/workspace');
+      expect(gitClient.commit).toHaveBeenCalledWith('/test/workspace', 'Test commit');
     });
 
     it('returns null when commit fails', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.stage).mockResolvedValue({ success: true });
-      vi.mocked(gitService.commit).mockResolvedValue({ success: false });
+      vi.mocked(gitClient.stage).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.commit).mockResolvedValue({ success: false });
 
       const result = await useCases.commit.execute({ workspaceId: 'ws-1' });
 
@@ -158,15 +158,15 @@ describe('GitUseCases', () => {
     it('uses default message when not provided', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.stage).mockResolvedValue({ success: true });
-      vi.mocked(gitService.commit).mockResolvedValue({ success: true });
-      vi.mocked(gitService.getCommits).mockResolvedValue([
+      vi.mocked(gitClient.stage).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.commit).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.getCommits).mockResolvedValue([
         { hash: 'abc123', shortHash: 'abc', message: 'Commit:', author: 'User', email: 'user@example.com', date: new Date() },
       ]);
 
       await useCases.commit.execute({ workspaceId: 'ws-1' });
 
-      expect(gitService.commit).toHaveBeenCalledWith(
+      expect(gitClient.commit).toHaveBeenCalledWith(
         '/test/workspace',
         expect.stringContaining('Commit:'),
       );
@@ -177,18 +177,18 @@ describe('GitUseCases', () => {
     it('pulls changes from remote', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.pull).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.pull).mockResolvedValue({ success: true });
 
       const result = await useCases.pull.execute({ workspaceId: 'ws-1' });
 
       expect(result.success).toBe(true);
-      expect(gitService.pull).toHaveBeenCalledWith('/test/workspace');
+      expect(gitClient.pull).toHaveBeenCalledWith('/test/workspace');
     });
 
     it('returns error on failure', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.pull).mockResolvedValue({ success: false, error: 'Connection failed' });
+      vi.mocked(gitClient.pull).mockResolvedValue({ success: false, error: 'Connection failed' });
 
       const result = await useCases.pull.execute({ workspaceId: 'ws-1' });
 
@@ -201,12 +201,12 @@ describe('GitUseCases', () => {
     it('pushes changes to remote', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.push).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.push).mockResolvedValue({ success: true });
 
       const result = await useCases.push.execute({ workspaceId: 'ws-1' });
 
       expect(result.success).toBe(true);
-      expect(gitService.push).toHaveBeenCalledWith('/test/workspace');
+      expect(gitClient.push).toHaveBeenCalledWith('/test/workspace');
     });
   });
 
@@ -214,22 +214,22 @@ describe('GitUseCases', () => {
     it('syncs workspace with remote', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.sync).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.sync).mockResolvedValue({ success: true });
 
       const result = await useCases.sync.execute({ workspaceId: 'ws-1', message: 'Sync' });
 
       expect(result.success).toBe(true);
-      expect(gitService.sync).toHaveBeenCalledWith('/test/workspace', 'Sync');
+      expect(gitClient.sync).toHaveBeenCalledWith('/test/workspace', 'Sync');
     });
 
     it('uses default message when not provided', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.sync).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.sync).mockResolvedValue({ success: true });
 
       await useCases.sync.execute({ workspaceId: 'ws-1' });
 
-      expect(gitService.sync).toHaveBeenCalledWith(
+      expect(gitClient.sync).toHaveBeenCalledWith(
         '/test/workspace',
         expect.stringContaining('Sync:'),
       );
@@ -240,7 +240,7 @@ describe('GitUseCases', () => {
     it('sets remote URL', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.setRemote).mockResolvedValue({ success: true });
+      vi.mocked(gitClient.setRemote).mockResolvedValue({ success: true });
 
       const result = await useCases.setRemote.execute({
         workspaceId: 'ws-1',
@@ -248,7 +248,7 @@ describe('GitUseCases', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(gitService.setRemote).toHaveBeenCalledWith(
+      expect(gitClient.setRemote).toHaveBeenCalledWith(
         '/test/workspace',
         'https://github.com/test/repo',
         'origin',
@@ -264,7 +264,7 @@ describe('GitUseCases', () => {
         { hash: 'def456', shortHash: 'def', message: 'Second commit', author: 'User', email: 'user@example.com', date: new Date() },
       ];
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.getCommits).mockResolvedValue(commits);
+      vi.mocked(gitClient.getCommits).mockResolvedValue(commits);
 
       const result = await useCases.getCommits.execute({ workspaceId: 'ws-1', limit: 10 });
 
@@ -275,11 +275,11 @@ describe('GitUseCases', () => {
     it('uses default limit when not provided', async () => {
       const workspace = createWorkspaceProps();
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(gitService.getCommits).mockResolvedValue([]);
+      vi.mocked(gitClient.getCommits).mockResolvedValue([]);
 
       await useCases.getCommits.execute({ workspaceId: 'ws-1' });
 
-      expect(gitService.getCommits).toHaveBeenCalledWith('/test/workspace', 50);
+      expect(gitClient.getCommits).toHaveBeenCalledWith('/test/workspace', 50);
     });
   });
 });

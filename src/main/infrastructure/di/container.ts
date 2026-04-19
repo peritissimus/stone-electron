@@ -165,12 +165,12 @@ export interface Container {
   markdownProcessor: IMarkdownProcessor;
   eventPublisher: IEventPublisher;
   searchEngine: ISearchEngine;
-  embeddingService: IEmbedder;
+  embedder: IEmbedder;
   gitOperations: IGitOperations;
-  exportService: IExporter;
+  exporter: IExporter;
   systemBridge: ISystemBridge;
-  gitService: IGitClient;
-  fileWatcherService: FileWatcher;
+  gitClient: IGitClient;
+  fileWatcher: FileWatcher;
 
   // Use Cases - Core
   noteUseCases: INoteUseCases;
@@ -260,9 +260,9 @@ export function createContainer(deps: ContainerDeps): Container {
   const markdownProcessor: IMarkdownProcessor = new MarkdownProcessor();
   const eventPublisher: IEventPublisher = new EventPublisher();
   const gitOperations: IGitOperations = new GitOperations();
-  const exportService: IExporter = new Exporter();
+  const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
-  const gitService: IGitClient = new GitClient();
+  const gitClient: IGitClient = new GitClient();
 
   // ---------------------------------------------------------------------------
   // Layer 2: Repositories (depend on db, some services)
@@ -283,7 +283,7 @@ export function createContainer(deps: ContainerDeps): Container {
     getWorkspacePath,
   });
 
-  const fileWatcherService = new FileWatcher({
+  const fileWatcher = new FileWatcher({
     workspaceRepository,
     noteRepository,
     notebookRepository,
@@ -293,7 +293,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // ---------------------------------------------------------------------------
   // Layer 3: Domain Services (depend on repositories)
   // ---------------------------------------------------------------------------
-  const embeddingService: IEmbedder = new Embedder({
+  const embedder: IEmbedder = new Embedder({
     noteRepository,
     markdownProcessor,
   });
@@ -301,7 +301,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
     noteRepository,
-    embeddingService,
+    embedder,
   });
 
   // ---------------------------------------------------------------------------
@@ -334,7 +334,7 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
   });
 
-  const searchUseCases = createSearchUseCases(noteRepository, searchEngine, embeddingService);
+  const searchUseCases = createSearchUseCases(noteRepository, searchEngine, embedder);
 
   // Task use cases
   const taskUseCases = createTaskUseCases({
@@ -366,7 +366,7 @@ export function createContainer(deps: ContainerDeps): Container {
     topicRepository,
     workspaceRepository,
     fileStorage,
-    embeddingService,
+    embedder,
     markdownProcessor,
     eventPublisher,
   });
@@ -382,7 +382,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // Git use cases
   const gitUseCases = createGitUseCases({
     workspaceRepository,
-    gitService,
+    gitClient,
   });
 
   // Database use cases
@@ -403,7 +403,7 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     markdownProcessor,
-    exportService,
+    exporter,
   });
 
   // System use cases
@@ -445,12 +445,12 @@ export function createContainer(deps: ContainerDeps): Container {
     markdownProcessor,
     eventPublisher,
     searchEngine,
-    embeddingService,
+    embedder,
     gitOperations,
-    exportService,
+    exporter,
     systemBridge,
-    gitService,
-    fileWatcherService,
+    gitClient,
+    fileWatcher,
 
     // Use Cases - Core
     noteUseCases,
