@@ -6,10 +6,10 @@ import {
 import type { ISystemBridge } from '../../../domain/ports/out/ISystemBridge';
 
 export class SelectFolderUseCase implements ISelectFolderUseCase {
-  constructor(private readonly systemService: ISystemBridge) {}
+  constructor(private readonly systemBridge: ISystemBridge) {}
 
   async execute(request?: SelectFolderRequest): Promise<SelectFolderResponse> {
-    const folderPath = await this.systemService.selectFolder({
+    const folderPath = await this.systemBridge.selectFolder({
       title: request?.title || 'Select Workspace Folder',
       defaultPath: request?.defaultPath,
       buttonLabel: 'Select Folder',

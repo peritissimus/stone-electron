@@ -21,27 +21,27 @@ function createMockSystemBridge(): ISystemBridge {
 }
 
 describe('SystemUseCases', () => {
-  let systemService: ISystemBridge;
+  let systemBridge: ISystemBridge;
   let useCases: ISystemUseCases;
 
   beforeEach(() => {
-    systemService = createMockSystemBridge();
-    useCases = createSystemUseCases({ systemService });
+    systemBridge = createMockSystemBridge();
+    useCases = createSystemUseCases({ systemBridge });
   });
 
   describe('getFonts', () => {
     it('returns list of system fonts', async () => {
       const fonts = ['Arial', 'Helvetica', 'Times New Roman'];
-      vi.mocked(systemService.getFonts).mockResolvedValue(fonts);
+      vi.mocked(systemBridge.getFonts).mockResolvedValue(fonts);
 
       const result = await useCases.getFonts();
 
       expect(result).toEqual(fonts);
-      expect(systemService.getFonts).toHaveBeenCalled();
+      expect(systemBridge.getFonts).toHaveBeenCalled();
     });
 
     it('returns empty array when no fonts', async () => {
-      vi.mocked(systemService.getFonts).mockResolvedValue([]);
+      vi.mocked(systemBridge.getFonts).mockResolvedValue([]);
 
       const result = await useCases.getFonts();
 
@@ -51,25 +51,25 @@ describe('SystemUseCases', () => {
 
   describe('selectFolder', () => {
     it('returns selected folder path', async () => {
-      vi.mocked(systemService.selectFolder).mockResolvedValue('/path/to/folder');
+      vi.mocked(systemBridge.selectFolder).mockResolvedValue('/path/to/folder');
 
       const result = await useCases.selectFolder();
 
       expect(result).toBe('/path/to/folder');
-      expect(systemService.selectFolder).toHaveBeenCalledWith(undefined);
+      expect(systemBridge.selectFolder).toHaveBeenCalledWith(undefined);
     });
 
     it('passes options to system service', async () => {
-      vi.mocked(systemService.selectFolder).mockResolvedValue('/selected');
+      vi.mocked(systemBridge.selectFolder).mockResolvedValue('/selected');
 
       const options = { title: 'Select Folder', defaultPath: '/home' };
       await useCases.selectFolder(options);
 
-      expect(systemService.selectFolder).toHaveBeenCalledWith(options);
+      expect(systemBridge.selectFolder).toHaveBeenCalledWith(options);
     });
 
     it('returns null when cancelled', async () => {
-      vi.mocked(systemService.selectFolder).mockResolvedValue(null);
+      vi.mocked(systemBridge.selectFolder).mockResolvedValue(null);
 
       const result = await useCases.selectFolder();
 
@@ -79,16 +79,16 @@ describe('SystemUseCases', () => {
 
   describe('validatePath', () => {
     it('returns true for valid path', async () => {
-      vi.mocked(systemService.validatePath).mockResolvedValue(true);
+      vi.mocked(systemBridge.validatePath).mockResolvedValue(true);
 
       const result = await useCases.validatePath('/valid/path');
 
       expect(result).toBe(true);
-      expect(systemService.validatePath).toHaveBeenCalledWith('/valid/path');
+      expect(systemBridge.validatePath).toHaveBeenCalledWith('/valid/path');
     });
 
     it('returns false for invalid path', async () => {
-      vi.mocked(systemService.validatePath).mockResolvedValue(false);
+      vi.mocked(systemBridge.validatePath).mockResolvedValue(false);
 
       const result = await useCases.validatePath('/invalid/path');
 
@@ -100,17 +100,17 @@ describe('SystemUseCases', () => {
     it('calls showInFolder on system service', () => {
       useCases.openInFolder('/path/to/file');
 
-      expect(systemService.showInFolder).toHaveBeenCalledWith('/path/to/file');
+      expect(systemBridge.showInFolder).toHaveBeenCalledWith('/path/to/file');
     });
   });
 
   describe('openExternal', () => {
     it('opens external URL', async () => {
-      vi.mocked(systemService.openExternal).mockResolvedValue(undefined);
+      vi.mocked(systemBridge.openExternal).mockResolvedValue(undefined);
 
       await useCases.openExternal('https://example.com');
 
-      expect(systemService.openExternal).toHaveBeenCalledWith('https://example.com');
+      expect(systemBridge.openExternal).toHaveBeenCalledWith('https://example.com');
     });
   });
 });

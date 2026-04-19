@@ -6,10 +6,10 @@ import {
 import type { ISystemBridge } from '../../../domain/ports/out/ISystemBridge';
 
 export class ValidatePathUseCase implements IValidatePathUseCase {
-  constructor(private readonly systemService: ISystemBridge) {}
+  constructor(private readonly systemBridge: ISystemBridge) {}
 
   async execute(request: ValidatePathRequest): Promise<ValidatePathResponse> {
-    const isValid = await this.systemService.validatePath(request.folderPath);
+    const isValid = await this.systemBridge.validatePath(request.folderPath);
     if (!isValid) {
       return { valid: false, error: 'Path does not exist or is not accessible' };
     }
