@@ -109,7 +109,14 @@ export {
 } from './git';
 
 // Database Use Cases
-export { createDatabaseUseCases, type DatabaseUseCasesDeps } from './DatabaseUseCases';
+export {
+  GetDatabaseStatusUseCase,
+  VacuumDatabaseUseCase,
+  CheckDatabaseIntegrityUseCase,
+  createDatabaseUseCases,
+  type DatabaseUseCasesDeps,
+  type DatabaseManager,
+} from './database';
 
 // Quick Capture Use Cases
 export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './QuickCaptureUseCases';

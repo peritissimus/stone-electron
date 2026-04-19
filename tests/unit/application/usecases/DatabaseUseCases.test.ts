@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDatabaseUseCases } from '../../../../src/main/application/usecases/DatabaseUseCases';
+import { createDatabaseUseCases } from '../../../../src/main/application/usecases/database';
 import type { IDatabaseUseCases } from '../../../../src/main/domain/ports/in/IDatabaseUseCases';
 
 // Mock database manager factory
@@ -33,7 +33,7 @@ describe('DatabaseUseCases', () => {
       const status = { path: '/path/to/db.sqlite', size: 1024000, isOpen: true };
       mockDbManager.getStatus.mockResolvedValue(status);
 
-      const result = await useCases.getStatus();
+      const result = await useCases.getStatus.execute();
 
       expect(result).toEqual(status);
       expect(mockDbManager.getStatus).toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe('DatabaseUseCases', () => {
       const status = { path: '/path/to/db.sqlite', size: 0, isOpen: false };
       mockDbManager.getStatus.mockResolvedValue(status);
 
-      const result = await useCases.getStatus();
+      const result = await useCases.getStatus.execute();
 
       expect(result.isOpen).toBe(false);
     });
@@ -53,7 +53,7 @@ describe('DatabaseUseCases', () => {
     it('vacuums the database', async () => {
       mockDbManager.vacuum.mockResolvedValue(undefined);
 
-      await useCases.vacuum();
+      await useCases.vacuum.execute();
 
       expect(mockDbManager.vacuum).toHaveBeenCalled();
     });
@@ -63,7 +63,7 @@ describe('DatabaseUseCases', () => {
     it('returns ok when database is healthy', async () => {
       mockDbManager.checkIntegrity.mockResolvedValue({ ok: true, errors: [] });
 
-      const result = await useCases.checkIntegrity();
+      const result = await useCases.checkIntegrity.execute();
 
       expect(result.ok).toBe(true);
       expect(result.errors).toHaveLength(0);
@@ -73,7 +73,7 @@ describe('DatabaseUseCases', () => {
       const errors = ['Table notes has orphaned rows', 'Index idx_notes corrupted'];
       mockDbManager.checkIntegrity.mockResolvedValue({ ok: false, errors });
 
-      const result = await useCases.checkIntegrity();
+      const result = await useCases.checkIntegrity.execute();
 
       expect(result.ok).toBe(false);
       expect(result.errors).toEqual(errors);

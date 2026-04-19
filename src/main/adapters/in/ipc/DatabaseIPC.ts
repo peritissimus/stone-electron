@@ -4,13 +4,18 @@
 
 import { ipcMain } from 'electron';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
+import type {
+  IGetDatabaseStatusUseCase,
+  IVacuumDatabaseUseCase,
+  ICheckDatabaseIntegrityUseCase,
+} from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface DatabaseIPCDeps {
-  getDatabaseStatus: () => Promise<{ path: string; size: number; isOpen: boolean }>;
-  vacuumDatabase: () => Promise<void>;
-  checkDatabaseIntegrity: () => Promise<{ ok: boolean; errors: string[] }>;
+  getDatabaseStatus: IGetDatabaseStatusUseCase;
+  vacuumDatabase: IVacuumDatabaseUseCase;
+  checkDatabaseIntegrity: ICheckDatabaseIntegrityUseCase;
 }
 
 export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
@@ -20,10 +25,7 @@ export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
 
   ipcMain.handle(DATABASE_CHANNELS.GET_STATUS, async () => {
     return handleRequest(
-      async () => {
-        const status = await getDatabaseStatus();
-        return status;
-      },
+      async () => getDatabaseStatus.execute(),
       { channel: DATABASE_CHANNELS.GET_STATUS },
     );
   });
@@ -31,7 +33,7 @@ export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
   ipcMain.handle(DATABASE_CHANNELS.VACUUM, async () => {
     return handleRequest(
       async () => {
-        await vacuumDatabase();
+        await vacuumDatabase.execute();
         return { success: true };
       },
       { channel: DATABASE_CHANNELS.VACUUM },
@@ -40,10 +42,7 @@ export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
 
   ipcMain.handle(DATABASE_CHANNELS.CHECK_INTEGRITY, async () => {
     return handleRequest(
-      async () => {
-        const result = await checkDatabaseIntegrity();
-        return result;
-      },
+      async () => checkDatabaseIntegrity.execute(),
       { channel: DATABASE_CHANNELS.CHECK_INTEGRITY },
     );
   });
