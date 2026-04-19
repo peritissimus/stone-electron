@@ -95,7 +95,7 @@ describe('ExportUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
   let markdownProcessor: IMarkdownProcessor;
-  let exportService: IExporter;
+  let exporter: IExporter;
   let useCases: IExportUseCases;
 
   beforeEach(() => {
@@ -103,13 +103,13 @@ describe('ExportUseCases', () => {
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
     markdownProcessor = createMockMarkdownProcessor();
-    exportService = createMockExporter();
+    exporter = createMockExporter();
     useCases = createExportUseCases({
       noteRepository: noteRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
       markdownProcessor,
-      exportService,
+      exporter,
     });
   });
 
@@ -121,7 +121,7 @@ describe('ExportUseCases', () => {
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
       vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
       vi.mocked(markdownProcessor.markdownToHtml).mockResolvedValue('<h1>Test Content</h1>');
-      vi.mocked(exportService.generateHtmlDocument).mockReturnValue(
+      vi.mocked(exporter.generateHtmlDocument).mockReturnValue(
         '<html><body><h1>Test Content</h1></body></html>',
       );
 
@@ -145,7 +145,7 @@ describe('ExportUseCases', () => {
       expect(result.mimeType).toBe('text/html');
       expect(result.filename).toBe('Custom Title.html');
       expect(result.content).toBe(renderedHtml);
-      expect(exportService.generateHtmlDocument).not.toHaveBeenCalled();
+      expect(exporter.generateHtmlDocument).not.toHaveBeenCalled();
       expect(fileStorage.read).not.toHaveBeenCalled();
       expect(markdownProcessor.markdownToHtml).not.toHaveBeenCalled();
     });
@@ -157,11 +157,11 @@ describe('ExportUseCases', () => {
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
       vi.mocked(fileStorage.read).mockResolvedValue('# Content');
       vi.mocked(markdownProcessor.markdownToHtml).mockResolvedValue('<h1>Content</h1>');
-      vi.mocked(exportService.generateHtmlDocument).mockReturnValue('<html></html>');
+      vi.mocked(exporter.generateHtmlDocument).mockReturnValue('<html></html>');
 
       await useCases.exportHtml.execute('note-1', { theme: 'dark' });
 
-      expect(exportService.generateHtmlDocument).toHaveBeenCalledWith(
+      expect(exporter.generateHtmlDocument).toHaveBeenCalledWith(
         '<h1>Content</h1>',
         expect.objectContaining({ theme: 'dark' }),
       );
@@ -201,8 +201,8 @@ describe('ExportUseCases', () => {
   describe('exportPdf', () => {
     it('exports note as PDF using pre-rendered HTML when provided', async () => {
       const pdfBuffer = Buffer.from('fake pdf content');
-      vi.mocked(exportService.isPdfAvailable).mockReturnValue(true);
-      vi.mocked(exportService.renderToPdf).mockResolvedValue(pdfBuffer);
+      vi.mocked(exporter.isPdfAvailable).mockReturnValue(true);
+      vi.mocked(exporter.renderToPdf).mockResolvedValue(pdfBuffer);
 
       const result = await useCases.exportPdf.execute('note-1', {
         renderedHtml: '<html><body>Pre-rendered content with diagrams</body></html>',
@@ -213,7 +213,7 @@ describe('ExportUseCases', () => {
       expect(result.filename).toBe('My Note.pdf');
       expect(result.content).toBe(pdfBuffer);
       // Should use the pre-rendered HTML directly
-      expect(exportService.renderToPdf).toHaveBeenCalledWith(
+      expect(exporter.renderToPdf).toHaveBeenCalledWith(
         '<html><body>Pre-rendered content with diagrams</body></html>',
         expect.any(Object),
       );
@@ -226,13 +226,13 @@ describe('ExportUseCases', () => {
       const note = createNoteProps();
       const workspace = createWorkspaceProps();
       const pdfBuffer = Buffer.from('fake pdf content');
-      vi.mocked(exportService.isPdfAvailable).mockReturnValue(true);
+      vi.mocked(exporter.isPdfAvailable).mockReturnValue(true);
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
       vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
       vi.mocked(markdownProcessor.markdownToHtml).mockResolvedValue('<h1>Test Content</h1>');
-      vi.mocked(exportService.generateHtmlDocument).mockReturnValue('<html></html>');
-      vi.mocked(exportService.renderToPdf).mockResolvedValue(pdfBuffer);
+      vi.mocked(exporter.generateHtmlDocument).mockReturnValue('<html></html>');
+      vi.mocked(exporter.renderToPdf).mockResolvedValue(pdfBuffer);
 
       const result = await useCases.exportPdf.execute('note-1');
 
@@ -242,7 +242,7 @@ describe('ExportUseCases', () => {
     });
 
     it('throws error when PDF export is not available', async () => {
-      vi.mocked(exportService.isPdfAvailable).mockReturnValue(false);
+      vi.mocked(exporter.isPdfAvailable).mockReturnValue(false);
 
       await expect(useCases.exportPdf.execute('note-1')).rejects.toThrow(
         'PDF export is not available',
@@ -250,7 +250,7 @@ describe('ExportUseCases', () => {
     });
 
     it('throws error when note not found (fallback path)', async () => {
-      vi.mocked(exportService.isPdfAvailable).mockReturnValue(true);
+      vi.mocked(exporter.isPdfAvailable).mockReturnValue(true);
       vi.mocked(noteRepo.findById).mockResolvedValue(null);
 
       await expect(useCases.exportPdf.execute('nonexistent')).rejects.toThrow(

@@ -135,18 +135,18 @@ describe('SearchUseCases', () => {
 
   describe('SemanticSearchUseCase', () => {
     let noteRepo: INoteRepository;
-    let embeddingService: IEmbedder;
+    let embedder: IEmbedder;
     let useCase: SemanticSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      embeddingService = createMockEmbedder();
-      useCase = new SemanticSearchUseCase(noteRepo, embeddingService);
+      embedder = createMockEmbedder();
+      useCase = new SemanticSearchUseCase(noteRepo, embedder);
     });
 
     it('performs semantic search', async () => {
       const embedding = new Float32Array([0.1, 0.2, 0.3]);
-      vi.mocked(embeddingService.generateEmbedding).mockResolvedValue(embedding);
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(embedding);
       vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
         { noteId: 'note-1', title: 'Test', distance: 0.9 },
       ]);
@@ -154,11 +154,11 @@ describe('SearchUseCases', () => {
       const result = await useCase.execute({ query: 'test query' });
 
       expect(result.results).toHaveLength(1);
-      expect(embeddingService.generateEmbedding).toHaveBeenCalledWith('test query');
+      expect(embedder.generateEmbedding).toHaveBeenCalledWith('test query');
     });
 
     it('returns empty results when no embedding generated', async () => {
-      vi.mocked(embeddingService.generateEmbedding).mockResolvedValue(
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
         null as unknown as Float32Array,
       );
 
@@ -170,13 +170,13 @@ describe('SearchUseCases', () => {
 
   describe('FindSimilarNotesUseCase', () => {
     let noteRepo: INoteRepository;
-    let embeddingService: IEmbedder;
+    let embedder: IEmbedder;
     let useCase: FindSimilarNotesUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      embeddingService = createMockEmbedder();
-      useCase = new FindSimilarNotesUseCase(noteRepo, embeddingService);
+      embedder = createMockEmbedder();
+      useCase = new FindSimilarNotesUseCase(noteRepo, embedder);
     });
 
     it('finds similar notes', async () => {
@@ -234,14 +234,14 @@ describe('SearchUseCases', () => {
   describe('HybridSearchUseCase', () => {
     let noteRepo: INoteRepository;
     let searchEngine: ISearchEngine;
-    let embeddingService: IEmbedder;
+    let embedder: IEmbedder;
     let useCase: HybridSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       searchEngine = createMockSearchEngine();
-      embeddingService = createMockEmbedder();
-      useCase = new HybridSearchUseCase(noteRepo, searchEngine, embeddingService);
+      embedder = createMockEmbedder();
+      useCase = new HybridSearchUseCase(noteRepo, searchEngine, embedder);
     });
 
     it('performs hybrid search', async () => {

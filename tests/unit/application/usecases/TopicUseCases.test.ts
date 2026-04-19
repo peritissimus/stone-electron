@@ -142,7 +142,7 @@ describe('TopicUseCases', () => {
   let topicRepo: ITopicRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
-  let embeddingService: IEmbedder;
+  let embedder: IEmbedder;
   let markdownProcessor: IMarkdownProcessor;
   let eventPublisher: IEventPublisher;
   let useCases: ITopicUseCases;
@@ -152,7 +152,7 @@ describe('TopicUseCases', () => {
     topicRepo = createMockTopicRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
-    embeddingService = createMockEmbedder();
+    embedder = createMockEmbedder();
     markdownProcessor = createMockMarkdownProcessor();
     eventPublisher = createMockEventPublisher();
     useCases = createTopicUseCases({
@@ -160,7 +160,7 @@ describe('TopicUseCases', () => {
       topicRepository: topicRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
-      embeddingService,
+      embedder,
       markdownProcessor,
       eventPublisher,
     });
@@ -168,11 +168,11 @@ describe('TopicUseCases', () => {
 
   describe('initialize', () => {
     it('initializes embedding service', async () => {
-      vi.mocked(embeddingService.initialize).mockResolvedValue(undefined);
+      vi.mocked(embedder.initialize).mockResolvedValue(undefined);
 
       await useCases.initialize();
 
-      expect(embeddingService.initialize).toHaveBeenCalled();
+      expect(embedder.initialize).toHaveBeenCalled();
     });
   });
 
@@ -296,7 +296,7 @@ describe('TopicUseCases', () => {
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
       vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
       vi.mocked(markdownProcessor.extractPlainText).mockResolvedValue('Test Content');
-      vi.mocked(embeddingService.generateEmbedding).mockResolvedValue(
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
         new Float32Array([0.1, 0.2, 0.3]),
       );
       vi.mocked(noteRepo.updateEmbedding).mockResolvedValue(undefined);
@@ -393,7 +393,7 @@ describe('TopicUseCases', () => {
       const workspace = createWorkspaceProps();
       const note = createNoteProps();
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
-      vi.mocked(embeddingService.generateEmbedding).mockResolvedValue(
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
         new Float32Array([0.1, 0.2, 0.3]),
       );
       vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
@@ -404,7 +404,7 @@ describe('TopicUseCases', () => {
       const result = await useCases.semanticSearch('search query');
 
       expect(result).toHaveLength(1);
-      expect(embeddingService.generateEmbedding).toHaveBeenCalledWith('search query');
+      expect(embedder.generateEmbedding).toHaveBeenCalledWith('search query');
     });
 
     it('returns empty array when no active workspace', async () => {
@@ -454,7 +454,7 @@ describe('TopicUseCases', () => {
       vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
       vi.mocked(fileStorage.read).mockResolvedValue('content');
       vi.mocked(markdownProcessor.extractPlainText).mockResolvedValue('content');
-      vi.mocked(embeddingService.generateEmbedding).mockResolvedValue(
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
         new Float32Array([0.1, 0.2, 0.3]),
       );
       vi.mocked(topicRepo.findAll).mockResolvedValue([]);
@@ -492,7 +492,7 @@ describe('TopicUseCases', () => {
       vi.mocked(noteRepo.getEmbedding)
         .mockResolvedValueOnce([0.1, 0.2])
         .mockResolvedValueOnce(null);
-      vi.mocked(embeddingService.isReady).mockResolvedValue(true);
+      vi.mocked(embedder.isReady).mockResolvedValue(true);
 
       const result = await useCases.getEmbeddingStatus();
 
@@ -504,7 +504,7 @@ describe('TopicUseCases', () => {
 
     it('returns empty status when no active workspace', async () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
-      vi.mocked(embeddingService.isReady).mockResolvedValue(false);
+      vi.mocked(embedder.isReady).mockResolvedValue(false);
 
       const result = await useCases.getEmbeddingStatus();
 

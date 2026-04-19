@@ -219,7 +219,7 @@ app.on('ready', async () => {
 
     // Start file watcher for all workspaces
     try {
-      await container.fileWatcherService.start();
+      await container.fileWatcher.start();
     } catch (e) {
       logger.error('Failed to start file watcher:', e);
     }
@@ -272,7 +272,7 @@ app.on('before-quit', () => {
   // Stop watchers
   try {
     const container = getContainer();
-    container.fileWatcherService.stopAll().catch(() => {});
+    container.fileWatcher.stopAll().catch(() => {});
   } catch {
     // Container may not be initialized yet
   }

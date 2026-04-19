@@ -23,7 +23,7 @@ export interface TopicUseCasesDeps {
   topicRepository: ITopicRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
-  embeddingService: IEmbedder;
+  embedder: IEmbedder;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher?: IEventPublisher;
 }
@@ -69,8 +69,8 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
   async initialize(): Promise<{ success: boolean; ready: boolean }> {
     try {
-      await this.deps.embeddingService.initialize();
-      const ready = this.deps.embeddingService.isReady();
+      await this.deps.embedder.initialize();
+      const ready = this.deps.embedder.isReady();
       logger.info('[TopicUseCases] Embedding service initialized, ready:', ready);
       return { success: true, ready };
     } catch (error) {
@@ -192,7 +192,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
       topicRepository,
       workspaceRepository,
       fileStorage,
-      embeddingService,
+      embedder,
       markdownProcessor,
     } = this.deps;
 
@@ -225,7 +225,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
 
     // Convert to plain text and generate embedding
     const plainText = await markdownProcessor.extractPlainText(markdown);
-    const embeddingFloat32 = await embeddingService.generateEmbedding(plainText);
+    const embeddingFloat32 = await embedder.generateEmbedding(plainText);
     const embedding = Array.from(embeddingFloat32);
 
     // Save embedding
@@ -359,7 +359,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
     const activeWorkspace = await this.deps.workspaceRepository.findActive();
     if (!activeWorkspace) return [];
 
-    const embeddingFloat32 = await this.deps.embeddingService.generateEmbedding(query);
+    const embeddingFloat32 = await this.deps.embedder.generateEmbedding(query);
     const embedding = Array.from(embeddingFloat32);
     const results = await this.deps.noteRepository.findBySimilarity(
       embedding,
@@ -418,7 +418,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
     const activeWorkspace = await this.deps.workspaceRepository.findActive();
     if (!activeWorkspace) {
       return {
-        ready: await this.deps.embeddingService.isReady(),
+        ready: await this.deps.embedder.isReady(),
         totalNotes: 0,
         embeddedNotes: 0,
         pendingNotes: 0,
@@ -437,7 +437,7 @@ class TopicUseCasesImpl implements ITopicUseCases {
     }
 
     return {
-      ready: await this.deps.embeddingService.isReady(),
+      ready: await this.deps.embedder.isReady(),
       totalNotes: notes.length,
       embeddedNotes,
       pendingNotes: notes.length - embeddedNotes,

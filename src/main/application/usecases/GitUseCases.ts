@@ -19,11 +19,11 @@ import { logger } from '../../shared/utils';
 
 export interface GitUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
-  gitService: IGitClient;
+  gitClient: IGitClient;
 }
 
 export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
-  const { workspaceRepository, gitService } = deps;
+  const { workspaceRepository, gitClient } = deps;
 
   return {
     getStatus: {
@@ -33,7 +33,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const status = await gitService.getStatus(workspace.folderPath);
+        const status = await gitClient.getStatus(workspace.folderPath);
         return {
           isRepo: status.isRepo,
           hasChanges: status.hasUncommittedChanges,
@@ -55,7 +55,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const result = await gitService.init(workspace.folderPath);
+        const result = await gitClient.init(workspace.folderPath);
         logger.info(`[GitUseCases] Initialized git repo in workspace ${request.workspaceId}`);
         return { success: result.success };
       },
@@ -71,8 +71,8 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        await gitService.stage(workspace.folderPath);
-        const result = await gitService.commit(
+        await gitClient.stage(workspace.folderPath);
+        const result = await gitClient.commit(
           workspace.folderPath,
           request.message || `Commit: ${new Date().toISOString()}`,
         );
@@ -82,7 +82,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
         }
 
         // Get the latest commit info after successful commit
-        const commits = await gitService.getCommits(workspace.folderPath, 1);
+        const commits = await gitClient.getCommits(workspace.folderPath, 1);
         const latestCommit = commits[0];
 
         logger.info(`[GitUseCases] Committed changes in workspace ${request.workspaceId}`);
@@ -103,7 +103,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const result = await gitService.pull(workspace.folderPath);
+        const result = await gitClient.pull(workspace.folderPath);
         logger.info(`[GitUseCases] Pulled changes in workspace ${request.workspaceId}`);
         return { success: result.success, error: result.error };
       },
@@ -116,7 +116,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const result = await gitService.push(workspace.folderPath);
+        const result = await gitClient.push(workspace.folderPath);
         logger.info(`[GitUseCases] Pushed changes in workspace ${request.workspaceId}`);
         return { success: result.success, error: result.error };
       },
@@ -129,7 +129,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const result = await gitService.sync(
+        const result = await gitClient.sync(
           workspace.folderPath,
           request.message || `Sync: ${new Date().toISOString()}`,
         );
@@ -151,7 +151,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const result = await gitService.setRemote(workspace.folderPath, request.url, 'origin');
+        const result = await gitClient.setRemote(workspace.folderPath, request.url, 'origin');
         logger.info(
           `[GitUseCases] Set remote origin to ${request.url} in workspace ${request.workspaceId}`,
         );
@@ -169,7 +169,7 @@ export function createGitUseCases(deps: GitUseCasesDeps): IGitUseCases {
           throw new Error(`Workspace not found: ${request.workspaceId}`);
         }
 
-        const commits = await gitService.getCommits(workspace.folderPath, request.limit || 50);
+        const commits = await gitClient.getCommits(workspace.folderPath, request.limit || 50);
         return {
           commits: commits.map((c) => ({
             hash: c.hash,

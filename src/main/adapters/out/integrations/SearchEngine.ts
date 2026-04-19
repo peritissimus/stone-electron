@@ -20,7 +20,7 @@ import type {
 export interface SearchEngineDeps {
   db: Database;
   noteRepository: INoteRepository;
-  embeddingService: IEmbedder;
+  embedder: IEmbedder;
 }
 
 export class SearchEngine implements ISearchEngine {
@@ -61,7 +61,7 @@ export class SearchEngine implements ISearchEngine {
 
   async searchSemantic(query: string, options?: SearchOptions): Promise<SemanticSearchResult[]> {
     const limit = options?.limit ?? 10;
-    const similarNotes = await this.deps.embeddingService.semanticSearch(query, limit);
+    const similarNotes = await this.deps.embedder.semanticSearch(query, limit);
 
     return similarNotes.map((note) => ({
       noteId: note.noteId,

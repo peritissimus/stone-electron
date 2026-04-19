@@ -53,12 +53,12 @@ export class FullTextSearchUseCase implements IFullTextSearchUseCase {
 export class SemanticSearchUseCase implements ISemanticSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbedder,
+    private readonly embedder: IEmbedder,
   ) {}
 
   async execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse> {
     // Generate embedding for query
-    const queryEmbedding = await this.embeddingService.generateEmbedding(request.query);
+    const queryEmbedding = await this.embedder.generateEmbedding(request.query);
 
     if (!queryEmbedding) {
       return { results: [] };
@@ -81,7 +81,7 @@ export class SemanticSearchUseCase implements ISemanticSearchUseCase {
 export class FindSimilarNotesUseCase implements IFindSimilarNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embeddingService: IEmbedder,
+    private readonly embedder: IEmbedder,
   ) {}
 
   async execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse> {
@@ -125,7 +125,7 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly searchEngine: ISearchEngine,
-    private readonly embeddingService: IEmbedder,
+    private readonly embedder: IEmbedder,
   ) {}
 
   async execute(request: HybridSearchRequest): Promise<HybridSearchResponse> {
@@ -210,14 +210,14 @@ export class SearchByDateRangeUseCase implements ISearchByDateRangeUseCase {
 export function createSearchUseCases(
   noteRepository: INoteRepository,
   searchEngine: ISearchEngine,
-  embeddingService: IEmbedder,
+  embedder: IEmbedder,
 ): ISearchUseCases {
   return {
     fullTextSearch: new FullTextSearchUseCase(noteRepository, searchEngine),
-    semanticSearch: new SemanticSearchUseCase(noteRepository, embeddingService),
-    findSimilarNotes: new FindSimilarNotesUseCase(noteRepository, embeddingService),
+    semanticSearch: new SemanticSearchUseCase(noteRepository, embedder),
+    findSimilarNotes: new FindSimilarNotesUseCase(noteRepository, embedder),
     rebuildIndex: new RebuildSearchIndexUseCase(searchEngine),
-    hybridSearch: new HybridSearchUseCase(noteRepository, searchEngine, embeddingService),
+    hybridSearch: new HybridSearchUseCase(noteRepository, searchEngine, embedder),
     searchByTags: new SearchByTagsUseCase(noteRepository),
     searchByDateRange: new SearchByDateRangeUseCase(noteRepository),
   };

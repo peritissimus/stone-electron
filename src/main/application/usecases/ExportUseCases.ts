@@ -23,14 +23,14 @@ export interface ExportUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
-  exportService: IExporter;
+  exporter: IExporter;
 }
 
 class ExportHtmlUseCase implements IExportHtmlUseCase {
   constructor(private deps: ExportUseCasesDeps) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
-    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exportService } =
+    const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exporter } =
       this.deps;
 
     const note = await noteRepository.findById(noteId);
@@ -61,7 +61,7 @@ class ExportHtmlUseCase implements IExportHtmlUseCase {
     }
 
     const html = await markdownProcessor.markdownToHtml(markdown);
-    const fullHtml = exportService.generateHtmlDocument(html, {
+    const fullHtml = exporter.generateHtmlDocument(html, {
       title: note.title || 'Untitled',
       theme: options?.theme || 'light',
       includeStyles: true,
@@ -81,16 +81,16 @@ class ExportPdfUseCase implements IExportPdfUseCase {
   constructor(private deps: ExportUseCasesDeps) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
-    const { noteRepository, exportService } = this.deps;
+    const { noteRepository, exporter } = this.deps;
 
-    if (!exportService.isPdfAvailable()) {
+    if (!exporter.isPdfAvailable()) {
       throw new Error('PDF export is not available');
     }
 
     // If pre-rendered HTML is provided from the renderer, use it directly
     // This preserves Mermaid diagrams, syntax highlighting, and applied styles
     if (options?.renderedHtml) {
-      const pdfBuffer = await exportService.renderToPdf(options.renderedHtml, {
+      const pdfBuffer = await exporter.renderToPdf(options.renderedHtml, {
         format: 'A4',
         printBackground: true,
       });
@@ -126,13 +126,13 @@ class ExportPdfUseCase implements IExportPdfUseCase {
     }
 
     const html = await markdownProcessor.markdownToHtml(markdown);
-    const fullHtml = exportService.generateHtmlDocument(html, {
+    const fullHtml = exporter.generateHtmlDocument(html, {
       title: note.title || 'Untitled',
       theme: options?.theme || 'light',
       includeStyles: true,
     });
 
-    const pdfBuffer = await exportService.renderToPdf(fullHtml, {
+    const pdfBuffer = await exporter.renderToPdf(fullHtml, {
       format: 'A4',
       printBackground: true,
     });
