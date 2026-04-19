@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGitUseCases } from '../../../../src/main/application/usecases/GitUseCases';
+import { createGitUseCases } from '../../../../src/main/application/usecases/git';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IGitClient } from '../../../../src/main/domain/ports/out/IGitClient';
 import type { IGitUseCases } from '../../../../src/main/domain/ports/in/IGitUseCases';
