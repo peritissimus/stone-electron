@@ -1,0 +1,89 @@
+import path from 'node:path';
+import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
+import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
+import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
+import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type {
+  IClassifyNoteUseCase,
+  ClassifyResult,
+} from '../../../domain/ports/in/ITopicUseCases';
+import { TopicClassifier, type TopicCandidate } from '../../../domain/services/TopicClassifier';
+import { EVENTS } from '@shared/constants/ipcChannels';
+
+function decodeCentroid(centroid: Uint8Array): number[] {
+  const float32 = new Float32Array(centroid.buffer, centroid.byteOffset, centroid.byteLength / 4);
+  return Array.from(float32);
+}
+
+export class ClassifyNoteUseCase implements IClassifyNoteUseCase {
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly topicRepository: ITopicRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly fileStorage: IFileStorage,
+    private readonly embedder: IEmbedder,
+    private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly eventPublisher?: IEventPublisher,
+  ) {}
+
+  async execute(noteId: string, force: boolean = false): Promise<ClassifyResult> {
+    const note = await this.noteRepository.findById(noteId);
+    if (!note) {
+      throw new Error(`Note not found: ${noteId}`);
+    }
+
+    const existingEmbedding = await this.noteRepository.getEmbedding(noteId);
+    if (existingEmbedding && !force) {
+      return { noteId, topics: [] };
+    }
+
+    if (!note.filePath || !note.workspaceId) {
+      return { noteId, topics: [] };
+    }
+
+    const workspace = await this.workspaceRepository.findById(note.workspaceId);
+    if (!workspace) {
+      return { noteId, topics: [] };
+    }
+
+    const absolutePath = path.join(workspace.folderPath, note.filePath);
+    const markdown = await this.fileStorage.read(absolutePath);
+    if (!markdown) {
+      return { noteId, topics: [] };
+    }
+
+    const plainText = await this.markdownProcessor.extractPlainText(markdown);
+    const embeddingFloat32 = await this.embedder.generateEmbedding(plainText);
+    const embedding = Array.from(embeddingFloat32);
+
+    await this.noteRepository.updateEmbedding(noteId, embedding);
+
+    const topics = await this.topicRepository.findAll();
+    const candidates: TopicCandidate[] = topics
+      .filter((topic): topic is typeof topic & { centroid: Uint8Array } => topic.centroid !== null)
+      .map((topic) => ({
+        topicId: topic.id,
+        topicName: topic.name,
+        centroid: decodeCentroid(topic.centroid),
+      }));
+
+    const matchedTopics = TopicClassifier.classify(embedding, candidates);
+
+    if (matchedTopics.length > 0) {
+      const bestTopic = matchedTopics[0];
+      await this.topicRepository.assignToNote(noteId, bestTopic.topicId, {
+        confidence: bestTopic.confidence,
+      });
+      this.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
+        noteId,
+        topicId: bestTopic.topicId,
+        confidence: bestTopic.confidence,
+      });
+    }
+
+    return { noteId, topics: matchedTopics };
+  }
+}

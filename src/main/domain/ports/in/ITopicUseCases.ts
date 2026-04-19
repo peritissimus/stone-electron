@@ -4,90 +4,17 @@
  * Defines the contract for ML topic operations.
  */
 
-import type { TopicProps, TopicWithCount, NoteProps } from '../../entities';
-
-// Request/Response types
-export interface CreateTopicRequest {
+// DTOs
+export interface TopicDTO {
+  id: string;
   name: string;
-  description?: string;
-  color?: string;
+  description: string | null;
+  color: string;
+  isPredefined: boolean;
+  noteCount: number;
 }
 
-export interface CreateTopicResponse {
-  topic: TopicProps;
-}
-
-export interface UpdateTopicRequest {
-  id: string;
-  name?: string;
-  description?: string;
-  color?: string;
-}
-
-export interface UpdateTopicResponse {
-  topic: TopicProps;
-}
-
-export interface DeleteTopicRequest {
-  id: string;
-}
-
-export interface ListTopicsRequest {
-  excludeJournal?: boolean;
-}
-
-export interface ListTopicsResponse {
-  topics: TopicWithCount[];
-}
-
-export interface GetTopicRequest {
-  id: string;
-}
-
-export interface GetTopicResponse {
-  topic: TopicProps;
-}
-
-export interface GetNotesForTopicRequest {
-  topicId: string;
-  limit?: number;
-  offset?: number;
-  excludeJournal?: boolean;
-}
-
-export interface GetNotesForTopicResponse {
-  notes: NoteProps[];
-}
-
-export interface GetTopicsForNoteRequest {
-  noteId: string;
-}
-
-export interface GetTopicsForNoteResponse {
-  topics: Array<{
-    topicId: string;
-    topicName: string;
-    topicColor: string;
-    confidence: number;
-    isManual: boolean;
-  }>;
-}
-
-export interface AssignTopicRequest {
-  noteId: string;
-  topicId: string;
-}
-
-export interface RemoveTopicRequest {
-  noteId: string;
-  topicId: string;
-}
-
-export interface ClassifyNoteRequest {
-  noteId: string;
-}
-
-export interface ClassifyNoteResponse {
+export interface ClassifyResult {
   noteId: string;
   topics: Array<{
     topicId: string;
@@ -96,100 +23,92 @@ export interface ClassifyNoteResponse {
   }>;
 }
 
-export interface ClassifyAllRequest {
-  excludeJournal?: boolean;
-}
-
-export interface ClassifyAllResponse {
+export interface ClassifyAllResult {
   processed: number;
   total: number;
   failed: number;
 }
 
-export interface TopicSemanticSearchRequest {
-  query: string;
-  limit?: number;
-}
-
-export interface TopicSemanticSearchResponse {
-  results: Array<{
-    noteId: string;
-    title: string;
-    distance: number;
-  }>;
-}
-
-export interface GetSimilarNotesRequest {
+export interface TopicSimilarNote {
   noteId: string;
-  limit?: number;
+  title: string;
+  distance: number;
 }
 
-export interface GetSimilarNotesResponse {
-  similar: Array<{
-    noteId: string;
-    title: string;
-    distance: number;
-  }>;
-}
-
-export interface GetEmbeddingStatusResponse {
+export interface EmbeddingStatus {
   ready: boolean;
   totalNotes: number;
   embeddedNotes: number;
   pendingNotes: number;
 }
 
-// Use case interfaces
+export interface NoteForTopic {
+  id: string;
+  title: string;
+  confidence: number;
+  isManual: boolean;
+}
+
+export interface TopicForNote {
+  noteId: string;
+  topicId: string;
+  confidence: number;
+  isManual: boolean;
+  createdAt: Date;
+  topicName: string;
+  topicColor: string;
+}
+
+// Per-action ports
+export interface IInitializeTopicsUseCase {
+  execute(): Promise<{ success: boolean; ready: boolean }>;
+}
+
+export interface IGetAllTopicsUseCase {
+  execute(): Promise<TopicDTO[]>;
+}
+
+export interface IGetTopicByIdUseCase {
+  execute(id: string): Promise<TopicDTO | null>;
+}
+
 export interface ICreateTopicUseCase {
-  execute(request: CreateTopicRequest): Promise<CreateTopicResponse>;
+  execute(data: { name: string; description?: string; color?: string }): Promise<TopicDTO>;
 }
 
 export interface IUpdateTopicUseCase {
-  execute(request: UpdateTopicRequest): Promise<UpdateTopicResponse>;
+  execute(
+    id: string,
+    data: { name?: string; description?: string; color?: string },
+  ): Promise<TopicDTO>;
 }
 
 export interface IDeleteTopicUseCase {
-  execute(request: DeleteTopicRequest): Promise<void>;
-}
-
-export interface IListTopicsUseCase {
-  execute(request: ListTopicsRequest): Promise<ListTopicsResponse>;
-}
-
-export interface IGetTopicUseCase {
-  execute(request: GetTopicRequest): Promise<GetTopicResponse>;
-}
-
-export interface IGetNotesForTopicUseCase {
-  execute(request: GetNotesForTopicRequest): Promise<GetNotesForTopicResponse>;
-}
-
-export interface IGetTopicsForNoteUseCase {
-  execute(request: GetTopicsForNoteRequest): Promise<GetTopicsForNoteResponse>;
-}
-
-export interface IAssignTopicUseCase {
-  execute(request: AssignTopicRequest): Promise<void>;
-}
-
-export interface IRemoveTopicUseCase {
-  execute(request: RemoveTopicRequest): Promise<void>;
+  execute(id: string): Promise<void>;
 }
 
 export interface IClassifyNoteUseCase {
-  execute(request: ClassifyNoteRequest): Promise<ClassifyNoteResponse>;
+  execute(noteId: string, force?: boolean): Promise<ClassifyResult>;
 }
 
-export interface IClassifyAllUseCase {
-  execute(request: ClassifyAllRequest): Promise<ClassifyAllResponse>;
+export interface IClassifyAllNotesUseCase {
+  execute(options?: { force?: boolean }): Promise<ClassifyAllResult>;
+}
+
+export interface IAssignTopicToNoteUseCase {
+  execute(noteId: string, topicId: string): Promise<void>;
+}
+
+export interface IRemoveTopicFromNoteUseCase {
+  execute(noteId: string, topicId: string): Promise<void>;
+}
+
+export interface IGetTopicSimilarNotesUseCase {
+  execute(noteId: string, limit?: number): Promise<TopicSimilarNote[]>;
 }
 
 export interface ITopicSemanticSearchUseCase {
-  execute(request: TopicSemanticSearchRequest): Promise<TopicSemanticSearchResponse>;
-}
-
-export interface IGetSimilarNotesUseCase {
-  execute(request: GetSimilarNotesRequest): Promise<GetSimilarNotesResponse>;
+  execute(query: string, limit?: number): Promise<TopicSimilarNote[]>;
 }
 
 export interface IRecomputeCentroidsUseCase {
@@ -197,119 +116,38 @@ export interface IRecomputeCentroidsUseCase {
 }
 
 export interface IGetEmbeddingStatusUseCase {
-  execute(): Promise<GetEmbeddingStatusResponse>;
+  execute(): Promise<EmbeddingStatus>;
 }
 
-export interface IInitializeTopicsUseCase {
-  execute(): Promise<{ success: boolean; ready: boolean }>;
+export interface IGetNotesForTopicUseCase {
+  execute(
+    topicId: string,
+    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
+  ): Promise<NoteForTopic[]>;
+}
+
+export interface IGetTopicsForNoteUseCase {
+  execute(noteId: string): Promise<TopicForNote[]>;
 }
 
 /**
- * Aggregated topic use cases interface for DI container
+ * Aggregated topic use cases interface for DI container.
  */
 export interface ITopicUseCases {
-  initialize(): Promise<{ success: boolean; ready: boolean }>;
-  getAllTopics(): Promise<
-    Array<{
-      id: string;
-      name: string;
-      description: string | null;
-      color: string;
-      isPredefined: boolean;
-      noteCount: number;
-    }>
-  >;
-  getTopicById(id: string): Promise<{
-    id: string;
-    name: string;
-    description: string | null;
-    color: string;
-    isPredefined: boolean;
-    noteCount: number;
-  } | null>;
-  createTopic(data: { name: string; description?: string; color?: string }): Promise<{
-    id: string;
-    name: string;
-    description: string | null;
-    color: string;
-    isPredefined: boolean;
-    noteCount: number;
-  }>;
-  updateTopic(
-    id: string,
-    data: { name?: string; description?: string; color?: string },
-  ): Promise<{
-    id: string;
-    name: string;
-    description: string | null;
-    color: string;
-    isPredefined: boolean;
-    noteCount: number;
-  }>;
-  deleteTopic(id: string): Promise<void>;
-  classifyNote(
-    noteId: string,
-    force?: boolean,
-  ): Promise<{
-    noteId: string;
-    topics: Array<{
-      topicId: string;
-      topicName: string;
-      confidence: number;
-    }>;
-  }>;
-  classifyAllNotes(options?: {
-    force?: boolean;
-  }): Promise<{ processed: number; total: number; failed: number }>;
-  assignTopicToNote(noteId: string, topicId: string): Promise<void>;
-  removeTopicFromNote(noteId: string, topicId: string): Promise<void>;
-  getSimilarNotes(
-    noteId: string,
-    limit?: number,
-  ): Promise<
-    Array<{
-      noteId: string;
-      title: string;
-      distance: number;
-    }>
-  >;
-  semanticSearch(
-    query: string,
-    limit?: number,
-  ): Promise<
-    Array<{
-      noteId: string;
-      title: string;
-      distance: number;
-    }>
-  >;
-  recomputeCentroids(): Promise<void>;
-  getEmbeddingStatus(): Promise<{
-    ready: boolean;
-    totalNotes: number;
-    embeddedNotes: number;
-    pendingNotes: number;
-  }>;
-  getNotesForTopic(
-    topicId: string,
-    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
-  ): Promise<
-    Array<{
-      id: string;
-      title: string;
-      confidence: number;
-      isManual: boolean;
-    }>
-  >;
-  getTopicsForNote(noteId: string): Promise<
-    Array<{
-      noteId: string;
-      topicId: string;
-      confidence: number;
-      isManual: boolean;
-      createdAt: Date;
-      topicName: string;
-      topicColor: string;
-    }>
-  >;
+  initialize: IInitializeTopicsUseCase;
+  getAllTopics: IGetAllTopicsUseCase;
+  getTopicById: IGetTopicByIdUseCase;
+  createTopic: ICreateTopicUseCase;
+  updateTopic: IUpdateTopicUseCase;
+  deleteTopic: IDeleteTopicUseCase;
+  classifyNote: IClassifyNoteUseCase;
+  classifyAllNotes: IClassifyAllNotesUseCase;
+  assignTopicToNote: IAssignTopicToNoteUseCase;
+  removeTopicFromNote: IRemoveTopicFromNoteUseCase;
+  getSimilarNotes: IGetTopicSimilarNotesUseCase;
+  semanticSearch: ITopicSemanticSearchUseCase;
+  recomputeCentroids: IRecomputeCentroidsUseCase;
+  getEmbeddingStatus: IGetEmbeddingStatusUseCase;
+  getNotesForTopic: IGetNotesForTopicUseCase;
+  getTopicsForNote: IGetTopicsForNoteUseCase;
 }
