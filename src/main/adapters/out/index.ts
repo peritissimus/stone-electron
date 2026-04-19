@@ -13,5 +13,5 @@ export * from './storage';
 // Integrations
 export * from './integrations';
 
-// External
-export * from './external';
+// Events
+export * from './events';

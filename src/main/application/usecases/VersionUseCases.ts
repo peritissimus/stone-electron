@@ -16,6 +16,7 @@ import type {
 } from '../../domain/ports/in/IVersionUseCases';
 import { VersionEntity } from '../../domain/entities/Version';
 import { NoteEntity } from '../../domain/entities/Note';
+import { VersionDiffer } from '../../domain/services/VersionDiffer';
 import { logger } from '../../shared/utils';
 import path from 'node:path';
 
@@ -42,14 +43,7 @@ class GetVersionsUseCase implements IGetVersionsUseCase {
 
     const versions = await versionRepository.findByNoteId(noteId);
 
-    return versions.map((v) => ({
-      id: v.id,
-      noteId: v.noteId,
-      versionNumber: v.versionNumber,
-      content: v.content,
-      title: v.title,
-      createdAt: v.createdAt,
-    }));
+    return versions.map((v) => VersionDiffer.toSnapshot(v));
   }
 }
 
@@ -85,7 +79,7 @@ class CreateVersionUseCase implements ICreateVersionUseCase {
 
     // Create version entity
     const version = VersionEntity.create({
-      id: `${noteId}-v${nextVersionNumber}`,
+      id: VersionDiffer.buildVersionId(noteId, nextVersionNumber),
       noteId,
       versionNumber: nextVersionNumber,
       content: content || '',
@@ -96,14 +90,7 @@ class CreateVersionUseCase implements ICreateVersionUseCase {
 
     logger.info(`[VersionUseCases] Created version ${nextVersionNumber} for note ${noteId}`);
 
-    return {
-      id: version.id,
-      noteId: version.noteId,
-      versionNumber: version.versionNumber,
-      content: version.content,
-      title: version.title,
-      createdAt: version.createdAt,
-    };
+    return VersionDiffer.toSnapshot(version);
   }
 }
 
@@ -122,7 +109,7 @@ class RestoreVersionUseCase implements IRestoreVersionUseCase {
     }
 
     const version = await versionRepository.findById(versionId);
-    if (!version || version.noteId !== noteId) {
+    if (!version || !VersionDiffer.belongsToNote(version, noteId)) {
       throw new Error(`Version not found: ${versionId}`);
     }
 
@@ -158,14 +145,7 @@ class GetVersionUseCase implements IGetVersionUseCase {
     const version = await this.deps.versionRepository.findById(versionId);
     if (!version) return null;
 
-    return {
-      id: version.id,
-      noteId: version.noteId,
-      versionNumber: version.versionNumber,
-      content: version.content,
-      title: version.title,
-      createdAt: version.createdAt,
-    };
+    return VersionDiffer.toSnapshot(version);
   }
 }
 

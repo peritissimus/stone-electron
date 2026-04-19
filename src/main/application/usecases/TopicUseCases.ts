@@ -11,6 +11,7 @@ import type { IMarkdownProcessor } from '../../domain/ports/out/IMarkdownProcess
 import type { IEventPublisher } from '../../domain/ports/out/IEventPublisher';
 import type { ITopicUseCases } from '../../domain/ports/in/ITopicUseCases';
 import { SimilarityCalculator } from '../../domain/services/SimilarityCalculator';
+import { TopicClassifier, type TopicCandidate } from '../../domain/services/TopicClassifier';
 import { TopicEntity } from '../../domain/entities/Topic';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../shared/utils';
@@ -49,6 +50,15 @@ export interface SimilarNote {
   noteId: string;
   title: string;
   distance: number;
+}
+
+function decodeCentroid(centroid: Uint8Array): number[] {
+  const float32 = new Float32Array(
+    centroid.buffer,
+    centroid.byteOffset,
+    centroid.byteLength / 4,
+  );
+  return Array.from(float32);
 }
 
 /**
@@ -221,34 +231,16 @@ class TopicUseCasesImpl implements ITopicUseCases {
     // Save embedding
     await noteRepository.updateEmbedding(noteId, embedding);
 
-    // Find all matching topics above threshold
     const topics = await topicRepository.findAll();
-    const matchedTopics: Array<{ topicId: string; topicName: string; confidence: number }> = [];
+    const candidates: TopicCandidate[] = topics
+      .filter((topic): topic is typeof topic & { centroid: Uint8Array } => topic.centroid !== null)
+      .map((topic) => ({
+        topicId: topic.id,
+        topicName: topic.name,
+        centroid: decodeCentroid(topic.centroid),
+      }));
 
-    for (const topic of topics) {
-      if (topic.centroid) {
-        // Convert Uint8Array centroid back to Float32Array then to number[]
-        const centroidFloat32 = new Float32Array(
-          topic.centroid.buffer,
-          topic.centroid.byteOffset,
-          topic.centroid.byteLength / 4,
-        );
-        const similarity = SimilarityCalculator.cosineSimilarity(
-          embedding,
-          Array.from(centroidFloat32),
-        );
-        if (similarity > 0.5) {
-          matchedTopics.push({
-            topicId: topic.id,
-            topicName: topic.name,
-            confidence: similarity,
-          });
-        }
-      }
-    }
-
-    // Sort by confidence descending
-    matchedTopics.sort((a, b) => b.confidence - a.confidence);
+    const matchedTopics = TopicClassifier.classify(embedding, candidates);
 
     // Assign the best matching topic if any
     if (matchedTopics.length > 0) {

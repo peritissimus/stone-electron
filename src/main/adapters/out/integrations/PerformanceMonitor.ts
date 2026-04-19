@@ -8,6 +8,7 @@ import { performance, PerformanceObserver } from 'node:perf_hooks';
 import type { BrowserWindow } from 'electron';
 import type {
   IPerformanceMonitor,
+  RendererWindowHandle,
   StartupMetrics,
   MemoryMetrics,
   CPUMetrics,
@@ -335,7 +336,10 @@ export class PerformanceMonitor implements IPerformanceMonitor {
   // Renderer Metrics
   // --------------------------------------------------------------------------
 
-  async getRendererMetrics(window: BrowserWindow | null): Promise<Record<string, unknown> | null> {
+  async getRendererMetrics(
+    handle: RendererWindowHandle | null,
+  ): Promise<Record<string, unknown> | null> {
+    const window = handle as BrowserWindow | null;
     if (!window || window.isDestroyed()) return null;
 
     try {
