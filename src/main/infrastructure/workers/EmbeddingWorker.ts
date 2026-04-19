@@ -13,7 +13,7 @@
 
 import { Worker } from 'worker_threads';
 import path from 'node:path';
-import { logger } from '../../../shared/utils';
+import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions

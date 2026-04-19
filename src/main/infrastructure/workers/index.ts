@@ -50,3 +50,10 @@ export type EmbeddingWorkerMessage =
   | InitMessage
   | PingMessage
   | ShutdownMessage;
+
+export {
+  EmbeddingWorker,
+  getEmbeddingWorker,
+  createEmbeddingWorker,
+} from './EmbeddingWorker';
+export { getMLStatusTracker, createMLStatusTracker } from './MLStatusTracker';

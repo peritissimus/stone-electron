@@ -14,10 +14,9 @@ import type {
   IUpdateNoteLinksUseCase,
   NoteLink,
   GraphData,
-  GraphNode,
-  GraphLink,
 } from '../../domain/ports/in/IGraphUseCases';
 import { LinkExtractor } from '../../domain/services/LinkExtractor';
+import { NoteGraphBuilder } from '../../domain/services/NoteGraphBuilder';
 import { NoteLinkEntity } from '../../domain/entities';
 import { logger } from '../../shared/utils';
 
@@ -94,10 +93,6 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
     includeOrphans?: boolean;
   }): Promise<GraphData> {
     const { noteRepository, noteLinkRepository, workspaceRepository } = this.deps;
-    const { centerNoteId, depth = 2, includeOrphans = false } = options || {};
-
-    const nodes: Map<string, GraphNode> = new Map();
-    const links: GraphLink[] = [];
 
     // Get active workspace
     const activeWorkspace = await workspaceRepository.findActive();
@@ -112,69 +107,7 @@ class GetGraphDataUseCase implements IGetGraphDataUseCase {
     });
     const allLinks = await noteLinkRepository.findAll();
 
-    // Build link counts
-    const linkCounts = new Map<string, number>();
-    for (const link of allLinks) {
-      linkCounts.set(link.sourceNoteId, (linkCounts.get(link.sourceNoteId) || 0) + 1);
-      linkCounts.set(link.targetNoteId, (linkCounts.get(link.targetNoteId) || 0) + 1);
-    }
-
-    // If centered, only include notes within depth
-    const includedNotes = new Set<string>();
-
-    if (centerNoteId) {
-      // BFS to find notes within depth
-      const queue: Array<{ id: string; d: number }> = [{ id: centerNoteId, d: 0 }];
-      includedNotes.add(centerNoteId);
-
-      while (queue.length > 0) {
-        const { id, d } = queue.shift()!;
-        if (d >= depth) continue;
-
-        const noteLinks = allLinks.filter((l) => l.sourceNoteId === id || l.targetNoteId === id);
-
-        for (const link of noteLinks) {
-          const otherId = link.sourceNoteId === id ? link.targetNoteId : link.sourceNoteId;
-          if (!includedNotes.has(otherId)) {
-            includedNotes.add(otherId);
-            queue.push({ id: otherId, d: d + 1 });
-          }
-        }
-      }
-    } else {
-      // Include all notes
-      for (const note of allNotes) {
-        if (includeOrphans || (linkCounts.get(note.id) || 0) > 0) {
-          includedNotes.add(note.id);
-        }
-      }
-    }
-
-    // Build nodes
-    for (const note of allNotes) {
-      if (includedNotes.has(note.id)) {
-        nodes.set(note.id, {
-          id: note.id,
-          name: note.title || 'Untitled',
-          val: linkCounts.get(note.id) || 1,
-        });
-      }
-    }
-
-    // Build links
-    for (const link of allLinks) {
-      if (includedNotes.has(link.sourceNoteId) && includedNotes.has(link.targetNoteId)) {
-        links.push({
-          source: link.sourceNoteId,
-          target: link.targetNoteId,
-        });
-      }
-    }
-
-    return {
-      nodes: Array.from(nodes.values()),
-      links,
-    };
+    return NoteGraphBuilder.buildGraphData(allNotes, allLinks, options ?? {});
   }
 }
 

@@ -10,3 +10,28 @@ export type { LinkType, ExtractedLink } from './LinkExtractor';
 
 export { SimilarityCalculator } from './SimilarityCalculator';
 export type { EmbeddingVector, SimilarityResult } from './SimilarityCalculator';
+
+export { TopicClassifier, TOPIC_CONFIDENCE_THRESHOLD } from './TopicClassifier';
+export type { TopicCandidate, TopicMatch } from './TopicClassifier';
+
+export {
+  SearchRanker,
+  DEFAULT_FTS_WEIGHT,
+  DEFAULT_SEMANTIC_WEIGHT,
+  DEFAULT_SINGLE_SOURCE_SCORE,
+} from './SearchRanker';
+
+export { WorkspaceDiffer } from './WorkspaceDiffer';
+export type {
+  FsEntry,
+  DbEntry,
+  AddedEntry,
+  ModifiedEntry,
+  UnchangedEntry,
+  RemovedEntry,
+  WorkspaceDiffPlan,
+} from './WorkspaceDiffer';
+
+export { VersionDiffer } from './VersionDiffer';
+
+export { NoteGraphBuilder } from './NoteGraphBuilder';

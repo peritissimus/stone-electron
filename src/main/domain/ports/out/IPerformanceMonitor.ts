@@ -6,7 +6,11 @@
  * lives in adapters/out/integrations/PerformanceMonitor.
  */
 
-import type { BrowserWindow } from 'electron';
+/**
+ * Opaque handle to a renderer window. Concrete type (e.g. Electron BrowserWindow)
+ * is an adapter-internal detail; the domain only needs the reference.
+ */
+export type RendererWindowHandle = object;
 
 export interface StartupMetrics {
   appStartTime: number;
@@ -107,7 +111,7 @@ export interface IPerformanceMonitor {
   getIPCMetrics(sinceMs?: number): IPCMetrics;
   getDatabaseMetrics(sinceMs?: number): DatabaseMetrics;
   getSnapshot(sinceMs?: number): PerformanceSnapshot;
-  getRendererMetrics(window: BrowserWindow | null): Promise<Record<string, unknown> | null>;
+  getRendererMetrics(window: RendererWindowHandle | null): Promise<Record<string, unknown> | null>;
 
   clearHistory(): void;
 }
