@@ -4,8 +4,8 @@
 
 import type {
   IGitClient,
-  GitClientStatus as GitStatus,
-  GitClientCommit as GitCommit,
+  GitStatus,
+  GitCommit,
   GitOperationResult,
   GitFileChange,
 } from '../../../domain';

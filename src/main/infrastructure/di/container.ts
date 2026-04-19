@@ -26,7 +26,6 @@ import type {
   IEventPublisher,
   ISearchEngine,
   IEmbedder,
-  IGitOperations,
   IExporter,
   ISystemBridge,
   IGitClient,
@@ -123,8 +122,7 @@ import {
   GitClient,
   FileWatcher,
   getPerformanceMonitor,
-  // Outbound (Secondary) - External
-  GitOperations,
+  // Outbound (Secondary) - Events
   EventPublisher,
 } from '../../adapters';
 
@@ -166,7 +164,6 @@ export interface Container {
   eventPublisher: IEventPublisher;
   searchEngine: ISearchEngine;
   embedder: IEmbedder;
-  gitOperations: IGitOperations;
   exporter: IExporter;
   systemBridge: ISystemBridge;
   gitClient: IGitClient;
@@ -259,7 +256,6 @@ export function createContainer(deps: ContainerDeps): Container {
   const fileStorage: IFileStorage = new FileSystemStorage();
   const markdownProcessor: IMarkdownProcessor = new MarkdownProcessor();
   const eventPublisher: IEventPublisher = new EventPublisher();
-  const gitOperations: IGitOperations = new GitOperations();
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
   const gitClient: IGitClient = new GitClient();
@@ -446,7 +442,6 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
     searchEngine,
     embedder,
-    gitOperations,
     exporter,
     systemBridge,
     gitClient,
