@@ -7,32 +7,32 @@ import type { ISystemUseCases } from '../../domain/ports/in/ISystemUseCases';
 import { logger } from '../../shared/utils';
 
 export interface SystemUseCasesDeps {
-  systemService: ISystemBridge;
+  systemBridge: ISystemBridge;
 }
 
 class SystemUseCasesImpl implements ISystemUseCases {
   constructor(private deps: SystemUseCasesDeps) {}
 
   async getFonts(): Promise<string[]> {
-    const fonts = await this.deps.systemService.getFonts();
+    const fonts = await this.deps.systemBridge.getFonts();
     logger.debug(`[SystemUseCases] Retrieved ${fonts.length} system fonts`);
     return fonts;
   }
 
   async selectFolder(options?: { title?: string; defaultPath?: string }): Promise<string | null> {
-    return this.deps.systemService.selectFolder(options);
+    return this.deps.systemBridge.selectFolder(options);
   }
 
   async validatePath(path: string): Promise<boolean> {
-    return this.deps.systemService.validatePath(path);
+    return this.deps.systemBridge.validatePath(path);
   }
 
   openInFolder(path: string): void {
-    this.deps.systemService.showInFolder(path);
+    this.deps.systemBridge.showInFolder(path);
   }
 
   async openExternal(url: string): Promise<void> {
-    await this.deps.systemService.openExternal(url);
+    await this.deps.systemBridge.openExternal(url);
   }
 }
 

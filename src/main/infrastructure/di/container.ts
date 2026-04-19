@@ -168,7 +168,7 @@ export interface Container {
   embeddingService: IEmbedder;
   gitOperations: IGitOperations;
   exportService: IExporter;
-  systemService: ISystemBridge;
+  systemBridge: ISystemBridge;
   gitService: IGitClient;
   fileWatcherService: FileWatcher;
 
@@ -261,7 +261,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const eventPublisher: IEventPublisher = new EventPublisher();
   const gitOperations: IGitOperations = new GitOperations();
   const exportService: IExporter = new Exporter();
-  const systemService: ISystemBridge = new SystemBridge();
+  const systemBridge: ISystemBridge = new SystemBridge();
   const gitService: IGitClient = new GitClient();
 
   // ---------------------------------------------------------------------------
@@ -324,7 +324,7 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     noteRepository,
     fileStorage,
-    systemService,
+    systemBridge,
     markdownProcessor,
     eventPublisher,
   });
@@ -408,7 +408,7 @@ export function createContainer(deps: ContainerDeps): Container {
 
   // System use cases
   const systemUseCases = createSystemUseCases({
-    systemService,
+    systemBridge,
   });
 
   // Settings use cases
@@ -448,7 +448,7 @@ export function createContainer(deps: ContainerDeps): Container {
     embeddingService,
     gitOperations,
     exportService,
-    systemService,
+    systemBridge,
     gitService,
     fileWatcherService,
 
