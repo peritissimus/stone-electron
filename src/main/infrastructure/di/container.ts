@@ -550,10 +550,12 @@ export function registerIPCHandlers(): void {
       container.quickCaptureUseCases.appendToJournal(content, workspaceId),
   });
   registerSystemHandlers({
-    getSystemFonts: () => container.systemUseCases.getFonts(),
+    getSystemFonts: container.systemUseCases.getFonts,
   });
   registerSettingsHandlers({
-    settingsUseCases: container.settingsUseCases,
+    getSetting: container.settingsUseCases.get,
+    setSetting: container.settingsUseCases.set,
+    getAllSettings: container.settingsUseCases.getAll,
   });
 
   // Performance monitoring handlers

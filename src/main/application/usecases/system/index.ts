@@ -1,0 +1,29 @@
+import type { ISystemBridge } from '../../../domain/ports/out/ISystemBridge';
+import type { ISystemUseCases } from '../../../domain/ports/in/ISystemUseCases';
+import { GetSystemFontsUseCase } from './GetSystemFontsUseCase';
+import { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
+import { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
+import { OpenInFolderUseCase } from './OpenInFolderUseCase';
+import { OpenExternalUseCase } from './OpenExternalUseCase';
+
+export { GetSystemFontsUseCase } from './GetSystemFontsUseCase';
+export { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
+export { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
+export { OpenInFolderUseCase } from './OpenInFolderUseCase';
+export { OpenExternalUseCase } from './OpenExternalUseCase';
+
+export interface SystemUseCasesDeps {
+  systemBridge: ISystemBridge;
+}
+
+export function createSystemUseCases(deps: SystemUseCasesDeps): ISystemUseCases {
+  const { systemBridge } = deps;
+
+  return {
+    getFonts: new GetSystemFontsUseCase(systemBridge),
+    selectFolder: new ShowFolderPickerUseCase(systemBridge),
+    validatePath: new ValidateSystemPathUseCase(systemBridge),
+    openInFolder: new OpenInFolderUseCase(systemBridge),
+    openExternal: new OpenExternalUseCase(systemBridge),
+  };
+}

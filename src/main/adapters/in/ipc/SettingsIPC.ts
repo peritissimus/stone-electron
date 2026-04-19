@@ -4,25 +4,28 @@
 
 import { ipcMain } from 'electron';
 import { SETTINGS_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ISettingsUseCases } from '../../../domain';
+import type {
+  IGetSettingUseCase,
+  ISetSettingUseCase,
+  IGetAllSettingsUseCase,
+} from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface SettingsIPCDeps {
-  settingsUseCases: ISettingsUseCases;
+  getSetting: IGetSettingUseCase;
+  setSetting: ISetSettingUseCase;
+  getAllSettings: IGetAllSettingsUseCase;
 }
 
 export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
-  const { settingsUseCases } = deps;
+  const { getSetting, setSetting, getAllSettings } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'SettingsIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(SETTINGS_CHANNELS.GET, async (_event, params: { key: string }) => {
     return handleRequest(
-      async () => {
-        const result = await settingsUseCases.get(params.key);
-        return result;
-      },
+      async () => getSetting.execute({ key: params.key }),
       { channel: SETTINGS_CHANNELS.GET, key: params.key },
     );
   });
@@ -30,7 +33,7 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
   ipcMain.handle(SETTINGS_CHANNELS.SET, async (_event, params: { key: string; value: string }) => {
     return handleRequest(
       async () => {
-        await settingsUseCases.set(params.key, params.value);
+        await setSetting.execute({ key: params.key, value: params.value });
         return { success: true };
       },
       { channel: SETTINGS_CHANNELS.SET, key: params.key },
@@ -39,10 +42,7 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
 
   ipcMain.handle(SETTINGS_CHANNELS.GET_ALL, async () => {
     return handleRequest(
-      async () => {
-        const result = await settingsUseCases.getAll();
-        return result;
-      },
+      async () => getAllSettings.execute(),
       { channel: SETTINGS_CHANNELS.GET_ALL },
     );
   });

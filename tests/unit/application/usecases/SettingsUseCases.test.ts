@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createSettingsUseCases } from '../../../../src/main/application/usecases/SettingsUseCases';
+import { createSettingsUseCases } from '../../../../src/main/application/usecases/settings';
 import type { ISettingsRepository } from '../../../../src/main/domain/ports/out/ISettingsRepository';
 import type { ISettingsUseCases } from '../../../../src/main/domain/ports/in/ISettingsUseCases';
 
@@ -36,7 +36,7 @@ describe('SettingsUseCases', () => {
         updatedAt: new Date(),
       });
 
-      const result = await useCases.get('theme');
+      const result = await useCases.get.execute({ key: 'theme' });
 
       expect(result.value).toBe('dark');
       expect(settingsRepository.get).toHaveBeenCalledWith('theme');
@@ -45,7 +45,7 @@ describe('SettingsUseCases', () => {
     it('returns null when setting not found', async () => {
       vi.mocked(settingsRepository.get).mockResolvedValue(null);
 
-      const result = await useCases.get('nonexistent');
+      const result = await useCases.get.execute({ key: 'nonexistent' });
 
       expect(result.value).toBeNull();
     });
@@ -57,7 +57,7 @@ describe('SettingsUseCases', () => {
         updatedAt: new Date(),
       });
 
-      const result = await useCases.get('empty');
+      const result = await useCases.get.execute({ key: 'empty' });
 
       expect(result.value).toBeNull();
     });
@@ -71,7 +71,7 @@ describe('SettingsUseCases', () => {
         updatedAt: new Date(),
       });
 
-      await useCases.set('theme', 'light');
+      await useCases.set.execute({ key: 'theme', value: 'light' });
 
       expect(settingsRepository.set).toHaveBeenCalledWith('theme', 'light');
     });
@@ -83,7 +83,7 @@ describe('SettingsUseCases', () => {
         updatedAt: new Date(),
       });
 
-      await useCases.set('fontSize', '16');
+      await useCases.set.execute({ key: 'fontSize', value: '16' });
 
       expect(settingsRepository.set).toHaveBeenCalledWith('fontSize', '16');
     });
@@ -97,7 +97,7 @@ describe('SettingsUseCases', () => {
       ];
       vi.mocked(settingsRepository.getAll).mockResolvedValue(allSettings);
 
-      const result = await useCases.getAll();
+      const result = await useCases.getAll.execute();
 
       expect(result.settings).toHaveLength(2);
       expect(result.settings[0].key).toBe('theme');
@@ -108,7 +108,7 @@ describe('SettingsUseCases', () => {
     it('returns empty array when no settings', async () => {
       vi.mocked(settingsRepository.getAll).mockResolvedValue([]);
 
-      const result = await useCases.getAll();
+      const result = await useCases.getAll.execute();
 
       expect(result.settings).toHaveLength(0);
     });
