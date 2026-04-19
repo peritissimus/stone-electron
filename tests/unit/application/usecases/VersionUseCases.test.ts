@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createVersionUseCases } from '../../../../src/main/application/usecases/VersionUseCases';
+import { createVersionUseCases } from '../../../../src/main/application/usecases/version';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IVersionRepository } from '../../../../src/main/domain/ports/out/IVersionRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';

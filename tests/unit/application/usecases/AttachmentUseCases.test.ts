@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createAttachmentUseCases } from '../../../../src/main/application/usecases/AttachmentUseCases';
+import { createAttachmentUseCases } from '../../../../src/main/application/usecases/attachment';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IAttachmentRepository } from '../../../../src/main/domain/ports/out/IAttachmentRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';

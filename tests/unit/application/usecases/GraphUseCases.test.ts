@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGraphUseCases } from '../../../../src/main/application/usecases/GraphUseCases';
+import { createGraphUseCases } from '../../../../src/main/application/usecases/graph';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { INoteLinkRepository } from '../../../../src/main/domain/ports/out/INoteLinkRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';

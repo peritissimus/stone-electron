@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createQuickCaptureUseCases } from '../../../../src/main/application/usecases/QuickCaptureUseCases';
+import { createQuickCaptureUseCases } from '../../../../src/main/application/usecases/quickCapture';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
