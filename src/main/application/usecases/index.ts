@@ -95,7 +95,18 @@ export { createTopicUseCases, type TopicUseCasesDeps } from './TopicUseCases';
 export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './AttachmentUseCases';
 
 // Git Use Cases
-export { createGitUseCases, type GitUseCasesDeps } from './GitUseCases';
+export {
+  GetGitStatusUseCase,
+  InitGitRepoUseCase,
+  GitCommitUseCase,
+  GitPullUseCase,
+  GitPushUseCase,
+  GitSyncUseCase,
+  SetGitRemoteUseCase,
+  GetGitCommitsUseCase,
+  createGitUseCases,
+  type GitUseCasesDeps,
+} from './git';
 
 // Database Use Cases
 export { createDatabaseUseCases, type DatabaseUseCasesDeps } from './DatabaseUseCases';
