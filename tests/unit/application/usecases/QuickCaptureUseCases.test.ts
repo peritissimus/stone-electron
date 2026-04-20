@@ -137,13 +137,13 @@ describe('QuickCaptureUseCases', () => {
       const today = new Date().toISOString().split('T')[0];
       const journalNote = createNoteProps({
         id: 'journal-1',
-        title: `Journal ${today}`,
-        filePath: `Journal/Journal ${today}.md`,
+        title: today,
+        filePath: `Journal/${today}.md`,
       });
 
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
-      vi.mocked(noteRepo.findAll).mockResolvedValue([journalNote]);
-      vi.mocked(fileStorage.read).mockResolvedValue('# Journal\n\nExisting content');
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(journalNote);
+      vi.mocked(fileStorage.read).mockResolvedValue(`# ${today}\n\nExisting content`);
       vi.mocked(fileStorage.write).mockResolvedValue(undefined);
       vi.mocked(noteRepo.save).mockResolvedValue(undefined);
 

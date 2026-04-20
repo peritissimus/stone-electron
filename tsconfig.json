@@ -17,6 +17,14 @@
     "paths": {
       "@/*": ["src/*"],
       "@main/*": ["src/main/*"],
+      "@domain": ["src/main/domain/index.ts"],
+      "@domain/*": ["src/main/domain/*"],
+      "@application": ["src/main/application/index.ts"],
+      "@application/*": ["src/main/application/*"],
+      "@adapters": ["src/main/adapters/index.ts"],
+      "@adapters/*": ["src/main/adapters/*"],
+      "@infrastructure": ["src/main/infrastructure/index.ts"],
+      "@infrastructure/*": ["src/main/infrastructure/*"],
       "@renderer/*": ["src/renderer/*"],
       "@shared/*": ["src/shared/*"]
     },

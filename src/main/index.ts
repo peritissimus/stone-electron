@@ -9,16 +9,16 @@ import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
 
 // Import from main architecture
-import { logger } from './shared/utils/logger';
-import { isDev } from './infrastructure/utils/environment';
-import { getDatabaseManager } from './infrastructure/database';
+import { logger } from '@main/shared/utils/logger';
+import { isDev } from '@main/infrastructure/utils/environment';
+import { getDatabaseManager } from '@main/infrastructure/database';
 import {
   initializeContainer,
   registerIPCHandlers,
   unregisterIPCHandlers,
   getContainer,
-} from './infrastructure/di/container';
-import { getPerformanceMonitor } from './adapters/out/integrations/PerformanceMonitor';
+} from '@main/infrastructure/di/container';
+import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();

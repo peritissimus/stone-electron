@@ -274,6 +274,9 @@ module.exports = {
                   '@main/adapters/*',
                   '@main/infrastructure/*',
                   '@main/shared/*',
+                  '@application/*',
+                  '@adapters/*',
+                  '@infrastructure/*',
                 ],
                 message:
                   'Domain must stay pure. It cannot import from application, adapters, infrastructure, or shared.',
@@ -301,6 +304,8 @@ module.exports = {
                   '../../../infrastructure/*',
                   '@main/adapters/*',
                   '@main/infrastructure/*',
+                  '@adapters/*',
+                  '@infrastructure/*',
                 ],
                 message:
                   'Application layer must not import from adapters or infrastructure. Use ports (domain/ports/) instead.',
@@ -320,13 +325,14 @@ module.exports = {
             patterns: [
               {
                 group: [
-                  '../infrastructure/*',
-                  '../../infrastructure/*',
-                  '../../../infrastructure/*',
-                  '@main/infrastructure/*',
+                  '../infrastructure/di/*',
+                  '../../infrastructure/di/*',
+                  '../../../infrastructure/di/*',
+                  '@main/infrastructure/di/*',
+                  '@infrastructure/di/*',
                 ],
                 message:
-                  'Adapters must not import from infrastructure. Wire concrete instances in infrastructure/di/ instead.',
+                  'Adapters must not import from infrastructure/di. Wire concrete instances there instead of importing them outward.',
               },
             ],
           },
@@ -355,6 +361,10 @@ module.exports = {
                   '@main/application/*',
                   '@main/adapters/*',
                   '@main/infrastructure/*',
+                  '@domain/*',
+                  '@application/*',
+                  '@adapters/*',
+                  '@infrastructure/*',
                 ],
                 message:
                   'Shared must stay neutral. It cannot depend on domain, application, adapters, or infrastructure.',
