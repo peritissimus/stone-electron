@@ -2,7 +2,7 @@ import type {
   ICheckDatabaseIntegrityUseCase,
   DatabaseIntegrityResponse,
 } from '../../../domain/ports/in/IDatabaseUseCases';
-import type { DatabaseManager } from './GetDatabaseStatusUseCase';
+import type { DatabaseManager } from './types';
 import { logger } from '../../../shared/utils';
 
 export class CheckDatabaseIntegrityUseCase implements ICheckDatabaseIntegrityUseCase {

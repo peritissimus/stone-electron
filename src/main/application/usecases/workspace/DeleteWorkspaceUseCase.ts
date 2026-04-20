@@ -1,9 +1,9 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   type IWorkspaceRepository,
   type IDeleteWorkspaceUseCase,
   type DeleteWorkspaceRequest,
   WorkspaceNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -21,6 +21,10 @@ export class DeleteWorkspaceUseCase implements IDeleteWorkspaceUseCase {
 
     await this.workspaceRepository.delete(request.id);
 
-    this.eventPublisher?.emit(EVENTS.WORKSPACE_DELETED, { id: request.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.WORKSPACE_DELETED,
+      timestamp: new Date(),
+      payload: { id: request.id },
+    });
   }
 }

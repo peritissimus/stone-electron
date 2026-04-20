@@ -6,7 +6,7 @@ import type {
   IClassifyNoteUseCase,
   ClassifyAllResult,
 } from '../../../domain/ports/in/ITopicUseCases';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { DOMAIN_EVENT_TYPES } from '../../../domain/ports/out/IEventPublisher';
 import { logger } from '../../../shared/utils';
 
 export class ClassifyAllNotesUseCase implements IClassifyAllNotesUseCase {
@@ -33,10 +33,14 @@ export class ClassifyAllNotesUseCase implements IClassifyAllNotesUseCase {
       try {
         await this.classifyNoteUseCase.execute(note.id, options?.force || false);
         processed++;
-        this.eventPublisher?.emit(EVENTS.EMBEDDING_PROGRESS, {
-          current: processed,
-          total,
-          failed,
+        this.eventPublisher?.publish({
+          type: DOMAIN_EVENT_TYPES.EMBEDDING_PROGRESS,
+          timestamp: new Date(),
+          payload: {
+            current: processed,
+            total,
+            failed,
+          },
         });
       } catch (error) {
         failed++;

@@ -1,11 +1,11 @@
 import { generateId } from '@shared/utils/id';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   TagEntity,
   type ITagRepository,
   type ICreateTagUseCase,
   type CreateTagRequest,
   type CreateTagResponse,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -33,7 +33,11 @@ export class CreateTagUseCase implements ICreateTagUseCase {
 
     await this.tagRepository.save(tag);
 
-    this.eventPublisher?.emit(EVENTS.TAG_CREATED, { tag: tag.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.TAG_CREATED,
+      timestamp: new Date(),
+      payload: { tag: tag.toPersistence() },
+    });
 
     return { tag: tag.toPersistence() };
   }

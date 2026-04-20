@@ -1,4 +1,3 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   WorkspaceEntity,
   type IWorkspaceRepository,
@@ -6,6 +5,7 @@ import {
   type SetActiveWorkspaceRequest,
   type SetActiveWorkspaceResponse,
   WorkspaceNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -36,7 +36,11 @@ export class SetActiveWorkspaceUseCase implements ISetActiveWorkspaceUseCase {
     workspace.activate();
     await this.workspaceRepository.save(workspace);
 
-    this.eventPublisher?.emit(EVENTS.WORKSPACE_SWITCHED, { workspace: workspace.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.WORKSPACE_ACTIVATED,
+      timestamp: new Date(),
+      payload: { workspace: workspace.toPersistence() },
+    });
 
     return { workspace: workspace.toPersistence() };
   }

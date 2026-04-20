@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type NoteProps,
@@ -7,6 +6,7 @@ import {
   type IFileStorage,
   type IUpdateNoteUseCase,
   NoteNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -69,7 +69,11 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
 
     await this.noteRepository.save(note);
 
-    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: note.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_UPDATED,
+      timestamp: new Date(),
+      payload: { id: note.id },
+    });
 
     return { note: note.toPersistence() };
   }

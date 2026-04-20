@@ -1,7 +1,9 @@
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type { IAssignTopicToNoteUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../../shared/utils';
 
 export class AssignTopicToNoteUseCase implements IAssignTopicToNoteUseCase {
@@ -15,11 +17,15 @@ export class AssignTopicToNoteUseCase implements IAssignTopicToNoteUseCase {
       confidence: 1.0,
       isManual: true,
     });
-    this.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
-      noteId,
-      topicId,
-      confidence: 1.0,
-      isManual: true,
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_CLASSIFIED,
+      timestamp: new Date(),
+      payload: {
+        noteId,
+        topicId,
+        confidence: 1.0,
+        isManual: true,
+      },
     });
     logger.info(`[TopicUseCases] Assigned topic ${topicId} to note ${noteId}`);
   }

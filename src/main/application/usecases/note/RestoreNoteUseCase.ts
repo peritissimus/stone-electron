@@ -1,9 +1,9 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type INoteRepository,
   type IRestoreNoteUseCase,
   NoteNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -23,6 +23,10 @@ export class RestoreNoteUseCase implements IRestoreNoteUseCase {
     note.restore();
     await this.noteRepository.save(note);
 
-    this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: request.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_UPDATED,
+      timestamp: new Date(),
+      payload: { id: request.id },
+    });
   }
 }

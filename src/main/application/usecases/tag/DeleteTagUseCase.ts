@@ -1,9 +1,9 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   type ITagRepository,
   type IDeleteTagUseCase,
   type DeleteTagRequest,
   TagNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -21,6 +21,10 @@ export class DeleteTagUseCase implements IDeleteTagUseCase {
 
     await this.tagRepository.delete(request.id);
 
-    this.eventPublisher?.emit(EVENTS.TAG_DELETED, { id: request.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.TAG_DELETED,
+      timestamp: new Date(),
+      payload: { id: request.id },
+    });
   }
 }

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { generateId } from '@shared/utils/id';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type WorkspaceProps,
@@ -9,6 +8,7 @@ import {
   type SyncWorkspaceRequest,
   type SyncWorkspaceResponse,
   WorkspaceNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
@@ -90,7 +90,11 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       });
 
       await this.noteRepository.save(note);
-      this.eventPublisher?.emit(EVENTS.NOTE_CREATED, { id: note.id });
+      this.eventPublisher?.publish({
+        type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
+        timestamp: new Date(),
+        payload: { id: note.id },
+      });
 
       created++;
     }
@@ -118,7 +122,11 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       }
 
       await this.noteRepository.save(noteEntity);
-      this.eventPublisher?.emit(EVENTS.NOTE_UPDATED, { id: existingNote.id });
+      this.eventPublisher?.publish({
+        type: DOMAIN_EVENT_TYPES.NOTE_UPDATED,
+        timestamp: new Date(),
+        payload: { id: existingNote.id },
+      });
 
       updated++;
     }
@@ -132,7 +140,11 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       noteEntity.delete();
 
       await this.noteRepository.save(noteEntity);
-      this.eventPublisher?.emit(EVENTS.NOTE_DELETED, { id: existingNote.id });
+      this.eventPublisher?.publish({
+        type: DOMAIN_EVENT_TYPES.NOTE_DELETED,
+        timestamp: new Date(),
+        payload: { id: existingNote.id },
+      });
 
       deleted++;
     }

@@ -1,7 +1,9 @@
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type { IDeleteTopicUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../../shared/utils';
 
 export class DeleteTopicUseCase implements IDeleteTopicUseCase {
@@ -20,7 +22,11 @@ export class DeleteTopicUseCase implements IDeleteTopicUseCase {
     }
 
     await this.topicRepository.delete(id);
-    this.eventPublisher?.emit(EVENTS.TOPIC_DELETED, { id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.TOPIC_DELETED,
+      timestamp: new Date(),
+      payload: { id },
+    });
     logger.info(`[TopicUseCases] Deleted topic ${id}`);
   }
 }

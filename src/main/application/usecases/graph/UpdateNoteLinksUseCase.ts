@@ -2,7 +2,7 @@ import type { IUpdateNoteLinksUseCase } from '../../../domain/ports/in/IGraphUse
 import { LinkExtractor } from '../../../domain/services/LinkExtractor';
 import { NoteLinkEntity } from '../../../domain/entities';
 import { logger } from '../../../shared/utils';
-import type { GraphUseCasesDeps } from './GetBacklinksUseCase';
+import type { GraphUseCasesDeps } from './types';
 
 /**
  * Update links for a note after content change

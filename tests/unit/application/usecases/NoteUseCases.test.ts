@@ -221,7 +221,7 @@ describe('NoteUseCases', () => {
       expect(result.note.workspaceId).toBe('ws-1');
       expect(fileStorage.write).toHaveBeenCalled();
       expect(noteRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws error when no active workspace', async () => {
@@ -271,7 +271,7 @@ describe('NoteUseCases', () => {
       expect(result.note.title).toBe('Updated Title');
       expect(result.note.isFavorite).toBe(true);
       expect(noteRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('updates content', async () => {
@@ -530,7 +530,7 @@ describe('NoteUseCases', () => {
       expect(result.note.title).toBe('My Note');
       expect(result.note.filePath).toBe('test.md');
       expect(noteRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('uses filename as title for journal files (not extracted title)', async () => {
@@ -614,7 +614,7 @@ describe('NoteUseCases', () => {
       await useCase.execute({ id: 'note-1', targetNotebookId: 'nb-2' });
 
       expect(noteRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws NoteNotFoundError for nonexistent note', async () => {

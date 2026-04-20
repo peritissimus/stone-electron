@@ -78,7 +78,7 @@ describe('NotebookUseCases', () => {
 
       expect(result.notebook.name).toBe('My Notebook');
       expect(notebookRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('creates notebook with all options', async () => {
@@ -121,7 +121,7 @@ describe('NotebookUseCases', () => {
 
       expect(result.notebook.name).toBe('New Name');
       expect(notebookRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('updates notebook icon', async () => {
@@ -270,7 +270,7 @@ describe('NotebookUseCases', () => {
       await useCase.execute({ id: 'nb-1' });
 
       expect(notebookRepo.delete).toHaveBeenCalledWith('nb-1');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws NotebookNotFoundError when notebook not found', async () => {
@@ -299,7 +299,7 @@ describe('NotebookUseCases', () => {
       await useCase.execute({ id: 'nb-1', targetParentId: 'new-parent' });
 
       expect(notebookRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('moves notebook to root', async () => {

@@ -1,7 +1,9 @@
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type { IRemoveTopicFromNoteUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../../shared/utils';
 
 export class RemoveTopicFromNoteUseCase implements IRemoveTopicFromNoteUseCase {
@@ -12,10 +14,14 @@ export class RemoveTopicFromNoteUseCase implements IRemoveTopicFromNoteUseCase {
 
   async execute(noteId: string, topicId: string): Promise<void> {
     await this.topicRepository.removeFromNote(noteId, topicId);
-    this.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
-      noteId,
-      topicId: null,
-      removed: true,
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_CLASSIFIED,
+      timestamp: new Date(),
+      payload: {
+        noteId,
+        topicId: null,
+        removed: true,
+      },
     });
     logger.info(`[TopicUseCases] Removed topic ${topicId} from note ${noteId}`);
   }

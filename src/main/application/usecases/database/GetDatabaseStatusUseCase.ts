@@ -2,12 +2,7 @@ import type {
   IGetDatabaseStatusUseCase,
   DatabaseStatusResponse,
 } from '../../../domain/ports/in/IDatabaseUseCases';
-
-export interface DatabaseManager {
-  getStatus(): Promise<DatabaseStatusResponse>;
-  vacuum(): Promise<void>;
-  checkIntegrity(): Promise<{ ok: boolean; errors: string[] }>;
-}
+import type { DatabaseManager } from './types';
 
 export class GetDatabaseStatusUseCase implements IGetDatabaseStatusUseCase {
   constructor(private readonly getDatabaseManager: () => DatabaseManager) {}

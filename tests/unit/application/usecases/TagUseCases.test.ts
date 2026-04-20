@@ -77,7 +77,7 @@ describe('TagUseCases', () => {
 
       expect(result.tag.name).toBe('new-tag');
       expect(tagRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('creates tag with custom color', async () => {
@@ -130,7 +130,7 @@ describe('TagUseCases', () => {
 
       expect(result.tag.name).toBe('new-name');
       expect(tagRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('updates tag color', async () => {
@@ -227,7 +227,7 @@ describe('TagUseCases', () => {
       await useCase.execute({ id: 'tag-1' });
 
       expect(tagRepo.delete).toHaveBeenCalledWith('tag-1');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws TagNotFoundError when tag not found', async () => {
