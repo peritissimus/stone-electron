@@ -1,10 +1,12 @@
 import type { IGraphUseCases } from '../../../domain/ports/in/IGraphUseCases';
-import { GetBacklinksUseCase, type GraphUseCasesDeps } from './GetBacklinksUseCase';
+import type { GraphUseCasesDeps } from './types';
+import { GetBacklinksUseCase } from './GetBacklinksUseCase';
 import { GetForwardLinksUseCase } from './GetForwardLinksUseCase';
 import { GetGraphDataUseCase } from './GetGraphDataUseCase';
 import { UpdateNoteLinksUseCase } from './UpdateNoteLinksUseCase';
 
-export { GetBacklinksUseCase, type GraphUseCasesDeps } from './GetBacklinksUseCase';
+export type { GraphUseCasesDeps } from './types';
+export { GetBacklinksUseCase } from './GetBacklinksUseCase';
 export { GetForwardLinksUseCase } from './GetForwardLinksUseCase';
 export { GetGraphDataUseCase } from './GetGraphDataUseCase';
 export { UpdateNoteLinksUseCase } from './UpdateNoteLinksUseCase';

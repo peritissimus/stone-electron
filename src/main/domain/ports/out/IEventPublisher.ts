@@ -12,33 +12,72 @@ export interface DomainEvent {
   payload: unknown;
 }
 
+export const DOMAIN_EVENT_TYPES = {
+  NOTE_CREATED: 'note:created',
+  NOTE_UPDATED: 'note:updated',
+  NOTE_DELETED: 'note:deleted',
+  NOTE_MOVED: 'note:moved',
+  NOTEBOOK_CREATED: 'notebook:created',
+  NOTEBOOK_UPDATED: 'notebook:updated',
+  NOTEBOOK_DELETED: 'notebook:deleted',
+  TAG_CREATED: 'tag:created',
+  TAG_UPDATED: 'tag:updated',
+  TAG_DELETED: 'tag:deleted',
+  NOTE_TAGGED: 'note:tagged',
+  NOTE_UNTAGGED: 'note:untagged',
+  WORKSPACE_CREATED: 'workspace:created',
+  WORKSPACE_UPDATED: 'workspace:updated',
+  WORKSPACE_DELETED: 'workspace:deleted',
+  WORKSPACE_ACTIVATED: 'workspace:activated',
+  FILE_SYNCED: 'file:synced',
+  TOPIC_CREATED: 'topic:created',
+  TOPIC_UPDATED: 'topic:updated',
+  TOPIC_DELETED: 'topic:deleted',
+  NOTE_CLASSIFIED: 'note:classified',
+  EMBEDDING_PROGRESS: 'embedding:progress',
+  DB_VACUUM_PROGRESS: 'db:vacuum:progress',
+  DB_VACUUM_COMPLETE: 'db:vacuum:complete',
+} as const;
+
 export interface NoteCreatedEvent extends DomainEvent {
   type: 'note:created';
-  payload: {
-    id: string;
-    title: string;
-    workspaceId: string | null;
-    notebookId: string | null;
-    filePath: string | null;
-  };
+  payload:
+    | {
+        id: string;
+      }
+    | {
+        id: string;
+        title: string;
+        workspaceId: string | null;
+        notebookId: string | null;
+        filePath: string | null;
+      };
 }
 
 export interface NoteUpdatedEvent extends DomainEvent {
   type: 'note:updated';
-  payload: {
-    id: string;
-    title: string;
-    changes: string[];
-  };
+  payload:
+    | {
+        id: string;
+      }
+    | {
+        id: string;
+        title: string;
+        changes: string[];
+      };
 }
 
 export interface NoteDeletedEvent extends DomainEvent {
   type: 'note:deleted';
-  payload: {
-    id: string;
-    title: string;
-    permanent: boolean;
-  };
+  payload:
+    | {
+        id: string;
+      }
+    | {
+        id: string;
+        title: string;
+        permanent: boolean;
+      };
 }
 
 export interface NoteMovedEvent extends DomainEvent {
@@ -52,36 +91,50 @@ export interface NoteMovedEvent extends DomainEvent {
 
 export interface NotebookCreatedEvent extends DomainEvent {
   type: 'notebook:created';
-  payload: {
-    id: string;
-    name: string;
-    workspaceId: string | null;
-    parentId: string | null;
-  };
+  payload:
+    | {
+        notebook: unknown;
+      }
+    | {
+        id: string;
+        name: string;
+        workspaceId: string | null;
+        parentId: string | null;
+      };
 }
 
 export interface NotebookUpdatedEvent extends DomainEvent {
   type: 'notebook:updated';
-  payload: {
-    id: string;
-    name: string;
-    changes: string[];
-  };
+  payload:
+    | {
+        notebook: unknown;
+      }
+    | {
+        id: string;
+        name: string;
+        changes: string[];
+      };
 }
 
 export interface NotebookDeletedEvent extends DomainEvent {
   type: 'notebook:deleted';
   payload: {
     id: string;
-    name: string;
+    name?: string;
   };
 }
 
 export interface TagCreatedEvent extends DomainEvent {
   type: 'tag:created';
   payload: {
-    id: string;
-    name: string;
+    tag: unknown;
+  };
+}
+
+export interface TagUpdatedEvent extends DomainEvent {
+  type: 'tag:updated';
+  payload: {
+    tag: unknown;
   };
 }
 
@@ -89,7 +142,6 @@ export interface TagDeletedEvent extends DomainEvent {
   type: 'tag:deleted';
   payload: {
     id: string;
-    name: string;
   };
 }
 
@@ -111,13 +163,38 @@ export interface NoteUntaggedEvent extends DomainEvent {
   };
 }
 
-export interface WorkspaceActivatedEvent extends DomainEvent {
-  type: 'workspace:activated';
+export interface WorkspaceCreatedEvent extends DomainEvent {
+  type: 'workspace:created';
+  payload: {
+    workspace: unknown;
+  };
+}
+
+export interface WorkspaceUpdatedEvent extends DomainEvent {
+  type: 'workspace:updated';
+  payload: {
+    workspace: unknown;
+  };
+}
+
+export interface WorkspaceDeletedEvent extends DomainEvent {
+  type: 'workspace:deleted';
   payload: {
     id: string;
-    name: string;
-    folderPath: string;
   };
+}
+
+export interface WorkspaceActivatedEvent extends DomainEvent {
+  type: 'workspace:activated';
+  payload:
+    | {
+        id: string;
+        name: string;
+        folderPath: string;
+      }
+    | {
+        workspace: unknown;
+      };
 }
 
 export interface FileSyncedEvent extends DomainEvent {
@@ -131,18 +208,26 @@ export interface FileSyncedEvent extends DomainEvent {
 // Topic events
 export interface TopicCreatedEvent extends DomainEvent {
   type: 'topic:created';
-  payload: {
-    id: string;
-    name: string;
-  };
+  payload:
+    | {
+        topic: unknown;
+      }
+    | {
+        id: string;
+        name: string;
+      };
 }
 
 export interface TopicUpdatedEvent extends DomainEvent {
   type: 'topic:updated';
-  payload: {
-    id: string;
-    name: string;
-  };
+  payload:
+    | {
+        topic: unknown;
+      }
+    | {
+        id: string;
+        name: string;
+      };
 }
 
 export interface TopicDeletedEvent extends DomainEvent {
@@ -154,19 +239,37 @@ export interface TopicDeletedEvent extends DomainEvent {
 
 export interface NoteClassifiedEvent extends DomainEvent {
   type: 'note:classified';
-  payload: {
-    noteId: string;
-    topics: Array<{ topicId: string; topicName: string; confidence: number }>;
-  };
+  payload:
+    | {
+        noteId: string;
+        topics: Array<{ topicId: string; topicName: string; confidence: number }>;
+      }
+    | {
+        noteId: string;
+        topicId: string;
+        confidence: number;
+        isManual?: boolean;
+      }
+    | {
+        noteId: string;
+        topicId: string | null;
+        removed: true;
+      };
 }
 
 export interface EmbeddingProgressEvent extends DomainEvent {
   type: 'embedding:progress';
-  payload: {
-    processed: number;
-    total: number;
-    failed: number;
-  };
+  payload:
+    | {
+        processed: number;
+        total: number;
+        failed: number;
+      }
+    | {
+        current: number;
+        total: number;
+        failed: number;
+      };
 }
 
 // Database events
@@ -189,9 +292,13 @@ export type AppDomainEvent =
   | NotebookUpdatedEvent
   | NotebookDeletedEvent
   | TagCreatedEvent
+  | TagUpdatedEvent
   | TagDeletedEvent
   | NoteTaggedEvent
   | NoteUntaggedEvent
+  | WorkspaceCreatedEvent
+  | WorkspaceUpdatedEvent
+  | WorkspaceDeletedEvent
   | WorkspaceActivatedEvent
   | FileSyncedEvent
   | TopicCreatedEvent
@@ -214,11 +321,6 @@ export interface IEventPublisher {
    * Publish multiple events
    */
   publishAll(events: AppDomainEvent[]): void;
-
-  /**
-   * Emit a simple event using channel name from EVENTS constants
-   */
-  emit(channel: string, payload: unknown): void;
 
   /**
    * Subscribe to events of a specific type

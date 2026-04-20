@@ -1,10 +1,10 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NotebookEntity,
   type INotebookRepository,
   type IMoveNotebookUseCase,
   type MoveNotebookRequest,
   NotebookNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -24,6 +24,10 @@ export class MoveNotebookUseCase implements IMoveNotebookUseCase {
     notebook.moveTo(request.targetParentId);
     await this.notebookRepository.save(notebook);
 
-    this.eventPublisher?.emit(EVENTS.NOTEBOOK_UPDATED, { notebook: notebook.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTEBOOK_UPDATED,
+      timestamp: new Date(),
+      payload: { notebook: notebook.toPersistence() },
+    });
   }
 }

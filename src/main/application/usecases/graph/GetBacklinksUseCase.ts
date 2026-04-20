@@ -1,15 +1,5 @@
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { INoteLinkRepository } from '../../../domain/ports/out/INoteLinkRepository';
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IGetBacklinksUseCase, NoteLink } from '../../../domain/ports/in/IGraphUseCases';
-
-export interface GraphUseCasesDeps {
-  noteRepository: INoteRepository;
-  noteLinkRepository: INoteLinkRepository;
-  workspaceRepository: IWorkspaceRepository;
-  fileStorage: IFileStorage;
-}
+import type { GraphUseCasesDeps } from './types';
 
 /**
  * Get notes that link TO a given note

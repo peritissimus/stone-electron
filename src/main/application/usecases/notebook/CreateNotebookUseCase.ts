@@ -1,11 +1,11 @@
 import { generateId } from '@shared/utils/id';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NotebookEntity,
   type INotebookRepository,
   type ICreateNotebookUseCase,
   type CreateNotebookRequest,
   type CreateNotebookResponse,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -28,7 +28,11 @@ export class CreateNotebookUseCase implements ICreateNotebookUseCase {
 
     await this.notebookRepository.save(notebook);
 
-    this.eventPublisher?.emit(EVENTS.NOTEBOOK_CREATED, { notebook: notebook.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTEBOOK_CREATED,
+      timestamp: new Date(),
+      payload: { notebook: notebook.toPersistence() },
+    });
 
     return { notebook: notebook.toPersistence() };
   }

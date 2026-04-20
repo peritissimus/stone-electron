@@ -1,9 +1,9 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   type INotebookRepository,
   type IDeleteNotebookUseCase,
   type DeleteNotebookRequest,
   NotebookNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -21,6 +21,10 @@ export class DeleteNotebookUseCase implements IDeleteNotebookUseCase {
 
     await this.notebookRepository.delete(request.id);
 
-    this.eventPublisher?.emit(EVENTS.NOTEBOOK_DELETED, { id: request.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTEBOOK_DELETED,
+      timestamp: new Date(),
+      payload: { id: request.id },
+    });
   }
 }

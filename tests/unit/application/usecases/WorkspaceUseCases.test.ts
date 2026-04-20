@@ -140,7 +140,7 @@ describe('WorkspaceUseCases', () => {
       expect(result.workspace.folderPath).toBe('/path/to/workspace');
       expect(result.workspace.isActive).toBe(false);
       expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
   });
 
@@ -216,7 +216,7 @@ describe('WorkspaceUseCases', () => {
 
       expect(result.workspace.isActive).toBe(true);
       expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws WorkspaceNotFoundError when workspace not found', async () => {
@@ -271,7 +271,7 @@ describe('WorkspaceUseCases', () => {
       await useCase.execute({ id: 'ws-1' });
 
       expect(workspaceRepo.delete).toHaveBeenCalledWith('ws-1');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws WorkspaceNotFoundError when workspace not found', async () => {
@@ -301,7 +301,7 @@ describe('WorkspaceUseCases', () => {
 
       expect(result.workspace.name).toBe('New Name');
       expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws WorkspaceNotFoundError when workspace not found', async () => {

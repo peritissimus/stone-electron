@@ -220,7 +220,7 @@ describe('TopicUseCases', () => {
 
       expect(result.name).toBe('New Topic');
       expect(topicRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('uses custom color when provided', async () => {
@@ -242,7 +242,7 @@ describe('TopicUseCases', () => {
       const result = await useCases.updateTopic.execute('topic-1', { name: 'Updated Name' });
 
       expect(result.name).toBe('Updated Name');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws error when topic not found', async () => {
@@ -263,7 +263,7 @@ describe('TopicUseCases', () => {
       await useCases.deleteTopic.execute('topic-1');
 
       expect(topicRepo.delete).toHaveBeenCalledWith('topic-1');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
     it('throws error when topic not found', async () => {
@@ -339,7 +339,7 @@ describe('TopicUseCases', () => {
         confidence: 1.0,
         isManual: true,
       });
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
   });
 
@@ -350,7 +350,7 @@ describe('TopicUseCases', () => {
       await useCases.removeTopicFromNote.execute('note-1', 'topic-1');
 
       expect(topicRepo.removeFromNote).toHaveBeenCalledWith('note-1', 'topic-1');
-      expect(eventPublisher.emit).toHaveBeenCalled();
+      expect(eventPublisher.publish).toHaveBeenCalled();
     });
   });
 
@@ -462,12 +462,14 @@ describe('TopicUseCases', () => {
       const result = await useCases.classifyAllNotes.execute();
 
       expect(result.processed).toBe(2);
-      expect(eventPublisher.emit).toHaveBeenCalledWith(
-        EVENTS.EMBEDDING_PROGRESS,
+      expect(eventPublisher.publish).toHaveBeenCalledWith(
         expect.objectContaining({
-          current: expect.any(Number),
-          total: 2,
-          failed: expect.any(Number),
+          type: 'embedding:progress',
+          payload: expect.objectContaining({
+            current: expect.any(Number),
+            total: 2,
+            failed: expect.any(Number),
+          }),
         }),
       );
     });

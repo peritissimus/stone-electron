@@ -1,12 +1,12 @@
 import path from 'node:path';
 import { generateId } from '@shared/utils/id';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type NoteProps,
   type INoteRepository,
   type IFileStorage,
   type ICreateNoteUseCase,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -68,7 +68,11 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
 
     await this.noteRepository.save(note);
 
-    this.eventPublisher?.emit(EVENTS.NOTE_CREATED, { id: note.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
+      timestamp: new Date(),
+      payload: { id: note.id },
+    });
 
     return { note: note.toPersistence() };
   }

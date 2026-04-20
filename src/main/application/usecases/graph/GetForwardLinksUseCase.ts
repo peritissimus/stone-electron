@@ -1,5 +1,5 @@
 import type { IGetForwardLinksUseCase, NoteLink } from '../../../domain/ports/in/IGraphUseCases';
-import type { GraphUseCasesDeps } from './GetBacklinksUseCase';
+import type { GraphUseCasesDeps } from './types';
 
 /**
  * Get notes that a given note links TO

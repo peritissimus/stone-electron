@@ -1,5 +1,5 @@
 import type { IVacuumDatabaseUseCase } from '../../../domain/ports/in/IDatabaseUseCases';
-import type { DatabaseManager } from './GetDatabaseStatusUseCase';
+import type { DatabaseManager } from './types';
 import { logger } from '../../../shared/utils';
 
 export class VacuumDatabaseUseCase implements IVacuumDatabaseUseCase {

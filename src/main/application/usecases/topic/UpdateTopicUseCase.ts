@@ -1,11 +1,13 @@
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type {
   IUpdateTopicUseCase,
   TopicDTO,
 } from '../../../domain/ports/in/ITopicUseCases';
 import { TopicEntity } from '../../../domain/entities/Topic';
-import { EVENTS } from '@shared/constants/ipcChannels';
 
 export class UpdateTopicUseCase implements IUpdateTopicUseCase {
   constructor(
@@ -28,7 +30,11 @@ export class UpdateTopicUseCase implements IUpdateTopicUseCase {
     if (data.color) topic.changeColor(data.color);
 
     await this.topicRepository.save(topic);
-    this.eventPublisher?.emit(EVENTS.TOPIC_UPDATED, { topic: topic.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.TOPIC_UPDATED,
+      timestamp: new Date(),
+      payload: { topic: topic.toPersistence() },
+    });
 
     const notesForTopic = await this.topicRepository.getNotesForTopic(id);
     const noteCount = notesForTopic.length;

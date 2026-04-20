@@ -1,9 +1,11 @@
 import type { IDatabaseUseCases } from '../../../domain/ports/in/IDatabaseUseCases';
-import { GetDatabaseStatusUseCase, type DatabaseManager } from './GetDatabaseStatusUseCase';
+import type { DatabaseManager } from './types';
+import { GetDatabaseStatusUseCase } from './GetDatabaseStatusUseCase';
 import { VacuumDatabaseUseCase } from './VacuumDatabaseUseCase';
 import { CheckDatabaseIntegrityUseCase } from './CheckDatabaseIntegrityUseCase';
 
-export { GetDatabaseStatusUseCase, type DatabaseManager } from './GetDatabaseStatusUseCase';
+export type { DatabaseManager } from './types';
+export { GetDatabaseStatusUseCase } from './GetDatabaseStatusUseCase';
 export { VacuumDatabaseUseCase } from './VacuumDatabaseUseCase';
 export { CheckDatabaseIntegrityUseCase } from './CheckDatabaseIntegrityUseCase';
 

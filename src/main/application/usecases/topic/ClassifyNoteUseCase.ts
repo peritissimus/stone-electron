@@ -5,13 +5,15 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type {
   IClassifyNoteUseCase,
   ClassifyResult,
 } from '../../../domain/ports/in/ITopicUseCases';
 import { TopicClassifier, type TopicCandidate } from '../../../domain/services/TopicClassifier';
-import { EVENTS } from '@shared/constants/ipcChannels';
 
 function decodeCentroid(centroid: Uint8Array): number[] {
   const float32 = new Float32Array(centroid.buffer, centroid.byteOffset, centroid.byteLength / 4);
@@ -77,10 +79,14 @@ export class ClassifyNoteUseCase implements IClassifyNoteUseCase {
       await this.topicRepository.assignToNote(noteId, bestTopic.topicId, {
         confidence: bestTopic.confidence,
       });
-      this.eventPublisher?.emit(EVENTS.NOTE_CLASSIFIED, {
-        noteId,
-        topicId: bestTopic.topicId,
-        confidence: bestTopic.confidence,
+      this.eventPublisher?.publish({
+        type: DOMAIN_EVENT_TYPES.NOTE_CLASSIFIED,
+        timestamp: new Date(),
+        payload: {
+          noteId,
+          topicId: bestTopic.topicId,
+          confidence: bestTopic.confidence,
+        },
       });
     }
 

@@ -6,28 +6,49 @@
 
 import { EventEmitter } from 'events';
 import { BrowserWindow } from 'electron';
+import { EVENTS } from '../../../../shared/constants/ipcChannels';
 import type { IEventPublisher, AppDomainEvent, EventHandler } from '../../../domain';
 
 // Singleton event emitter
 const eventEmitter = new EventEmitter();
 eventEmitter.setMaxListeners(100);
 
+const DOMAIN_TO_IPC_EVENT: Partial<Record<AppDomainEvent['type'], string>> = {
+  'note:created': EVENTS.NOTE_CREATED,
+  'note:updated': EVENTS.NOTE_UPDATED,
+  'note:deleted': EVENTS.NOTE_DELETED,
+  'notebook:created': EVENTS.NOTEBOOK_CREATED,
+  'notebook:updated': EVENTS.NOTEBOOK_UPDATED,
+  'notebook:deleted': EVENTS.NOTEBOOK_DELETED,
+  'tag:created': EVENTS.TAG_CREATED,
+  'tag:deleted': EVENTS.TAG_DELETED,
+  'workspace:created': EVENTS.WORKSPACE_CREATED,
+  'workspace:updated': EVENTS.WORKSPACE_UPDATED,
+  'workspace:deleted': EVENTS.WORKSPACE_DELETED,
+  'workspace:activated': EVENTS.WORKSPACE_SWITCHED,
+  'topic:created': EVENTS.TOPIC_CREATED,
+  'topic:updated': EVENTS.TOPIC_UPDATED,
+  'topic:deleted': EVENTS.TOPIC_DELETED,
+  'note:classified': EVENTS.NOTE_CLASSIFIED,
+  'embedding:progress': EVENTS.EMBEDDING_PROGRESS,
+  'db:vacuum:progress': EVENTS.DB_VACUUM_PROGRESS,
+  'db:vacuum:complete': EVENTS.DB_VACUUM_COMPLETE,
+};
+
 export class EventPublisher implements IEventPublisher {
   publish(event: AppDomainEvent): void {
     eventEmitter.emit(event.type, event.payload);
-    // Broadcast to renderer
-    this.broadcastToRenderer(event.type, event.payload);
+
+    const ipcChannel = DOMAIN_TO_IPC_EVENT[event.type];
+    if (ipcChannel) {
+      this.broadcastToRenderer(ipcChannel, event.payload);
+    }
   }
 
   publishAll(events: AppDomainEvent[]): void {
     for (const event of events) {
       this.publish(event);
     }
-  }
-
-  emit(channel: string, payload: unknown): void {
-    eventEmitter.emit(channel, payload);
-    this.broadcastToRenderer(channel, payload);
   }
 
   subscribe<T extends AppDomainEvent>(eventType: T['type'], handler: EventHandler<T>): () => void {

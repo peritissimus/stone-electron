@@ -5,7 +5,6 @@
 
 import chokidar, { FSWatcher } from 'chokidar';
 import path from 'node:path';
-import { EVENTS } from '../../../../shared/constants/ipcChannels';
 import { logger } from '../../../shared';
 import type {
   WorkspaceProps,
@@ -15,6 +14,7 @@ import type {
   IEventPublisher,
   IFileWatcher,
 } from '../../../domain';
+import { DOMAIN_EVENT_TYPES } from '../../../domain/ports/out/IEventPublisher';
 
 type WatchEntry = {
   watcher: FSWatcher;
@@ -81,8 +81,8 @@ export class FileWatcher implements IFileWatcher {
         depth: undefined,
       });
 
-      const sendEvent = (event: keyof typeof EVENTS, payload: any) => {
-        this.deps.eventPublisher.emit(EVENTS[event], payload);
+      const sendEvent = (event: Parameters<IEventPublisher['publish']>[0]) => {
+        this.deps.eventPublisher.publish(event);
       };
 
       const onFsEvent = (kind: 'add' | 'change' | 'unlink', fullPath: string) => {
@@ -94,11 +94,32 @@ export class FileWatcher implements IFileWatcher {
 
           // Emit file-level event immediately
           if (kind === 'add') {
-            sendEvent('FILE_CREATED', { workspaceId: workspace.id, path: rel });
+            sendEvent({
+              type: DOMAIN_EVENT_TYPES.FILE_SYNCED,
+              timestamp: new Date(),
+              payload: {
+                filePath: rel,
+                operation: 'created',
+              },
+            });
           } else if (kind === 'change') {
-            sendEvent('FILE_CHANGED', { workspaceId: workspace.id, path: rel });
+            sendEvent({
+              type: DOMAIN_EVENT_TYPES.FILE_SYNCED,
+              timestamp: new Date(),
+              payload: {
+                filePath: rel,
+                operation: 'updated',
+              },
+            });
           } else if (kind === 'unlink') {
-            sendEvent('FILE_DELETED', { workspaceId: workspace.id, path: rel });
+            sendEvent({
+              type: DOMAIN_EVENT_TYPES.FILE_SYNCED,
+              timestamp: new Date(),
+              payload: {
+                filePath: rel,
+                operation: 'deleted',
+              },
+            });
           }
 
           // Debounce a full sync for this workspace only for structural changes
@@ -183,7 +204,11 @@ export class FileWatcher implements IFileWatcher {
         }
 
         // Notify renderer that workspace has updated; UI can refresh trees/counts
-        this.deps.eventPublisher.emit(EVENTS.WORKSPACE_UPDATED, { workspace: ws });
+        this.deps.eventPublisher.publish({
+          type: DOMAIN_EVENT_TYPES.WORKSPACE_UPDATED,
+          timestamp: new Date(),
+          payload: { workspace: ws },
+        });
         logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
       } catch (e) {
         logger.error(`[Watcher] Error syncing ${ws.name}:`, e);

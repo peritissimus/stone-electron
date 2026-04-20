@@ -1,12 +1,14 @@
 import crypto from 'node:crypto';
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
-import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import {
+  DOMAIN_EVENT_TYPES,
+  type IEventPublisher,
+} from '../../../domain/ports/out/IEventPublisher';
 import type {
   ICreateTopicUseCase,
   TopicDTO,
 } from '../../../domain/ports/in/ITopicUseCases';
 import { TopicEntity } from '../../../domain/entities/Topic';
-import { EVENTS } from '@shared/constants/ipcChannels';
 
 export class CreateTopicUseCase implements ICreateTopicUseCase {
   constructor(
@@ -28,7 +30,11 @@ export class CreateTopicUseCase implements ICreateTopicUseCase {
     });
 
     await this.topicRepository.save(topic);
-    this.eventPublisher?.emit(EVENTS.TOPIC_CREATED, { topic: topic.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.TOPIC_CREATED,
+      timestamp: new Date(),
+      payload: { topic: topic.toPersistence() },
+    });
 
     return {
       id: topic.id,

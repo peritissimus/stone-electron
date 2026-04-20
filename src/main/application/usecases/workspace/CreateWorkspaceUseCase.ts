@@ -1,11 +1,11 @@
 import { generateId } from '@shared/utils/id';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   WorkspaceEntity,
   type IWorkspaceRepository,
   type ICreateWorkspaceUseCase,
   type CreateWorkspaceRequest,
   type CreateWorkspaceResponse,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -25,7 +25,11 @@ export class CreateWorkspaceUseCase implements ICreateWorkspaceUseCase {
 
     await this.workspaceRepository.save(workspace);
 
-    this.eventPublisher?.emit(EVENTS.WORKSPACE_CREATED, { workspace: workspace.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.WORKSPACE_CREATED,
+      timestamp: new Date(),
+      payload: { workspace: workspace.toPersistence() },
+    });
 
     return { workspace: workspace.toPersistence() };
   }

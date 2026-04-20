@@ -1,11 +1,11 @@
 import path from 'node:path';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   NoteEntity,
   type INoteRepository,
   type IFileStorage,
   type IDeleteNoteUseCase,
   NoteNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -45,6 +45,10 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
       await this.noteRepository.save(note);
     }
 
-    this.eventPublisher?.emit(EVENTS.NOTE_DELETED, { id: request.id });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_DELETED,
+      timestamp: new Date(),
+      payload: { id: request.id },
+    });
   }
 }

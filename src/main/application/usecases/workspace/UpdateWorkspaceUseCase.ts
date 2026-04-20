@@ -1,4 +1,3 @@
-import { EVENTS } from '@shared/constants/ipcChannels';
 import {
   WorkspaceEntity,
   type IWorkspaceRepository,
@@ -6,6 +5,7 @@ import {
   type UpdateWorkspaceRequest,
   type UpdateWorkspaceResponse,
   WorkspaceNotFoundError,
+  DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 
@@ -29,7 +29,11 @@ export class UpdateWorkspaceUseCase implements IUpdateWorkspaceUseCase {
 
     await this.workspaceRepository.save(workspace);
 
-    this.eventPublisher?.emit(EVENTS.WORKSPACE_UPDATED, { workspace: workspace.toPersistence() });
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.WORKSPACE_UPDATED,
+      timestamp: new Date(),
+      payload: { workspace: workspace.toPersistence() },
+    });
 
     return { workspace: workspace.toPersistence() };
   }
