@@ -2,11 +2,11 @@
  * Markdown Processor Adapter
  *
  * Implements IMarkdownProcessor port with direct external library usage.
- * Uses turndown for HTML→Markdown and marked for Markdown→HTML conversion.
+ * Uses turndown for HTML→Markdown and markdown-it for Markdown→HTML conversion.
  */
 
 import TurndownService from 'turndown';
-import { marked } from 'marked';
+import MarkdownIt from 'markdown-it';
 import type { IMarkdownProcessor, MarkdownMetadata, ParsedMarkdown } from '../../../domain';
 import { logger } from '../../../shared/utils';
 
@@ -62,6 +62,7 @@ class MarkdownCache {
 
 export class MarkdownProcessor implements IMarkdownProcessor {
   private readonly turndownService: TurndownService;
+  private readonly md: MarkdownIt;
   private readonly parseCache = new MarkdownCache(100);
 
   constructor() {
@@ -73,6 +74,10 @@ export class MarkdownProcessor implements IMarkdownProcessor {
       emDelimiter: '*',
       strongDelimiter: '**',
     });
+
+    // html: true lets preprocessMarkdown inject raw HTML (note-link spans,
+    // task-list <ul>/<li>) that the export pipeline expects to pass through.
+    this.md = new MarkdownIt({ html: true, linkify: true, breaks: true });
 
     // Add custom rules for better conversion
     this.addCustomRules();
@@ -114,17 +119,8 @@ export class MarkdownProcessor implements IMarkdownProcessor {
     }
 
     try {
-      // Pre-process markdown to handle special syntax (tasks, note links)
       const processedMarkdown = this.preprocessMarkdown(markdown);
-
-      // Configure marked
-      marked.setOptions({
-        gfm: true, // GitHub Flavored Markdown
-        breaks: true, // Convert \n to <br>
-      });
-
-      const html = await marked.parse(processedMarkdown);
-      return html;
+      return this.md.render(processedMarkdown);
     } catch (error) {
       logger.withContext('out:MarkdownProcessor.markdownToHtml', () =>
         logger.error('Error converting Markdown to HTML:', error),
@@ -276,7 +272,7 @@ export class MarkdownProcessor implements IMarkdownProcessor {
   // ===========================================================================
 
   /**
-   * Pre-process markdown to handle special syntax before marked.js parsing
+   * Pre-process markdown to handle special syntax before markdown-it parsing.
    * - Indented blocks (tabs → data-indent)
    * - Logseq-style task items
    * - [[note name]] wiki-style links
@@ -338,8 +334,8 @@ export class MarkdownProcessor implements IMarkdownProcessor {
   }
 
   /**
-   * Pre-process markdown to convert Logseq-style task items to custom HTML
-   * This runs before marked.js parsing to inject task list structure
+   * Pre-process markdown to convert Logseq-style task items to custom HTML.
+   * This runs before markdown-it parsing to inject task list structure.
    * Converts both:
    *   - Standalone task items (e.g. "DOING Task text") → task item with checkbox
    *   - List task items (e.g. "- DONE Task text") → task item with checkbox (in list)

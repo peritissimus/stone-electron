@@ -13,14 +13,12 @@ import type {
   NoteFindOptions,
   NoteSearchOptions,
   IFileStorage,
-  IMarkdownProcessor,
 } from '../../../domain';
 import { handleOperation } from '../../../shared/utils';
 
 export interface NoteRepositoryDeps {
   db: Database;
   fileStorage: IFileStorage;
-  markdownProcessor: IMarkdownProcessor;
   getWorkspacePath: () => string | null;
 }
 
@@ -433,8 +431,7 @@ export class NoteRepository implements INoteRepository {
         if (!markdown) {
           return null;
         }
-        const html = await this.deps.markdownProcessor.markdownToHtml(markdown);
-        return html;
+        return markdown;
       },
       { noteId: id },
     );
