@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Stone logo" width="120" height="120" />
+</p>
+
 <h1 align="center">Stone</h1>
 
 <p align="center">
