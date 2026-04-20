@@ -61,12 +61,7 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       fileStorage,
       eventPublisher,
     ),
-    getNote: new GetNoteUseCase(
-      noteRepository,
-      workspaceRepository,
-      fileStorage,
-      markdownProcessor,
-    ),
+    getNote: new GetNoteUseCase(noteRepository, workspaceRepository, fileStorage),
     listNotes: new ListNotesUseCase(noteRepository, workspaceRepository),
     deleteNote: new DeleteNoteUseCase(
       noteRepository,

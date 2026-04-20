@@ -131,15 +131,13 @@ describe('NoteUseCases', () => {
     let noteRepo: INoteRepository;
     let workspaceRepo: IWorkspaceRepository;
     let fileStorage: IFileStorage;
-    let markdownProcessor: IMarkdownProcessor;
     let useCase: GetNoteUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      markdownProcessor = createMockMarkdownProcessor();
-      useCase = new GetNoteUseCase(noteRepo, workspaceRepo, fileStorage, markdownProcessor);
+      useCase = new GetNoteUseCase(noteRepo, workspaceRepo, fileStorage);
     });
 
     it('returns note without content by default', async () => {
@@ -153,7 +151,7 @@ describe('NoteUseCases', () => {
       expect(noteRepo.findById).toHaveBeenCalledWith('note-1');
     });
 
-    it('returns note with content when requested', async () => {
+    it('returns note with raw markdown content when requested', async () => {
       const noteProps = createNoteProps();
       vi.mocked(noteRepo.findById).mockResolvedValue(noteProps);
       vi.mocked(workspaceRepo.findActive).mockResolvedValue({
@@ -166,12 +164,11 @@ describe('NoteUseCases', () => {
       } as any);
       vi.mocked(fileStorage.exists).mockResolvedValue(true);
       vi.mocked(fileStorage.read).mockResolvedValue('# Test');
-      vi.mocked(markdownProcessor.markdownToHtml).mockResolvedValue('<h1>Test</h1>');
 
       const result = await useCase.execute({ id: 'note-1', includeContent: true });
 
       expect(result.note).toEqual(noteProps);
-      expect(result.content).toBe('<h1>Test</h1>');
+      expect(result.content).toBe('# Test');
     });
 
     it('throws NoteNotFoundError when note does not exist', async () => {

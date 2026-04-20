@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid';
 import { NoteRepository } from '../../../../../src/main/adapters/out/persistence/NoteRepository';
 import { workspaces, notebooks, notes } from '../../../../../src/main/shared';
 import { NoteEntity } from '../../../../../src/main/domain/entities/Note';
-import type { IFileStorage, IMarkdownProcessor } from '../../../../../src/main/domain';
+import type { IFileStorage } from '../../../../../src/main/domain';
 
 function createNote(props: { title: string; workspaceId: string; filePath: string; notebookId?: string }) {
   return NoteEntity.create({
@@ -116,26 +116,11 @@ function createMockFileStorage(): IFileStorage {
   };
 }
 
-function createMockMarkdownProcessor(): IMarkdownProcessor {
-  return {
-    markdownToHtml: vi.fn().mockResolvedValue('<h1>Test Content</h1>'),
-    htmlToMarkdown: vi.fn().mockReturnValue('# Test Content'),
-    parseFrontmatter: vi.fn().mockReturnValue({ content: '# Test', metadata: {} }),
-    updateFrontmatter: vi.fn().mockReturnValue('---\n---\n# Test'),
-    extractTitle: vi.fn().mockReturnValue('Test'),
-    extractPlainText: vi.fn().mockReturnValue('Test Content'),
-    extractLinks: vi.fn().mockReturnValue([]),
-    extractWikiLinks: vi.fn().mockReturnValue([]),
-    htmlToPlainText: vi.fn().mockReturnValue('Test Content'),
-  };
-}
-
 describe('NoteRepository Integration', () => {
   let db: ReturnType<typeof drizzle>;
   let client: Client;
   let repository: NoteRepository;
   let fileStorage: IFileStorage;
-  let markdownProcessor: IMarkdownProcessor;
 
   const testWorkspaceId = 'ws-test-1';
   const testNotebookId = 'nb-test-1';
@@ -146,12 +131,10 @@ describe('NoteRepository Integration', () => {
     client = testDb.client;
 
     fileStorage = createMockFileStorage();
-    markdownProcessor = createMockMarkdownProcessor();
 
     repository = new NoteRepository({
       db: db as any,
       fileStorage,
-      markdownProcessor,
       getWorkspacePath: () => '/test/workspace',
     });
 
@@ -712,7 +695,7 @@ describe('NoteRepository Integration', () => {
   });
 
   describe('getContentById', () => {
-    it('returns HTML content for note', async () => {
+    it('returns raw markdown content for note', async () => {
       const note = createNote({
         title: 'With Content',
         workspaceId: testWorkspaceId,
@@ -722,9 +705,8 @@ describe('NoteRepository Integration', () => {
 
       const content = await repository.getContentById(note.id);
 
-      expect(content).toBe('<h1>Test Content</h1>');
+      expect(content).toBe('# Test Content');
       expect(fileStorage.read).toHaveBeenCalledWith('/test/workspace/content.md');
-      expect(markdownProcessor.markdownToHtml).toHaveBeenCalledWith('# Test Content');
     });
 
     it('returns null when note not found', async () => {
@@ -904,7 +886,6 @@ describe('NoteRepository Integration', () => {
       const localRepo = new NoteRepository({
         db: db as any,
         fileStorage,
-        markdownProcessor,
         getWorkspacePath: () => null,
       });
       const note = createNote({
@@ -1000,7 +981,6 @@ describe('NoteRepository Integration', () => {
           }),
         } as any,
         fileStorage,
-        markdownProcessor,
         getWorkspacePath: () => '/stub',
       });
 

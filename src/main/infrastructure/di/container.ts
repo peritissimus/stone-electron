@@ -275,7 +275,6 @@ export function createContainer(deps: ContainerDeps): Container {
   const noteRepository: INoteRepository = new NoteRepository({
     db,
     fileStorage,
-    markdownProcessor,
     getWorkspacePath,
   });
 

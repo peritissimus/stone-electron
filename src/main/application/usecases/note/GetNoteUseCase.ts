@@ -3,7 +3,6 @@ import {
   type NoteProps,
   type INoteRepository,
   type IFileStorage,
-  type IMarkdownProcessor,
   type IGetNoteUseCase,
   NoteNotFoundError,
 } from '../../../domain';
@@ -14,7 +13,6 @@ export class GetNoteUseCase implements IGetNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
-    private readonly markdownProcessor: IMarkdownProcessor,
   ) {}
 
   async execute(request: {
@@ -38,7 +36,7 @@ export class GetNoteUseCase implements IGetNoteUseCase {
         if (exists) {
           const markdown = await this.fileStorage.read(absolutePath);
           if (markdown) {
-            content = await this.markdownProcessor.markdownToHtml(markdown);
+            content = markdown;
           }
         }
       }
