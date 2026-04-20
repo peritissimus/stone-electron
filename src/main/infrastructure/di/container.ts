@@ -6,7 +6,7 @@
  */
 
 // Shared Layer
-import type { Database } from '../../shared';
+import type { Database } from '@main/shared';
 
 // Domain Layer - Ports
 import type {
@@ -46,7 +46,7 @@ import type {
   IDatabaseUseCases,
   IGitUseCases,
   ISettingsUseCases,
-} from '../../domain';
+} from '@domain';
 
 // Application Layer - Use Cases
 import {
@@ -66,7 +66,7 @@ import {
   createExportUseCases,
   createSystemUseCases,
   createSettingsUseCases,
-} from '../../application';
+} from '@application';
 
 // Adapters Layer
 import {
@@ -124,7 +124,7 @@ import {
   getPerformanceMonitor,
   // Outbound (Secondary) - Events
   EventPublisher,
-} from '../../adapters';
+} from '@adapters';
 
 // ============================================================================
 // Container Types
