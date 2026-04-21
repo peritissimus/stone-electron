@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.4-blue.svg" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version" />
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg" alt="Platform" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
 </p>
@@ -118,7 +118,7 @@ Download the latest release for your platform:
 
 | Platform              | Download                                                                       |
 | --------------------- | ------------------------------------------------------------------------------ |
-| macOS (Apple Silicon) | [Stone-0.2.4-arm64.dmg](https://github.com/peritissimus/stone/releases/latest) |
+| macOS (Apple Silicon) | [Latest release](https://github.com/peritissimus/stone/releases/latest)        |
 | macOS (Intel)         | Coming soon                                                                    |
 | Windows               | Coming soon                                                                    |
 | Linux                 | Coming soon                                                                    |
@@ -131,16 +131,16 @@ git clone https://github.com/peritissimus/stone.git
 cd stone
 
 # Install dependencies
-pnpm install
+npm install
 
 # Run in development mode
-pnpm dev:electron
+npm run dev
 
 # Build for production
-pnpm build && pnpm package
+npm run build && npm run package
 ```
 
-Requires Node.js 20+ and pnpm.
+Requires Node.js 20+ and npm.
 
 ---
 
@@ -163,19 +163,19 @@ Requires Node.js 20+ and pnpm.
 
 ### Prerequisites
 
-- Node.js 20.16.0 (use `nvm use`)
-- pnpm 8+
+- Node.js 20+
+- npm
 
 ### Scripts
 
 ```bash
-pnpm dev:electron      # Start development mode
-pnpm build             # Build all (main, preload, renderer)
-pnpm package           # Package for current platform
-pnpm test              # Run unit tests
-pnpm test:e2e          # Run Cypress end-to-end tests
-pnpm typecheck         # TypeScript type checking
-pnpm lint              # ESLint
+npm run dev            # Start development mode
+npm run build          # Build all (main, worker, preload, renderer)
+npm run package        # Package for current platform
+npm test               # Run unit tests
+npm run test:e2e       # Run Cypress end-to-end tests
+npm run typecheck      # TypeScript type checking
+npm run lint           # ESLint
 ```
 
 ### Project Structure
@@ -183,18 +183,23 @@ pnpm lint              # ESLint
 ```
 stone/
 ├── src/
-│   ├── main/              # Electron main process
-│   │   ├── database/      # SQLite for metadata
-│   │   ├── ipc/           # IPC handlers
-│   │   └── repositories/  # Data access layer
-│   ├── renderer/          # React UI
-│   │   ├── components/    # React components
-│   │   ├── stores/        # Zustand state
-│   │   └── hooks/         # Custom hooks
-│   ├── preload.ts         # Electron preload
-│   └── shared/            # Shared types
-├── migrations/            # SQL migrations
-└── dist/                  # Build output
+│   ├── main/                    # Electron main process
+│   │   ├── domain/              # Entities, ports, domain services
+│   │   ├── application/         # Use cases and DTOs
+│   │   ├── adapters/            # IPC, persistence, external integrations
+│   │   ├── infrastructure/      # DI, database, workers, bootstrap
+│   │   └── shared/              # Main-process shared utilities
+│   ├── renderer/                # React UI
+│   │   ├── api/                 # IPC client layer
+│   │   ├── stores/              # Zustand state
+│   │   ├── hooks/               # React hooks
+│   │   ├── components/          # UI components
+│   │   └── pages/               # Route-level pages
+│   ├── shared/                  # Cross-process types/constants
+│   └── preload.ts               # Electron preload bridge
+├── tests/                       # Unit and integration tests
+├── build/                       # Packaging resources and icons
+└── dist/                        # Build and package output
 ```
 
 ### Architecture
