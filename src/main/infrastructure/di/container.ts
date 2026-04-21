@@ -20,6 +20,7 @@ import type {
   IVersionRepository,
   INoteLinkRepository,
   ISettingsRepository,
+  IAppConfigRepository,
   // Outbound Ports (Services)
   IFileStorage,
   IMarkdownProcessor,
@@ -100,7 +101,6 @@ import {
   unregisterSettingsHandlers,
   registerPerformanceHandlers,
   unregisterPerformanceHandlers,
-  setMainWindow,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   NotebookRepository,
@@ -111,6 +111,7 @@ import {
   VersionRepository,
   NoteLinkRepository,
   SettingsRepository,
+  AppConfigRepository,
   // Outbound (Secondary) - Storage
   FileSystemStorage,
   // Outbound (Secondary) - Services
@@ -157,6 +158,7 @@ export interface Container {
   versionRepository: IVersionRepository;
   noteLinkRepository: INoteLinkRepository;
   settingsRepository: ISettingsRepository;
+  appConfigRepository: IAppConfigRepository;
 
   // Ports - Services
   fileStorage: IFileStorage;
@@ -271,6 +273,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const versionRepository: IVersionRepository = new VersionRepository({ db });
   const noteLinkRepository: INoteLinkRepository = new NoteLinkRepository({ db });
   const settingsRepository: ISettingsRepository = new SettingsRepository({ db });
+  const appConfigRepository: IAppConfigRepository = new AppConfigRepository();
 
   const noteRepository: INoteRepository = new NoteRepository({
     db,
@@ -321,6 +324,7 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
     systemBridge,
     markdownProcessor,
+    appConfigRepository,
     eventPublisher,
   });
 
@@ -413,6 +417,8 @@ export function createContainer(deps: ContainerDeps): Container {
   // Settings use cases
   const settingsUseCases = createSettingsUseCases({
     settingsRepository,
+    appConfigRepository,
+    eventPublisher,
   });
 
   // ---------------------------------------------------------------------------
@@ -438,6 +444,7 @@ export function createContainer(deps: ContainerDeps): Container {
     versionRepository,
     noteLinkRepository,
     settingsRepository,
+    appConfigRepository,
 
     // Ports - Services
     fileStorage,
@@ -564,6 +571,13 @@ export function registerIPCHandlers(): void {
     setAccentColor: container.settingsUseCases.setAccentColor,
     updateFontSettings: container.settingsUseCases.updateFontSettings,
     resetFontSettings: container.settingsUseCases.resetFontSettings,
+    getEditorSettings: container.settingsUseCases.getEditor,
+    updateEditorSettings: container.settingsUseCases.updateEditor,
+    resetEditorSettings: container.settingsUseCases.resetEditor,
+    getShortcuts: container.settingsUseCases.getShortcuts,
+    setShortcut: container.settingsUseCases.setShortcut,
+    resetShortcut: container.settingsUseCases.resetShortcut,
+    resetAllShortcuts: container.settingsUseCases.resetAllShortcuts,
   });
 
   // Performance monitoring handlers

@@ -128,6 +128,15 @@ export const SETTINGS_CHANNELS = {
   SET_ACCENT_COLOR: 'settings:setAccentColor',
   UPDATE_FONT_SETTINGS: 'settings:updateFontSettings',
   RESET_FONT_SETTINGS: 'settings:resetFontSettings',
+  // Editor settings
+  GET_EDITOR: 'settings:getEditor',
+  UPDATE_EDITOR: 'settings:updateEditor',
+  RESET_EDITOR: 'settings:resetEditor',
+  // Shortcuts
+  GET_SHORTCUTS: 'settings:getShortcuts',
+  SET_SHORTCUT: 'settings:setShortcut',
+  RESET_SHORTCUT: 'settings:resetShortcut',
+  RESET_ALL_SHORTCUTS: 'settings:resetAllShortcuts',
 } as const;
 
 // System Operations

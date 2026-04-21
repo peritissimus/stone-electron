@@ -37,6 +37,7 @@ export const DOMAIN_EVENT_TYPES = {
   EMBEDDING_PROGRESS: 'embedding:progress',
   DB_VACUUM_PROGRESS: 'db:vacuum:progress',
   DB_VACUUM_COMPLETE: 'db:vacuum:complete',
+  SETTINGS_CHANGED: 'settings:changed',
 } as const;
 
 export interface NoteCreatedEvent extends DomainEvent {
@@ -283,6 +284,14 @@ export interface DbVacuumCompleteEvent extends DomainEvent {
   payload: Record<string, never>;
 }
 
+// Settings events
+export type SettingsScope = 'appearance' | 'editor' | 'shortcuts' | 'workspace';
+
+export interface SettingsChangedEvent extends DomainEvent {
+  type: 'settings:changed';
+  payload: { scope: SettingsScope };
+}
+
 export type AppDomainEvent =
   | NoteCreatedEvent
   | NoteUpdatedEvent
@@ -307,7 +316,8 @@ export type AppDomainEvent =
   | NoteClassifiedEvent
   | EmbeddingProgressEvent
   | DbVacuumProgressEvent
-  | DbVacuumCompleteEvent;
+  | DbVacuumCompleteEvent
+  | SettingsChangedEvent;
 
 export type EventHandler<T extends DomainEvent = DomainEvent> = (event: T) => void | Promise<void>;
 

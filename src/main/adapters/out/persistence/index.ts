@@ -13,3 +13,4 @@ export { AttachmentRepository } from './AttachmentRepository';
 export { VersionRepository } from './VersionRepository';
 export { NoteLinkRepository } from './NoteLinkRepository';
 export { SettingsRepository, type SettingsRepositoryDeps } from './SettingsRepository';
+export { AppConfigRepository, type AppConfigRepositoryDeps } from './AppConfigRepository';

@@ -33,6 +33,7 @@ const DOMAIN_TO_IPC_EVENT: Partial<Record<AppDomainEvent['type'], string>> = {
   'embedding:progress': EVENTS.EMBEDDING_PROGRESS,
   'db:vacuum:progress': EVENTS.DB_VACUUM_PROGRESS,
   'db:vacuum:complete': EVENTS.DB_VACUUM_COMPLETE,
+  'settings:changed': EVENTS.SETTINGS_CHANGED,
 };
 
 export class EventPublisher implements IEventPublisher {
@@ -90,6 +91,7 @@ export class EventPublisher implements IEventPublisher {
       'embedding:progress',
       'db:vacuum:progress',
       'db:vacuum:complete',
+      'settings:changed',
     ];
 
     const unsubscribers: Array<() => void> = [];

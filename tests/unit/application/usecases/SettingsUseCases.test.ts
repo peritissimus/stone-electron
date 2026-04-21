@@ -6,8 +6,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSettingsUseCases } from '../../../../src/main/application/usecases/settings';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { ISettingsRepository } from '../../../../src/main/domain/ports/out/ISettingsRepository';
 import type { ISettingsUseCases } from '../../../../src/main/domain/ports/in/ISettingsUseCases';
+import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import { ShortcutConflictError } from '../../../../src/main/domain/errors';
+import { DEFAULT_APP_CONFIG, type AppConfig } from '../../../../src/shared/types/settings';
 
 // Mock factories
 function createMockSettingsRepository(): ISettingsRepository {
@@ -19,13 +23,44 @@ function createMockSettingsRepository(): ISettingsRepository {
   } as unknown as ISettingsRepository;
 }
 
+/**
+ * Stateful AppConfig mock — preserves mutations between calls so that
+ * sequences like "set → get → set" reflect real repository behavior.
+ */
+function createMockAppConfigRepository(initial: AppConfig = DEFAULT_APP_CONFIG): IAppConfigRepository {
+  let state: AppConfig = initial;
+  return {
+    get: vi.fn(async () => state),
+    set: vi.fn(async (config: AppConfig) => {
+      state = config;
+    }),
+    update: vi.fn(async (updater: (config: AppConfig) => AppConfig) => {
+      state = updater(state);
+      return state;
+    }),
+  } as unknown as IAppConfigRepository;
+}
+
+function createMockEventPublisher(): IEventPublisher {
+  return {
+    publish: vi.fn(),
+    publishAll: vi.fn(),
+    subscribe: vi.fn(() => () => undefined),
+    subscribeAll: vi.fn(() => () => undefined),
+  } as unknown as IEventPublisher;
+}
+
 describe('SettingsUseCases', () => {
   let settingsRepository: ISettingsRepository;
+  let appConfigRepository: IAppConfigRepository;
+  let eventPublisher: IEventPublisher;
   let useCases: ISettingsUseCases;
 
   beforeEach(() => {
     settingsRepository = createMockSettingsRepository();
-    useCases = createSettingsUseCases({ settingsRepository });
+    appConfigRepository = createMockAppConfigRepository();
+    eventPublisher = createMockEventPublisher();
+    useCases = createSettingsUseCases({ settingsRepository, appConfigRepository, eventPublisher });
   });
 
   describe('get', () => {
@@ -111,6 +146,110 @@ describe('SettingsUseCases', () => {
       const result = await useCases.getAll.execute();
 
       expect(result.settings).toHaveLength(0);
+    });
+  });
+
+  describe('editor', () => {
+    it('returns current editor settings', async () => {
+      const result = await useCases.getEditor.execute();
+      expect(result).toEqual(DEFAULT_APP_CONFIG.editor);
+    });
+
+    it('updates a single field via deep merge', async () => {
+      const result = await useCases.updateEditor.execute({
+        editor: { behavior: { placeholder: 'Custom prompt', defaultMode: 'rich' } },
+      });
+      expect(result.behavior.placeholder).toBe('Custom prompt');
+      // sibling slices preserved
+      expect(result.indent).toEqual(DEFAULT_APP_CONFIG.editor.indent);
+    });
+
+    it('publishes settings:changed with editor scope on update', async () => {
+      await useCases.updateEditor.execute({
+        editor: { behavior: { placeholder: 'X', defaultMode: 'rich' } },
+      });
+      expect(eventPublisher.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'settings:changed', payload: { scope: 'editor' } }),
+      );
+    });
+
+    it('reset restores defaults and emits event', async () => {
+      await useCases.updateEditor.execute({
+        editor: { behavior: { placeholder: 'X', defaultMode: 'raw' } },
+      });
+      const reset = await useCases.resetEditor.execute();
+      expect(reset).toEqual(DEFAULT_APP_CONFIG.editor);
+      expect(eventPublisher.publish).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: 'settings:changed', payload: { scope: 'editor' } }),
+      );
+    });
+  });
+
+  describe('shortcuts', () => {
+    it('returns empty overrides when none set', async () => {
+      const result = await useCases.getShortcuts.execute();
+      expect(result).toEqual(DEFAULT_APP_CONFIG.shortcuts);
+    });
+
+    it('sets a valid app shortcut and emits event', async () => {
+      const result = await useCases.setShortcut.execute({
+        scope: 'app',
+        action: 'save',
+        binding: 'Mod-Alt-s',
+      });
+      expect(result.app.save).toBe('Mod-Alt-s');
+      expect(eventPublisher.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'settings:changed', payload: { scope: 'shortcuts' } }),
+      );
+    });
+
+    it('rejects unknown action', async () => {
+      await expect(
+        useCases.setShortcut.execute({ scope: 'app', action: 'nope', binding: 'Mod-q' }),
+      ).rejects.toBeInstanceOf(ShortcutConflictError);
+    });
+
+    it('rejects invalid chord syntax', async () => {
+      await expect(
+        useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'NotAChord' }),
+      ).rejects.toBeInstanceOf(ShortcutConflictError);
+    });
+
+    it('rejects reserved StarterKit chord', async () => {
+      await expect(
+        useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'Mod-b' }),
+      ).rejects.toMatchObject({ reserved: true });
+    });
+
+    it('rejects chord that conflicts with another action', async () => {
+      // commandCenter defaults to Mod-k; binding save to Mod-k would conflict.
+      await expect(
+        useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'Mod-k' }),
+      ).rejects.toBeInstanceOf(ShortcutConflictError);
+    });
+
+    it('does NOT publish on rejection', async () => {
+      await expect(
+        useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'Mod-b' }),
+      ).rejects.toThrow();
+      expect(eventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it('resetShortcut removes a single override', async () => {
+      await useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'Mod-Alt-s' });
+      const after = await useCases.resetShortcut.execute({ scope: 'app', action: 'save' });
+      expect(after.app.save).toBeUndefined();
+    });
+
+    it('resetAllShortcuts clears all overrides', async () => {
+      await useCases.setShortcut.execute({ scope: 'app', action: 'save', binding: 'Mod-Alt-s' });
+      await useCases.setShortcut.execute({
+        scope: 'editor',
+        action: 'indent',
+        binding: 'Mod-]',
+      });
+      const after = await useCases.resetAllShortcuts.execute();
+      expect(after).toEqual(DEFAULT_APP_CONFIG.shortcuts);
     });
   });
 });

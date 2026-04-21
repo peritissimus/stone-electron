@@ -1,103 +1,96 @@
-import type { ISettingsRepository } from '../../../domain/ports/out/ISettingsRepository';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import {
-  DEFAULT_APPEARANCE_SETTINGS,
-  DEFAULT_FONT_SETTINGS,
+  DEFAULT_APP_CONFIG,
   type AppearanceSettings,
   type AppAccentColor,
   type AppTheme,
   type FontSettings,
 } from '@shared/types/settings';
 
-const APPEARANCE_KEYS = {
-  theme: 'appearance.theme',
-  accentColor: 'appearance.accentColor',
-  fontSettings: 'appearance.fontSettings',
-} as const;
-
-function isTheme(value: string | null | undefined): value is AppTheme {
-  return value === 'light' || value === 'dark' || value === 'system';
+function publishAppearanceChanged(eventPublisher?: IEventPublisher): void {
+  eventPublisher?.publish({
+    type: 'settings:changed',
+    timestamp: new Date(),
+    payload: { scope: 'appearance' },
+  });
 }
 
-function isAccentColor(value: string | null | undefined): value is AppAccentColor {
-  return (
-    value === 'blue' ||
-    value === 'purple' ||
-    value === 'pink' ||
-    value === 'red' ||
-    value === 'orange' ||
-    value === 'green' ||
-    value === 'teal'
-  );
-}
-
-async function getAppearanceSettings(repository: ISettingsRepository): Promise<AppearanceSettings> {
-  const [themeSetting, accentColorSetting, fontSettingsSetting] = await Promise.all([
-    repository.get(APPEARANCE_KEYS.theme),
-    repository.get(APPEARANCE_KEYS.accentColor),
-    repository.get(APPEARANCE_KEYS.fontSettings),
-  ]);
-
-  let fontSettings = DEFAULT_FONT_SETTINGS;
-
-  if (fontSettingsSetting?.value) {
-    try {
-      fontSettings = { ...DEFAULT_FONT_SETTINGS, ...JSON.parse(fontSettingsSetting.value) };
-    } catch {
-      fontSettings = DEFAULT_FONT_SETTINGS;
-    }
-  }
-
-  return {
-    theme: isTheme(themeSetting?.value) ? themeSetting.value : DEFAULT_APPEARANCE_SETTINGS.theme,
-    accentColor: isAccentColor(accentColorSetting?.value)
-      ? accentColorSetting.value
-      : DEFAULT_APPEARANCE_SETTINGS.accentColor,
-    fontSettings,
-  };
+async function getAppearanceSettings(repository: IAppConfigRepository): Promise<AppearanceSettings> {
+  const config = await repository.get();
+  return config.appearance;
 }
 
 export class GetAppearanceSettingsUseCase {
-  constructor(private readonly settingsRepository: ISettingsRepository) {}
+  constructor(private readonly appConfigRepository: IAppConfigRepository) {}
 
   async execute(): Promise<AppearanceSettings> {
-    return getAppearanceSettings(this.settingsRepository);
+    return getAppearanceSettings(this.appConfigRepository);
   }
 }
 
 export class SetThemeUseCase {
-  constructor(private readonly settingsRepository: ISettingsRepository) {}
+  constructor(
+    private readonly appConfigRepository: IAppConfigRepository,
+    private readonly eventPublisher?: IEventPublisher,
+  ) {}
 
   async execute(request: { theme: AppTheme }): Promise<void> {
-    await this.settingsRepository.set(APPEARANCE_KEYS.theme, request.theme);
+    await this.appConfigRepository.update((config) => ({
+      ...config,
+      appearance: { ...config.appearance, theme: request.theme },
+    }));
+    publishAppearanceChanged(this.eventPublisher);
   }
 }
 
 export class SetAccentColorUseCase {
-  constructor(private readonly settingsRepository: ISettingsRepository) {}
+  constructor(
+    private readonly appConfigRepository: IAppConfigRepository,
+    private readonly eventPublisher?: IEventPublisher,
+  ) {}
 
   async execute(request: { accentColor: AppAccentColor }): Promise<void> {
-    await this.settingsRepository.set(APPEARANCE_KEYS.accentColor, request.accentColor);
+    await this.appConfigRepository.update((config) => ({
+      ...config,
+      appearance: { ...config.appearance, accentColor: request.accentColor },
+    }));
+    publishAppearanceChanged(this.eventPublisher);
   }
 }
 
 export class UpdateFontSettingsUseCase {
-  constructor(private readonly settingsRepository: ISettingsRepository) {}
+  constructor(
+    private readonly appConfigRepository: IAppConfigRepository,
+    private readonly eventPublisher?: IEventPublisher,
+  ) {}
 
   async execute(request: { fontSettings: Partial<FontSettings> }): Promise<void> {
-    const appearance = await getAppearanceSettings(this.settingsRepository);
-    const nextFontSettings = { ...appearance.fontSettings, ...request.fontSettings };
-
-    await this.settingsRepository.set(APPEARANCE_KEYS.fontSettings, JSON.stringify(nextFontSettings));
+    await this.appConfigRepository.update((config) => ({
+      ...config,
+      appearance: {
+        ...config.appearance,
+        fontSettings: { ...config.appearance.fontSettings, ...request.fontSettings },
+      },
+    }));
+    publishAppearanceChanged(this.eventPublisher);
   }
 }
 
 export class ResetFontSettingsUseCase {
-  constructor(private readonly settingsRepository: ISettingsRepository) {}
+  constructor(
+    private readonly appConfigRepository: IAppConfigRepository,
+    private readonly eventPublisher?: IEventPublisher,
+  ) {}
 
   async execute(): Promise<void> {
-    await this.settingsRepository.set(
-      APPEARANCE_KEYS.fontSettings,
-      JSON.stringify(DEFAULT_FONT_SETTINGS),
-    );
+    await this.appConfigRepository.update((config) => ({
+      ...config,
+      appearance: {
+        ...config.appearance,
+        fontSettings: DEFAULT_APP_CONFIG.appearance.fontSettings,
+      },
+    }));
+    publishAppearanceChanged(this.eventPublisher);
   }
 }

@@ -1,4 +1,5 @@
-import type { ISettingsRepository } from '../../../domain/ports/out/ISettingsRepository';
+import type { IAppConfigRepository, ISettingsRepository } from '../../../domain/ports/out';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { ISettingsUseCases } from '../../../domain/ports/in/ISettingsUseCases';
 import { GetSettingUseCase } from './GetSettingUseCase';
 import { SetSettingUseCase } from './SetSettingUseCase';
@@ -10,6 +11,17 @@ import {
   UpdateFontSettingsUseCase,
   ResetFontSettingsUseCase,
 } from './appearance';
+import {
+  GetEditorSettingsUseCase,
+  UpdateEditorSettingsUseCase,
+  ResetEditorSettingsUseCase,
+} from './editor';
+import {
+  GetShortcutsUseCase,
+  SetShortcutUseCase,
+  ResetShortcutUseCase,
+  ResetAllShortcutsUseCase,
+} from './shortcuts';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
@@ -21,22 +33,42 @@ export {
   UpdateFontSettingsUseCase,
   ResetFontSettingsUseCase,
 } from './appearance';
+export {
+  GetEditorSettingsUseCase,
+  UpdateEditorSettingsUseCase,
+  ResetEditorSettingsUseCase,
+} from './editor';
+export {
+  GetShortcutsUseCase,
+  SetShortcutUseCase,
+  ResetShortcutUseCase,
+  ResetAllShortcutsUseCase,
+} from './shortcuts';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;
+  appConfigRepository: IAppConfigRepository;
+  eventPublisher?: IEventPublisher;
 }
 
 export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUseCases {
-  const { settingsRepository } = deps;
+  const { settingsRepository, appConfigRepository, eventPublisher } = deps;
 
   return {
     get: new GetSettingUseCase(settingsRepository),
     set: new SetSettingUseCase(settingsRepository),
     getAll: new GetAllSettingsUseCase(settingsRepository),
-    getAppearance: new GetAppearanceSettingsUseCase(settingsRepository),
-    setTheme: new SetThemeUseCase(settingsRepository),
-    setAccentColor: new SetAccentColorUseCase(settingsRepository),
-    updateFontSettings: new UpdateFontSettingsUseCase(settingsRepository),
-    resetFontSettings: new ResetFontSettingsUseCase(settingsRepository),
+    getAppearance: new GetAppearanceSettingsUseCase(appConfigRepository),
+    setTheme: new SetThemeUseCase(appConfigRepository, eventPublisher),
+    setAccentColor: new SetAccentColorUseCase(appConfigRepository, eventPublisher),
+    updateFontSettings: new UpdateFontSettingsUseCase(appConfigRepository, eventPublisher),
+    resetFontSettings: new ResetFontSettingsUseCase(appConfigRepository, eventPublisher),
+    getEditor: new GetEditorSettingsUseCase(appConfigRepository),
+    updateEditor: new UpdateEditorSettingsUseCase(appConfigRepository, eventPublisher),
+    resetEditor: new ResetEditorSettingsUseCase(appConfigRepository, eventPublisher),
+    getShortcuts: new GetShortcutsUseCase(appConfigRepository),
+    setShortcut: new SetShortcutUseCase(appConfigRepository, eventPublisher),
+    resetShortcut: new ResetShortcutUseCase(appConfigRepository, eventPublisher),
+    resetAllShortcuts: new ResetAllShortcutsUseCase(appConfigRepository, eventPublisher),
   };
 }

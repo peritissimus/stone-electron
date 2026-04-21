@@ -13,10 +13,20 @@ import type {
   ISetAccentColorUseCase,
   IUpdateFontSettingsUseCase,
   IResetFontSettingsUseCase,
+  IGetEditorSettingsUseCase,
+  IUpdateEditorSettingsUseCase,
+  IResetEditorSettingsUseCase,
+  IGetShortcutsUseCase,
+  ISetShortcutUseCase,
+  IResetShortcutUseCase,
+  IResetAllShortcutsUseCase,
+  ShortcutsScope,
 } from '../../../domain';
 import type {
   AppAccentColor,
   AppTheme,
+  ChordBinding,
+  EditorSettings,
   FontSettings,
 } from '@shared/types/settings';
 import { handleIpcRequest } from '@main/shared/utils';
@@ -31,7 +41,18 @@ export interface SettingsIPCDeps {
   setAccentColor: ISetAccentColorUseCase;
   updateFontSettings: IUpdateFontSettingsUseCase;
   resetFontSettings: IResetFontSettingsUseCase;
+  getEditorSettings: IGetEditorSettingsUseCase;
+  updateEditorSettings: IUpdateEditorSettingsUseCase;
+  resetEditorSettings: IResetEditorSettingsUseCase;
+  getShortcuts: IGetShortcutsUseCase;
+  setShortcut: ISetShortcutUseCase;
+  resetShortcut: IResetShortcutUseCase;
+  resetAllShortcuts: IResetAllShortcutsUseCase;
 }
+
+const SHORTCUT_ERROR_MAP: Record<string, string> = {
+  ShortcutConflictError: 'SHORTCUT_CONFLICT',
+};
 
 export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
   const {
@@ -43,9 +64,25 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     setAccentColor,
     updateFontSettings,
     resetFontSettings,
+    getEditorSettings,
+    updateEditorSettings,
+    resetEditorSettings,
+    getShortcuts,
+    setShortcut,
+    resetShortcut,
+    resetAllShortcuts,
   } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'SettingsIPC', defaultCode: 'INTERNAL_ERROR', context });
+  const handleRequest = <T>(
+    fn: () => Promise<T>,
+    context?: Record<string, unknown>,
+    extra?: { errorMap?: Record<string, string> },
+  ) =>
+    handleIpcRequest(fn, {
+      loggerPrefix: 'SettingsIPC',
+      defaultCode: 'INTERNAL_ERROR',
+      context,
+      errorMap: extra?.errorMap,
+    });
 
   ipcMain.handle(SETTINGS_CHANNELS.GET, async (_event, params: { key: string }) => {
     return handleRequest(
@@ -121,6 +158,77 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
         return { success: true };
       },
       { channel: SETTINGS_CHANNELS.RESET_FONT_SETTINGS },
+    );
+  });
+
+  // ----- editor settings -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_EDITOR, async () => {
+    return handleRequest(
+      async () => getEditorSettings.execute(),
+      { channel: SETTINGS_CHANNELS.GET_EDITOR },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.UPDATE_EDITOR,
+    async (_event, params: { editor: Partial<EditorSettings> }) => {
+      return handleRequest(
+        async () => updateEditorSettings.execute({ editor: params.editor }),
+        { channel: SETTINGS_CHANNELS.UPDATE_EDITOR },
+      );
+    },
+  );
+
+  ipcMain.handle(SETTINGS_CHANNELS.RESET_EDITOR, async () => {
+    return handleRequest(
+      async () => resetEditorSettings.execute(),
+      { channel: SETTINGS_CHANNELS.RESET_EDITOR },
+    );
+  });
+
+  // ----- shortcuts -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_SHORTCUTS, async () => {
+    return handleRequest(
+      async () => getShortcuts.execute(),
+      { channel: SETTINGS_CHANNELS.GET_SHORTCUTS },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.SET_SHORTCUT,
+    async (
+      _event,
+      params: { scope: ShortcutsScope; action: string; binding: ChordBinding | ChordBinding[] },
+    ) => {
+      return handleRequest(
+        async () =>
+          setShortcut.execute({
+            scope: params.scope,
+            action: params.action,
+            binding: params.binding,
+          }),
+        { channel: SETTINGS_CHANNELS.SET_SHORTCUT, scope: params.scope, action: params.action },
+        { errorMap: SHORTCUT_ERROR_MAP },
+      );
+    },
+  );
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.RESET_SHORTCUT,
+    async (_event, params: { scope: ShortcutsScope; action: string }) => {
+      return handleRequest(
+        async () => resetShortcut.execute({ scope: params.scope, action: params.action }),
+        { channel: SETTINGS_CHANNELS.RESET_SHORTCUT, scope: params.scope, action: params.action },
+      );
+    },
+  );
+
+  ipcMain.handle(SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS, async () => {
+    return handleRequest(
+      async () => resetAllShortcuts.execute(),
+      { channel: SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS },
     );
   });
 

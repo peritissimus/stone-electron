@@ -26,4 +26,6 @@ export {
   NotebookNotFoundError,
   WorkspaceNotFoundError,
   TagNotFoundError,
+  // Shortcut configuration
+  ShortcutConflictError,
 } from './DomainErrors';

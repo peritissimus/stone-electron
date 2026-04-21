@@ -22,5 +22,6 @@ export * from './IExporter';
 export * from './ISystemBridge';
 export * from './IGitClient';
 export * from './ISettingsRepository';
+export * from './IAppConfigRepository';
 export * from './IFileWatcher';
 export * from './IPerformanceMonitor';

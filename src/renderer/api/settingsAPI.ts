@@ -25,12 +25,17 @@ import type {
   AppearanceSettings,
   AppAccentColor,
   AppTheme,
+  ChordBinding,
+  EditorSettings,
   FontSettings,
+  ShortcutsConfig,
 } from '@shared/types/settings';
 import { validateResponse } from './validation';
 import {
   SettingsSchema,
   AppearanceSettingsSchema,
+  EditorSettingsSchema,
+  ShortcutsConfigSchema,
   DatabaseStatusSchema,
   BackupResultSchema,
   VacuumResultSchema,
@@ -88,6 +93,52 @@ export const settingsAPI = {
   resetFontSettings: async (): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.RESET_FONT_SETTINGS, {});
     return validateResponse(response, z.void());
+  },
+
+  // ----- editor settings -----
+
+  getEditor: async (): Promise<IpcResponse<EditorSettings>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_EDITOR, {});
+    return validateResponse(response, EditorSettingsSchema);
+  },
+
+  updateEditor: async (editor: Partial<EditorSettings>): Promise<IpcResponse<EditorSettings>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_EDITOR, { editor });
+    return validateResponse(response, EditorSettingsSchema);
+  },
+
+  resetEditor: async (): Promise<IpcResponse<EditorSettings>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_EDITOR, {});
+    return validateResponse(response, EditorSettingsSchema);
+  },
+
+  // ----- shortcuts -----
+
+  getShortcuts: async (): Promise<IpcResponse<ShortcutsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_SHORTCUTS, {});
+    return validateResponse(response, ShortcutsConfigSchema);
+  },
+
+  setShortcut: async (params: {
+    scope: 'app' | 'editor';
+    action: string;
+    binding: ChordBinding | ChordBinding[];
+  }): Promise<IpcResponse<ShortcutsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET_SHORTCUT, params);
+    return validateResponse(response, ShortcutsConfigSchema);
+  },
+
+  resetShortcut: async (params: {
+    scope: 'app' | 'editor';
+    action: string;
+  }): Promise<IpcResponse<ShortcutsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_SHORTCUT, params);
+    return validateResponse(response, ShortcutsConfigSchema);
+  },
+
+  resetAllShortcuts: async (): Promise<IpcResponse<ShortcutsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS, {});
+    return validateResponse(response, ShortcutsConfigSchema);
   },
 };
 
