@@ -140,6 +140,13 @@ export {
 // Quick Capture Use Cases
 export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './quickCapture';
 
+// Journal Use Cases
+export {
+  OpenOrCreateJournalForDateUseCase,
+  createJournalUseCases,
+  type JournalUseCasesDeps,
+} from './journal';
+
 // Export Use Cases
 export { createExportUseCases, type ExportUseCasesDeps } from './export';
 

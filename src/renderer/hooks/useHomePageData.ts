@@ -11,14 +11,6 @@ import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
 
-/**
- * Normalize path for comparison
- */
-function normalizePath(path: string | null): string {
-  if (!path) return '';
-  return path.replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '').toLowerCase();
-}
-
 export function useHomePageData() {
   const navigateToNote = useNavigateToNote();
   const { notes } = useNoteStore();
@@ -56,12 +48,13 @@ export function useHomePageData() {
     };
   }, [getTodayInfo]);
 
-  // Check if we have today's journal
-  const todaysJournal = useMemo(() => {
-    const expectedJournalPath = `Journal/${journalFilename}.md`;
-    const normalizedExpectedPath = normalizePath(expectedJournalPath);
-    return notes.find((note) => normalizePath(note.filePath) === normalizedExpectedPath);
-  }, [notes, journalFilename]);
+  // Check if we have today's journal. Identified by title (YYYY-MM-DD) — the
+  // backend journal use case owns the actual folder/path layout, so the
+  // renderer doesn't hard-code a folder here.
+  const todaysJournal = useMemo(
+    () => notes.find((note) => note.title === journalFilename),
+    [notes, journalFilename],
+  );
 
   // Stats
   const totalNotes = notes.length;

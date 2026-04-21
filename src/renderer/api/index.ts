@@ -55,6 +55,10 @@ export type { GitStatus, GitCommitResult, GitSyncResult, GitCommit } from './git
 // Quick Capture API
 export { quickCaptureAPI } from './quickCaptureAPI';
 
+// Journal destination API
+export { journalAPI } from './journalAPI';
+export type { OpenOrCreateJournalResponse } from './journalAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

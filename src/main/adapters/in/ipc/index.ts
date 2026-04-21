@@ -54,6 +54,13 @@ export {
   type QuickCaptureIPCDeps,
 } from './QuickCaptureIPC';
 
+// Journal destination
+export {
+  registerJournalHandlers,
+  unregisterJournalHandlers,
+  type JournalIPCDeps,
+} from './JournalIPC';
+
 // System utilities
 export { registerSystemHandlers, unregisterSystemHandlers, type SystemIPCDeps } from './SystemIPC';
 

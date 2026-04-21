@@ -161,6 +161,11 @@ export const QUICK_CAPTURE_CHANNELS = {
   APPEND_TO_JOURNAL: 'quickCapture:appendToJournal',
 } as const;
 
+// Journal Operations
+export const JOURNAL_CHANNELS = {
+  OPEN_OR_CREATE_FOR_DATE: 'journal:openOrCreateForDate',
+} as const;
+
 // Performance Monitoring Operations
 export const PERFORMANCE_CHANNELS = {
   GET_SNAPSHOT: 'performance:getSnapshot',
@@ -248,6 +253,7 @@ export const ALL_CHANNELS = [
   ...Object.values(SYSTEM_CHANNELS),
   ...Object.values(GIT_CHANNELS),
   ...Object.values(QUICK_CAPTURE_CHANNELS),
+  ...Object.values(JOURNAL_CHANNELS),
   ...Object.values(PERFORMANCE_CHANNELS),
 ];
 
