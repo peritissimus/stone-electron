@@ -29,6 +29,13 @@ export interface TaskStateOption {
   done?: boolean;
 }
 
+export interface LogseqTaskItemBindings {
+  /** Cycle to the next task state (default: "Mod-Shift-Enter"). */
+  cycleForward: string;
+  /** Cycle to the previous task state (default: "Mod-Alt-Shift-Enter"). */
+  cycleBackward: string;
+}
+
 export interface LogseqTaskItemOptions {
   onReadOnlyChecked?: (node: ProseMirrorNode, nextState: string) => boolean;
   nested: boolean;
@@ -40,6 +47,7 @@ export interface LogseqTaskItemOptions {
   states: TaskStateOption[];
   defaultState: string;
   doneStates: string[];
+  bindings: LogseqTaskItemBindings;
 }
 
 const inputRegex = /^\s*(\[([( |x])?\])\s$/;
@@ -125,6 +133,10 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
       ],
       defaultState: 'todo',
       doneStates: ['done', 'canceled'],
+      bindings: {
+        cycleForward: 'Mod-Shift-Enter',
+        cycleBackward: 'Mod-Alt-Shift-Enter',
+      },
     } satisfies LogseqTaskItemOptions;
   },
 
@@ -250,11 +262,14 @@ export const LogseqTaskItem = Node.create<LogseqTaskItemOptions>({
         return true;
       });
 
+    const cycleForwardChord = this.options.bindings.cycleForward || 'Mod-Shift-Enter';
+    const cycleBackwardChord = this.options.bindings.cycleBackward || 'Mod-Alt-Shift-Enter';
+
     const shortcuts: Record<string, KeyboardShortcutCommand> = {
       Enter: () => this.editor.commands.splitListItem(this.name),
       'Shift-Tab': () => this.editor.commands.liftListItem(this.name),
-      'Mod-Shift-Enter': () => cycleWithDirection(1),
-      'Mod-Alt-Shift-Enter': () => cycleWithDirection(-1),
+      [cycleForwardChord]: () => cycleWithDirection(1),
+      [cycleBackwardChord]: () => cycleWithDirection(-1),
     };
 
     if (this.options.nested) {

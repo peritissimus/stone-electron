@@ -15,6 +15,18 @@ import ReactDOM from 'react-dom/client';
 import { App } from '@renderer/App';
 import './index.css';
 
+// Hydrate config-backed stores before React first renders so shortcut and
+// editor-settings overrides are visible on initial mount. Fire-and-forget;
+// stores fall back to defaults on failure, and re-sync on settings:changed.
+if (!isQuickCapture) {
+  void import('@renderer/stores/shortcutsStore').then((m) =>
+    m.useShortcutsStore.getState().hydrate(),
+  );
+  void import('@renderer/stores/editorConfigStore').then((m) =>
+    m.useEditorConfigStore.getState().hydrate(),
+  );
+}
+
 // Skip tippy.js for quick capture (not needed)
 if (!isQuickCapture) {
   import('tippy.js/dist/tippy.css');

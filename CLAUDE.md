@@ -914,6 +914,10 @@ BOTH:
 | Add UI                   | —                                          | `components/`     |
 | Share types              | `shared/types/`                            | `shared/types/`   |
 
+### Settings storage rule
+
+Editor settings, keyboard shortcuts, and any other typed user preferences live **only** in `AppConfig` (`config.json`) via `IAppConfigRepository`. Do **not** add new editor- or shortcut-related rows to the DB `settings` table or `ISettingsRepository`. The DB-backed settings path remains for legacy free-form key/value preferences only; new preference categories should extend `AppConfig` and be managed by typed use cases under `application/usecases/settings/` that emit `settings:changed` domain events with a discriminating `scope`.
+
 ---
 
 ## 29. Anti-Patterns to Avoid

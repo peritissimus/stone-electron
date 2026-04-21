@@ -108,12 +108,39 @@ function exitTable(state: any, dispatch: any): boolean {
   return true;
 }
 
-export const TableNavigation = Extension.create({
+export interface TableNavigationBindings {
+  /** Move to next cell (default: "Tab"). */
+  nextCell: string;
+  /** Move to previous cell (default: "Shift-Tab"). */
+  prevCell: string;
+  /** Exit table from anywhere (default: "Mod-Enter"). */
+  exit: string;
+}
+
+export interface TableNavigationOptions {
+  bindings: TableNavigationBindings;
+}
+
+export const TableNavigation = Extension.create<TableNavigationOptions>({
   name: 'tableNavigation',
 
-  addKeyboardShortcuts() {
+  addOptions() {
     return {
-      Tab: ({ editor }) => {
+      bindings: {
+        nextCell: 'Tab',
+        prevCell: 'Shift-Tab',
+        exit: 'Mod-Enter',
+      },
+    };
+  },
+
+  addKeyboardShortcuts() {
+    const nextCellChord = this.options.bindings.nextCell || 'Tab';
+    const prevCellChord = this.options.bindings.prevCell || 'Shift-Tab';
+    const exitChord = this.options.bindings.exit || 'Mod-Enter';
+
+    return {
+      [nextCellChord]: ({ editor }) => {
         if (!isInTable(editor.state)) return false;
 
         if (editor.commands.goToNextCell()) {
@@ -128,12 +155,12 @@ export const TableNavigation = Extension.create({
         return false;
       },
 
-      'Shift-Tab': ({ editor }) => {
+      [prevCellChord]: ({ editor }) => {
         if (!isInTable(editor.state)) return false;
         return editor.commands.goToPreviousCell();
       },
 
-      'Mod-Enter': ({ editor }) => {
+      [exitChord]: ({ editor }) => {
         if (!isInTable(editor.state)) return false;
 
         logger.info('[TableNavigation] Cmd+Enter - exiting table');

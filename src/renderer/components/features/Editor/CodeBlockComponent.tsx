@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 import { cn } from '@renderer/lib/utils';
-import { loadLanguage } from '@renderer/hooks/useTipTapEditor';
+import { loadLanguage } from '@renderer/lib/editor/codeLanguages';
 import { MermaidRenderer } from './MermaidRenderer';
 import { CodeBlockToolbar } from './CodeBlockToolbar';
 import { downloadElementAsPng } from '@renderer/lib/download';
