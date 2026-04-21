@@ -30,7 +30,6 @@ export function useUI() {
   const sidebarPanel = useUIStore((s) => s.sidebarPanel);
 
   // Note list state
-  const noteListWidth = useUIStore((s) => s.noteListWidth);
   const viewMode = useUIStore((s) => s.viewMode);
   const sortBy = useUIStore((s) => s.sortBy);
   const sortOrder = useUIStore((s) => s.sortOrder);
@@ -62,7 +61,6 @@ export function useUI() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);
   const setSidebarPanel = useUIStore((s) => s.setSidebarPanel);
-  const setNoteListWidth = useUIStore((s) => s.setNoteListWidth);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setSortBy = useUIStore((s) => s.setSortBy);
   const toggleSortOrder = useUIStore((s) => s.toggleSortOrder);
@@ -102,12 +100,10 @@ export function useUI() {
     setSidebarPanel,
 
     // Note list
-    noteListWidth,
     viewMode,
     sortBy,
     sortOrder,
     showArchived,
-    setNoteListWidth,
     setViewMode,
     setSortBy,
     toggleSortOrder,
@@ -218,24 +214,20 @@ export function useEditorUI() {
  * Note list UI hook
  */
 export function useNoteListUI() {
-  const noteListWidth = useUIStore((s) => s.noteListWidth);
   const viewMode = useUIStore((s) => s.viewMode);
   const sortBy = useUIStore((s) => s.sortBy);
   const sortOrder = useUIStore((s) => s.sortOrder);
   const showArchived = useUIStore((s) => s.showArchived);
-  const setNoteListWidth = useUIStore((s) => s.setNoteListWidth);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setSortBy = useUIStore((s) => s.setSortBy);
   const toggleSortOrder = useUIStore((s) => s.toggleSortOrder);
   const toggleShowArchived = useUIStore((s) => s.toggleShowArchived);
 
   return {
-    noteListWidth,
     viewMode,
     sortBy,
     sortOrder,
     showArchived,
-    setNoteListWidth,
     setViewMode,
     setSortBy,
     toggleSortOrder,

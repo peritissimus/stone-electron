@@ -47,7 +47,6 @@ interface UIState {
   sidebarPanel: SidebarPanel;
 
   // Note list
-  noteListWidth: number;
   viewMode: ViewMode;
   sortBy: SortBy;
   sortOrder: SortOrder;
@@ -74,7 +73,6 @@ interface UIState {
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
   setSidebarPanel: (panel: SidebarPanel) => void;
-  setNoteListWidth: (width: number) => void;
   setViewMode: (mode: ViewMode) => void;
   setSortBy: (sort: SortBy) => void;
   toggleSortOrder: () => void;
@@ -110,7 +108,6 @@ export const useUIStore = create<UIState>()(
       sidebarPanel: 'home',
 
       // Note list
-      noteListWidth: 320,
       viewMode: 'list',
       sortBy: 'updated',
       sortOrder: 'desc',
@@ -139,8 +136,6 @@ export const useUIStore = create<UIState>()(
       setSidebarWidth: (width) => set({ sidebarWidth: Math.max(200, Math.min(400, width)) }),
 
       setSidebarPanel: (panel) => set({ sidebarPanel: panel }),
-
-      setNoteListWidth: (width) => set({ noteListWidth: Math.max(280, Math.min(480, width)) }),
 
       setViewMode: (mode) => set({ viewMode: mode }),
 
@@ -195,7 +190,6 @@ export const useUIStore = create<UIState>()(
       name: 'stone-ui-preferences',
       partialize: (state) => ({
         sidebarWidth: state.sidebarWidth,
-        noteListWidth: state.noteListWidth,
         viewMode: state.viewMode,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
