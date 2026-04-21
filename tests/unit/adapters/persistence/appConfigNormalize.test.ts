@@ -11,6 +11,7 @@ import {
   normalizeConfig,
   mergeAppearance,
   mergeEditor,
+  mergeNotes,
   mergeShortcuts,
 } from '../../../../src/main/adapters/out/persistence/appConfigNormalize';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
@@ -278,5 +279,101 @@ describe('mergeShortcuts', () => {
   it('handles app/editor being non-objects', () => {
     const result = mergeShortcuts({ app: 'garbage', editor: null });
     expect(result).toEqual({ app: {}, editor: {} });
+  });
+});
+
+describe('mergeNotes', () => {
+  it('returns defaults for non-object input', () => {
+    expect(mergeNotes(undefined)).toEqual(DEFAULT_APP_CONFIG.notes);
+    expect(mergeNotes(null)).toEqual(DEFAULT_APP_CONFIG.notes);
+    expect(mergeNotes(42)).toEqual(DEFAULT_APP_CONFIG.notes);
+    expect(mergeNotes([])).toEqual(DEFAULT_APP_CONFIG.notes);
+  });
+
+  it('preserves valid custom folder names', () => {
+    const result = mergeNotes({
+      locationPolicy: {
+        journalFolder: 'Daily',
+        defaultNoteFolder: 'Inbox',
+        quickNoteSlotFolders: { personal: 'Me', work: 'Office' },
+      },
+    });
+    expect(result.locationPolicy).toEqual({
+      journalFolder: 'Daily',
+      defaultNoteFolder: 'Inbox',
+      quickNoteSlotFolders: { personal: 'Me', work: 'Office' },
+    });
+  });
+
+  it('trims leading/trailing slashes from folder names', () => {
+    const result = mergeNotes({
+      locationPolicy: {
+        journalFolder: '/Daily/',
+        defaultNoteFolder: '//Inbox///',
+        quickNoteSlotFolders: { personal: '/Me/', work: 'Office' },
+      },
+    });
+    expect(result.locationPolicy.journalFolder).toBe('Daily');
+    expect(result.locationPolicy.defaultNoteFolder).toBe('Inbox');
+    expect(result.locationPolicy.quickNoteSlotFolders.personal).toBe('Me');
+  });
+
+  it('falls back to defaults for empty / whitespace folder names', () => {
+    const result = mergeNotes({
+      locationPolicy: {
+        journalFolder: '',
+        defaultNoteFolder: '   ',
+        quickNoteSlotFolders: { personal: '', work: '   ' },
+      },
+    });
+    expect(result.locationPolicy.journalFolder).toBe(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.journalFolder,
+    );
+    expect(result.locationPolicy.defaultNoteFolder).toBe(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.defaultNoteFolder,
+    );
+    expect(result.locationPolicy.quickNoteSlotFolders).toEqual(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders,
+    );
+  });
+
+  it('fills in partial location policy with defaults', () => {
+    const result = mergeNotes({
+      locationPolicy: {
+        journalFolder: 'Daily',
+      },
+    });
+    expect(result.locationPolicy.journalFolder).toBe('Daily');
+    expect(result.locationPolicy.defaultNoteFolder).toBe(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.defaultNoteFolder,
+    );
+    expect(result.locationPolicy.quickNoteSlotFolders).toEqual(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders,
+    );
+  });
+
+  it('survives a non-object locationPolicy', () => {
+    const result = mergeNotes({ locationPolicy: 'garbage' });
+    expect(result).toEqual(DEFAULT_APP_CONFIG.notes);
+  });
+
+  it('merges as part of a full normalizeConfig round-trip', () => {
+    const corrupt = {
+      notes: {
+        locationPolicy: {
+          journalFolder: 'Journals',
+          quickNoteSlotFolders: { personal: '/Quick/', work: '' },
+        },
+      },
+    };
+    const result = normalizeConfig(corrupt);
+    expect(result.notes.locationPolicy.journalFolder).toBe('Journals');
+    expect(result.notes.locationPolicy.defaultNoteFolder).toBe(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.defaultNoteFolder,
+    );
+    expect(result.notes.locationPolicy.quickNoteSlotFolders.personal).toBe('Quick');
+    expect(result.notes.locationPolicy.quickNoteSlotFolders.work).toBe(
+      DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders.work,
+    );
   });
 });

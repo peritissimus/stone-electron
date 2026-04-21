@@ -26,6 +26,8 @@ import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
+import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import { NoteNotFoundError } from '../../../../src/main/domain/errors';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 
@@ -108,6 +110,14 @@ function createMockEventPublisher(): IEventPublisher {
   } as unknown as IEventPublisher;
 }
 
+function createMockAppConfigRepository(): IAppConfigRepository {
+  return {
+    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
+    set: vi.fn(),
+    update: vi.fn(),
+  } as unknown as IAppConfigRepository;
+}
+
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
   return {
     id: 'note-1',
@@ -184,6 +194,7 @@ describe('NoteUseCases', () => {
     let fileStorage: IFileStorage;
     let markdownProcessor: IMarkdownProcessor;
     let eventPublisher: IEventPublisher;
+    let appConfigRepo: IAppConfigRepository;
     let useCase: CreateNoteUseCase;
 
     beforeEach(() => {
@@ -192,10 +203,12 @@ describe('NoteUseCases', () => {
       fileStorage = createMockFileStorage();
       markdownProcessor = createMockMarkdownProcessor();
       eventPublisher = createMockEventPublisher();
+      appConfigRepo = createMockAppConfigRepository();
       useCase = new CreateNoteUseCase(
         noteRepo,
         workspaceRepo,
         fileStorage,
+        appConfigRepo,
         eventPublisher,
       );
     });
@@ -484,6 +497,7 @@ describe('NoteUseCases', () => {
     let fileStorage: IFileStorage;
     let markdownProcessor: IMarkdownProcessor;
     let eventPublisher: IEventPublisher;
+    let appConfigRepo: IAppConfigRepository;
     let useCase: GetNoteByPathUseCase;
 
     beforeEach(() => {
@@ -492,11 +506,13 @@ describe('NoteUseCases', () => {
       fileStorage = createMockFileStorage();
       markdownProcessor = createMockMarkdownProcessor();
       eventPublisher = createMockEventPublisher();
+      appConfigRepo = createMockAppConfigRepository();
       useCase = new GetNoteByPathUseCase(
         noteRepo,
         workspaceRepo,
         fileStorage,
         markdownProcessor,
+        appConfigRepo,
         eventPublisher,
       );
     });

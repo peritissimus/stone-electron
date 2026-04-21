@@ -6,6 +6,7 @@ import {
   type INoteRepository,
   type IFileStorage,
   type IMarkdownProcessor,
+  type IAppConfigRepository,
   type IGetNoteByPathUseCase,
   NoteNotFoundError,
   DOMAIN_EVENT_TYPES,
@@ -19,6 +20,7 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly appConfigRepository: IAppConfigRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -48,7 +50,9 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
     const fileContent = await this.fileStorage.read(absolutePath);
     const filenameWithoutExt = path.basename(request.filePath, '.md');
 
-    const isJournalFile = request.filePath.startsWith('Journal/');
+    const config = await this.appConfigRepository.get();
+    const journalFolder = config.notes.locationPolicy.journalFolder;
+    const isJournalFile = request.filePath.startsWith(`${journalFolder}/`);
     let title: string;
 
     if (isJournalFile) {

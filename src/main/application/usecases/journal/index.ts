@@ -2,6 +2,7 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type {
   IJournalUseCases,
   OpenOrCreateJournalForDateRequest,
@@ -14,6 +15,7 @@ export interface JournalUseCasesDeps {
   noteRepository: INoteRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
+  appConfigRepository: IAppConfigRepository;
   eventPublisher?: IEventPublisher;
 }
 
@@ -22,6 +24,7 @@ export function createJournalUseCases(deps: JournalUseCasesDeps): IJournalUseCas
     deps.noteRepository,
     deps.workspaceRepository,
     deps.fileStorage,
+    deps.appConfigRepository,
     deps.eventPublisher,
   );
 

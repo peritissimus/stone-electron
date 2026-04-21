@@ -320,6 +320,7 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     markdownProcessor,
+    appConfigRepository,
     eventPublisher,
   });
 
@@ -408,6 +409,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     workspaceRepository,
     fileStorage,
+    appConfigRepository,
   });
 
   // Journal use cases
@@ -415,6 +417,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     workspaceRepository,
     fileStorage,
+    appConfigRepository,
     eventPublisher,
   });
 
@@ -423,6 +426,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     workspaceRepository,
     fileStorage,
+    appConfigRepository,
     eventPublisher,
   });
 

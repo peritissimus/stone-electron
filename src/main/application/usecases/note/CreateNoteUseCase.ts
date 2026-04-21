@@ -5,6 +5,7 @@ import {
   type NoteProps,
   type INoteRepository,
   type IFileStorage,
+  type IAppConfigRepository,
   type ICreateNoteUseCase,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
@@ -16,6 +17,7 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly appConfigRepository: IAppConfigRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -34,6 +36,9 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
       throw new Error('No active workspace');
     }
 
+    const config = await this.appConfigRepository.get();
+    const policy = config.notes.locationPolicy;
+
     const note = NoteEntity.create({
       id,
       title: request.title,
@@ -41,10 +46,10 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
       workspaceId: request.workspaceId || workspace.id,
     });
 
-    const folderPath = request.folderPath || 'Personal';
+    const folderPath = request.folderPath || policy.defaultNoteFolder;
 
     let filename: string;
-    if (folderPath === 'Journal' && request.title) {
+    if (folderPath === policy.journalFolder && request.title) {
       filename = `${request.title}.md`;
     } else {
       const now = new Date();

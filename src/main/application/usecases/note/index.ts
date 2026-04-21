@@ -2,6 +2,7 @@ import type {
   INoteRepository,
   IFileStorage,
   IMarkdownProcessor,
+  IAppConfigRepository,
   INoteUseCases,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
@@ -41,18 +42,26 @@ export interface NoteUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
+  appConfigRepository: IAppConfigRepository;
   eventPublisher?: IEventPublisher;
 }
 
 export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
-  const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, eventPublisher } =
-    deps;
+  const {
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    markdownProcessor,
+    appConfigRepository,
+    eventPublisher,
+  } = deps;
 
   return {
     createNote: new CreateNoteUseCase(
       noteRepository,
       workspaceRepository,
       fileStorage,
+      appConfigRepository,
       eventPublisher,
     ),
     updateNote: new UpdateNoteUseCase(
@@ -79,6 +88,7 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       workspaceRepository,
       fileStorage,
       markdownProcessor,
+      appConfigRepository,
       eventPublisher,
     ),
     toggleFavorite: new ToggleFavoriteUseCase(noteRepository, eventPublisher),
