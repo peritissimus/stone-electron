@@ -30,16 +30,68 @@ try {
   };
 }
 
-import { sql } from 'drizzle-orm';
+import { sql, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import * as schema from '../../shared/database';
 import { logger } from '../../shared/utils';
 import { seedDatabase } from '../seed/seedDatabase';
+import { AppConfigRepository } from '../../adapters/out/persistence/AppConfigRepository';
+import { DEFAULT_APP_CONFIG, type AppConfig } from '@shared/types/settings';
+
+async function readLegacyAppearanceConfig(db: ReturnType<typeof drizzle>): Promise<Partial<AppConfig> | null> {
+  const [themeSetting, accentColorSetting, fontSettingsSetting] = await Promise.all([
+    db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.theme')).limit(1),
+    db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.accentColor')).limit(1),
+    db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.fontSettings')).limit(1),
+  ]);
+
+  const hasLegacySettings =
+    themeSetting.length > 0 || accentColorSetting.length > 0 || fontSettingsSetting.length > 0;
+
+  if (!hasLegacySettings) {
+    return null;
+  }
+
+  let parsedFontSettings: unknown;
+  if (fontSettingsSetting[0]?.value) {
+    try {
+      parsedFontSettings = JSON.parse(fontSettingsSetting[0].value);
+    } catch {
+      parsedFontSettings = undefined;
+    }
+  }
+
+  return {
+    appearance: {
+      theme:
+        themeSetting[0]?.value === 'light' ||
+        themeSetting[0]?.value === 'dark' ||
+        themeSetting[0]?.value === 'system'
+          ? themeSetting[0].value
+          : DEFAULT_APP_CONFIG.appearance.theme,
+      accentColor:
+        accentColorSetting[0]?.value === 'blue' ||
+        accentColorSetting[0]?.value === 'purple' ||
+        accentColorSetting[0]?.value === 'pink' ||
+        accentColorSetting[0]?.value === 'red' ||
+        accentColorSetting[0]?.value === 'orange' ||
+        accentColorSetting[0]?.value === 'green' ||
+        accentColorSetting[0]?.value === 'teal'
+          ? accentColorSetting[0].value
+          : DEFAULT_APP_CONFIG.appearance.accentColor,
+      fontSettings: {
+        ...DEFAULT_APP_CONFIG.appearance.fontSettings,
+        ...(typeof parsedFontSettings === 'object' && parsedFontSettings !== null ? parsedFontSettings : {}),
+      },
+    },
+  };
+}
 
 export class DatabaseManager {
   private client: any = null;
   private db: any = null;
+  private initPromise: Promise<void> | null = null;
   private readonly dataPath: string;
   private readonly dbPath: string;
 
@@ -60,6 +112,18 @@ export class DatabaseManager {
   }
 
   async initialize(): Promise<void> {
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    this.initPromise = this.runInitialize().catch((error) => {
+      // Clear cached promise so a subsequent initialize() can retry.
+      this.initPromise = null;
+      throw error;
+    });
+    return this.initPromise;
+  }
+
+  private async runInitialize(): Promise<void> {
     try {
       logger.info(`Database path: ${this.dbPath}`);
 
@@ -87,6 +151,19 @@ export class DatabaseManager {
   private async seedDatabaseData(): Promise<void> {
     if (!this.db) throw new Error('Database not initialized');
 
+    const legacyConfig = await readLegacyAppearanceConfig(this.db);
+    const appConfigRepository = new AppConfigRepository({
+      initialConfig: {
+        ...DEFAULT_APP_CONFIG,
+        ...legacyConfig,
+        workspace: {
+          ...DEFAULT_APP_CONFIG.workspace,
+          ...(legacyConfig?.workspace ?? {}),
+        },
+      },
+    });
+    const appConfig = await appConfigRepository.get();
+
     // Seed predefined topics
     const existingTopics = await this.db.select().from(schema.topics);
     if (existingTopics.length === 0) {
@@ -109,7 +186,9 @@ export class DatabaseManager {
     }
 
     // Seed default workspace, notebooks, and notes if not present
-    const seedResult = await seedDatabase(this.db);
+    const seedResult = await seedDatabase(this.db, {
+      workspacePath: path.join(app.getPath('userData'), appConfig.workspace.defaultWorkspacePath),
+    });
     if (seedResult) {
       logger.info('Seeded default workspace:', {
         workspaceId: seedResult.workspaceId,
@@ -134,6 +213,8 @@ export class DatabaseManager {
       this.client.close();
       this.client = null;
       this.db = null;
+      // Drop cached init promise so initialize() can reopen the DB after close().
+      this.initPromise = null;
       logger.info('Database connection closed');
     }
   }

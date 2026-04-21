@@ -7,14 +7,14 @@
 
 import { nanoid } from 'nanoid';
 import path from 'node:path';
-import os from 'node:os';
 import fs from 'node:fs';
 import type { Database } from '../../shared/database';
+import { DEFAULT_APP_CONFIG } from '@shared/types/settings';
 import { workspaces, notebooks, notes, tags, noteTags } from '../../shared/database/schema';
 import { eq, sql } from 'drizzle-orm';
 
 export interface SeedOptions {
-  /** Custom workspace folder path. Defaults to ~/NoteBook */
+  /** Custom workspace folder path. Defaults to app config defaultWorkspacePath */
   workspacePath?: string;
   /** Whether to create the actual markdown files on disk */
   createFiles?: boolean;
@@ -37,6 +37,11 @@ async function isDatabaseSeeded(db: Database): Promise<boolean> {
   return (workspaceResult[0]?.count ?? 0) > 0 || (notebookResult[0]?.count ?? 0) > 0;
 }
 
+// Per-DB single-flight guard. Prevents concurrent callers from racing past the
+// isDatabaseSeeded check and double-inserting (and double-writing seed files).
+// Keyed by db reference so distinct DBs (e.g. tests) seed independently.
+const inFlightSeeds = new WeakMap<object, Promise<SeedResult | null>>();
+
 /**
  * Seed the database with default data
  */
@@ -44,12 +49,26 @@ export async function seedDatabase(
   db: Database,
   options: SeedOptions = {},
 ): Promise<SeedResult | null> {
+  const existing = inFlightSeeds.get(db as unknown as object);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = runSeed(db, options).finally(() => {
+    inFlightSeeds.delete(db as unknown as object);
+  });
+  inFlightSeeds.set(db as unknown as object, promise);
+  return promise;
+}
+
+async function runSeed(db: Database, options: SeedOptions = {}): Promise<SeedResult | null> {
   // Check if already seeded
   if (await isDatabaseSeeded(db)) {
     return null;
   }
 
-  const workspaceFolderPath = options.workspacePath ?? path.join(os.homedir(), 'NoteBook');
+  const workspaceFolderPath =
+    options.workspacePath ?? path.join(process.env.HOME ?? process.cwd(), DEFAULT_APP_CONFIG.workspace.defaultWorkspacePath);
   const createFiles = options.createFiles ?? true;
 
   // Generate IDs
@@ -78,8 +97,8 @@ export async function seedDatabase(
       if (!fs.existsSync(personalPath)) fs.mkdirSync(personalPath, { recursive: true });
       if (!fs.existsSync(workPath)) fs.mkdirSync(workPath, { recursive: true });
       if (!fs.existsSync(journalPath)) fs.mkdirSync(journalPath, { recursive: true });
-    } catch (error) {
-      console.warn('Could not create workspace directories:', error);
+    } catch {
+      // Ignore filesystem seeding failures here; database seeding can still proceed.
     }
   }
 
@@ -184,9 +203,8 @@ export async function seedDatabase(
         .insert(workspaces)
         .values(workspaceData)
         .onConflictDoNothing({ target: workspaces.folderPath });
-    } catch (error) {
-      // Workspace might already exist due to race condition, continue with seeding
-      console.warn('Could not insert workspace (may already exist):', error);
+    } catch {
+      // Workspace might already exist due to race condition; continue with seeding.
     }
   }
   await db.insert(notebooks).values(notebooksData).onConflictDoNothing();
@@ -235,8 +253,8 @@ Track the high-level initiatives planned for this quarter.
 `;
         fs.writeFileSync(roadmapFilePath, roadmapMarkdown, 'utf-8');
       }
-    } catch (error) {
-      console.warn('Could not create seed markdown files:', error);
+    } catch {
+      // Ignore markdown seed file failures here; database seed data is still usable.
     }
   }
 
