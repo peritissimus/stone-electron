@@ -3,7 +3,9 @@ import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import { NoteEntity } from '../../../domain/entities/Note';
+import { DOMAIN_EVENT_TYPES } from '../../../domain';
 import { logger } from '../../../shared/utils';
 
 const JOURNAL_FOLDER = 'Journal';
@@ -28,6 +30,7 @@ export class OpenOrCreateJournalForDateUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(input: {
@@ -67,6 +70,16 @@ export class OpenOrCreateJournalForDateUseCase {
     });
     note.updateFilePath(journalFilePath);
     await this.noteRepository.save(note);
+
+    // Announce the note so the renderer's noteStore/file tree see it
+    // immediately — without this the file-watcher round-trip is the only
+    // signal, which leaves a window where the newly-opened journal can't
+    // be highlighted in the sidebar because it isn't in notesByPath yet.
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
+      timestamp: new Date(),
+      payload: { id: note.id },
+    });
 
     logger.info(`[Journal] ${fileExists ? 'Indexed existing' : 'Created'} journal ${note.id}`);
     return { noteId: note.id, created: !fileExists };

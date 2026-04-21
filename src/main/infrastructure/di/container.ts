@@ -415,6 +415,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     workspaceRepository,
     fileStorage,
+    eventPublisher,
   });
 
   // Quick note (slot-based) use cases
