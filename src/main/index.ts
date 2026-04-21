@@ -8,6 +8,7 @@ import 'dotenv/config';
 import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
 import net from 'node:net';
+import dns from 'node:dns';
 
 // Import from main architecture
 import { logger } from '@main/shared/utils/logger';
@@ -38,19 +39,34 @@ logger.info('='.repeat(60));
 let mainWindow: BrowserWindow | null = null;
 let quickCaptureWindow: BrowserWindow | null = null;
 
-async function isPortOpen(port: number, host = '127.0.0.1'): Promise<boolean> {
-  return await new Promise((resolve) => {
-    const socket = net.connect({ port, host });
-
-    socket.once('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-
-    socket.once('error', () => {
-      resolve(false);
+async function isPortOpen(port: number, host = 'localhost'): Promise<boolean> {
+  // Probe each address family Node resolves for the host. Node's `net.connect`
+  // only hits one family at a time, and Vite often binds to IPv6 (`::1`) on
+  // macOS — a hard-coded '127.0.0.1' probe would miss it and cause us to fall
+  // through to the next candidate port, where an unrelated process (e.g. a
+  // stray python http.server) can answer and poison module loads.
+  const addresses = await new Promise<string[]>((resolve) => {
+    dns.lookup(host, { all: true }, (err, found) => {
+      if (err || !found?.length) {
+        resolve([host]);
+        return;
+      }
+      resolve(found.map((a) => a.address));
     });
   });
+
+  for (const address of addresses) {
+    const reachable = await new Promise<boolean>((resolve) => {
+      const socket = net.connect({ port, host: address });
+      socket.once('connect', () => {
+        socket.destroy();
+        resolve(true);
+      });
+      socket.once('error', () => resolve(false));
+    });
+    if (reachable) return true;
+  }
+  return false;
 }
 
 async function resolveDevServerUrl(): Promise<string> {
