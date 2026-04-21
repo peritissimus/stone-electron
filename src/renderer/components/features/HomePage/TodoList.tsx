@@ -5,11 +5,10 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CheckSquare, Square, ArrowRight } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { useFileTree } from '@renderer/hooks/useFileTree';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { ListItem } from '@renderer/components/composites';
@@ -92,10 +91,9 @@ const StateLabel: React.FC<{ state: string }> = ({ state }) => {
 };
 
 export function TodoList({ onTodoClick }: TodoListProps) {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const { setSelectedFile, setActiveFolder } = useFileTree();
   const { getAllTodos } = useNoteAPI();
 
   useEffect(() => {
@@ -134,26 +132,7 @@ export function TodoList({ onTodoClick }: TodoListProps) {
 
   const handleTodoClick = (todo: TodoItem) => {
     logger.info('[TodoList] Todo clicked', { noteId: todo.noteId, todoId: todo.id });
-
-    // Set the selected file and active folder
-    if (todo.notePath) {
-      const normalizedPath = todo.notePath
-        .replace(/\\/g, '/')
-        .replace(/^\/+/, '')
-        .replace(/\/+$/, '');
-      setSelectedFile(normalizedPath);
-
-      const lastSlash = normalizedPath.lastIndexOf('/');
-      if (lastSlash > 0) {
-        const folderPath = normalizedPath.substring(0, lastSlash);
-        setActiveFolder(folderPath);
-      }
-    }
-
-    // Navigate to note
-    navigate(`/note/${todo.noteId}`);
-
-    // Call the optional callback
+    navigateToNote(todo.noteId);
     if (onTodoClick) {
       onTodoClick(todo.noteId);
     }

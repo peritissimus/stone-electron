@@ -11,7 +11,6 @@ import { normalizePath } from '@renderer/lib/pathCache';
 interface NoteState {
   notes: Note[];
   notesByPath: Map<string, Note>; // O(1) lookup index
-  activeNoteId: string | null;
   loading: boolean;
   error: string | null;
 
@@ -20,7 +19,6 @@ interface NoteState {
   addNote: (note: Note) => void;
   updateNote: (note: Note) => void;
   deleteNote: (id: string) => void;
-  setActiveNote: (id: string | null) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   updateNoteByPath: (filePath: string, updates: Partial<Note>) => void;
@@ -28,7 +26,6 @@ interface NoteState {
   rebuildPathIndex: () => void;
 
   // Computed
-  getActiveNote: () => Note | null;
   getNotesByNotebook: (notebookId: string) => Note[];
   getFavoriteNotes: () => Note[];
   getPinnedNotes: () => Note[];
@@ -39,7 +36,6 @@ interface NoteState {
 export const useNoteStore = create<NoteState>((set, get) => ({
   notes: [],
   notesByPath: new Map(),
-  activeNoteId: null,
   loading: false,
   error: null,
 
@@ -106,20 +102,12 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return {
         notes: state.notes.filter((n) => n.id !== id),
         notesByPath,
-        activeNoteId: state.activeNoteId === id ? null : state.activeNoteId,
       };
     }),
-
-  setActiveNote: (id) => set({ activeNoteId: id }),
 
   setLoading: (loading) => set({ loading }),
 
   setError: (error) => set({ error }),
-
-  getActiveNote: () => {
-    const state = get();
-    return state.notes.find((n) => n.id === state.activeNoteId) || null;
-  },
 
   getNotesByNotebook: (notebookId) => {
     return get().notes.filter((n) => n.notebookId === notebookId);
@@ -179,7 +167,6 @@ export const useNoteStore = create<NoteState>((set, get) => ({
       return {
         notes: state.notes.filter((n) => n.id !== removedNote.id),
         notesByPath,
-        activeNoteId: state.activeNoteId === removedNote.id ? null : state.activeNoteId,
       };
     }),
 

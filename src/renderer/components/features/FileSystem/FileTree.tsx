@@ -5,19 +5,19 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { InputModal } from '@renderer/components/composites';
 import { useFileTree } from '@renderer/hooks/useFileTree';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath, getParentPath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
 export function FileTree() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { tree, setActiveFolder, setSelectedFile } = useFileTree();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
@@ -40,18 +40,14 @@ export function FileTree() {
           folderPath: folderPath || undefined,
         });
         if (note) {
-          setActiveFolder(folderPath || null);
-          if (note.filePath) {
-            setSelectedFile(note.filePath.replace(/\\/g, '/'));
-          }
-          navigate(`/note/${note.id}`);
+          navigateToNote(note.id);
           await loadFileTree();
         }
       } catch (error) {
         logger.error('Failed to create note in folder', error);
       }
     },
-    [createNote, setActiveFolder, setSelectedFile, navigate, loadFileTree],
+    [createNote, navigateToNote, loadFileTree],
   );
 
   const handleRenameNote = useCallback(

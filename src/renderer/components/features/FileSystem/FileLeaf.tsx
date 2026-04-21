@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FileText, DotsThreeVertical, PencilSimple, Trash } from 'phosphor-react';
 import {
   DropdownMenu,
@@ -9,12 +8,13 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
-import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
+import { type FileTreeNode } from '@renderer/hooks/useFileTree';
 import { useNotes, getNotesByPathSnapshot } from '@renderer/hooks/useNotes';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
-import { normalizePath, getParentPath, getDisplayName } from '@renderer/lib/path';
+import { normalizePath, getDisplayName } from '@renderer/lib/path';
 
 interface FileLeafProps {
   node: FileTreeNode;
@@ -25,10 +25,9 @@ interface FileLeafProps {
 }
 
 export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDelete }) => {
-  const navigate = useNavigate();
   const normalizedPath = normalizePath(node.path);
 
-  const { setSelectedFile, setActiveFolder } = useFileTree();
+  const navigateToNote = useNavigateToNote();
   const { activeNoteId, notesByPath } = useNotes();
   const note = notesByPath.get(normalizedPath);
 
@@ -37,39 +36,20 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
   const isActive = note?.id === activeNoteId;
   const [isHovered, setIsHovered] = useState(false);
 
-  const parentPath = getParentPath(normalizedPath);
-  const folderForSelection = parentPath || null;
-
   const handleOpen = async () => {
-    logger.info('[FileTree] Opening file', {
-      normalizedPath,
-      folderForSelection,
-      fileName: node.name,
-    });
-
-    setActiveFolder(folderForSelection);
-    setSelectedFile(normalizedPath);
+    logger.info('[FileTree] Opening file', { normalizedPath, fileName: node.name });
 
     const currentNotesByPath = getNotesByPathSnapshot();
     const cachedNote = currentNotesByPath.get(normalizedPath);
 
     if (cachedNote) {
-      logger.info('[FileTree] Found note in cache', {
-        noteId: cachedNote.id,
-        noteTitle: cachedNote.title,
-      });
-      navigate(`/note/${cachedNote.id}`);
+      navigateToNote(cachedNote.id);
       return;
     }
 
-    logger.info('[FileTree] Note not in cache, loading via hook', { normalizedPath });
     const loadedNote = await loadNoteByPath(normalizedPath);
     if (loadedNote) {
-      logger.info('[FileTree] Loaded note via hook', {
-        noteId: loadedNote.id,
-        noteTitle: loadedNote.title,
-      });
-      navigate(`/note/${loadedNote.id}`);
+      navigateToNote(loadedNote.id);
     } else {
       logger.warn('[FileTree] No note found for file path', { normalizedPath });
     }

@@ -1,16 +1,15 @@
 import { useNoteStore } from '@renderer/stores/noteStore';
+import { useActiveNoteId } from '@renderer/navigation';
 
 export function useNotes() {
   const notes = useNoteStore((s) => s.notes);
-  const activeNoteId = useNoteStore((s) => s.activeNoteId);
   const notesByPath = useNoteStore((s) => s.notesByPath);
-  const setActiveNote = useNoteStore((s) => s.setActiveNote);
+  const activeNoteId = useActiveNoteId();
 
   return {
     notes,
     activeNoteId,
     notesByPath,
-    setActiveNote,
   };
 }
 

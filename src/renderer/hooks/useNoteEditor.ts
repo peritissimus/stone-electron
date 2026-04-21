@@ -3,32 +3,30 @@
  *
  * Abstracts store access per architecture rules:
  * Components → Hooks → Stores
+ *
+ * activeNoteId is sourced from the route (see useActiveNoteId). The store
+ * no longer mirrors it — if you need to change which note is active, use
+ * useNavigateToNote instead of a setter.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
-import { normalizePath } from '@renderer/lib/path';
-
-type NoteStoreState = ReturnType<typeof useNoteStore.getState>;
+import { useActiveNoteId } from '@renderer/navigation';
 
 /**
  * Main hook for note editor state
  */
 export function useNoteEditor() {
-  // Memoized selector for active note
-  const selectActiveNote = useCallback((state: NoteStoreState) => {
-    if (!state.activeNoteId) return null;
-    return state.notes.find((note) => note.id === state.activeNoteId) || null;
-  }, []);
+  const activeNoteId = useActiveNoteId();
+  const notes = useNoteStore((state) => state.notes);
 
-  const activeNote = useNoteStore(selectActiveNote);
-  const setActiveNote = useNoteStore((state) => state.setActiveNote);
+  const activeNote = useMemo(
+    () => (activeNoteId ? notes.find((note) => note.id === activeNoteId) ?? null : null),
+    [notes, activeNoteId],
+  );
 
-  // Derived values
-  const activeNoteId = activeNote?.id || null;
   const activeNoteFilePath = useMemo(
     () => (activeNote?.filePath ? activeNote.filePath.replace(/\\/g, '/') : ''),
     [activeNote?.filePath],
@@ -38,7 +36,6 @@ export function useNoteEditor() {
     activeNote,
     activeNoteId,
     activeNoteFilePath,
-    setActiveNote,
   };
 }
 
@@ -58,30 +55,6 @@ export function useActiveWorkspace() {
 }
 
 /**
- * Hook for file tree actions (used when navigating between notes)
- */
-export function useFileTreeActions() {
-  const setSelectedFile = useFileTreeStore((state) => state.setSelectedFile);
-  const setActiveFolder = useFileTreeStore((state) => state.setActiveFolder);
-
-  const syncFileTreeSelection = useCallback(
-    (filePath: string) => {
-      if (!filePath) return;
-      const normalizedPath = normalizePath(filePath);
-      setSelectedFile(normalizedPath);
-
-      const lastSlash = normalizedPath.lastIndexOf('/');
-      if (lastSlash > 0) {
-        setActiveFolder(normalizedPath.substring(0, lastSlash));
-      }
-    },
-    [setSelectedFile, setActiveFolder],
-  );
-
-  return { syncFileTreeSelection };
-}
-
-/**
  * Hook for document buffer actions
  */
 export function useDocumentBufferActions() {
@@ -93,9 +66,8 @@ export function useDocumentBufferActions() {
  * Combined hook for common editor operations
  */
 export function useEditorOperations() {
-  const { activeNote, activeNoteId, activeNoteFilePath, setActiveNote } = useNoteEditor();
+  const { activeNote, activeNoteId, activeNoteFilePath } = useNoteEditor();
   const { activeWorkspace } = useActiveWorkspace();
-  const { syncFileTreeSelection } = useFileTreeActions();
   const { removeBuffer } = useDocumentBufferActions();
 
   return {
@@ -105,8 +77,6 @@ export function useEditorOperations() {
     activeNoteFilePath,
     activeWorkspace,
     // Actions
-    setActiveNote,
-    syncFileTreeSelection,
     removeBuffer,
   };
 }

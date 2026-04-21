@@ -3,9 +3,10 @@
  */
 
 import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
+import { useTreeSelectionSync } from '@renderer/hooks/useTreeSelectionSync';
 import {
   LayoutContainer,
   SidebarPanel,
@@ -35,7 +36,6 @@ const TopicsPage = lazy(() =>
 );
 
 import { useUI } from '@renderer/hooks/useUI';
-import { useNotes } from '@renderer/hooks/useNotes';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -94,18 +94,9 @@ const PageSkeleton = () => (
   </div>
 );
 
-// Note route wrapper - syncs URL param with note store
+// Note route wrapper — the route itself owns which note is active (via useParams).
+// Children read it with useActiveNoteId(); no store mirror is required.
 function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle> }) {
-  const { noteId } = useParams<{ noteId: string }>();
-  const { setActiveNote } = useNotes();
-
-  // Sync URL noteId to store
-  useEffect(() => {
-    if (noteId) {
-      setActiveNote(noteId);
-    }
-  }, [noteId, setActiveNote]);
-
   return (
     <Suspense fallback={<EditorSkeleton />}>
       <NoteEditor ref={editorRef} />
@@ -118,7 +109,7 @@ export function MainLayout() {
   const location = useLocation();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth } = useUI();
 
-  const { setActiveNote } = useNotes();
+  useTreeSelectionSync();
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
@@ -246,7 +237,6 @@ export function MainLayout() {
   const handleRecoverDraft = (noteId: string, content: string) => {
     try {
       navigate(`/note/${noteId}`);
-      setActiveNote(noteId);
 
       setTimeout(() => {
         if (editorRef.current) {

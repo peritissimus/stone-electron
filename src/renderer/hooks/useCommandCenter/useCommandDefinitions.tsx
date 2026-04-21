@@ -7,6 +7,7 @@ import { useCommandStore } from '@renderer/stores/commandStore';
 import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useActiveNoteId, useNavigateToNote } from '@renderer/navigation';
 import {
   Gear,
   House,
@@ -22,7 +23,9 @@ import type { CommandItem } from './types';
 
 export function useCommandDefinitions(query: string) {
   const navigate = useNavigate();
-  const { notes, activeNoteId } = useNoteStore();
+  const navigateToNote = useNavigateToNote();
+  const notes = useNoteStore((s) => s.notes);
+  const activeNoteId = useActiveNoteId();
   const registerCommands = useCommandStore((state) => state.register);
   const unregisterCommands = useCommandStore((state) => state.unregister);
   const setContext = useCommandStore((state) => state.setContext);
@@ -44,10 +47,10 @@ export function useCommandDefinitions(query: string) {
       folderPath: 'Work',
     });
     if (note) {
-      navigate(`/note/${note.id}`);
+      navigateToNote(note.id);
     }
     useUIStore.getState().closeCommandCenter();
-  }, [createNote, navigate]);
+  }, [createNote, navigateToNote]);
 
   const handleExportPdf = useCallback(async () => {
     if (!activeNoteId) return;

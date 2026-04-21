@@ -13,7 +13,7 @@ import {
 } from 'phosphor-react';
 import { Note } from '@shared/types';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { useNoteEditor } from '@renderer/hooks/useNoteEditor';
+import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { logger } from '@renderer/lib/logger';
@@ -66,7 +66,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const { getBacklinks, getForwardLinks } = useNoteAPI();
-  const { setActiveNote } = useNoteEditor();
+  const navigateToNote = useNavigateToNote();
 
   // Fetch backlinks and forward links
   const fetchLinks = useCallback(async () => {
@@ -94,7 +94,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
   }, [fetchLinks]);
 
   const handleNoteClick = (targetNoteId: string) => {
-    setActiveNote(targetNoteId);
+    navigateToNote(targetNoteId);
   };
 
   const totalLinks = backlinks.length + forwardLinks.length;

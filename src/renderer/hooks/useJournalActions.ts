@@ -4,10 +4,9 @@
  */
 
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
+import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 
 /**
@@ -40,42 +39,9 @@ function getYesterdayJournalInfo() {
 }
 
 export function useJournalActions() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { getNoteByFilePath } = useNoteStore();
-  const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { createNote } = useNoteAPI();
-
-  /**
-   * Navigate to a note by ID - uses router navigation
-   */
-  const navigateToNote = useCallback(
-    (noteId: string) => {
-      // Get fresh notes from store to avoid stale closure
-      const notes = useNoteStore.getState().notes;
-      const note = notes.find((n) => n.id === noteId);
-
-      if (note?.filePath) {
-        // Normalize the path to match FileTree's normalization
-        const normalizedPath = note.filePath
-          .replace(/\\/g, '/')
-          .replace(/^\/+/, '')
-          .replace(/\/+$/, '');
-
-        setSelectedFile(normalizedPath);
-
-        // Extract folder path from the file path
-        const lastSlash = normalizedPath.lastIndexOf('/');
-        if (lastSlash > 0) {
-          const folderPath = normalizedPath.substring(0, lastSlash);
-          setActiveFolder(folderPath);
-        }
-      }
-
-      // Navigate using router
-      navigate(`/note/${noteId}`);
-    },
-    [navigate, setSelectedFile, setActiveFolder],
-  );
 
   /**
    * Open today's journal entry, creating it if it doesn't exist
@@ -84,49 +50,24 @@ export function useJournalActions() {
   const openOrCreateTodayJournal = useCallback(async (): Promise<string | null> => {
     const { journalTitle, journalFilename, expectedFilePath } = getTodayJournalInfo();
 
-    // Debug: Log all notes to see what paths are in the store
-    const allNotes = useNoteStore.getState().notes;
-    const journalNotes = allNotes.filter((n) => n.filePath?.includes('Journal'));
-
-    logger.info("[useJournalActions] Opening/creating today's journal", {
-      journalFilename,
-      journalTitle,
-      expectedFilePath,
-      totalNotes: allNotes.length,
-      journalNotesInStore: journalNotes.map((n) => ({ id: n.id, filePath: n.filePath })),
-    });
-
-    // Check if today's journal already exists using normalized path lookup
     const existingJournal = getNoteByFilePath(expectedFilePath);
-    logger.info('[useJournalActions] Lookup result:', {
-      found: !!existingJournal,
-      existingId: existingJournal?.id,
-      existingPath: existingJournal?.filePath,
-    });
-
     if (existingJournal) {
-      logger.info('[useJournalActions] Opening existing journal', { id: existingJournal.id });
       navigateToNote(existingJournal.id);
       return existingJournal.id;
     }
 
-    // Create new journal entry
-    logger.info('[useJournalActions] Creating new journal entry');
     try {
-      const { journalTitle: title } = getTodayJournalInfo();
       const newNote = await createNote({
         title: journalFilename,
-        content: `# ${title}\n\n`,
+        content: `# ${journalTitle}\n\n`,
         folderPath: 'Journal',
       });
 
       if (newNote) {
-        logger.info('[useJournalActions] Journal created', { id: newNote.id });
         navigateToNote(newNote.id);
         return newNote.id;
       }
 
-      // Check if there's an error in the store
       const storeError = useNoteStore.getState().error;
       logger.error('[useJournalActions] Failed to create journal', {
         storeError,
@@ -146,23 +87,12 @@ export function useJournalActions() {
   const openOrCreateYesterdayJournal = useCallback(async (): Promise<string | null> => {
     const { journalTitle, journalFilename, expectedFilePath } = getYesterdayJournalInfo();
 
-    logger.info("[useJournalActions] Opening/creating yesterday's journal", {
-      journalFilename,
-      journalTitle,
-      expectedFilePath,
-    });
-
-    // Check if yesterday's journal already exists using normalized path lookup
     const existingJournal = getNoteByFilePath(expectedFilePath);
-
     if (existingJournal) {
-      logger.info('[useJournalActions] Opening existing journal', { id: existingJournal.id });
       navigateToNote(existingJournal.id);
       return existingJournal.id;
     }
 
-    // Create new journal entry
-    logger.info('[useJournalActions] Creating new journal entry for yesterday');
     try {
       const newNote = await createNote({
         title: journalFilename,
@@ -171,7 +101,6 @@ export function useJournalActions() {
       });
 
       if (newNote) {
-        logger.info("[useJournalActions] Yesterday's journal created", { id: newNote.id });
         navigateToNote(newNote.id);
         return newNote.id;
       }
@@ -189,18 +118,10 @@ export function useJournalActions() {
    */
   const todayJournalExists = useCallback((): boolean => {
     const { expectedFilePath } = getTodayJournalInfo();
-    // Use normalized path lookup for accurate check
     return getNoteByFilePath(expectedFilePath) !== null;
   }, [getNoteByFilePath]);
 
-  /**
-   * Get today's journal info for display purposes
-   */
   const getTodayInfo = useCallback(() => getTodayJournalInfo(), []);
-
-  /**
-   * Get yesterday's journal info for display purposes
-   */
   const getYesterdayInfo = useCallback(() => getYesterdayJournalInfo(), []);
 
   return {
