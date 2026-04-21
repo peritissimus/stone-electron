@@ -95,7 +95,6 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     return handleRequest(
       async () => {
         await setSetting.execute({ key: params.key, value: params.value });
-        return { success: true };
       },
       { channel: SETTINGS_CHANNELS.SET, key: params.key },
     );
@@ -119,7 +118,6 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     return handleRequest(
       async () => {
         await setTheme.execute({ theme: params.theme });
-        return { success: true };
       },
       { channel: SETTINGS_CHANNELS.SET_THEME, theme: params.theme },
     );
@@ -131,7 +129,6 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       return handleRequest(
         async () => {
           await setAccentColor.execute({ accentColor: params.accentColor });
-          return { success: true };
         },
         { channel: SETTINGS_CHANNELS.SET_ACCENT_COLOR, accentColor: params.accentColor },
       );
@@ -144,7 +141,6 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       return handleRequest(
         async () => {
           await updateFontSettings.execute({ fontSettings: params.fontSettings });
-          return { success: true };
         },
         { channel: SETTINGS_CHANNELS.UPDATE_FONT_SETTINGS },
       );
@@ -155,7 +151,6 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     return handleRequest(
       async () => {
         await resetFontSettings.execute();
-        return { success: true };
       },
       { channel: SETTINGS_CHANNELS.RESET_FONT_SETTINGS },
     );
