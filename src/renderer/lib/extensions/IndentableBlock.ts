@@ -21,9 +21,17 @@ declare module '@tiptap/core' {
   }
 }
 
+export interface IndentableBlockBindings {
+  /** Chord that increases indent (default: "Tab"). */
+  indent: string;
+  /** Chord that decreases indent (default: "Shift-Tab"). */
+  outdent: string;
+}
+
 export interface IndentableBlockOptions {
   types: string[];
   maxIndent: number;
+  bindings: IndentableBlockBindings;
 }
 
 export const IndentableBlock = Extension.create<IndentableBlockOptions>({
@@ -33,6 +41,10 @@ export const IndentableBlock = Extension.create<IndentableBlockOptions>({
     return {
       types: ['paragraph', 'heading'],
       maxIndent: 8,
+      bindings: {
+        indent: 'Tab',
+        outdent: 'Shift-Tab',
+      },
     };
   },
 
@@ -140,8 +152,11 @@ export const IndentableBlock = Extension.create<IndentableBlockOptions>({
   },
 
   addKeyboardShortcuts() {
+    const indentChord = this.options.bindings.indent || 'Tab';
+    const outdentChord = this.options.bindings.outdent || 'Shift-Tab';
+
     return {
-      Tab: ({ editor }) => {
+      [indentChord]: ({ editor }) => {
         const { state } = editor;
         const { $from } = state.selection;
 
@@ -166,7 +181,7 @@ export const IndentableBlock = Extension.create<IndentableBlockOptions>({
         return editor.commands.indent();
       },
 
-      'Shift-Tab': ({ editor }) => {
+      [outdentChord]: ({ editor }) => {
         const { state } = editor;
         const { $from } = state.selection;
 

@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Command, ArrowClockwise } from 'phosphor-react';
+import { toast } from 'sonner';
 import {
   useShortcuts,
   DEFAULT_SHORTCUTS,
@@ -171,10 +172,32 @@ export function KeyboardShortcutsSettings() {
     editor: DEFAULT_SHORTCUTS.filter((s) => s.category === 'editor'),
   };
 
-  const handleSave = (binding: ShortcutBinding) => {
-    if (editingShortcut) {
-      setShortcut(editingShortcut, binding);
+  const handleSave = async (binding: ShortcutBinding) => {
+    if (!editingShortcut) return;
+    try {
+      await setShortcut(editingShortcut, binding);
       setEditingShortcut(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save shortcut';
+      toast.error(message);
+    }
+  };
+
+  const handleReset = async (id: ShortcutAction) => {
+    try {
+      await resetShortcut(id);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to reset shortcut';
+      toast.error(message);
+    }
+  };
+
+  const handleResetAll = async () => {
+    try {
+      await resetAllShortcuts();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to reset shortcuts';
+      toast.error(message);
     }
   };
 
@@ -188,7 +211,7 @@ export function KeyboardShortcutsSettings() {
     <SettingsSection
       title="Keyboard Shortcuts"
       action={
-        <Button variant="ghost" size="sm" onClick={resetAllShortcuts}>
+        <Button variant="ghost" size="sm" onClick={handleResetAll}>
           <ArrowClockwise size={14} className="mr-1" />
           Reset All
         </Button>
@@ -209,7 +232,7 @@ export function KeyboardShortcutsSettings() {
                     shortcut={shortcut}
                     isCustomized={isCustomized(shortcut.id)}
                     onEdit={() => setEditingShortcut(shortcut.id)}
-                    onReset={() => resetShortcut(shortcut.id)}
+                    onReset={() => handleReset(shortcut.id)}
                   />
                 );
               })}
