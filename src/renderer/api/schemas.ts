@@ -160,6 +160,23 @@ export const SettingsSchema = z.object({
   updatedAt: z.number(),
 });
 
+export const FontSettingsSchema = z.object({
+  uiFont: z.string(),
+  uiFontSize: z.number(),
+  editorHeadingFont: z.string(),
+  editorBodyFont: z.string(),
+  editorFontSize: z.number(),
+  editorLineHeight: z.number(),
+  monoFont: z.string(),
+  monoFontSize: z.number(),
+});
+
+export const AppearanceSettingsSchema = z.object({
+  theme: z.enum(['light', 'dark', 'system']),
+  accentColor: z.enum(['blue', 'purple', 'pink', 'red', 'orange', 'green', 'teal']),
+  fontSettings: FontSettingsSchema,
+});
+
 export const MigrationSchema = z.object({
   version: z.number(),
   name: z.string(),

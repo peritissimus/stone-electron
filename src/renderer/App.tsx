@@ -7,7 +7,8 @@ import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { MainLayout } from '@renderer/components/composites';
 import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
-import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
+import { ACCENT_COLORS } from '@renderer/stores/uiStore';
+import { useSettingsStore } from '@renderer/stores/settingsStore';
 
 export const App: React.FC = () => {
   // Check if this is the quick capture window FIRST (before any store access)
@@ -16,17 +17,23 @@ export const App: React.FC = () => {
     return hash === '#/quick-capture' || hash === '/quick-capture';
   });
 
-  // Only access store for main window - quick capture doesn't need theme management
-  const theme = useUIStore((state) => (isQuickCapture ? 'system' : state.theme));
-  const accentColor = useUIStore((state) => (isQuickCapture ? 'blue' : state.accentColor));
-  const fontSettings = useUIStore((state) =>
-    isQuickCapture ? null : state.fontSettings,
-  );
+  const hydrateSettings = useSettingsStore((state) => state.hydrate);
+  const theme = useSettingsStore((state) => state.appearance.theme);
+  const accentColor = useSettingsStore((state) => state.appearance.accentColor);
+  const fontSettings = useSettingsStore((state) => state.appearance.fontSettings);
 
-  // Apply theme (skip for quick capture - uses system default)
+  useEffect(() => {
+    if (isQuickCapture) return;
+    void hydrateSettings();
+  }, [hydrateSettings, isQuickCapture]);
+
+  const effectiveTheme = isQuickCapture ? 'system' : theme;
+  const effectiveAccentColor = isQuickCapture ? 'blue' : accentColor;
+
+  // Apply effectiveTheme (skip for quick capture - uses system default)
   useEffect(() => {
     if (isQuickCapture) {
-      // Quick capture: just apply system theme immediately
+      // Quick capture: just apply system effectiveTheme immediately
       const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.classList.toggle('dark', isDark);
       return;
@@ -34,10 +41,10 @@ export const App: React.FC = () => {
 
     const root = document.documentElement;
 
-    if (theme === 'dark') {
+    if (effectiveTheme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
-    } else if (theme === 'light') {
+    } else if (effectiveTheme === 'light') {
       root.classList.remove('dark');
       root.classList.add('light');
     } else {
@@ -50,14 +57,14 @@ export const App: React.FC = () => {
         root.classList.remove('dark');
       }
     }
-  }, [theme, isQuickCapture]);
+  }, [effectiveTheme, isQuickCapture]);
 
   // Apply accent color (skip for quick capture)
   useEffect(() => {
     if (isQuickCapture) return;
 
     const root = document.documentElement;
-    const hue = ACCENT_COLORS[accentColor]?.hue ?? 211;
+    const hue = ACCENT_COLORS[effectiveAccentColor]?.hue ?? 211;
     const isDark = root.classList.contains('dark');
 
     if (isDark) {
@@ -71,7 +78,7 @@ export const App: React.FC = () => {
       root.style.setProperty('--accent', `${hue} 100% 90% / 0.6`);
       root.style.setProperty('--accent-foreground', `${hue} 100% 40%`);
     }
-  }, [accentColor, theme, isQuickCapture]);
+  }, [effectiveAccentColor, effectiveTheme, isQuickCapture]);
 
   // Apply font settings as CSS variables (skip for quick capture)
   useEffect(() => {

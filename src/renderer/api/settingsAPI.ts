@@ -21,9 +21,16 @@ import type {
   Migration,
   IpcResponse,
 } from '@shared/types';
+import type {
+  AppearanceSettings,
+  AppAccentColor,
+  AppTheme,
+  FontSettings,
+} from '@shared/types/settings';
 import { validateResponse } from './validation';
 import {
   SettingsSchema,
+  AppearanceSettingsSchema,
   DatabaseStatusSchema,
   BackupResultSchema,
   VacuumResultSchema,
@@ -56,6 +63,31 @@ export const settingsAPI = {
   getAll: async (): Promise<IpcResponse<{ settings: Settings[] }>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.GET_ALL, {});
     return validateResponse(response, z.object({ settings: z.array(SettingsSchema) }));
+  },
+
+  getAppearance: async (): Promise<IpcResponse<AppearanceSettings>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_APPEARANCE, {});
+    return validateResponse(response, AppearanceSettingsSchema);
+  },
+
+  setTheme: async (theme: AppTheme): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET_THEME, { theme });
+    return validateResponse(response, z.void());
+  },
+
+  setAccentColor: async (accentColor: AppAccentColor): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET_ACCENT_COLOR, { accentColor });
+    return validateResponse(response, z.void());
+  },
+
+  updateFontSettings: async (fontSettings: Partial<FontSettings>): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_FONT_SETTINGS, { fontSettings });
+    return validateResponse(response, z.void());
+  },
+
+  resetFontSettings: async (): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_FONT_SETTINGS, {});
+    return validateResponse(response, z.void());
   },
 };
 

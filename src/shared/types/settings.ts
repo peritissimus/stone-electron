@@ -147,11 +147,29 @@ export const SYSTEM_FONT_OPTIONS = {
   ],
 };
 
+export type AppTheme = 'light' | 'dark' | 'system';
+
+export type AppAccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal';
+
+export interface AppearanceSettings {
+  theme: AppTheme;
+  accentColor: AppAccentColor;
+  fontSettings: FontSettings;
+}
+
+export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
+  theme: 'system',
+  accentColor: 'blue',
+  fontSettings: DEFAULT_FONT_SETTINGS,
+};
+
 /**
  * Complete application settings
- * Extends with other settings as needed (theme, etc.)
  */
 export interface AppSettings {
-  fonts: FontSettings;
-  // Other settings can be added here (theme, etc.)
+  appearance: AppearanceSettings;
 }
+
+export const DEFAULT_APP_SETTINGS: AppSettings = {
+  appearance: DEFAULT_APPEARANCE_SETTINGS,
+};
