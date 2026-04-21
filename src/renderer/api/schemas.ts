@@ -177,6 +177,58 @@ export const AppearanceSettingsSchema = z.object({
   fontSettings: FontSettingsSchema,
 });
 
+// ----- editor settings (mirrors src/shared/types/settings.ts EditorSettings) -----
+
+export const EditorBehaviorConfigSchema = z.object({
+  placeholder: z.string(),
+  defaultMode: z.enum(['rich', 'raw']),
+});
+
+export const EditorIndentConfigSchema = z.object({
+  types: z.array(z.string()),
+  maxIndent: z.number().int().nonnegative(),
+});
+
+export const EditorTableConfigSchema = z.object({
+  resizable: z.boolean(),
+  allowNodeSelection: z.boolean(),
+});
+
+export const EditorTaskStateDefSchema = z.object({
+  value: z.string(),
+  label: z.string(),
+  shortLabel: z.string().optional(),
+  done: z.boolean().optional(),
+});
+
+export const EditorTaskConfigSchema = z.object({
+  states: z.array(EditorTaskStateDefSchema),
+  defaultState: z.string(),
+  doneStates: z.array(z.string()),
+  nested: z.boolean(),
+});
+
+export const EditorCodeBlockConfigSchema = z.object({
+  preloadLanguages: z.array(z.string()),
+});
+
+export const EditorSettingsSchema = z.object({
+  behavior: EditorBehaviorConfigSchema,
+  indent: EditorIndentConfigSchema,
+  table: EditorTableConfigSchema,
+  task: EditorTaskConfigSchema,
+  codeBlock: EditorCodeBlockConfigSchema,
+});
+
+// ----- shortcuts -----
+
+const ChordOrChordsSchema = z.union([z.string(), z.array(z.string())]);
+
+export const ShortcutsConfigSchema = z.object({
+  app: z.record(ChordOrChordsSchema),
+  editor: z.record(ChordOrChordsSchema),
+});
+
 export const MigrationSchema = z.object({
   version: z.number(),
   name: z.string(),

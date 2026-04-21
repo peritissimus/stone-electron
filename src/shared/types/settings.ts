@@ -163,6 +163,147 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   fontSettings: DEFAULT_FONT_SETTINGS,
 };
 
+export interface WorkspaceConfig {
+  defaultWorkspacePath: string;
+}
+
+/**
+ * Editor settings — behavior knobs for the TipTap editor.
+ * Lives in config.json (typed AppConfig), never in the DB settings table.
+ */
+export interface EditorBehaviorConfig {
+  placeholder: string;
+  defaultMode: 'rich' | 'raw';
+}
+
+export interface EditorIndentConfig {
+  types: string[];
+  maxIndent: number;
+}
+
+export interface EditorTableConfig {
+  resizable: boolean;
+  allowNodeSelection: boolean;
+}
+
+export interface EditorTaskStateDef {
+  value: string;
+  label: string;
+  shortLabel?: string;
+  done?: boolean;
+}
+
+export interface EditorTaskConfig {
+  states: EditorTaskStateDef[];
+  defaultState: string;
+  doneStates: string[];
+  nested: boolean;
+}
+
+export interface EditorCodeBlockConfig {
+  preloadLanguages: string[];
+}
+
+export interface EditorSettings {
+  behavior: EditorBehaviorConfig;
+  indent: EditorIndentConfig;
+  table: EditorTableConfig;
+  task: EditorTaskConfig;
+  codeBlock: EditorCodeBlockConfig;
+}
+
+export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
+  behavior: {
+    placeholder: 'Type / for commands, or start writing...',
+    defaultMode: 'rich',
+  },
+  indent: {
+    types: ['paragraph', 'heading'],
+    maxIndent: 8,
+  },
+  table: {
+    resizable: false,
+    allowNodeSelection: true,
+  },
+  task: {
+    states: [
+      { value: 'todo', label: 'TODO' },
+      { value: 'doing', label: 'DOING' },
+      { value: 'waiting', label: 'WAIT', shortLabel: 'WAIT' },
+      { value: 'hold', label: 'HOLD' },
+      { value: 'done', label: 'DONE', done: true },
+      { value: 'canceled', label: 'CANCELED', done: true, shortLabel: 'CAN' },
+      { value: 'idea', label: 'IDEA' },
+    ],
+    defaultState: 'todo',
+    doneStates: ['done', 'canceled'],
+    nested: true,
+  },
+  codeBlock: {
+    preloadLanguages: ['javascript', 'typescript', 'json'],
+  },
+};
+
+/**
+ * Keyboard shortcut configuration.
+ *
+ * Chord strings use TipTap/ProseMirror format: "Mod-Shift-Enter", "Tab",
+ * "Mod-,", etc. "Mod" is the platform modifier (Cmd on macOS, Ctrl elsewhere).
+ *
+ * `ShortcutsConfig` stores SPARSE OVERRIDES — only chords the user has changed
+ * from the defaults defined in src/shared/constants/defaultShortcuts.ts.
+ */
+export type ChordBinding = string;
+
+export type AppShortcutAction =
+  | 'save'
+  | 'newNote'
+  | 'newPersonalNote'
+  | 'newWorkNote'
+  | 'settings'
+  | 'commandCenter'
+  | 'toggleSidebar'
+  | 'goHome'
+  | 'closeNote'
+  | 'todayJournal'
+  | 'findReplace'
+  | 'toggleEditorMode';
+
+export type EditorShortcutAction =
+  | 'indent'
+  | 'outdent'
+  | 'taskCycleForward'
+  | 'taskCycleBackward'
+  | 'tableNextCell'
+  | 'tablePrevCell'
+  | 'tableExit';
+
+export interface ShortcutsConfig {
+  app: Partial<Record<AppShortcutAction, ChordBinding | ChordBinding[]>>;
+  editor: Partial<Record<EditorShortcutAction, ChordBinding | ChordBinding[]>>;
+}
+
+export const DEFAULT_SHORTCUTS_CONFIG: ShortcutsConfig = {
+  app: {},
+  editor: {},
+};
+
+export interface AppConfig {
+  appearance: AppearanceSettings;
+  workspace: WorkspaceConfig;
+  editor: EditorSettings;
+  shortcuts: ShortcutsConfig;
+}
+
+export const DEFAULT_APP_CONFIG: AppConfig = {
+  appearance: DEFAULT_APPEARANCE_SETTINGS,
+  workspace: {
+    defaultWorkspacePath: 'NoteBook',
+  },
+  editor: DEFAULT_EDITOR_SETTINGS,
+  shortcuts: DEFAULT_SHORTCUTS_CONFIG,
+};
+
 /**
  * Complete application settings
  */

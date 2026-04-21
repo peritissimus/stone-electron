@@ -70,6 +70,26 @@ export class NoteLinkValidationError extends ValidationError {
   }
 }
 
+/**
+ * Thrown when a user-supplied shortcut chord collides with another shortcut
+ * or with a reserved built-in (StarterKit) binding.
+ */
+export class ShortcutConflictError extends ValidationError {
+  readonly chord: string;
+  readonly conflictingActions: string[];
+  readonly reserved: boolean;
+
+  constructor(args: { chord: string; conflictingActions: string[]; reserved?: boolean }) {
+    const detail = args.reserved
+      ? 'reserved by built-in editor binding'
+      : `conflicts with: ${args.conflictingActions.join(', ')}`;
+    super(`Shortcut '${args.chord}' ${detail}`);
+    this.chord = args.chord;
+    this.conflictingActions = args.conflictingActions;
+    this.reserved = args.reserved ?? false;
+  }
+}
+
 // ============================================================================
 // Operation Errors - Invalid operations on valid entities
 // ============================================================================
