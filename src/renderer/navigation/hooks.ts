@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toHome, toNote } from './routes';
 
 /**
  * The id of the note currently rendered by the /note/:noteId route.
@@ -19,5 +20,14 @@ export function useActiveNoteId(): string | null {
  */
 export function useNavigateToNote() {
   const navigate = useNavigate();
-  return useCallback((noteId: string) => navigate(`/note/${noteId}`), [navigate]);
+  return useCallback((noteId: string) => navigate(toNote(noteId)), [navigate]);
+}
+
+/**
+ * Navigate to the app home. Exposed here so callers don't need to
+ * import useNavigate alongside a raw '/home' string literal.
+ */
+export function useNavigateHome() {
+  const navigate = useNavigate();
+  return useCallback(() => navigate(toHome()), [navigate]);
 }

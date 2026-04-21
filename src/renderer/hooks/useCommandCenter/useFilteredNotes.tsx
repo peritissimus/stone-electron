@@ -1,21 +1,21 @@
 import { useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FileText } from 'phosphor-react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNavigateToNote } from '@renderer/navigation';
 import { fuzzyFilter } from '@renderer/lib/fuzzyMatch';
 import type { CommandItem } from './types';
 
 export function useFilteredNotes(query: string): CommandItem[] {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { notes } = useNoteStore();
 
   const handleSelectNote = useCallback(
     (noteId: string) => {
-      navigate(`/note/${noteId}`);
+      navigateToNote(noteId);
       useUIStore.getState().closeCommandCenter();
     },
-    [navigate],
+    [navigateToNote],
   );
 
   return useMemo<CommandItem[]>(() => {

@@ -59,6 +59,10 @@ export { quickCaptureAPI } from './quickCaptureAPI';
 export { journalAPI } from './journalAPI';
 export type { OpenOrCreateJournalResponse } from './journalAPI';
 
+// Quick note (slot-based) API
+export { quickNoteAPI } from './quickNoteAPI';
+export type { QuickNoteSlot, CreateQuickNoteResponse } from './quickNoteAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

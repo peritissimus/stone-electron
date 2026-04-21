@@ -61,6 +61,13 @@ export {
   type JournalIPCDeps,
 } from './JournalIPC';
 
+// Quick notes (slot-based)
+export {
+  registerQuickNoteHandlers,
+  unregisterQuickNoteHandlers,
+  type QuickNoteIPCDeps,
+} from './QuickNoteIPC';
+
 // System utilities
 export { registerSystemHandlers, unregisterSystemHandlers, type SystemIPCDeps } from './SystemIPC';
 

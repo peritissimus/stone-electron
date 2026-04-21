@@ -36,3 +36,4 @@ sonar-issues.json
 *~
 bundle-stats.html
 .kairos/
+.codegraph/

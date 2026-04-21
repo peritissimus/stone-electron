@@ -166,6 +166,11 @@ export const JOURNAL_CHANNELS = {
   OPEN_OR_CREATE_FOR_DATE: 'journal:openOrCreateForDate',
 } as const;
 
+// Quick Note (slot-based) Operations
+export const QUICK_NOTE_CHANNELS = {
+  CREATE_IN_SLOT: 'quickNote:createInSlot',
+} as const;
+
 // Performance Monitoring Operations
 export const PERFORMANCE_CHANNELS = {
   GET_SNAPSHOT: 'performance:getSnapshot',
@@ -254,6 +259,7 @@ export const ALL_CHANNELS = [
   ...Object.values(GIT_CHANNELS),
   ...Object.values(QUICK_CAPTURE_CHANNELS),
   ...Object.values(JOURNAL_CHANNELS),
+  ...Object.values(QUICK_NOTE_CHANNELS),
   ...Object.values(PERFORMANCE_CHANNELS),
 ];
 

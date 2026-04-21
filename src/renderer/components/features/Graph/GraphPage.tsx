@@ -3,12 +3,12 @@
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ForceGraph2D from 'react-force-graph-2d';
 import { GitFork, CaretRight } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
 import { useSidebarUI } from '@renderer/hooks/useUI';
+import { useNavigateToNote } from '@renderer/navigation';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
@@ -34,7 +34,7 @@ interface GraphData {
 }
 
 export function GraphPage() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { getGraphData } = useNoteAPI();
   const { activeNoteId } = useNotes();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
@@ -93,9 +93,9 @@ export function GraphPage() {
   // Handle node click - navigate to note
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
-      navigate(`/note/${node.id}`);
+      navigateToNote(node.id);
     },
-    [navigate],
+    [navigateToNote],
   );
 
   // Custom node rendering

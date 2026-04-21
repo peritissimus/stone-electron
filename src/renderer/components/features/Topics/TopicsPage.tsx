@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { MagnifyingGlass, Plus, CaretRight } from 'phosphor-react';
+import { useNavigateToNote } from '@renderer/navigation';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTopicsData } from '@renderer/hooks/useTopicsData';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
@@ -16,7 +16,7 @@ import { TopicNotesPanel } from './TopicNotesPanel';
 import { CreateTopicDialog } from './CreateTopicDialog';
 
 export function TopicsPage() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
 
   const {
@@ -165,7 +165,7 @@ export function TopicsPage() {
                 <NoteRow
                   key={r.noteId}
                   note={{ id: r.noteId, title: r.title, confidence: 1 - r.distance }}
-                  onClick={() => navigate(`/note/${r.noteId}`)}
+                  onClick={() => navigateToNote(r.noteId)}
                 />
               ))}
             </div>
@@ -218,7 +218,7 @@ export function TopicsPage() {
             topic={selectedTopic}
             notes={topicNotes}
             loading={loadingNotes}
-            onNoteClick={(id) => navigate(`/note/${id}`)}
+            onNoteClick={(id) => navigateToNote(id)}
             onClose={() => selectTopic(null)}
           />
         )}

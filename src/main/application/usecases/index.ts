@@ -147,6 +147,13 @@ export {
   type JournalUseCasesDeps,
 } from './journal';
 
+// Quick Note (slot-based) Use Cases
+export {
+  CreateQuickNoteUseCase,
+  createQuickNoteUseCases,
+  type QuickNoteUseCasesDeps,
+} from './quickNote';
+
 // Export Use Cases
 export { createExportUseCases, type ExportUseCasesDeps } from './export';
 

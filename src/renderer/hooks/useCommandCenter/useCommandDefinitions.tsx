@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useSettingsStore } from '@renderer/stores/settingsStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
@@ -7,7 +6,8 @@ import { useCommandStore } from '@renderer/stores/commandStore';
 import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { useActiveNoteId, useNavigateToNote } from '@renderer/navigation';
+import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
+import { useActiveNoteId, useNavigateHome } from '@renderer/navigation';
 import {
   Gear,
   House,
@@ -22,8 +22,7 @@ import {
 import type { CommandItem } from './types';
 
 export function useCommandDefinitions(query: string) {
-  const navigate = useNavigate();
-  const navigateToNote = useNavigateToNote();
+  const navigateHome = useNavigateHome();
   const notes = useNoteStore((s) => s.notes);
   const activeNoteId = useActiveNoteId();
   const registerCommands = useCommandStore((state) => state.register);
@@ -32,25 +31,17 @@ export function useCommandDefinitions(query: string) {
   const getVisibleCommands = useCommandStore((state) => state.getVisibleCommands);
   const recordUsage = useCommandStore((state) => state.recordUsage);
   const { openOrCreateTodayJournal, openOrCreateYesterdayJournal } = useJournalActions();
-  const { createNote, exportPdf } = useNoteAPI();
+  const { createWork } = useQuickNoteActions();
+  const { exportPdf } = useNoteAPI();
 
   const handleClose = useCallback(() => {
     useUIStore.getState().closeCommandCenter();
   }, []);
 
   const handleCreateWorkNote = useCallback(async () => {
-    const now = new Date();
-    const defaultTitle = `Untitled Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-    const note = await createNote({
-      title: defaultTitle,
-      content: '',
-      folderPath: 'Work',
-    });
-    if (note) {
-      navigateToNote(note.id);
-    }
+    await createWork();
     useUIStore.getState().closeCommandCenter();
-  }, [createNote, navigateToNote]);
+  }, [createWork]);
 
   const handleExportPdf = useCallback(async () => {
     if (!activeNoteId) return;
@@ -93,7 +84,7 @@ export function useCommandDefinitions(query: string) {
         icon: <House size={18} />,
         shortcut: '⌘⇧H',
         run: () => {
-          navigate('/home');
+          navigateHome();
           handleClose();
         },
       },
@@ -167,7 +158,7 @@ export function useCommandDefinitions(query: string) {
     ],
     [
       handleClose,
-      navigate,
+      navigateHome,
       openOrCreateTodayJournal,
       openOrCreateYesterdayJournal,
       handleCreateWorkNote,

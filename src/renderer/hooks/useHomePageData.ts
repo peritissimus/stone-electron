@@ -5,8 +5,8 @@
 import { useRef, useMemo, useCallback } from 'react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
-import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
+import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
 import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
@@ -15,8 +15,8 @@ export function useHomePageData() {
   const navigateToNote = useNavigateToNote();
   const { notes } = useNoteStore();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
-  const { createNote } = useNoteAPI();
   const { openOrCreateTodayJournal, getTodayInfo } = useJournalActions();
+  const { createWork } = useQuickNoteActions();
 
   // Prevent double-click creating duplicate notes
   const isCreatingNote = useRef(false);
@@ -77,30 +77,20 @@ export function useHomePageData() {
     await openOrCreateTodayJournal();
   }, [journalFilename, openOrCreateTodayJournal]);
 
-  // Handle work note click - create a new note in Work folder
+  // Handle work note click - create via the backend quick-note slot so the
+  // renderer doesn't know the folder mapping.
   const handleWorkNoteClick = useCallback(async () => {
     if (isCreatingNote.current) {
       logger.info('[HomePage] Already creating note, ignoring click');
       return;
     }
     isCreatingNote.current = true;
-
-    logger.info('[HomePage] Work note clicked');
     try {
-      const newNote = await createNote({
-        title: 'Untitled',
-        content: '',
-        folderPath: 'Work',
-      });
-
-      if (newNote) {
-        logger.info('[HomePage] Work note created', { id: newNote.id });
-        navigateToNote(newNote.id);
-      }
+      await createWork();
     } finally {
       isCreatingNote.current = false;
     }
-  }, [createNote, navigateToNote]);
+  }, [createWork]);
 
   return {
     // Data
