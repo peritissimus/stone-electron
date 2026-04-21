@@ -5,13 +5,11 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { workspaceAPI } from '@renderer/api';
 
 export function useWorkspaceAPI() {
   const navigate = useNavigate();
   const { setWorkspaces, setActiveWorkspaceId, setLoading, setError } = useWorkspaceStore();
-  const { setActiveFolder, setSelectedFile } = useFileTreeStore();
 
   const loadWorkspaces = useCallback(async () => {
     setLoading(true);
@@ -37,8 +35,8 @@ export function useWorkspaceAPI() {
         const response = await workspaceAPI.setActive(workspaceId);
         if (response.success) {
           setActiveWorkspaceId(workspaceId);
-          setActiveFolder(null);
-          setSelectedFile(null);
+          // Tree selection is derived from the route; navigating to /home
+          // drops the active note and the derivation follows automatically.
           navigate('/home');
           await loadWorkspaces();
         } else {
@@ -48,14 +46,7 @@ export function useWorkspaceAPI() {
         setError(error instanceof Error ? error.message : 'Failed to switch workspace');
       }
     },
-    [
-      loadWorkspaces,
-      setActiveWorkspaceId,
-      setActiveFolder,
-      setSelectedFile,
-      navigate,
-      setError,
-    ],
+    [loadWorkspaces, setActiveWorkspaceId, navigate, setError],
   );
 
   const syncWorkspace = useCallback(

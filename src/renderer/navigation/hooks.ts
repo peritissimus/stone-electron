@@ -13,8 +13,9 @@ export function useActiveNoteId(): string | null {
 
 /**
  * Single entry point for opening a note. Callers must not also mutate
- * fileTreeStore or noteStore — selection state is derived from the route
- * by useTreeSelectionSync.
+ * fileTreeStore or noteStore — tree selection is derived from the route
+ * by useTreeSelection (read-only), and ancestor folders are auto-expanded
+ * by useAutoExpandAncestors mounted once at the app root.
  */
 export function useNavigateToNote() {
   const navigate = useNavigate();

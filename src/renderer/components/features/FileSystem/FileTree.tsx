@@ -12,13 +12,13 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
-import { normalizePath, getParentPath } from '@renderer/lib/path';
+import { normalizePath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
 export function FileTree() {
   const navigateToNote = useNavigateToNote();
-  const { tree, setActiveFolder, setSelectedFile } = useFileTree();
+  const { tree } = useFileTree();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
@@ -86,16 +86,13 @@ export function FileTree() {
       const trimmed = newName.trim();
       if (!trimmed) return;
       try {
-        const updatedPath = await renameFolder(folderPath, trimmed);
+        await renameFolder(folderPath, trimmed);
         await loadFileTree();
-        const nextPath = normalizePath(updatedPath || folderPath);
-        setActiveFolder(nextPath || null);
-        setSelectedFile(null);
       } catch (error) {
         logger.error('Failed to rename folder', error);
       }
     },
-    [renameFolder, loadFileTree, setActiveFolder, setSelectedFile],
+    [renameFolder, loadFileTree],
   );
 
   const handleDeleteFolder = useCallback(
@@ -109,9 +106,6 @@ export function FileTree() {
         const success = await deleteFolder(folderPath);
         if (success) {
           await loadFileTree();
-          const parent = getParentPath(folderPath);
-          setActiveFolder(parent || null);
-          setSelectedFile(null);
           if (renameFolderTarget?.path === folderPath) {
             setRenameFolderTarget(null);
           }
@@ -120,7 +114,7 @@ export function FileTree() {
         logger.error('Failed to delete folder', error);
       }
     },
-    [deleteFolder, loadFileTree, setActiveFolder, setSelectedFile, renameFolderTarget],
+    [deleteFolder, loadFileTree, renameFolderTarget],
   );
 
   const handleMoveNote = useCallback(

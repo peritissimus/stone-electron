@@ -6,7 +6,9 @@ import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
-import { useTreeSelectionSync } from '@renderer/hooks/useTreeSelectionSync';
+import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
+import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
+import { useTreeSelection } from '@renderer/hooks/useTreeSelection';
 import {
   LayoutContainer,
   SidebarPanel,
@@ -109,7 +111,13 @@ export function MainLayout() {
   const location = useLocation();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth } = useUI();
 
-  useTreeSelectionSync();
+  // Derive tree state from the route and subscribe to sidebar-relevant events.
+  // These used to live inside <Sidebar>; kept here so <Sidebar> is pure
+  // composition and these subscriptions keep running even if the sidebar is
+  // collapsed (the file tree state still has to stay coherent).
+  useAutoExpandAncestors();
+  const { activeFolder } = useTreeSelection();
+  useSidebarEvents({ activeFolder });
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
