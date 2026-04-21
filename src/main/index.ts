@@ -8,7 +8,7 @@ import 'dotenv/config';
 import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
 import net from 'node:net';
-import dns from 'node:dns';
+import { lookup as dnsLookup } from 'node:dns';
 
 // Import from main architecture
 import { logger } from '@main/shared/utils/logger';
@@ -46,7 +46,7 @@ async function isPortOpen(port: number, host = 'localhost'): Promise<boolean> {
   // through to the next candidate port, where an unrelated process (e.g. a
   // stray python http.server) can answer and poison module loads.
   const addresses = await new Promise<string[]>((resolve) => {
-    dns.lookup(host, { all: true }, (err, found) => {
+    dnsLookup(host, { all: true }, (err, found) => {
       if (err || !found?.length) {
         resolve([host]);
         return;
