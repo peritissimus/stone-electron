@@ -10,6 +10,7 @@ import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { noteAPI } from '@renderer/api';
 import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
 
@@ -98,6 +99,31 @@ export function useSidebarEvents({ activeFolder }: UseSidebarEventsOptions) {
     }
   }, []);
 
+  // Note created handler — NOTE_CREATED carries only { id } so we fetch the
+  // note and addNote() it into the store. Without this, notes created by
+  // non-CreateNote paths (e.g. OpenOrCreateJournalForDateUseCase) are only
+  // reachable via the file-watcher round-trip, which leaves the sidebar
+  // unable to highlight the newly-opened note until loadNotes fires.
+  const handleNoteCreated = useCallback(async (payload: unknown) => {
+    const data = payload as { id?: string; note?: Note };
+    logger.debug('[Sidebar] NOTE_CREATED:', data);
+
+    if (data.note) {
+      useNoteStore.getState().addNote(data.note);
+      return;
+    }
+    if (!data.id) return;
+
+    try {
+      const response = await noteAPI.getById(data.id);
+      if (response.success && response.data) {
+        useNoteStore.getState().addNote(response.data);
+      }
+    } catch (error) {
+      logger.error('[Sidebar] Failed to hydrate newly-created note', { id: data.id, error });
+    }
+  }, []);
+
   // Subscribe to all events
   useFileEvents({
     onCreated: handleFileCreated,
@@ -110,6 +136,7 @@ export function useSidebarEvents({ activeFolder }: UseSidebarEventsOptions) {
   });
 
   useNoteEvents({
+    onCreated: handleNoteCreated,
     onUpdated: handleNoteUpdated,
   });
 }
