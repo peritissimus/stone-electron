@@ -1,0 +1,74 @@
+import path from 'node:path';
+import crypto from 'node:crypto';
+import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
+import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import { NoteEntity } from '../../../domain/entities/Note';
+import { logger } from '../../../shared/utils';
+
+const JOURNAL_FOLDER = 'Journal';
+
+function formatJournalDate(date: Date): string {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function parseDate(input: string): Date {
+  const d = new Date(input);
+  if (Number.isNaN(d.getTime())) {
+    throw new Error(`Invalid journal date: ${input}`);
+  }
+  return d;
+}
+
+export class OpenOrCreateJournalForDateUseCase {
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly fileStorage: IFileStorage,
+  ) {}
+
+  async execute(input: {
+    date: string;
+    workspaceId?: string;
+  }): Promise<{ noteId: string; created: boolean }> {
+    const workspace = input.workspaceId
+      ? await this.workspaceRepository.findById(input.workspaceId)
+      : await this.workspaceRepository.findActive();
+
+    if (!workspace) {
+      throw new Error('No active workspace');
+    }
+
+    const date = parseDate(input.date);
+    const dateStr = formatJournalDate(date);
+    const journalFilePath = `${JOURNAL_FOLDER}/${dateStr}.md`;
+
+    const existing = await this.noteRepository.findByFilePath(journalFilePath, workspace.id);
+    if (existing) {
+      return { noteId: existing.id, created: false };
+    }
+
+    const absolutePath = path.join(workspace.folderPath, journalFilePath);
+    const fileExists = await this.fileStorage.exists(absolutePath);
+
+    if (!fileExists) {
+      const journalDir = path.join(workspace.folderPath, JOURNAL_FOLDER);
+      await this.fileStorage.createDirectory(journalDir);
+      await this.fileStorage.write(absolutePath, `# ${dateStr}\n\n`);
+    }
+
+    const note = NoteEntity.create({
+      id: crypto.randomUUID(),
+      title: dateStr,
+      workspaceId: workspace.id,
+    });
+    note.updateFilePath(journalFilePath);
+    await this.noteRepository.save(note);
+
+    logger.info(`[Journal] ${fileExists ? 'Indexed existing' : 'Created'} journal ${note.id}`);
+    return { noteId: note.id, created: !fileExists };
+  }
+}
