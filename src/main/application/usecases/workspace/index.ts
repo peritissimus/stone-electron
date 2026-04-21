@@ -7,6 +7,7 @@ import type { ISystemBridge } from '../../../domain/ports/out/ISystemBridge';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import { CreateWorkspaceUseCase } from './CreateWorkspaceUseCase';
 import { GetWorkspaceUseCase } from './GetWorkspaceUseCase';
 import { ListWorkspacesUseCase } from './ListWorkspacesUseCase';
@@ -45,11 +46,20 @@ export interface WorkspaceUseCasesDeps {
   fileStorage: IFileStorage;
   systemBridge: ISystemBridge;
   markdownProcessor: IMarkdownProcessor;
+  appConfigRepository: IAppConfigRepository;
   eventPublisher?: IEventPublisher;
 }
 
 export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspaceUseCases {
-  const { workspaceRepository, noteRepository, fileStorage, systemBridge, markdownProcessor, eventPublisher } = deps;
+  const {
+    workspaceRepository,
+    noteRepository,
+    fileStorage,
+    systemBridge,
+    markdownProcessor,
+    appConfigRepository,
+    eventPublisher,
+  } = deps;
 
   return {
     createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, eventPublisher),
@@ -59,7 +69,7 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     getActiveWorkspace: new GetActiveWorkspaceUseCase(workspaceRepository),
     deleteWorkspace: new DeleteWorkspaceUseCase(workspaceRepository, eventPublisher),
     updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository, eventPublisher),
-    selectFolder: new SelectFolderUseCase(systemBridge),
+    selectFolder: new SelectFolderUseCase(systemBridge, appConfigRepository),
     validatePath: new ValidatePathUseCase(systemBridge),
     createFolder: new CreateFolderUseCase(workspaceRepository, fileStorage),
     renameFolder: new RenameFolderUseCase(workspaceRepository, fileStorage),

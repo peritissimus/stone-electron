@@ -25,11 +25,13 @@ import {
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import { WorkspaceNotFoundError } from '../../../../src/main/domain/errors';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 
 // Mock factories
 function createMockWorkspaceRepository(): IWorkspaceRepository {
@@ -71,6 +73,14 @@ function createMockSystemBridge(): ISystemBridge {
     getAppVersion: vi.fn(),
     getPlatformInfo: vi.fn(),
   } as unknown as ISystemBridge;
+}
+
+function createMockAppConfigRepository(): IAppConfigRepository {
+  return {
+    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
+    set: vi.fn(),
+    update: vi.fn(),
+  } as unknown as IAppConfigRepository;
 }
 
 function createMockNoteRepository(): INoteRepository {
@@ -315,11 +325,13 @@ describe('WorkspaceUseCases', () => {
 
   describe('SelectFolderUseCase', () => {
     let systemService: ISystemBridge;
+    let appConfigRepository: IAppConfigRepository;
     let useCase: SelectFolderUseCase;
 
     beforeEach(() => {
       systemService = createMockSystemBridge();
-      useCase = new SelectFolderUseCase(systemService);
+      appConfigRepository = createMockAppConfigRepository();
+      useCase = new SelectFolderUseCase(systemService, appConfigRepository);
     });
 
     it('returns selected folder path', async () => {

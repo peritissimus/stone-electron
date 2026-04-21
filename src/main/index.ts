@@ -7,6 +7,7 @@
 import 'dotenv/config';
 import { app, BrowserWindow, globalShortcut } from 'electron';
 import path from 'node:path';
+import net from 'node:net';
 
 // Import from main architecture
 import { logger } from '@main/shared/utils/logger';
@@ -36,6 +37,34 @@ logger.info('='.repeat(60));
 
 let mainWindow: BrowserWindow | null = null;
 let quickCaptureWindow: BrowserWindow | null = null;
+
+async function isPortOpen(port: number, host = '127.0.0.1'): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const socket = net.connect({ port, host });
+
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+
+    socket.once('error', () => {
+      resolve(false);
+    });
+  });
+}
+
+async function resolveDevServerUrl(): Promise<string> {
+  const configuredPort = Number(process.env.VITE_PORT ?? '5173');
+  const portCandidates = [configuredPort, configuredPort + 1, configuredPort + 2];
+
+  for (const port of portCandidates) {
+    if (await isPortOpen(port)) {
+      return `http://localhost:${port}`;
+    }
+  }
+
+  return `http://localhost:${configuredPort}`;
+}
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
@@ -88,8 +117,9 @@ async function createWindow() {
 
     // Load the app
     if (isDev) {
-      logger.info('Loading dev server at http://localhost:5173');
-      await mainWindow.loadURL('http://localhost:5173');
+      const devServerUrl = await resolveDevServerUrl();
+      logger.info(`Loading dev server at ${devServerUrl}`);
+      await mainWindow.loadURL(devServerUrl);
       mainWindow.webContents.openDevTools();
     } else {
       const htmlPath = path.join(__dirname, '../renderer/index.html');
@@ -150,7 +180,9 @@ function createQuickCaptureWindow() {
 
   // Load quick capture route
   if (isDev) {
-    quickCaptureWindow.loadURL('http://localhost:5173/#/quick-capture');
+    void resolveDevServerUrl().then((devServerUrl) => {
+      void quickCaptureWindow?.loadURL(`${devServerUrl}/#/quick-capture`);
+    });
   } else {
     const htmlPath = path.join(__dirname, '../renderer/index.html');
     quickCaptureWindow.loadFile(htmlPath, { hash: '/quick-capture' });

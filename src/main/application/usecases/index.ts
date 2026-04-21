@@ -159,6 +159,11 @@ export {
   GetSettingUseCase,
   SetSettingUseCase,
   GetAllSettingsUseCase,
+  GetAppearanceSettingsUseCase,
+  SetThemeUseCase,
+  SetAccentColorUseCase,
+  UpdateFontSettingsUseCase,
+  ResetFontSettingsUseCase,
   createSettingsUseCases,
   type SettingsUseCasesDeps,
 } from './settings';
