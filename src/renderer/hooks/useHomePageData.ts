@@ -3,12 +3,11 @@
  */
 
 import { useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useNoteStore } from '@renderer/stores/noteStore';
-import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
+import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import type { Note } from '@shared/types';
 
@@ -21,9 +20,8 @@ function normalizePath(path: string | null): string {
 }
 
 export function useHomePageData() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const { notes } = useNoteStore();
-  const { setSelectedFile, setActiveFolder } = useFileTreeStore();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { createNote } = useNoteAPI();
   const { openOrCreateTodayJournal, getTodayInfo } = useJournalActions();
@@ -72,31 +70,12 @@ export function useHomePageData() {
     [notes, todayDateString],
   );
 
-  // Handle note click - navigate to note using router
   const handleNoteClick = useCallback(
     (noteId: string) => {
       logger.info('[HomePage] Note clicked', { noteId });
-
-      const note = notes.find((n) => n.id === noteId);
-      if (note?.filePath) {
-        const normalizedPath = note.filePath
-          .replace(/\\/g, '/')
-          .replace(/^\/+/, '')
-          .replace(/\/+$/, '');
-
-        setSelectedFile(normalizedPath);
-
-        const lastSlash = normalizedPath.lastIndexOf('/');
-        if (lastSlash > 0) {
-          const folderPath = normalizedPath.substring(0, lastSlash);
-          setActiveFolder(folderPath);
-        }
-      }
-
-      // Navigate using router
-      navigate(`/note/${noteId}`);
+      navigateToNote(noteId);
     },
-    [notes, setSelectedFile, setActiveFolder, navigate],
+    [navigateToNote],
   );
 
   // Handle journal click - open or create today's journal
@@ -123,12 +102,12 @@ export function useHomePageData() {
 
       if (newNote) {
         logger.info('[HomePage] Work note created', { id: newNote.id });
-        navigate(`/note/${newNote.id}`);
+        navigateToNote(newNote.id);
       }
     } finally {
       isCreatingNote.current = false;
     }
-  }, [createNote, navigate]);
+  }, [createNote, navigateToNote]);
 
   return {
     // Data

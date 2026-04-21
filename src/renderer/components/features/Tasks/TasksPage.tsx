@@ -3,12 +3,11 @@
  */
 
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CheckSquare, Funnel } from 'phosphor-react';
 import { TodoItem } from '@shared/types';
-import { useFileTree } from '@renderer/hooks/useFileTree';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTasks, TASK_STATES } from '@renderer/hooks/useTasks';
+import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Button } from '@renderer/components/base/ui/button';
@@ -17,7 +16,7 @@ import { TasksHeader } from './TasksHeader';
 import { TasksFilterBar } from './TasksFilterBar';
 
 export function TasksPage() {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
   const {
     loading,
     groupedTodos,
@@ -37,29 +36,14 @@ export function TasksPage() {
     handleToggleTask,
   } = useTasks();
 
-  const { setSelectedFile, setActiveFolder } = useFileTree();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
 
   const handleTodoClick = useCallback(
     (todo: TodoItem) => {
       logger.info('[TasksPage] Todo clicked', { noteId: todo.noteId, todoId: todo.id });
-
-      if (todo.notePath) {
-        const normalizedPath = todo.notePath
-          .replace(/\\/g, '/')
-          .replace(/^\/+/, '')
-          .replace(/\/+$/, '');
-        setSelectedFile(normalizedPath);
-
-        const lastSlash = normalizedPath.lastIndexOf('/');
-        if (lastSlash > 0) {
-          setActiveFolder(normalizedPath.substring(0, lastSlash));
-        }
-      }
-
-      navigate(`/note/${todo.noteId}`);
+      navigateToNote(todo.noteId);
     },
-    [navigate, setSelectedFile, setActiveFolder],
+    [navigateToNote],
   );
 
   if (loading) {

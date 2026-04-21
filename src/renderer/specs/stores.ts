@@ -66,17 +66,16 @@ export interface MultiSelectStore<T> extends ListStore<T> {
 
 export interface NoteStoreState extends BaseStoreState {
   notes: Note[];
-  activeNoteId: UUID | null;
 
   // Actions
   setNotes(notes: Note[]): void;
   addNote(note: Note): void;
   updateNote(note: Note): void;
   deleteNote(id: UUID): void;
-  setActiveNote(id: UUID | null): void;
 
   // Queries
-  getActiveNote(): Note | null;
+  // NOTE: "what note is active" lives on the route (/note/:noteId). Use
+  // useActiveNoteId() in the renderer; do not mirror it into this store.
   getNotesByNotebook(notebookId: UUID): Note[];
   getNoteByFilePath(filePath: FilePath): Note | null;
   getFavoriteNotes(): Note[];

@@ -6,6 +6,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
+import { useNavigateToNote } from '@renderer/navigation';
 import { ModalLayout } from '@renderer/components/composites/layout/ModalLayout';
 import { CircleNotch } from 'phosphor-react';
 import { logger } from '@renderer/lib/logger';
@@ -37,7 +38,8 @@ interface GraphViewProps {
 
 export function GraphView({ isOpen, onClose }: GraphViewProps) {
   const { getGraphData } = useNoteAPI();
-  const { setActiveNote, activeNoteId } = useNotes();
+  const { activeNoteId } = useNotes();
+  const navigateToNote = useNavigateToNote();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 550 });
@@ -95,10 +97,10 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
   // Handle node click - navigate to note
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
-      setActiveNote(node.id);
+      navigateToNote(node.id);
       onClose();
     },
-    [setActiveNote, onClose],
+    [navigateToNote, onClose],
   );
 
   // Custom node rendering

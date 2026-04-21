@@ -44,7 +44,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     activeNoteId,
     activeNoteFilePath,
     activeWorkspace,
-    syncFileTreeSelection,
     removeBuffer,
   } = useEditorOperations();
 
@@ -142,12 +141,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     noteId: activeNoteId,
     enabled: !!activeNoteId,
   });
-
-  // Sync selectedFile with activeNote
-  useEffect(() => {
-    if (!activeNoteFilePath) return;
-    syncFileTreeSelection(activeNoteFilePath);
-  }, [activeNoteFilePath, syncFileTreeSelection]);
 
   // Create sibling note
   const handleCreateSiblingNote = useCallback(async () => {
