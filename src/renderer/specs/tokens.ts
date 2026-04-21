@@ -154,12 +154,6 @@ export const sidebarWidth = {
   max: 400,
 } as const;
 
-export const noteListWidth = {
-  min: 280,
-  default: 320,
-  max: 480,
-} as const;
-
 export const editorWidth = {
   max: 900,
   padding: 64, // horizontal padding

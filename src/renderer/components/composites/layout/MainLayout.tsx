@@ -116,8 +116,7 @@ function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle>
 export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { sidebarOpen, sidebarWidth, noteListWidth, editorFullscreen, setSidebarWidth, setNoteListWidth } =
-    useUI();
+  const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth } = useUI();
 
   const { setActiveNote } = useNotes();
 
@@ -271,10 +270,6 @@ export function MainLayout() {
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={setSidebarWidth}
         showSidebar={sidebarOpen && !editorFullscreen}
-        noteList={null}
-        noteListWidth={noteListWidth}
-        onNoteListWidthChange={setNoteListWidth}
-        showNoteList={false}
         mainContent={
           <MainContentArea>
             <Routes>

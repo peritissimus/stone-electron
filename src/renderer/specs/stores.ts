@@ -184,7 +184,6 @@ export interface UIStoreState {
   sidebarPanel: SidebarPanel;
 
   // Note list
-  noteListWidth: number;
   viewMode: ViewMode;
   sortBy: SortBy;
   sortOrder: SortOrder;
@@ -209,7 +208,6 @@ export interface UIStoreState {
   toggleSidebar(): void;
   setSidebarWidth(width: number): void;
   setSidebarPanel(panel: SidebarPanel): void;
-  setNoteListWidth(width: number): void;
   setViewMode(mode: ViewMode): void;
   setSortBy(sort: SortBy): void;
   toggleSortOrder(): void;

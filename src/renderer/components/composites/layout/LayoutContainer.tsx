@@ -4,16 +4,11 @@
 
 import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
-import { toast } from 'sonner';
 import { useModals } from '@renderer/hooks/useUI';
-import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { Heading3 } from '@renderer/components/base/ui/text';
-import { logger } from '@renderer/lib/logger';
 import { Gear, ArrowsClockwise } from 'phosphor-react';
 import { Header, IconButton, ControlGroup } from '@renderer/components/composites';
-import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
-import { useFileTree } from '@renderer/hooks/useFileTree';
+import { useWorkspaceSync } from '@renderer/hooks/useWorkspaceSync';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
 
 export interface LayoutContainerProps {
@@ -21,11 +16,6 @@ export interface LayoutContainerProps {
   sidebarWidth: number;
   onSidebarWidthChange: (width: number) => void;
   showSidebar: boolean;
-
-  noteList?: React.ReactNode;
-  noteListWidth: number;
-  onNoteListWidthChange: (width: number) => void;
-  showNoteList: boolean;
 
   mainContent: React.ReactNode;
 
@@ -40,21 +30,13 @@ export function LayoutContainer({
   onSidebarWidthChange,
   showSidebar,
 
-  noteList,
-  noteListWidth,
-  onNoteListWidthChange,
-  showNoteList,
-
   mainContent,
   overlayContent,
 
   className = '',
 }: LayoutContainerProps) {
   const { openSettings } = useModals();
-  const { loadFileTree } = useFileTreeAPI();
-  const { syncWorkspace, loadWorkspaces } = useWorkspaceAPI();
-  const { loadNotes } = useNoteAPI();
-  const { activeFolder } = useFileTree();
+  const syncWorkspace = useWorkspaceSync();
 
   return (
     <>
@@ -69,27 +51,7 @@ export function LayoutContainer({
               icon={<ArrowsClockwise size={12} />}
               label="Sync"
               tooltip="Sync with file system"
-              onClick={async () => {
-                try {
-                  const res = await syncWorkspace();
-                  if (res.success) {
-                    logger.info('Sync complete', res.data);
-                    await loadWorkspaces();
-                    await loadFileTree();
-                    if (activeFolder) {
-                      await loadNotes({ folderPath: activeFolder });
-                    } else {
-                      await loadNotes();
-                    }
-                  } else {
-                    logger.error('Sync failed', res.error);
-                    toast.error(res.error?.message || 'Sync failed');
-                  }
-                } catch (e) {
-                  logger.error('Sync error', e);
-                  toast.error('Sync failed');
-                }
-              }}
+              onClick={syncWorkspace}
             />
             <IconButton
               size="compact"
@@ -113,19 +75,6 @@ export function LayoutContainer({
             className="bg-sidebar border-r border-border transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
           >
             {sidebar}
-          </ResizablePanel>
-        )}
-
-        {/* Note List Panel */}
-        {showNoteList && noteList && (
-          <ResizablePanel
-            width={noteListWidth}
-            onWidthChange={onNoteListWidthChange}
-            minWidth={280}
-            maxWidth={480}
-            className="bg-secondary border-r border-border"
-          >
-            {noteList}
           </ResizablePanel>
         )}
 

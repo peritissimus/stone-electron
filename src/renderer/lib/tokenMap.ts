@@ -168,11 +168,6 @@ export const layout = {
     default: 'w-60', // 240px
     max: 'max-w-[400px]',
   },
-  noteListWidth: {
-    min: 'min-w-[280px]',
-    default: 'w-80', // 320px
-    max: 'max-w-[480px]',
-  },
   editorWidth: {
     max: 'max-w-[900px]',
     padding: 'px-16',
