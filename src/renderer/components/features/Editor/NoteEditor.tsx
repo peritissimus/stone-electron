@@ -7,8 +7,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useEditorOperations } from '@renderer/hooks/useNoteEditor';
+import { useNavigateToNote, useNavigateHome } from '@renderer/navigation';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
@@ -38,7 +38,8 @@ export interface NoteEditorHandle {
 }
 
 export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
-  const navigate = useNavigate();
+  const navigateToNote = useNavigateToNote();
+  const navigateHome = useNavigateHome();
   const {
     activeNote,
     activeNoteId,
@@ -162,13 +163,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         folderPath: folderRelative || undefined,
       });
 
-      if (note) navigate(`/note/${note.id}`);
+      if (note) navigateToNote(note.id);
     } catch (error) {
       logger.error('Failed to create note via shortcut', error);
     } finally {
       creatingNoteRef.current = false;
     }
-  }, [activeNoteFilePath, createNote, navigate, isDirty, save]);
+  }, [activeNoteFilePath, createNote, navigateToNote, isDirty, save]);
 
   // Restore draft content
   const handleRestoreDraft = useCallback(
@@ -212,13 +213,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
       const { noteId } = (event as CustomEvent<{ noteId: string; title: string }>).detail;
       if (noteId && noteId !== activeNoteId) {
         logger.info('[NoteEditor] Navigating to linked note:', noteId);
-        navigate(`/note/${noteId}`);
+        navigateToNote(noteId);
       }
     };
 
     document.addEventListener('note-link-click', handleNoteLinkClick);
     return () => document.removeEventListener('note-link-click', handleNoteLinkClick);
-  }, [activeNoteId, navigate]);
+  }, [activeNoteId, navigateToNote]);
 
   // Handle delete
   const handleDelete = useCallback(async () => {
@@ -230,14 +231,14 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
         const success = await deleteNote(activeNote.id, true);
         if (success) {
           removeBuffer(activeNote.id);
-          navigate('/home');
+          navigateHome();
           logger.info('[NoteEditor] Note deleted successfully');
         }
       } catch (error) {
         logger.error('[NoteEditor] Error deleting note:', error);
       }
     }
-  }, [activeNote, deleteNote, removeBuffer, navigate]);
+  }, [activeNote, deleteNote, removeBuffer, navigateHome]);
 
   // Toggle handlers
   const handleToggleFavorite = useCallback(() => {
@@ -251,9 +252,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const handleToggleArchive = useCallback(() => {
     if (activeNote) {
       toggleArchive(activeNote.id);
-      navigate('/home');
+      navigateHome();
     }
-  }, [activeNote, toggleArchive, navigate]);
+  }, [activeNote, toggleArchive, navigateHome]);
 
   if (!activeNote) {
     return <NoteEditorEmptyState onCreateNote={handleCreateSiblingNote} />;

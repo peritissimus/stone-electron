@@ -3,12 +3,12 @@
  */
 
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
+import { useNavigateHome } from '@renderer/navigation';
 import { workspaceAPI } from '@renderer/api';
 
 export function useWorkspaceAPI() {
-  const navigate = useNavigate();
+  const navigateHome = useNavigateHome();
   const { setWorkspaces, setActiveWorkspaceId, setLoading, setError } = useWorkspaceStore();
 
   const loadWorkspaces = useCallback(async () => {
@@ -35,9 +35,9 @@ export function useWorkspaceAPI() {
         const response = await workspaceAPI.setActive(workspaceId);
         if (response.success) {
           setActiveWorkspaceId(workspaceId);
-          // Tree selection is derived from the route; navigating to /home
+          // Tree selection is derived from the route; navigating home
           // drops the active note and the derivation follows automatically.
-          navigate('/home');
+          navigateHome();
           await loadWorkspaces();
         } else {
           setError(response.error?.message || 'Failed to switch workspace');
@@ -46,7 +46,7 @@ export function useWorkspaceAPI() {
         setError(error instanceof Error ? error.message : 'Failed to switch workspace');
       }
     },
-    [loadWorkspaces, setActiveWorkspaceId, navigate, setError],
+    [loadWorkspaces, setActiveWorkspaceId, navigateHome, setError],
   );
 
   const syncWorkspace = useCallback(

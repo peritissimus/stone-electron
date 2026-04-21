@@ -3,12 +3,13 @@
  */
 
 import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { useTreeSelection } from '@renderer/hooks/useTreeSelection';
+import { useNavigateToNote } from '@renderer/navigation';
 import {
   LayoutContainer,
   SidebarPanel,
@@ -43,6 +44,7 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
+import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
 import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/lib/draftStorage';
@@ -107,8 +109,8 @@ function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle>
 }
 
 export function MainLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigateToNote = useNavigateToNote();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth } = useUI();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
@@ -121,9 +123,10 @@ export function MainLayout() {
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
-  const { loadNotes, createNote } = useNoteAPI();
+  const { loadNotes } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
   const { openOrCreateTodayJournal } = useJournalActions();
+  const { createPersonal, createWork } = useQuickNoteActions();
 
   // Enable document autosave (saves on blur, beforeunload, and note switch)
   const { saveNote } = useDocumentAutosave();
@@ -145,23 +148,6 @@ export function MainLayout() {
 
     previousNoteIdRef.current = currentNoteId;
   }, [location.pathname, saveNote]);
-
-  // Helper to create a note in a specific folder
-  const createNoteInFolder = async (folderPath: string) => {
-    const now = new Date();
-    const defaultTitle = `Untitled Note ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-
-    const note = await createNote({
-      title: defaultTitle,
-      content: '',
-      folderPath,
-    });
-
-    if (note) {
-      logger.info(`[MainLayout] Created note in ${folderPath}:`, note.id);
-      navigate(`/note/${note.id}`);
-    }
-  };
 
   // Ref to access editor actions
   const editorRef = useRef<NoteEditorHandle>(null);
@@ -236,15 +222,17 @@ export function MainLayout() {
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
     onNewNote: () => editorRef.current?.createSiblingNote(),
-    onNewPersonalNote: () => createNoteInFolder('Personal'),
-    onNewWorkNote: () => createNoteInFolder('Work'),
+    onNewPersonalNote: () => createPersonal(),
+    onNewWorkNote: () => createWork(),
     onTodayJournal: () => openOrCreateTodayJournal(),
   });
 
-  // Handle draft recovery
+  // Handle draft recovery — open the note through the single navigate-to-note
+  // seam, then restore content once the editor mounts. The 1s timeout is a
+  // render-delay workaround, intentionally separate from route construction.
   const handleRecoverDraft = (noteId: string, content: string) => {
     try {
-      navigate(`/note/${noteId}`);
+      navigateToNote(noteId);
 
       setTimeout(() => {
         if (editorRef.current) {

@@ -4,9 +4,9 @@
  */
 
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useShortcutsStore, type ShortcutAction } from '@renderer/stores/shortcutsStore';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useNavigateHome } from '@renderer/navigation';
 import { useKeyboardShortcuts, ShortcutConfig, isMacOS } from './useKeyboardShortcuts';
 
 interface UseAppShortcutsOptions {
@@ -36,7 +36,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     onToggleEditorMode,
   } = options;
 
-  const navigate = useNavigate();
+  const navigateHome = useNavigateHome();
   const { getShortcut } = useShortcutsStore();
   const {
     openSettings,
@@ -64,10 +64,10 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       },
       commandCenter: () => toggleCommandCenter(),
       toggleSidebar: () => toggleSidebar(),
-      goHome: () => navigate('/home'),
+      goHome: () => navigateHome(),
       closeNote: () => {
         onCloseNote?.();
-        navigate('/home');
+        navigateHome();
       },
       todayJournal: () => onTodayJournal?.(),
       findReplace: () => {
@@ -98,7 +98,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       toggleFindReplace,
       toggleEditorMode,
       toggleSidebar,
-      navigate,
+      navigateHome,
     ],
   );
 

@@ -48,6 +48,7 @@ import type {
   IGitUseCases,
   ISettingsUseCases,
   IJournalUseCases,
+  IQuickNoteUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -69,6 +70,7 @@ import {
   createSystemUseCases,
   createSettingsUseCases,
   createJournalUseCases,
+  createQuickNoteUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -99,6 +101,8 @@ import {
   unregisterQuickCaptureHandlers,
   registerJournalHandlers,
   unregisterJournalHandlers,
+  registerQuickNoteHandlers,
+  unregisterQuickNoteHandlers,
   registerSystemHandlers,
   unregisterSystemHandlers,
   registerSettingsHandlers,
@@ -195,6 +199,7 @@ export interface Container {
   systemUseCases: ISystemUseCases;
   settingsUseCases: ISettingsUseCases;
   journalUseCases: IJournalUseCases;
+  quickNoteUseCases: IQuickNoteUseCases;
 
   // IPC Adapters (class-based)
   noteIPC: NoteIPC;
@@ -412,6 +417,14 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
   });
 
+  // Quick note (slot-based) use cases
+  const quickNoteUseCases = createQuickNoteUseCases({
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    eventPublisher,
+  });
+
   // Export use cases
   const exportUseCases = createExportUseCases({
     noteRepository,
@@ -489,6 +502,7 @@ export function createContainer(deps: ContainerDeps): Container {
     systemUseCases,
     settingsUseCases,
     journalUseCases,
+    quickNoteUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -575,6 +589,9 @@ export function registerIPCHandlers(): void {
   registerJournalHandlers({
     journalUseCases: container.journalUseCases,
   });
+  registerQuickNoteHandlers({
+    quickNoteUseCases: container.quickNoteUseCases,
+  });
   registerSystemHandlers({
     getSystemFonts: container.systemUseCases.getFonts,
   });
@@ -631,6 +648,7 @@ export function unregisterIPCHandlers(): void {
   unregisterDatabaseHandlers();
   unregisterQuickCaptureHandlers();
   unregisterJournalHandlers();
+  unregisterQuickNoteHandlers();
   unregisterSystemHandlers();
   unregisterSettingsHandlers();
   unregisterPerformanceHandlers();
