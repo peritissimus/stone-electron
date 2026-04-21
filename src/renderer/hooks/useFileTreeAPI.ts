@@ -56,8 +56,6 @@ function toFileTree(nodes: FolderStructure[]): FileTreeNode[] {
 export function useFileTreeAPI() {
   const {
     setTree,
-    setActiveFolder,
-    setSelectedFile,
     setLoading,
     setError,
     setCounts,
@@ -89,9 +87,6 @@ export function useFileTreeAPI() {
           return;
         }
 
-        const { activeFolder: prevActive, selectedFile: prevSelected } =
-          useFileTreeStore.getState();
-
         const response = await workspaceAPI.scan(workspaceId);
 
         if (response.success && response.data) {
@@ -99,14 +94,6 @@ export function useFileTreeAPI() {
           setTree(tree);
           if (response.data.counts) {
             setCounts(response.data.counts);
-          }
-          if (prevActive) {
-            setActiveFolder(prevActive);
-            if (prevSelected) {
-              setSelectedFile(prevSelected);
-            }
-          } else {
-            setActiveFolder(null);
           }
           logger.info('[useFileTreeAPI.loadFileTree] Tree loaded');
         } else {
@@ -122,7 +109,7 @@ export function useFileTreeAPI() {
 
     pendingLoadFileTree = doLoad();
     return pendingLoadFileTree;
-  }, [setLoading, setError, setTree, setActiveFolder]);
+  }, [setLoading, setError, setTree, setCounts]);
 
   const createFolder = useCallback(
     async ({ parentPath, name }: { parentPath?: string | null; name?: string } = {}) => {

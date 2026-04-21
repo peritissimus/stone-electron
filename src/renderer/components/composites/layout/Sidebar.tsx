@@ -1,26 +1,16 @@
 /**
- * Sidebar Component - composes navigation, file tree, and status rail
+ * Sidebar Component - pure composition of header + navigation + tree + status.
+ *
+ * No side effects here: data loading and event subscriptions live at the app
+ * root (MainLayout). Sidebar only renders.
  */
 
-import { useEffect } from 'react';
-import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { useFileTree } from '@renderer/hooks/useFileTree';
-import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { WorkspaceSelectorHeader } from './WorkspaceSelectorHeader';
 import { SidebarNavList } from './SidebarNavList';
 import { SidebarStatusRail } from './SidebarStatusRail';
 
 export function Sidebar() {
-  const { loadWorkspaces } = useWorkspaceAPI();
-  const { activeFolder } = useFileTree();
-
-  useSidebarEvents({ activeFolder });
-
-  useEffect(() => {
-    loadWorkspaces();
-  }, [loadWorkspaces]);
-
   return (
     <div className="flex flex-col h-full bg-sidebar">
       <WorkspaceSelectorHeader />

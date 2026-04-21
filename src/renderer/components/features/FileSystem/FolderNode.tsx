@@ -6,7 +6,6 @@ import {
   PencilSimple,
   Trash,
   Plus,
-  Files,
 } from 'phosphor-react';
 import {
   DropdownMenu,
@@ -19,7 +18,7 @@ import { Text } from '@renderer/components/base/ui/text';
 import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
-import { normalizePath, getParentPath } from '@renderer/lib/path';
+import { normalizePath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 
 interface FolderNodeProps {
@@ -48,13 +47,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
   }) => {
     const normalizedPath = normalizePath(node.path);
 
-    const {
-      expandedPaths,
-      activeFolder,
-      setActiveFolder,
-      toggleExpanded,
-      setSelectedFile,
-    } = useFileTree();
+    const { expandedPaths, activeFolder, toggleExpanded } = useFileTree();
     const isExpanded = expandedPaths.has(normalizedPath);
     const isActive = normalizePath(activeFolder || '') === normalizedPath;
 
@@ -139,16 +132,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
 
     const handleClick = (event: React.MouseEvent) => {
       event.stopPropagation();
-      const willExpand = !isExpanded;
-      if (!willExpand) {
-        const parent = getParentPath(normalizedPath);
-        setActiveFolder(parent || null);
-      }
       toggleExpanded(normalizedPath);
-      if (willExpand) {
-        setActiveFolder(normalizedPath || null);
-      }
-      setSelectedFile(null);
     };
 
     return (
@@ -220,15 +204,6 @@ export const FolderNode = React.memo<FolderNodeProps>(
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setActiveFolder(null);
-                      setSelectedFile(null);
-                    }}
-                  >
-                    <Files size={14} className="mr-2 text-muted-foreground" />
-                    <Text size="xs">Show All Notes</Text>
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={async () => {
                       await onCreateNote(normalizedPath);
