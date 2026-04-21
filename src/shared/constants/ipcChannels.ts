@@ -123,6 +123,11 @@ export const SETTINGS_CHANNELS = {
   GET: 'settings:get',
   SET: 'settings:set',
   GET_ALL: 'settings:getAll',
+  GET_APPEARANCE: 'settings:getAppearance',
+  SET_THEME: 'settings:setTheme',
+  SET_ACCENT_COLOR: 'settings:setAccentColor',
+  UPDATE_FONT_SETTINGS: 'settings:updateFontSettings',
+  RESET_FONT_SETTINGS: 'settings:resetFontSettings',
 } as const;
 
 // System Operations

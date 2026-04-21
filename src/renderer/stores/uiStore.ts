@@ -6,7 +6,6 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { FontSettings, DEFAULT_FONT_SETTINGS } from '@shared/types/settings';
 import { tokens } from '@renderer/specs';
 import type {
   ViewMode,
@@ -71,13 +70,6 @@ interface UIState {
   commandCenterOpen: boolean;
   findReplaceOpen: boolean;
 
-  // Theme
-  theme: 'light' | 'dark' | 'system';
-  accentColor: AccentColor;
-
-  // Font settings
-  fontSettings: FontSettings;
-
   // Actions
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
@@ -106,10 +98,6 @@ interface UIState {
   openFindReplace: () => void;
   closeFindReplace: () => void;
   toggleFindReplace: () => void;
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
-  setAccentColor: (color: AccentColor) => void;
-  setFontSettings: (settings: Partial<FontSettings>) => void;
-  resetFontSettings: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -144,13 +132,6 @@ export const useUIStore = create<UIState>()(
       importModalOpen: false,
       commandCenterOpen: false,
       findReplaceOpen: false,
-
-      // Theme
-      theme: 'system',
-      accentColor: 'blue',
-
-      // Font settings
-      fontSettings: DEFAULT_FONT_SETTINGS,
 
       // Actions
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -209,17 +190,6 @@ export const useUIStore = create<UIState>()(
       closeFindReplace: () => set({ findReplaceOpen: false }),
 
       toggleFindReplace: () => set((state) => ({ findReplaceOpen: !state.findReplaceOpen })),
-
-      setTheme: (theme) => set({ theme }),
-
-      setAccentColor: (accentColor) => set({ accentColor }),
-
-      setFontSettings: (settings) =>
-        set((state) => ({
-          fontSettings: { ...state.fontSettings, ...settings },
-        })),
-
-      resetFontSettings: () => set({ fontSettings: DEFAULT_FONT_SETTINGS }),
     }),
     {
       name: 'stone-ui-preferences',
@@ -234,9 +204,6 @@ export const useUIStore = create<UIState>()(
         showOutline: state.showOutline,
         showBlockIndicators: state.showBlockIndicators,
         editorMode: state.editorMode,
-        theme: state.theme,
-        accentColor: state.accentColor,
-        fontSettings: state.fontSettings,
       }),
     },
   ),

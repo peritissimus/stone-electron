@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@renderer/stores/uiStore';
+import { useSettingsStore } from '@renderer/stores/settingsStore';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useCommandStore } from '@renderer/stores/commandStore';
 import type { CommandDefinition } from '@renderer/stores/commandStore';
@@ -57,12 +58,13 @@ export function useCommandDefinitions(query: string) {
   }, [activeNoteId, notes, exportPdf, handleClose]);
 
   const handleToggleTheme = useCallback(() => {
-    const currentTheme = useUIStore.getState().theme;
+    const { appearance, setTheme } = useSettingsStore.getState();
+    const currentTheme = appearance.theme;
     if (currentTheme === 'system') {
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      useUIStore.getState().setTheme(prefersDark ? 'light' : 'dark');
+      void setTheme(prefersDark ? 'light' : 'dark');
     } else {
-      useUIStore.getState().setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+      void setTheme(currentTheme === 'dark' ? 'light' : 'dark');
     }
     handleClose();
   }, [handleClose]);

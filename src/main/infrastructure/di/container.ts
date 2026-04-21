@@ -559,6 +559,11 @@ export function registerIPCHandlers(): void {
     getSetting: container.settingsUseCases.get,
     setSetting: container.settingsUseCases.set,
     getAllSettings: container.settingsUseCases.getAll,
+    getAppearanceSettings: container.settingsUseCases.getAppearance,
+    setTheme: container.settingsUseCases.setTheme,
+    setAccentColor: container.settingsUseCases.setAccentColor,
+    updateFontSettings: container.settingsUseCases.updateFontSettings,
+    resetFontSettings: container.settingsUseCases.resetFontSettings,
   });
 
   // Performance monitoring handlers

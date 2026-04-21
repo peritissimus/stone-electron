@@ -7,6 +7,7 @@
  */
 
 import { useUIStore, ACCENT_COLORS } from '@renderer/stores/uiStore';
+import { useSettingsStore } from '@renderer/stores/settingsStore';
 import type {
   ViewMode,
   SortBy,
@@ -53,9 +54,9 @@ export function useUI() {
   const findReplaceOpen = useUIStore((s) => s.findReplaceOpen);
 
   // Theme state
-  const theme = useUIStore((s) => s.theme);
-  const accentColor = useUIStore((s) => s.accentColor);
-  const fontSettings = useUIStore((s) => s.fontSettings);
+  const theme = useSettingsStore((s) => s.appearance.theme);
+  const accentColor = useSettingsStore((s) => s.appearance.accentColor);
+  const fontSettings = useSettingsStore((s) => s.appearance.fontSettings);
 
   // Actions - using stable references from store
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
@@ -85,10 +86,10 @@ export function useUI() {
   const openFindReplace = useUIStore((s) => s.openFindReplace);
   const closeFindReplace = useUIStore((s) => s.closeFindReplace);
   const toggleFindReplace = useUIStore((s) => s.toggleFindReplace);
-  const setTheme = useUIStore((s) => s.setTheme);
-  const setAccentColor = useUIStore((s) => s.setAccentColor);
-  const setFontSettings = useUIStore((s) => s.setFontSettings);
-  const resetFontSettings = useUIStore((s) => s.resetFontSettings);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const setFontSettings = useSettingsStore((s) => s.setFontSettings);
+  const resetFontSettings = useSettingsStore((s) => s.resetFontSettings);
 
   return {
     // Sidebar
@@ -246,13 +247,13 @@ export function useNoteListUI() {
  * Theme-specific UI hook
  */
 export function useTheme() {
-  const theme = useUIStore((s) => s.theme);
-  const accentColor = useUIStore((s) => s.accentColor);
-  const fontSettings = useUIStore((s) => s.fontSettings);
-  const setTheme = useUIStore((s) => s.setTheme);
-  const setAccentColor = useUIStore((s) => s.setAccentColor);
-  const setFontSettings = useUIStore((s) => s.setFontSettings);
-  const resetFontSettings = useUIStore((s) => s.resetFontSettings);
+  const theme = useSettingsStore((s) => s.appearance.theme);
+  const accentColor = useSettingsStore((s) => s.appearance.accentColor);
+  const fontSettings = useSettingsStore((s) => s.appearance.fontSettings);
+  const setTheme = useSettingsStore((s) => s.setTheme);
+  const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const setFontSettings = useSettingsStore((s) => s.setFontSettings);
+  const resetFontSettings = useSettingsStore((s) => s.resetFontSettings);
 
   return {
     theme,
