@@ -24,6 +24,9 @@ files:
   - "!**/node_modules/**/{tsconfig,jest,webpack,rollup,vite}*.json"
   - "!**/node_modules/**/LICENSE*"
   - "!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**"
+  # Drop the WASM ONNX runtime: @xenova always picks the node backend in Electron
+  # (process.release.name === 'node'); the web build is statically imported but never executes.
+  - "!**/node_modules/onnxruntime-web/**/*"
 
 # Enable asar compression
 asar: true
