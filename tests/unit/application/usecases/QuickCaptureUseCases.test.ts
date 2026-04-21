@@ -9,9 +9,11 @@ import { createQuickCaptureUseCases } from '../../../../src/main/application/use
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { IQuickCaptureUseCases } from '../../../../src/main/domain/ports/in/IQuickCaptureUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -67,6 +69,14 @@ function createMockFileStorage(): IFileStorage {
   } as unknown as IFileStorage;
 }
 
+function createMockAppConfigRepository(): IAppConfigRepository {
+  return {
+    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
+    set: vi.fn(),
+    update: vi.fn(),
+  } as unknown as IAppConfigRepository;
+}
+
 function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
     id: 'ws-1',
@@ -101,16 +111,19 @@ describe('QuickCaptureUseCases', () => {
   let noteRepo: INoteRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
+  let appConfigRepository: IAppConfigRepository;
   let useCases: IQuickCaptureUseCases;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
+    appConfigRepository = createMockAppConfigRepository();
     useCases = createQuickCaptureUseCases({
       noteRepository: noteRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
+      appConfigRepository,
     });
   });
 
@@ -167,6 +180,31 @@ describe('QuickCaptureUseCases', () => {
 
       expect(workspaceRepo.findById).toHaveBeenCalledWith('ws-2');
       expect(workspaceRepo.findActive).not.toHaveBeenCalled();
+    });
+
+    it('uses the configured journal folder instead of a hardcoded name', async () => {
+      const workspace = createWorkspaceProps();
+      const today = new Date().toISOString().split('T')[0];
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(null);
+      vi.mocked(fileStorage.exists).mockResolvedValue(false);
+      vi.mocked(fileStorage.createDirectory).mockResolvedValue(undefined);
+      vi.mocked(fileStorage.write).mockResolvedValue(undefined);
+      vi.mocked(noteRepo.save).mockResolvedValue(undefined);
+      vi.mocked(appConfigRepository.get).mockResolvedValue({
+        ...DEFAULT_APP_CONFIG,
+        notes: {
+          locationPolicy: {
+            ...DEFAULT_APP_CONFIG.notes.locationPolicy,
+            journalFolder: 'Daily',
+          },
+        },
+      });
+
+      await useCases.appendToJournal('Content');
+
+      expect(noteRepo.findByFilePath).toHaveBeenCalledWith(`Daily/${today}.md`, workspace.id);
+      expect(fileStorage.createDirectory).toHaveBeenCalledWith('/test/workspace/Daily');
     });
 
     it('throws error when no workspace found', async () => {

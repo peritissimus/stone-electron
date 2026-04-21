@@ -11,8 +11,10 @@ import { createQuickNoteUseCases } from '../../../../src/main/application/usecas
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { IQuickNoteUseCases } from '../../../../src/main/domain/ports/in/IQuickNoteUseCases';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 
 function createMockNoteRepository(): INoteRepository {
   return {
@@ -67,6 +69,14 @@ function createMockFileStorage(): IFileStorage {
   } as unknown as IFileStorage;
 }
 
+function createMockAppConfigRepository(): IAppConfigRepository {
+  return {
+    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
+    set: vi.fn(),
+    update: vi.fn(),
+  } as unknown as IAppConfigRepository;
+}
+
 function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
     id: 'ws-1',
@@ -83,12 +93,14 @@ describe('QuickNoteUseCases', () => {
   let noteRepo: INoteRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
+  let appConfigRepository: IAppConfigRepository;
   let useCases: IQuickNoteUseCases;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
+    appConfigRepository = createMockAppConfigRepository();
     vi.mocked(workspaceRepo.findActive).mockResolvedValue(createWorkspaceProps());
     vi.mocked(fileStorage.createDirectory).mockResolvedValue(undefined);
     vi.mocked(fileStorage.write).mockResolvedValue(undefined);
@@ -97,6 +109,7 @@ describe('QuickNoteUseCases', () => {
       noteRepository: noteRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
+      appConfigRepository,
     });
   });
 
@@ -134,6 +147,27 @@ describe('QuickNoteUseCases', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const workspaceId = (saved as any).getWorkspaceId?.() ?? (saved as any).props?.workspaceId;
       expect(workspaceId).toBe('ws-2');
+    });
+
+    it('uses the configured quick-note slot folder instead of a hardcoded one', async () => {
+      vi.mocked(appConfigRepository.get).mockResolvedValue({
+        ...DEFAULT_APP_CONFIG,
+        notes: {
+          locationPolicy: {
+            ...DEFAULT_APP_CONFIG.notes.locationPolicy,
+            quickNoteSlotFolders: {
+              ...DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders,
+              personal: 'Inbox',
+            },
+          },
+        },
+      });
+
+      await useCases.createInSlot({ slot: 'personal' });
+      const saved = vi.mocked(noteRepo.save).mock.calls[0][0];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const filePath = (saved as any).getFilePath?.() ?? (saved as any).props?.filePath;
+      expect(filePath).toMatch(/^Inbox\//);
     });
 
     it('uses the provided title when supplied', async () => {

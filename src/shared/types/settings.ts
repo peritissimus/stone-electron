@@ -288,11 +288,50 @@ export const DEFAULT_SHORTCUTS_CONFIG: ShortcutsConfig = {
   editor: {},
 };
 
+/**
+ * Note location policy — where different kinds of notes go on disk.
+ *
+ * Replaces hardcoded folder names ('Journal', 'Personal', etc.) scattered
+ * across backend use cases. All paths are relative to the workspace root
+ * and use forward slashes.
+ */
+export interface QuickNoteSlotFolders {
+  personal: string;
+  work: string;
+}
+
+export interface NoteLocationPolicy {
+  /** Folder where journal / daily notes live (default: "Journal"). */
+  journalFolder: string;
+  /** Default folder for new notes when the caller doesn't specify one (default: "Personal"). */
+  defaultNoteFolder: string;
+  /** Folder per quick-note slot. */
+  quickNoteSlotFolders: QuickNoteSlotFolders;
+}
+
+export const DEFAULT_NOTE_LOCATION_POLICY: NoteLocationPolicy = {
+  journalFolder: 'Journal',
+  defaultNoteFolder: 'Personal',
+  quickNoteSlotFolders: {
+    personal: 'Personal',
+    work: 'Work',
+  },
+};
+
+export interface NotesConfig {
+  locationPolicy: NoteLocationPolicy;
+}
+
+export const DEFAULT_NOTES_CONFIG: NotesConfig = {
+  locationPolicy: DEFAULT_NOTE_LOCATION_POLICY,
+};
+
 export interface AppConfig {
   appearance: AppearanceSettings;
   workspace: WorkspaceConfig;
   editor: EditorSettings;
   shortcuts: ShortcutsConfig;
+  notes: NotesConfig;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -302,6 +341,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   },
   editor: DEFAULT_EDITOR_SETTINGS,
   shortcuts: DEFAULT_SHORTCUTS_CONFIG,
+  notes: DEFAULT_NOTES_CONFIG,
 };
 
 /**

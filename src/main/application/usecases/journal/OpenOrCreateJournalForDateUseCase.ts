@@ -3,12 +3,11 @@ import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { DOMAIN_EVENT_TYPES } from '../../../domain';
 import { logger } from '../../../shared/utils';
-
-const JOURNAL_FOLDER = 'Journal';
 
 function formatJournalDate(date: Date): string {
   const yyyy = date.getFullYear();
@@ -30,6 +29,7 @@ export class OpenOrCreateJournalForDateUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly appConfigRepository: IAppConfigRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -45,9 +45,12 @@ export class OpenOrCreateJournalForDateUseCase {
       throw new Error('No active workspace');
     }
 
+    const config = await this.appConfigRepository.get();
+    const journalFolder = config.notes.locationPolicy.journalFolder;
+
     const date = parseDate(input.date);
     const dateStr = formatJournalDate(date);
-    const journalFilePath = `${JOURNAL_FOLDER}/${dateStr}.md`;
+    const journalFilePath = `${journalFolder}/${dateStr}.md`;
 
     const existing = await this.noteRepository.findByFilePath(journalFilePath, workspace.id);
     if (existing) {
@@ -58,7 +61,7 @@ export class OpenOrCreateJournalForDateUseCase {
     const fileExists = await this.fileStorage.exists(absolutePath);
 
     if (!fileExists) {
-      const journalDir = path.join(workspace.folderPath, JOURNAL_FOLDER);
+      const journalDir = path.join(workspace.folderPath, journalFolder);
       await this.fileStorage.createDirectory(journalDir);
       await this.fileStorage.write(absolutePath, `# ${dateStr}\n\n`);
     }

@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { logger } from '../../../shared/utils';
 
@@ -11,6 +12,7 @@ export class AppendToJournalUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly appConfigRepository: IAppConfigRepository,
   ) {}
 
   async execute(
@@ -29,11 +31,14 @@ export class AppendToJournalUseCase {
       throw new Error('No active workspace');
     }
 
+    const config = await this.appConfigRepository.get();
+    const journalFolder = config.notes.locationPolicy.journalFolder;
+
     // Get today's date for journal - format: YYYY-MM-DD (matches useJournalActions)
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const journalTitle = dateStr; // Just the date, e.g., "2026-01-11"
-    const journalFilePath = `Journal/${dateStr}.md`;
+    const journalFilePath = `${journalFolder}/${dateStr}.md`;
 
     // Fast lookup: directly query by file path instead of fetching all notes
     const journalNote = await this.noteRepository.findByFilePath(journalFilePath, workspace.id);
@@ -88,7 +93,7 @@ export class AppendToJournalUseCase {
       });
 
       // Ensure journal directory exists
-      const journalDir = path.join(workspace.folderPath, 'Journal');
+      const journalDir = path.join(workspace.folderPath, journalFolder);
       await this.fileStorage.createDirectory(journalDir);
 
       const initialContent = `# ${journalTitle}${entryContent}`;

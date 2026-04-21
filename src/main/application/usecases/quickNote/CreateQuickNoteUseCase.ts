@@ -1,19 +1,24 @@
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { QuickNoteSlot } from '../../../domain/ports/in/IQuickNoteUseCases';
+import type { QuickNoteSlotFolders } from '@shared/types/settings';
 import { CreateNoteUseCase } from '../note/CreateNoteUseCase';
 
-/**
- * Slot → folder mapping. Lives on the backend so the renderer doesn't need
- * to know what folders back each slot. Keep as a plain constant for now;
- * promote to AppConfig if/when users need to rename the targets.
- */
-const SLOT_FOLDERS: Record<QuickNoteSlot, string> = {
-  personal: 'Personal',
-  work: 'Work',
-};
+function resolveSlotFolder(folders: QuickNoteSlotFolders, slot: QuickNoteSlot): string {
+  switch (slot) {
+    case 'personal':
+      return folders.personal;
+    case 'work':
+      return folders.work;
+    default: {
+      const exhaustive: never = slot;
+      throw new Error(`Unknown quick-note slot: ${exhaustive}`);
+    }
+  }
+}
 
 function defaultQuickNoteTitle(): string {
   const now = new Date();
@@ -25,6 +30,7 @@ export class CreateQuickNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly appConfigRepository: IAppConfigRepository,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -33,10 +39,11 @@ export class CreateQuickNoteUseCase {
     title?: string;
     workspaceId?: string;
   }): Promise<{ noteId: string }> {
-    const folderPath = SLOT_FOLDERS[request.slot];
-    if (!folderPath) {
-      throw new Error(`Unknown quick-note slot: ${request.slot}`);
-    }
+    const config = await this.appConfigRepository.get();
+    const folderPath = resolveSlotFolder(
+      config.notes.locationPolicy.quickNoteSlotFolders,
+      request.slot,
+    );
 
     // Reuse CreateNoteUseCase so the existing folder/path/event logic applies
     // uniformly — no separate write path to drift from.
@@ -44,6 +51,7 @@ export class CreateQuickNoteUseCase {
       this.noteRepository,
       this.workspaceRepository,
       this.fileStorage,
+      this.appConfigRepository,
       this.eventPublisher,
     );
 

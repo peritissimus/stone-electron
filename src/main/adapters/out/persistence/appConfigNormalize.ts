@@ -31,6 +31,9 @@ import {
   type EditorTaskConfig,
   type EditorTaskStateDef,
   type FontSettings,
+  type NoteLocationPolicy,
+  type NotesConfig,
+  type QuickNoteSlotFolders,
   type ShortcutsConfig,
 } from '@shared/types/settings';
 import {
@@ -257,6 +260,52 @@ export function mergeShortcuts(value: unknown): ShortcutsConfig {
   };
 }
 
+// ---------- notes ----------
+
+function sanitizeFolderName(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim().replace(/^\/+|\/+$/g, '');
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function mergeQuickNoteSlotFolders(value: unknown): QuickNoteSlotFolders {
+  const defaults = DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders;
+  if (!isRecord(value)) {
+    return { ...defaults };
+  }
+  return {
+    personal: sanitizeFolderName(value.personal, defaults.personal),
+    work: sanitizeFolderName(value.work, defaults.work),
+  };
+}
+
+function mergeLocationPolicy(value: unknown): NoteLocationPolicy {
+  const defaults = DEFAULT_APP_CONFIG.notes.locationPolicy;
+  if (!isRecord(value)) {
+    return {
+      journalFolder: defaults.journalFolder,
+      defaultNoteFolder: defaults.defaultNoteFolder,
+      quickNoteSlotFolders: { ...defaults.quickNoteSlotFolders },
+    };
+  }
+  return {
+    journalFolder: sanitizeFolderName(value.journalFolder, defaults.journalFolder),
+    defaultNoteFolder: sanitizeFolderName(value.defaultNoteFolder, defaults.defaultNoteFolder),
+    quickNoteSlotFolders: mergeQuickNoteSlotFolders(value.quickNoteSlotFolders),
+  };
+}
+
+export function mergeNotes(value: unknown): NotesConfig {
+  if (!isRecord(value)) {
+    return {
+      locationPolicy: mergeLocationPolicy(undefined),
+    };
+  }
+  return {
+    locationPolicy: mergeLocationPolicy(value.locationPolicy),
+  };
+}
+
 // ---------- root ----------
 
 export function normalizeConfig(value: unknown): AppConfig {
@@ -277,5 +326,6 @@ export function normalizeConfig(value: unknown): AppConfig {
     },
     editor: mergeEditor(value.editor),
     shortcuts: mergeShortcuts(value.shortcuts),
+    notes: mergeNotes(value.notes),
   };
 }

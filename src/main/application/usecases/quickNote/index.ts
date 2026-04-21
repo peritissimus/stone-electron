@@ -1,6 +1,7 @@
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type {
   IQuickNoteUseCases,
@@ -14,6 +15,7 @@ export interface QuickNoteUseCasesDeps {
   noteRepository: INoteRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
+  appConfigRepository: IAppConfigRepository;
   eventPublisher?: IEventPublisher;
 }
 
@@ -22,6 +24,7 @@ export function createQuickNoteUseCases(deps: QuickNoteUseCasesDeps): IQuickNote
     deps.noteRepository,
     deps.workspaceRepository,
     deps.fileStorage,
+    deps.appConfigRepository,
     deps.eventPublisher,
   );
 
