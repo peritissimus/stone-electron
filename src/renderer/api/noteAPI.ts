@@ -15,7 +15,7 @@ import {
   GetNoteContentResponseSchema,
 } from '@shared/schemas';
 import { validateResponse } from './validation';
-import { NoteSchema, NoteWithMetaSchema, TodoItemSchema, GraphDataSchema } from './schemas';
+import { NoteSchema, TodoItemSchema, GraphDataSchema } from './schemas';
 
 // Re-export types aligned with specs
 export type GetAllNotesParams = NoteFilters;

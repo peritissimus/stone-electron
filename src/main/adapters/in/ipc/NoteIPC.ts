@@ -30,16 +30,14 @@ import {
 } from '@shared/schemas';
 import type { INoteUseCases } from '../../../domain';
 import { logger } from '../../../shared';
-import { handleIpcRequest } from '@main/shared/utils';
+import {
+  COMMON_IPC_ERROR_MAP,
+  handleIpcRequest,
+  type IPCResponse,
+} from '@main/shared/utils';
 
 export interface NoteIPCDeps {
   noteUseCases: INoteUseCases;
-}
-
-interface IPCResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
 }
 
 export class NoteIPC {
@@ -226,10 +224,8 @@ export class NoteIPC {
           return 'NOTE_NOT_EDITABLE';
         case 'NoteValidationError':
           return 'VALIDATION_ERROR';
-        case 'ZodError':
-          return 'VALIDATION_ERROR';
         default:
-          return 'INTERNAL_ERROR';
+          return COMMON_IPC_ERROR_MAP[error.name] ?? 'INTERNAL_ERROR';
       }
     }
     return 'UNKNOWN_ERROR';

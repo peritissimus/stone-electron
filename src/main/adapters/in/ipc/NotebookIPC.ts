@@ -20,16 +20,14 @@ import {
 } from '@shared/schemas';
 import type { INotebookUseCases } from '../../../domain';
 import { logger } from '../../../shared';
-import { handleIpcRequest } from '@main/shared/utils';
+import {
+  COMMON_IPC_ERROR_MAP,
+  handleIpcRequest,
+  type IPCResponse,
+} from '@main/shared/utils';
 
 export interface NotebookIPCDeps {
   notebookUseCases: INotebookUseCases;
-}
-
-interface IPCResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
 }
 
 export class NotebookIPC {
@@ -136,9 +134,9 @@ export class NotebookIPC {
       loggerPrefix: 'NotebookIPC',
       defaultCode: 'INTERNAL_ERROR',
       errorMap: {
+        ...COMMON_IPC_ERROR_MAP,
         NotebookNotFoundError: 'NOTEBOOK_NOT_FOUND',
         NotebookValidationError: 'VALIDATION_ERROR',
-        ZodError: 'VALIDATION_ERROR',
       },
       context,
     });

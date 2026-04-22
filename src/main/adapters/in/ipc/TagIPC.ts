@@ -20,16 +20,10 @@ import {
 } from '@shared/schemas';
 import type { ITagUseCases } from '../../../domain';
 import { logger } from '../../../shared';
-import { handleIpcRequest } from '@main/shared/utils';
+import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 
 export interface TagIPCDeps {
   tagUseCases: ITagUseCases;
-}
-
-interface IPCResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
 }
 
 export class TagIPC {
@@ -42,9 +36,9 @@ export class TagIPC {
         loggerPrefix: 'TagIPC',
         defaultCode: 'INTERNAL_ERROR',
         errorMap: {
+          ...COMMON_IPC_ERROR_MAP,
           TagValidationError: 'VALIDATION_ERROR',
           TagNotFoundError: 'TAG_NOT_FOUND',
-          ZodError: 'VALIDATION_ERROR',
         },
         context,
       });

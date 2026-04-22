@@ -8,16 +8,10 @@ import { ipcMain } from 'electron';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IWorkspaceUseCases } from '../../../domain';
 import { logger } from '../../../shared';
-import { handleIpcRequest } from '@main/shared/utils';
+import { handleIpcRequest, type IPCResponse } from '@main/shared/utils';
 
 export interface WorkspaceIPCDeps {
   workspaceUseCases: IWorkspaceUseCases;
-}
-
-interface IPCResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
 }
 
 export class WorkspaceIPC {
