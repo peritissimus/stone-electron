@@ -9,8 +9,17 @@ import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Workspace, IpcResponse } from '@shared/types';
+import {
+  FolderPathResponseSchema,
+  GetActiveWorkspaceResponseSchema,
+  ListWorkspacesResponseSchema,
+  ScanWorkspaceResponseSchema,
+  SelectFolderResponseSchema,
+  SyncWorkspaceResponseSchema,
+  ValidatePathResponseSchema,
+  WorkspaceSchema,
+} from '@shared/schemas';
 import { validateResponse } from './validation';
-import { WorkspaceSchema, FileTreeNodeSchema } from './schemas';
 
 export interface FileTreeNode {
   name: string;
@@ -26,15 +35,15 @@ export const workspaceAPI = {
    */
   getAll: async (): Promise<IpcResponse<{ workspaces: Workspace[] }>> => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.GET_ALL, {});
-    return validateResponse(response, z.object({ workspaces: z.array(WorkspaceSchema) }));
+    return validateResponse(response, ListWorkspacesResponseSchema);
   },
 
   /**
    * Get the active workspace
    */
-  getActive: async (): Promise<IpcResponse<{ workspace?: Workspace }>> => {
+  getActive: async (): Promise<IpcResponse<{ workspace?: Workspace | null }>> => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.GET_ACTIVE, {});
-    return validateResponse(response, z.object({ workspace: WorkspaceSchema.optional() }));
+    return validateResponse(response, GetActiveWorkspaceResponseSchema);
   },
 
   /**
@@ -87,21 +96,7 @@ export const workspaceAPI = {
     }>
   > => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.SCAN, { workspaceId });
-    return validateResponse(
-      response,
-      z.object({
-        structure: z.array(
-          z.object({
-            name: z.string(),
-            path: z.string(),
-            relativePath: z.string(),
-            type: z.enum(['file', 'folder']),
-            children: z.array(z.any()).optional(),
-          }),
-        ),
-        counts: z.record(z.number()).optional(),
-      }),
-    );
+    return validateResponse(response, ScanWorkspaceResponseSchema);
   },
 
   /**
@@ -117,23 +112,7 @@ export const workspaceAPI = {
     }>
   > => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.SYNC, workspaceId ? { workspaceId } : {});
-    return validateResponse(
-      response,
-      z.object({
-        workspaceId: z.string(),
-        notebooks: z.object({
-          created: z.number(),
-          updated: z.number(),
-          errors: z.array(z.string()),
-        }),
-        notes: z.object({
-          created: z.number(),
-          updated: z.number(),
-          deleted: z.number(),
-          errors: z.array(z.string()),
-        }),
-      }),
-    );
+    return validateResponse(response, SyncWorkspaceResponseSchema);
   },
 
   /**
@@ -147,7 +126,7 @@ export const workspaceAPI = {
       name,
       parentPath,
     });
-    return validateResponse(response, z.object({ folderPath: z.string() }));
+    return validateResponse(response, FolderPathResponseSchema);
   },
 
   /**
@@ -161,7 +140,7 @@ export const workspaceAPI = {
       path,
       name,
     });
-    return validateResponse(response, z.object({ folderPath: z.string() }));
+    return validateResponse(response, FolderPathResponseSchema);
   },
 
   /**
@@ -183,7 +162,7 @@ export const workspaceAPI = {
       sourcePath,
       destinationPath,
     });
-    return validateResponse(response, z.object({ folderPath: z.string() }));
+    return validateResponse(response, FolderPathResponseSchema);
   },
 
   /**
@@ -193,10 +172,7 @@ export const workspaceAPI = {
     path: string,
   ): Promise<IpcResponse<{ valid: boolean; message?: string }>> => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.VALIDATE_PATH, { path });
-    return validateResponse(
-      response,
-      z.object({ valid: z.boolean(), message: z.string().optional() }),
-    );
+    return validateResponse(response, ValidatePathResponseSchema);
   },
 
   /**
@@ -206,9 +182,6 @@ export const workspaceAPI = {
     IpcResponse<{ canceled?: boolean; folderPath?: string }>
   > => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.SELECT_FOLDER, {});
-    return validateResponse(
-      response,
-      z.object({ canceled: z.boolean().optional(), folderPath: z.string().optional() }),
-    );
+    return validateResponse(response, SelectFolderResponseSchema);
   },
 };
