@@ -82,7 +82,7 @@ export function GitSyncButton() {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 tabular-nums">
           {hasLocalChanges && (
             <span
               className="flex items-center gap-0.5 text-amber-500"

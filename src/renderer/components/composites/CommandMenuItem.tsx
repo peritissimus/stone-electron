@@ -128,7 +128,7 @@ export const CommandMenuItem = React.forwardRef<HTMLButtonElement, CommandMenuIt
           'w-full flex items-start text-left',
           config.padding,
           config.gap,
-          'rounded-md transition-colors',
+          'rounded-md transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
           'hover:bg-accent cursor-pointer',
           isSelected && 'bg-accent',
           className,

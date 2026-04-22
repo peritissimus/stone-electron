@@ -90,7 +90,7 @@ export const TreeItem = React.memo(React.forwardRef<HTMLButtonElement, TreeItemP
               'flex-1 min-w-0 justify-start gap-1.5 px-1.5 text-left',
               padding,
               textSize,
-              'h-auto rounded-md transition-colors',
+              'h-auto rounded-md',
               isActive
                 ? 'bg-secondary text-accent-foreground hover:bg-accent/90'
                 : 'hover:bg-muted/50',
