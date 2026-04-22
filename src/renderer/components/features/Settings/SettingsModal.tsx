@@ -13,7 +13,6 @@ import {
 import {
   Database,
   HardDrive,
-  Download,
   CheckCircle,
   Palette,
   Info,
@@ -96,7 +95,7 @@ export function SettingsModal() {
 function DatabaseSettings() {
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const { getStatus, backup, vacuum, checkIntegrity, loading } = useDatabaseAPI();
+  const { getStatus, vacuum, checkIntegrity, loading } = useDatabaseAPI();
 
   useEffect(() => {
     loadStatus();
@@ -105,20 +104,6 @@ function DatabaseSettings() {
   const loadStatus = async () => {
     const status = await getStatus();
     setDbStatus(status);
-  };
-
-  const handleBackup = async () => {
-    setMessage(null);
-    const result = await backup();
-    if (result) {
-      setMessage({
-        type: 'success',
-        text: `Backup created successfully (${(result.size / 1024 / 1024).toFixed(2)} MB)`,
-      });
-      await loadStatus();
-    } else {
-      setMessage({ type: 'error', text: 'Backup failed' });
-    }
   };
 
   const handleVacuum = async () => {
@@ -176,15 +161,6 @@ function DatabaseSettings() {
 
         {/* Actions */}
         <ContainerStack gap="md">
-          <ActionCard
-            title="Create Backup"
-            description="Create a backup of your database"
-            buttonText="Backup"
-            buttonIcon={<Download size={16} />}
-            onClick={handleBackup}
-            loading={loading}
-          />
-
           <ActionCard
             title="Optimize Database"
             description="Reclaim space and improve performance"

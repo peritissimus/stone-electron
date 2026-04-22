@@ -167,13 +167,6 @@ export const ShortcutsConfigSchema = z.object({
   editor: z.record(ChordOrChordsSchema),
 });
 
-export const MigrationSchema = z.object({
-  version: z.number(),
-  name: z.string(),
-  appliedAt: z.number(),
-  checksum: z.string(),
-});
-
 // ============================================================================
 // Search Schemas
 // ============================================================================
@@ -341,43 +334,13 @@ export const PerformanceSnapshotSchema = z.object({
   renderer: RendererMetricsSchema.nullable().optional(),
 });
 
-// ============================================================================
-// Database Schemas
-// ============================================================================
-
-export const DatabaseStatusSchema = z.object({
-  version: z.number(),
-  isMigrating: z.boolean(),
-  noteCount: z.number(),
-  notebookCount: z.number(),
-  tagCount: z.number(),
-  attachmentCount: z.number(),
-  databaseSize: z.number(),
-  vectorSize: z.number(),
-  lastBackup: z.number().optional(),
-  lastDefrag: z.number().optional(),
-  integrityOk: z.boolean(),
-  error: z.string().optional(),
-});
-
-export const BackupResultSchema = z.object({
-  size: z.number(),
-  path: z.string(),
-  timestamp: z.number(),
-});
-
-export const VacuumResultSchema = z.object({
-  size_before: z.number(),
-  size_after: z.number(),
-  freed_bytes: z.number(),
-});
-
-export const IntegrityResultSchema = z.object({
-  ok: z.boolean(),
-  foreign_keys_ok: z.boolean(),
-  errors: z.array(z.string()),
-  warnings: z.array(z.string()),
-});
+// Database schemas are promoted to the shared IPC wire-schema layer
+// (src/shared/schemas/database.ts).
+export {
+  DatabaseStatusResponseSchema as DatabaseStatusSchema,
+  VacuumDatabaseResponseSchema as VacuumResultSchema,
+  CheckDatabaseIntegrityResponseSchema as IntegrityResultSchema,
+} from '@shared/schemas';
 
 // ============================================================================
 // Workspace Schemas
