@@ -3,6 +3,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import type { Note as SharedNote } from '@shared/types';
 import {
   ArrowsInLineVertical,
   ArrowsOutLineVertical,
@@ -11,11 +13,9 @@ import {
   CaretRight,
   CaretDown,
 } from 'phosphor-react';
-import { Note } from '@shared/types';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
-import { formatDistanceToNow } from 'date-fns';
 import { logger } from '@renderer/lib/logger';
 import { ListItem, SectionHeader } from '@renderer/components/composites';
 
@@ -23,8 +23,14 @@ export interface BacklinksPanelProps {
   noteId: string;
 }
 
+type DisplayNote = SharedNote & {
+  createdAt: string | number | Date;
+  updatedAt: string | number | Date;
+  embedding?: unknown;
+};
+
 interface BacklinkItemProps {
-  note: Note;
+  note: DisplayNote;
   onClick: () => void;
 }
 
@@ -60,8 +66,8 @@ function BacklinkItem({ note, onClick }: BacklinkItemProps) {
 }
 
 export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
-  const [backlinks, setBacklinks] = useState<Note[]>([]);
-  const [forwardLinks, setForwardLinks] = useState<Note[]>([]);
+  const [backlinks, setBacklinks] = useState<DisplayNote[]>([]);
+  const [forwardLinks, setForwardLinks] = useState<DisplayNote[]>([]);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 

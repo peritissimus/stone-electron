@@ -1,4 +1,6 @@
 export * from './base';
+export * from './export';
+export * from './graph';
 export * from './journal';
 export * from './notebooks';
 export * from './notes';
@@ -6,4 +8,5 @@ export * from './quickCapture';
 export * from './quickNote';
 export * from './system';
 export * from './tags';
+export * from './version';
 export * from './workspace';

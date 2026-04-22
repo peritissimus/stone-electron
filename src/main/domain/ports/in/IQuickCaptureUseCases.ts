@@ -10,8 +10,8 @@ export interface AppendToJournalRequest {
 }
 
 export interface AppendToJournalResponse {
-  success: boolean;
   noteId: string;
+  appended: boolean;
 }
 
 // Use case interfaces
@@ -26,5 +26,5 @@ export interface IQuickCaptureUseCases {
   appendToJournal(
     content: string,
     workspaceId?: string,
-  ): Promise<{ noteId: string; appended: boolean }>;
+  ): Promise<AppendToJournalResponse>;
 }

@@ -11,8 +11,13 @@ import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem } from '@shared/types';
 import type { NoteFilters, GraphData as SpecGraphData } from '@renderer/specs';
 import {
+  ExportHtmlResponseSchema,
+  ExportMarkdownResponseSchema,
+  ExportPdfResponseSchema,
   GetAllNotesResponseSchema,
+  GetLinksResponseSchema,
   GetNoteContentResponseSchema,
+  GetVersionsResponseSchema,
 } from '@shared/schemas';
 import { validateResponse } from './validation';
 import { NoteSchema, TodoItemSchema, GraphDataSchema } from './schemas';
@@ -161,7 +166,7 @@ export const noteAPI = {
    */
   getVersions: async (id: string): Promise<IpcResponse<{ versions: unknown[] }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.GET_VERSIONS, { id });
-    return validateResponse(response, z.object({ versions: z.array(z.unknown()) }));
+    return validateResponse(response, GetVersionsResponseSchema);
   },
 
   /**
@@ -177,7 +182,7 @@ export const noteAPI = {
    */
   getBacklinks: async (id: string): Promise<IpcResponse<{ notes: Note[] }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.GET_BACKLINKS, { id });
-    return validateResponse(response, z.object({ notes: z.array(NoteSchema) }));
+    return validateResponse(response, GetLinksResponseSchema) as IpcResponse<{ notes: Note[] }>;
   },
 
   /**
@@ -185,7 +190,7 @@ export const noteAPI = {
    */
   getForwardLinks: async (id: string): Promise<IpcResponse<{ notes: Note[] }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.GET_FORWARD_LINKS, { id });
-    return validateResponse(response, z.object({ notes: z.array(NoteSchema) }));
+    return validateResponse(response, GetLinksResponseSchema) as IpcResponse<{ notes: Note[] }>;
   },
 
   /**
@@ -219,7 +224,7 @@ export const noteAPI = {
       renderedHtml,
       title,
     });
-    return validateResponse(response, z.object({ html: z.string(), path: z.string() }));
+    return validateResponse(response, ExportHtmlResponseSchema);
   },
 
   /**
@@ -238,7 +243,7 @@ export const noteAPI = {
       renderedHtml,
       title,
     });
-    return validateResponse(response, z.object({ path: z.string() }));
+    return validateResponse(response, ExportPdfResponseSchema);
   },
 
   /**
@@ -248,6 +253,6 @@ export const noteAPI = {
     id: string,
   ): Promise<IpcResponse<{ markdown: string; path: string }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.EXPORT_MARKDOWN, { id });
-    return validateResponse(response, z.object({ markdown: z.string(), path: z.string() }));
+    return validateResponse(response, ExportMarkdownResponseSchema);
   },
 };
