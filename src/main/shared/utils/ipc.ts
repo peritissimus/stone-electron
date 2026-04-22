@@ -11,6 +11,18 @@ export interface IPCResponse<T = unknown> {
   error?: IPCErrorPayload;
 }
 
+/**
+ * Error-name → IPC error-code mappings every IPC adapter wants. Adapters
+ * spread this into their own `errorMap` to add slice-specific entries
+ * (e.g. NoteNotFoundError → NOTE_NOT_FOUND).
+ *
+ * Currently just surfaces Zod parse failures — request-payload validation
+ * is uniform across adapters, so its error code should be too.
+ */
+export const COMMON_IPC_ERROR_MAP: Readonly<Record<string, string>> = Object.freeze({
+  ZodError: 'VALIDATION_ERROR',
+});
+
 export interface HandleIpcRequestOptions {
   loggerPrefix: string;
   defaultCode?: string;

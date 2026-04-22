@@ -5,6 +5,7 @@
 export { logger, logInfo, logError, logWarn, logDebug } from './logger';
 export {
   handleIpcRequest,
+  COMMON_IPC_ERROR_MAP,
   type HandleIpcRequestOptions,
   type IPCErrorPayload,
   type IPCResponse,

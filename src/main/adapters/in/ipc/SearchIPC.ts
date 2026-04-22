@@ -14,12 +14,6 @@ export interface SearchIPCDeps {
   searchUseCases: ISearchUseCases;
 }
 
-interface IPCResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  error?: { code: string; message: string };
-}
-
 export class SearchIPC {
   constructor(private readonly deps: SearchIPCDeps) {}
 
