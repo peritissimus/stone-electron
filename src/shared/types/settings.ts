@@ -267,7 +267,8 @@ export type AppShortcutAction =
   | 'closeNote'
   | 'todayJournal'
   | 'findReplace'
-  | 'toggleEditorMode';
+  | 'toggleEditorMode'
+  | 'focusSidebar';
 
 export type EditorShortcutAction =
   | 'indent'

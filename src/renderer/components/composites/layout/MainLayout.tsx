@@ -2,13 +2,14 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
+import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import type { Editor } from '@tiptap/react';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { useTreeSelection } from '@renderer/hooks/useTreeSelection';
+import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
 import { useNavigateToNote } from '@renderer/navigation';
 import {
   LayoutContainer,
@@ -111,15 +112,23 @@ function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle>
 export function MainLayout() {
   const location = useLocation();
   const navigateToNote = useNavigateToNote();
-  const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth } = useUI();
+  const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
   // These used to live inside <Sidebar>; kept here so <Sidebar> is pure
   // composition and these subscriptions keep running even if the sidebar is
   // collapsed (the file tree state still has to stay coherent).
   useAutoExpandAncestors();
-  const { activeFolder } = useTreeSelection();
+  const { selectedFile, activeFolder } = useTreeSelection();
   useSidebarEvents({ activeFolder });
+
+  const requestSidebarFocus = useSidebarFocusStore((s) => s.requestFocus);
+  const handleFocusSidebar = useCallback(() => {
+    if (!sidebarOpen) toggleSidebar();
+    // Starting cursor: the active note's file (contextual pickup) or the
+    // folder containing it if no file path; else null (first j lands on 0).
+    requestSidebarFocus(selectedFile ?? activeFolder ?? null);
+  }, [sidebarOpen, toggleSidebar, requestSidebarFocus, selectedFile, activeFolder]);
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
@@ -225,6 +234,7 @@ export function MainLayout() {
     onNewPersonalNote: () => createPersonal(),
     onNewWorkNote: () => createWork(),
     onTodayJournal: () => openOrCreateTodayJournal(),
+    onFocusSidebar: handleFocusSidebar,
   });
 
   // Handle draft recovery — open the note through the single navigate-to-note

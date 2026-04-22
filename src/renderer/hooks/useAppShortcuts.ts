@@ -18,6 +18,7 @@ interface UseAppShortcutsOptions {
   onTodayJournal?: () => void;
   onFindReplace?: () => void;
   onToggleEditorMode?: () => void;
+  onFocusSidebar?: () => void;
 }
 
 /**
@@ -34,6 +35,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     onTodayJournal,
     onFindReplace,
     onToggleEditorMode,
+    onFocusSidebar,
   } = options;
 
   const navigateHome = useNavigateHome();
@@ -64,6 +66,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       },
       commandCenter: () => toggleCommandCenter(),
       toggleSidebar: () => toggleSidebar(),
+      focusSidebar: () => onFocusSidebar?.(),
       goHome: () => navigateHome(),
       closeNote: () => {
         onCloseNote?.();
@@ -91,6 +94,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       onTodayJournal,
       onFindReplace,
       onToggleEditorMode,
+      onFocusSidebar,
       openSettings,
       closeSettings,
       settingsOpen,
@@ -112,6 +116,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       'settings',
       'commandCenter',
       'toggleSidebar',
+      'focusSidebar',
       'goHome',
       'closeNote',
       'todayJournal',
