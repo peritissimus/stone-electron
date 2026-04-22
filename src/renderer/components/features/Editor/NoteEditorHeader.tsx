@@ -192,7 +192,34 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
         )}
         <IconButton
           size="normal"
-          icon={editorMode === 'rich' ? <Code size={16} /> : <TextAa size={16} />}
+          icon={
+            <div className="relative w-4 h-4">
+              <div
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center",
+                  "transition-[opacity,filter,scale] duration-300",
+                  "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+                  editorMode === 'rich'
+                    ? "scale-100 opacity-100 blur-0"
+                    : "scale-[0.25] opacity-0 blur-[4px]"
+                )}
+              >
+                <Code size={16} />
+              </div>
+              <div
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center",
+                  "transition-[opacity,filter,scale] duration-300",
+                  "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+                  editorMode === 'rich'
+                    ? "scale-[0.25] opacity-0 blur-[4px]"
+                    : "scale-100 opacity-100 blur-0"
+                )}
+              >
+                <TextAa size={16} />
+              </div>
+            </div>
+          }
           tooltip={
             editorMode === 'rich'
               ? `Switch to raw markdown (${formatShortcut('M', true, true)})`

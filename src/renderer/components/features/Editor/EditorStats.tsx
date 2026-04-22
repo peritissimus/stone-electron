@@ -33,7 +33,7 @@ export function EditorStats({ editor }: EditorStatsProps) {
   if (!editor) return null;
 
   return (
-    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+    <div className="flex items-center gap-4 text-xs text-muted-foreground tabular-nums">
       <div className="flex items-center gap-1.5">
         <span className="font-medium">{stats.words.toLocaleString()}</span>
         <span>words</span>

@@ -104,7 +104,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
             <div className="mt-2 pt-2 border-t border-border">
               <button
                 onClick={() => command({ id: 'create-new', title: query, note: null as any })}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left hover:bg-muted transition-colors"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]"
               >
                 <File size={14} />
                 <span>Create note "{query}"</span>
@@ -134,7 +134,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
                 ref={(el) => (itemRefs.current[index] = el)}
                 onClick={() => selectItem(index)}
                 className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-colors',
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
                   isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
                 )}
               >
