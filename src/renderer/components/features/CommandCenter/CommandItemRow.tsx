@@ -38,7 +38,7 @@ export const CommandItemRow = memo(function CommandItemRow({
       data-index={index}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition duration-150 ease-out motion-safe:active:scale-[0.98] ${
+      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.96] ${
         isSelected ? 'bg-accent' : 'hover:bg-accent/50'
       }`}
     >
