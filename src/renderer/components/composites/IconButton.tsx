@@ -38,10 +38,11 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
           'aspect-square',
           'p-0 flex items-center justify-center',
           'flex-shrink-0',
+          'relative',
+          size !== 'spacious' && size !== 'roomy' && "after:absolute after:top-1/2 after:left-1/2 after:w-10 after:h-10 after:-translate-x-1/2 after:-translate-y-1/2",
           'rounded-md',
-          'transition-colors',
+          'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
           'hover:bg-muted',
-          'active:bg-muted/80',
           className,
         )}
         aria-label={label || tooltip}

@@ -59,7 +59,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
         disabled={disabled}
         className={cn(
           padding,
-          'rounded transition-colors',
+          'rounded transition-[background-color,transform,color] duration-150 ease-out active:scale-[0.96]',
           active
             ? 'bg-accent text-accent-foreground'
             : 'hover:bg-muted text-muted-foreground hover:text-foreground',

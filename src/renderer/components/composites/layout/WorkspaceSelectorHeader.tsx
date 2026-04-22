@@ -25,7 +25,7 @@ export function WorkspaceSelectorHeader() {
       </div>
       <button
         onClick={toggleSidebar}
-        className="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-colors"
+        className="flex items-center justify-center w-6 h-6 rounded hover:bg-accent/50 transition-[background-color,scale] duration-150 ease-out active:scale-[0.96]"
         title="Collapse sidebar"
       >
         <CaretLeft size={14} weight="bold" />

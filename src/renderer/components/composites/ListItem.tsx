@@ -64,7 +64,7 @@ export const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemP
           'w-full text-left',
           padding,
           textSize,
-          'transition duration-150 ease-out motion-safe:active:scale-[0.98]',
+          'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
           'border-b border-border',
           'flex items-center gap-2',
           isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50',
