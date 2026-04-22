@@ -53,6 +53,11 @@ const APP_SHORTCUT_META: Record<
     description: 'Show or hide the sidebar',
     category: 'navigation',
   },
+  focusSidebar: {
+    label: 'Focus Sidebar',
+    description: 'Move keyboard focus into the sidebar for vim-style navigation',
+    category: 'navigation',
+  },
   goHome: {
     label: 'Go Home',
     description: 'Navigate to home page',

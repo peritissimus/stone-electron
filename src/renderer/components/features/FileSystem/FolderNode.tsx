@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   FolderSimple,
   FolderOpen,
@@ -16,6 +16,7 @@ import {
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
 import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
+import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath } from '@renderer/lib/path';
@@ -50,6 +51,17 @@ export const FolderNode = React.memo<FolderNodeProps>(
     const { expandedPaths, activeFolder, toggleExpanded } = useFileTree();
     const isExpanded = expandedPaths.has(normalizedPath);
     const isActive = normalizePath(activeFolder || '') === normalizedPath;
+
+    const cursorPath = useSidebarFocusStore((s) => s.cursorPath);
+    const setCursor = useSidebarFocusStore((s) => s.setCursor);
+    const isCursor = cursorPath === normalizedPath;
+    const rowRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+      if (isCursor) {
+        rowRef.current?.scrollIntoView({ block: 'nearest' });
+      }
+    }, [isCursor]);
 
     const [isDragOver, setIsDragOver] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -132,6 +144,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
 
     const handleClick = (event: React.MouseEvent) => {
       event.stopPropagation();
+      setCursor(normalizedPath);
       toggleExpanded(normalizedPath);
     };
 
@@ -152,9 +165,11 @@ export const FolderNode = React.memo<FolderNodeProps>(
           )}
         >
           <div
+            ref={rowRef}
             className={cn(
               'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
               'hover:bg-accent/20',
+              isCursor && 'ring-2 ring-primary/50',
             )}
             onClick={handleClick}
             style={{ paddingLeft: `${level * 20 + 8}px` }}

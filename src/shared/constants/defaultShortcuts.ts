@@ -28,6 +28,7 @@ export const DEFAULT_APP_SHORTCUTS: Record<AppShortcutAction, ChordBinding> = {
   todayJournal: 'Mod-j',
   findReplace: 'Mod-f',
   toggleEditorMode: 'Mod-Shift-m',
+  focusSidebar: 'Mod-e',
 };
 
 /**
