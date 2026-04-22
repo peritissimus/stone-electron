@@ -33,23 +33,9 @@ export const IpcResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 // share a single source of truth. Re-export keeps existing callers working.
 export { NoteSchema, NoteWithMetaSchema } from '@shared/schemas';
 
-export const NotebookSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  parentId: z.string().nullable(),
-  workspaceId: z.string().nullable(),
-  folderPath: z.string().nullable(),
-  icon: z.string().nullable(),
-  color: z.string().nullable(),
-  position: z.number().nullable(),
-  createdAt: z.union([z.string(), z.date(), z.number()]),
-  updatedAt: z.union([z.string(), z.date(), z.number()]),
-});
-
-export const NotebookWithCountSchema: z.ZodType<any> = NotebookSchema.extend({
-  note_count: z.number(),
-  children: z.lazy(() => z.array(NotebookWithCountSchema)).optional(),
-});
+// NotebookSchema and NotebookWithCountSchema are promoted to the shared IPC
+// wire-schema layer (src/shared/schemas/notebooks.ts).
+export { NotebookSchema, NotebookWithCountSchema } from '@shared/schemas';
 
 export const TagSchema = z.object({
   id: z.string(),
