@@ -407,11 +407,11 @@ function RawEditorStats({ markdown }: { markdown: string }) {
   const words = markdown.trim() ? markdown.trim().split(/\s+/).length : 0;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 tabular-nums">
       <span>{words} words</span>
       <span>{chars} characters</span>
       <span>{lines} lines</span>
-      <span className="text-muted-foreground/60">Markdown</span>
+      <span className="text-muted-foreground/60 tabular-nums-none">Markdown</span>
     </div>
   );
 }

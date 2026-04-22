@@ -20,10 +20,10 @@ export function NoteEditorEmptyState({ onCreateNote }: NoteEditorEmptyStateProps
         </div>
 
         {/* Heading */}
-        <h2 className="text-2xl font-semibold mb-3 text-foreground">No note selected</h2>
+        <h2 className="text-2xl font-semibold mb-3 text-foreground text-balance">No note selected</h2>
 
         {/* Description */}
-        <p className="text-muted-foreground mb-8 leading-relaxed text-base">
+        <p className="text-muted-foreground mb-8 leading-relaxed text-base text-pretty">
           Select a note from the sidebar to view and edit it, or create a new one to get started
           with your writing.
         </p>

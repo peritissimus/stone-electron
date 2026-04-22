@@ -123,18 +123,64 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
         )}
       >
         <div className="flex items-center gap-2">
-          {isExpanded ? (
-            <CaretDown size={14} weight="bold" />
-          ) : (
-            <CaretRight size={14} weight="bold" />
-          )}
+          <div className="relative w-3.5 h-3.5">
+            <div
+              className={cn(
+                "absolute inset-0 flex items-center justify-center",
+                "transition-[opacity,filter,scale] duration-300",
+                "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+                isExpanded
+                  ? "scale-100 opacity-100 blur-0"
+                  : "scale-[0.25] opacity-0 blur-[4px]"
+              )}
+            >
+              <CaretDown size={14} weight="bold" />
+            </div>
+            <div
+              className={cn(
+                "absolute inset-0 flex items-center justify-center",
+                "transition-[opacity,filter,scale] duration-300",
+                "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+                isExpanded
+                  ? "scale-[0.25] opacity-0 blur-[4px]"
+                  : "scale-100 opacity-100 blur-0"
+              )}
+            >
+              <CaretRight size={14} weight="bold" />
+            </div>
+          </div>
           <Link size={14} weight="bold" />
           <span>Linked Notes</span>
           {totalLinks > 0 && (
-            <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full">{totalLinks}</span>
+            <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full tabular-nums">{totalLinks}</span>
           )}
         </div>
-        {isExpanded ? <ArrowsInLineVertical size={14} /> : <ArrowsOutLineVertical size={14} />}
+        <div className="relative w-3.5 h-3.5">
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center",
+              "transition-[opacity,filter,scale] duration-300",
+              "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+              isExpanded
+                ? "scale-100 opacity-100 blur-0"
+                : "scale-[0.25] opacity-0 blur-[4px]"
+            )}
+          >
+            <ArrowsInLineVertical size={14} />
+          </div>
+          <div
+            className={cn(
+              "absolute inset-0 flex items-center justify-center",
+              "transition-[opacity,filter,scale] duration-300",
+              "[transition-timing-function:cubic-bezier(0.2,0,0,1)]",
+              isExpanded
+                ? "scale-[0.25] opacity-0 blur-[4px]"
+                : "scale-100 opacity-100 blur-0"
+            )}
+          >
+            <ArrowsOutLineVertical size={14} />
+          </div>
+        </div>
       </button>
 
       {/* Content */}
@@ -153,7 +199,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
                     size="compact"
                     divided={false}
                     title={`${backlinks.length} ${backlinks.length === 1 ? 'note links' : 'notes link'} to this`}
-                    className="text-muted-foreground uppercase tracking-wider"
+                    className="text-muted-foreground uppercase tracking-wider text-balance tabular-nums"
                   />
                   <div className="space-y-0.5">
                     {backlinks.map((note) => (
@@ -174,7 +220,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
                     size="compact"
                     divided={false}
                     title={`This note links to ${forwardLinks.length} ${forwardLinks.length === 1 ? 'note' : 'notes'}`}
-                    className="text-muted-foreground uppercase tracking-wider"
+                    className="text-muted-foreground uppercase tracking-wider text-balance tabular-nums"
                   />
                   <div className="space-y-0.5">
                     {forwardLinks.map((note) => (
