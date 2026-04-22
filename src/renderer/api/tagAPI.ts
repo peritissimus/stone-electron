@@ -9,8 +9,9 @@ import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Tag, TagWithCount, IpcResponse } from '@shared/types';
+import { ListTagsResponseSchema } from '@shared/schemas';
 import { validateResponse } from './validation';
-import { TagSchema, TagWithCountSchema } from './schemas';
+import { TagSchema } from './schemas';
 
 export interface GetAllTagsParams {
   sort?: 'name' | 'count' | 'recent';
@@ -22,7 +23,7 @@ export const tagAPI = {
    */
   getAll: async (params?: GetAllTagsParams): Promise<IpcResponse<{ tags: TagWithCount[] }>> => {
     const response = await invokeIpc(TAG_CHANNELS.GET_ALL, params);
-    return validateResponse(response, z.object({ tags: z.array(TagWithCountSchema) }));
+    return validateResponse(response, ListTagsResponseSchema);
   },
 
   /**
@@ -49,7 +50,7 @@ export const tagAPI = {
     tagIds: string[],
   ): Promise<IpcResponse<{ tags: TagWithCount[] }>> => {
     const response = await invokeIpc(TAG_CHANNELS.ADD_TO_NOTE, { noteId, tagIds });
-    return validateResponse(response, z.object({ tags: z.array(TagWithCountSchema) }));
+    return validateResponse(response, ListTagsResponseSchema);
   },
 
   /**

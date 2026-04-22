@@ -9,8 +9,9 @@ import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Notebook, IpcResponse } from '@shared/types';
+import { ListNotebooksResponseSchema } from '@shared/schemas';
 import { validateResponse } from './validation';
-import { NotebookSchema, NotebookWithCountSchema } from './schemas';
+import { NotebookSchema } from './schemas';
 
 export interface NotebookWithCount extends Notebook {
   note_count: number;
@@ -30,7 +31,7 @@ export const notebookAPI = {
     params?: GetAllNotebooksParams,
   ): Promise<IpcResponse<{ notebooks: NotebookWithCount[] }>> => {
     const response = await invokeIpc(NOTEBOOK_CHANNELS.GET_ALL, params);
-    return validateResponse(response, z.object({ notebooks: z.array(NotebookWithCountSchema) }));
+    return validateResponse(response, ListNotebooksResponseSchema);
   },
 
   /**

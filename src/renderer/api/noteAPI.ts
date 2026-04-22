@@ -10,6 +10,10 @@ import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem } from '@shared/types';
 import type { NoteFilters, GraphData as SpecGraphData } from '@renderer/specs';
+import {
+  GetAllNotesResponseSchema,
+  GetNoteContentResponseSchema,
+} from '@shared/schemas';
 import { validateResponse } from './validation';
 import { NoteSchema, NoteWithMetaSchema, TodoItemSchema, GraphDataSchema } from './schemas';
 
@@ -32,7 +36,7 @@ export const noteAPI = {
     params?: GetAllNotesParams,
   ): Promise<IpcResponse<{ notes: NoteWithMeta[] }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.GET_ALL, params);
-    return validateResponse(response, z.object({ notes: z.array(NoteWithMetaSchema) }));
+    return validateResponse(response, GetAllNotesResponseSchema);
   },
 
   /**
@@ -56,7 +60,7 @@ export const noteAPI = {
    */
   getContent: async (id: string): Promise<IpcResponse<{ content: string }>> => {
     const response = await invokeIpc(NOTE_CHANNELS.GET_CONTENT, { id });
-    return validateResponse(response, z.object({ content: z.string() }));
+    return validateResponse(response, GetNoteContentResponseSchema);
   },
 
   /**
