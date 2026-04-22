@@ -26,6 +26,7 @@ const DOMAIN_TO_IPC_EVENT: Partial<Record<AppDomainEvent['type'], string>> = {
   'workspace:updated': EVENTS.WORKSPACE_UPDATED,
   'workspace:deleted': EVENTS.WORKSPACE_DELETED,
   'workspace:activated': EVENTS.WORKSPACE_SWITCHED,
+  'file:synced': EVENTS.FILE_SYNCED,
   'topic:created': EVENTS.TOPIC_CREATED,
   'topic:updated': EVENTS.TOPIC_UPDATED,
   'topic:deleted': EVENTS.TOPIC_DELETED,
