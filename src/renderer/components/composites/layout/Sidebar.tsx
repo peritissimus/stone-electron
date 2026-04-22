@@ -32,6 +32,7 @@ export function Sidebar() {
     <div
       ref={containerRef}
       tabIndex={-1}
+      data-sidebar-root="true"
       onKeyDown={handleKeyDown}
       className="flex flex-col h-full bg-sidebar outline-none"
     >

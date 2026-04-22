@@ -2,26 +2,31 @@ import { useCallback } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useFileTreeStore } from '@renderer/stores/fileTreeStore';
 import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
-import { useVisibleTreeItems } from '@renderer/hooks/useVisibleTreeItems';
+import {
+  useVisibleTreeItems,
+  type VisibleTreeItem,
+} from '@renderer/hooks/useVisibleTreeItems';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { normalizePath } from '@renderer/lib/path';
 
 /**
- * Vim-style keyboard navigation for the sidebar tree.
+ * Vim-style keyboard navigation for the sidebar tree with "preview-on-move":
+ * when j/k/h/l moves the cursor onto a file, that file opens immediately.
+ * Focus stays in the sidebar — the autofocus handler in NoteEditor guards
+ * against stealing focus while the sidebar root holds DOM focus.
  *
- *   j / ArrowDown  → next visible item
- *   k / ArrowUp    → previous visible item
- *   h / ArrowLeft  → expanded folder: collapse; otherwise cursor → parent folder
- *   l / ArrowRight → folder: expand or descend into first child; file: open
- *   Enter / o      → folder: toggle; file: open
- *   Escape         → blur sidebar (cursor kept so ⌘E returns you here)
+ *   j / ArrowDown   → next visible item (opens if file)
+ *   k / ArrowUp     → prev visible item (opens if file)
+ *   h / ArrowLeft   → expanded folder: collapse; otherwise cursor → parent
+ *   l / ArrowRight  → folder: expand/descend; file: open (redundant with j/k)
+ *   Enter / o       → folder: toggle; file: open (redundant with preview)
+ *   Escape          → blur sidebar (cursor preserved)
  *
- * The handler is modal: attached to the sidebar container's onKeyDown, so it
- * only runs when the container (or a focusable descendant with no competing
- * handler) holds DOM focus. We deliberately don't route these through the
- * global shortcuts store — they're meaningful only here.
+ * The handler is scoped to the sidebar container's onKeyDown so it only
+ * runs while that element holds focus. These bindings are deliberately
+ * hardcoded, not routed through shortcutsStore — they're modal.
  */
 export function useSidebarKeyboardNav() {
   const visibleItems = useVisibleTreeItems();
@@ -47,6 +52,19 @@ export function useSidebarKeyboardNav() {
     [navigateToNote, loadNoteByPath],
   );
 
+  /**
+   * Move the cursor to `next` and, if it's a file, open it. Centralizing
+   * here keeps the preview-on-move contract uniform across j/k/l/arrow keys.
+   */
+  const moveCursorTo = useCallback(
+    (next: VisibleTreeItem | null | undefined) => {
+      if (!next) return;
+      setCursor(next.path);
+      if (next.type === 'file') void openFileAt(next.path);
+    },
+    [setCursor, openFileAt],
+  );
+
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       // Any modifier means it's a global shortcut — let it bubble.
@@ -63,9 +81,9 @@ export function useSidebarKeyboardNav() {
         case 'ArrowDown': {
           event.preventDefault();
           if (cursorIndex < 0) {
-            setCursor(visibleItems[0].path);
+            moveCursorTo(visibleItems[0]);
           } else if (cursorIndex < visibleItems.length - 1) {
-            setCursor(visibleItems[cursorIndex + 1].path);
+            moveCursorTo(visibleItems[cursorIndex + 1]);
           }
           return;
         }
@@ -73,9 +91,9 @@ export function useSidebarKeyboardNav() {
         case 'ArrowUp': {
           event.preventDefault();
           if (cursorIndex > 0) {
-            setCursor(visibleItems[cursorIndex - 1].path);
+            moveCursorTo(visibleItems[cursorIndex - 1]);
           } else if (cursorIndex < 0) {
-            setCursor(visibleItems[0].path);
+            moveCursorTo(visibleItems[0]);
           }
           return;
         }
@@ -85,8 +103,13 @@ export function useSidebarKeyboardNav() {
           if (!current) return;
           if (current.type === 'folder' && current.isExpanded) {
             toggleExpanded(current.path);
-          } else if (current.parentPath) {
-            setCursor(current.parentPath);
+            return;
+          }
+          if (current.parentPath) {
+            // Moving UP to a parent folder never opens a file — folders
+            // aren't notes. moveCursorTo handles the no-op correctly.
+            const parent = visibleItems.find((i) => i.path === current.parentPath);
+            moveCursorTo(parent);
           }
           return;
         }
@@ -101,10 +124,13 @@ export function useSidebarKeyboardNav() {
             }
             const next = visibleItems[cursorIndex + 1];
             if (next && next.parentPath === current.path) {
-              setCursor(next.path);
+              moveCursorTo(next);
             }
             return;
           }
+          // On a file: navigation already happened when the cursor landed here
+          // (preview-on-move). Explicit `l` is a no-op but we keep focus intent
+          // clear — ensure the note is open even if cursor was set externally.
           void openFileAt(current.path);
           return;
         }
@@ -128,7 +154,7 @@ export function useSidebarKeyboardNav() {
           return;
       }
     },
-    [visibleItems, cursorPath, setCursor, toggleExpanded, openFileAt],
+    [visibleItems, cursorPath, moveCursorTo, toggleExpanded, openFileAt],
   );
 
   return { handleKeyDown };
