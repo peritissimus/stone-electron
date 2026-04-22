@@ -204,15 +204,19 @@ export const logger = {
   error: (...args: unknown[]) => write('error', ...args),
 
   withContext<T>(channel: string, fn: () => Promise<T> | T): Promise<T> | T {
+    // Always run in a fresh context so `channel` and `start_time` reflect
+    // THIS operation. Preserve `request_id` from the parent (if any) for
+    // trace correlation across nested calls — but never reuse its
+    // start_time, otherwise async listeners registered inside a parent
+    // context (e.g. chokidar events wired up inside FileWatcher.start)
+    // would report duration_ms measured from the parent's start, producing
+    // bogus multi-hour durations on every event.
     const existing = asyncContext.getStore();
-    if (existing) return fn();
-
     const ctx: RequestContext = {
-      request_id: randomUUID(),
+      request_id: existing?.request_id ?? randomUUID(),
       channel,
       start_time: performance.now(),
     };
-
     return asyncContext.run(ctx, fn);
   },
 
