@@ -22,7 +22,7 @@ export const NoteRow = memo(function NoteRow({
       className={cn(
         'w-full flex items-center gap-3 px-4 py-2.5 text-left',
         'border-b border-border/40 last:border-0',
-        'hover:bg-muted/50 transition-colors',
+        'hover:bg-muted/50 transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
       )}
     >
       <FileText className="w-4 h-4 text-muted-foreground/60 shrink-0" />
