@@ -37,17 +37,9 @@ export { NoteSchema, NoteWithMetaSchema } from '@shared/schemas';
 // wire-schema layer (src/shared/schemas/notebooks.ts).
 export { NotebookSchema, NotebookWithCountSchema } from '@shared/schemas';
 
-export const TagSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  color: z.string().nullable(),
-  createdAt: z.union([z.string(), z.date(), z.number()]),
-  updatedAt: z.union([z.string(), z.date(), z.number()]),
-});
-
-export const TagWithCountSchema = TagSchema.extend({
-  note_count: z.number(),
-});
+// TagSchema and TagWithCountSchema are promoted to the shared IPC
+// wire-schema layer (src/shared/schemas/tags.ts).
+export { TagSchema, TagWithCountSchema } from '@shared/schemas';
 
 export const TopicSchema = z.object({
   id: z.string(),

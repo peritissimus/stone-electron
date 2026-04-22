@@ -1,11 +1,23 @@
 /**
  * Tag IPC Adapter
  *
- * Primary adapter that handles Electron IPC calls for tag operations.
+ * Every handler parses its request payload via a shared Zod schema at
+ * the boundary and binds its return type to the response schema the
+ * renderer expects — so wire-shape drift between the main process use
+ * cases and the renderer is a compile-time error.
  */
 
 import { ipcMain } from 'electron';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  AddTagToNoteRequestSchema,
+  CreateTagRequestSchema,
+  DeleteTagRequestSchema,
+  ListTagsRequestSchema,
+  RemoveTagFromNoteRequestSchema,
+  type ListTagsResponse,
+  type TagResponse,
+} from '@shared/schemas';
 import type { ITagUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
@@ -26,84 +38,78 @@ export class TagIPC {
   registerHandlers(): void {
     const { tagUseCases } = this.deps;
     const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
-      handleIpcRequest(fn, {
+      handleIpcRequest<T>(fn, {
         loggerPrefix: 'TagIPC',
         defaultCode: 'INTERNAL_ERROR',
         errorMap: {
           TagValidationError: 'VALIDATION_ERROR',
           TagNotFoundError: 'TAG_NOT_FOUND',
+          ZodError: 'VALIDATION_ERROR',
         },
         context,
       });
 
-    ipcMain.handle(TAG_CHANNELS.CREATE, async (_event, request) => {
-      return handleRequest(
+    ipcMain.handle(TAG_CHANNELS.CREATE, async (_event, rawRequest) => {
+      const request = CreateTagRequestSchema.parse(rawRequest);
+      return handleRequest<TagResponse>(
         async () => {
           const result = await tagUseCases.createTag.execute(request);
           return result.tag;
         },
-        { channel: TAG_CHANNELS.CREATE, name: request?.name },
+        { channel: TAG_CHANNELS.CREATE, name: request.name },
       );
     });
 
-    ipcMain.handle(TAG_CHANNELS.DELETE, async (_event, request: { id: string } | string) => {
-      return handleRequest(
+    ipcMain.handle(TAG_CHANNELS.DELETE, async (_event, rawRequest) => {
+      const { id } = DeleteTagRequestSchema.parse(rawRequest);
+      return handleRequest<void>(
         async () => {
-          const id = typeof request === 'string' ? request : request.id;
           await tagUseCases.deleteTag.execute({ id });
-          return { success: true };
         },
-        {
-          channel: TAG_CHANNELS.DELETE,
-          tagId: typeof request === 'string' ? request : request.id,
-        },
+        { channel: TAG_CHANNELS.DELETE, tagId: id },
       );
     });
 
-    ipcMain.handle(TAG_CHANNELS.GET_ALL, async () => {
-      return handleRequest(
+    ipcMain.handle(TAG_CHANNELS.GET_ALL, async (_event, rawRequest) => {
+      // listTags takes no behavior-affecting params on the backend today;
+      // parse the renderer's optional sort hint for shape, then discard.
+      ListTagsRequestSchema.parse(rawRequest ?? {});
+      return handleRequest<ListTagsResponse>(
         async () => {
           const result = await tagUseCases.listTags.execute();
-          return { tags: result.tags };
+          return { tags: result.tags as ListTagsResponse['tags'] };
         },
         { channel: TAG_CHANNELS.GET_ALL },
       );
     });
 
-    ipcMain.handle(
-      TAG_CHANNELS.ADD_TO_NOTE,
-      async (_event, request: { noteId: string; tagId: string; tagIds?: string[] }) => {
-        return handleRequest(
-          async () => {
-            // Handle both single tagId and array of tagIds
-            const tagIds = request.tagIds || [request.tagId];
-            for (const tagId of tagIds) {
-              await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
-            }
-            // Return updated tags list
-            const result = await tagUseCases.listTags.execute();
-            return { tags: result.tags };
-          },
-          { channel: TAG_CHANNELS.ADD_TO_NOTE, noteId: request.noteId, tagIds: request.tagIds ?? [request.tagId] },
-        );
-      },
-    );
+    ipcMain.handle(TAG_CHANNELS.ADD_TO_NOTE, async (_event, rawRequest) => {
+      const request = AddTagToNoteRequestSchema.parse(rawRequest);
+      const tagIds =
+        request.tagIds && request.tagIds.length > 0
+          ? request.tagIds
+          : [request.tagId as string];
+      return handleRequest<ListTagsResponse>(
+        async () => {
+          for (const tagId of tagIds) {
+            await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
+          }
+          const result = await tagUseCases.listTags.execute();
+          return { tags: result.tags as ListTagsResponse['tags'] };
+        },
+        { channel: TAG_CHANNELS.ADD_TO_NOTE, noteId: request.noteId, tagIds },
+      );
+    });
 
-    ipcMain.handle(
-      TAG_CHANNELS.REMOVE_FROM_NOTE,
-      async (_event, request: { noteId: string; tagId: string }) => {
-        return handleRequest(
-          async () => {
-            await tagUseCases.removeTagFromNote.execute({
-              noteId: request.noteId,
-              tagId: request.tagId,
-            });
-            return { success: true };
-          },
-          { channel: TAG_CHANNELS.REMOVE_FROM_NOTE, noteId: request.noteId, tagId: request.tagId },
-        );
-      },
-    );
+    ipcMain.handle(TAG_CHANNELS.REMOVE_FROM_NOTE, async (_event, rawRequest) => {
+      const { noteId, tagId } = RemoveTagFromNoteRequestSchema.parse(rawRequest);
+      return handleRequest<void>(
+        async () => {
+          await tagUseCases.removeTagFromNote.execute({ noteId, tagId });
+        },
+        { channel: TAG_CHANNELS.REMOVE_FROM_NOTE, noteId, tagId },
+      );
+    });
 
     logger.info('[TagIPC] Handlers registered');
   }
