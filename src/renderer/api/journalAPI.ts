@@ -4,21 +4,16 @@
  * Thin wrappers around the journal IPC. No React, no stores.
  */
 
-import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { JOURNAL_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
+import {
+  OpenOrCreateJournalResponseSchema,
+  type OpenOrCreateJournalResponse,
+} from '@shared/schemas';
 import { validateResponse } from './validation';
 
-const OpenOrCreateJournalResponseSchema = z.object({
-  noteId: z.string(),
-  created: z.boolean(),
-});
-
-export interface OpenOrCreateJournalResponse {
-  noteId: string;
-  created: boolean;
-}
+export type { OpenOrCreateJournalResponse };
 
 export const journalAPI = {
   /**

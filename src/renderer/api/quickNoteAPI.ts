@@ -4,21 +4,17 @@
  * slot names ('personal' | 'work').
  */
 
-import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { QUICK_NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
+import {
+  CreateQuickNoteResponseSchema,
+  type CreateQuickNoteResponse,
+  type QuickNoteSlot,
+} from '@shared/schemas';
 import { validateResponse } from './validation';
 
-export type QuickNoteSlot = 'personal' | 'work';
-
-const CreateQuickNoteResponseSchema = z.object({
-  noteId: z.string(),
-});
-
-export interface CreateQuickNoteResponse {
-  noteId: string;
-}
+export type { QuickNoteSlot, CreateQuickNoteResponse };
 
 export const quickNoteAPI = {
   createInSlot: async (

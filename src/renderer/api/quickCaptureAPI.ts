@@ -5,19 +5,23 @@
  * No spec counterpart: desktop-tray feature, not in cross-platform contract yet.
  */
 
-import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { QUICK_CAPTURE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { IpcResponse, Note } from '@shared/types';
+import type { IpcResponse } from '@shared/types';
+import {
+  AppendToJournalResponseSchema,
+  type AppendToJournalResponse,
+} from '@shared/schemas';
 import { validateResponse } from './validation';
-import { NoteSchema } from './schemas';
+
+export type { AppendToJournalResponse };
 
 export const quickCaptureAPI = {
   /**
    * Append text to today's journal entry
    */
-  appendToJournal: async (text: string): Promise<IpcResponse<{ note: Note }>> => {
+  appendToJournal: async (text: string): Promise<IpcResponse<AppendToJournalResponse>> => {
     const response = await invokeIpc(QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, { text });
-    return validateResponse(response, z.object({ note: NoteSchema }));
+    return validateResponse(response, AppendToJournalResponseSchema);
   },
 };
