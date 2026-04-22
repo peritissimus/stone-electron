@@ -73,6 +73,16 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const consumeAutofocus = useCallback(() => {
     if (!editor || !autofocusPendingRef.current) return;
     if (!editor.view?.dom?.isConnected) return;
+    // Don't steal focus while the sidebar owns it — "preview on move" needs
+    // j/k to keep the caller in the tree, not whiplash into the editor on
+    // every content load. Radix dialogs manage their own focus traps, so
+    // this single check covers the sidebar case without special-casing
+    // modals.
+    const active = document.activeElement as HTMLElement | null;
+    if (active && active.closest('[data-sidebar-root]')) {
+      autofocusPendingRef.current = false;
+      return;
+    }
     autofocusPendingRef.current = false;
     const isEmpty = editor.state.doc.textContent.length === 0;
     editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
