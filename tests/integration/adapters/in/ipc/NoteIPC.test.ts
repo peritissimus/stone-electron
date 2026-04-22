@@ -132,10 +132,15 @@ describe('NoteIPC', () => {
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual(note);
-      expect(noteUseCases.createNote.execute).toHaveBeenCalledWith({
-        title: 'Test',
-        workspaceId: 'ws-1',
-      });
+      // NoteIPC generates an id via @shared/utils/id before calling the use
+      // case so the port type (which requires a string id) is always satisfied.
+      expect(noteUseCases.createNote.execute).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expect.any(String),
+          title: 'Test',
+          workspaceId: 'ws-1',
+        }),
+      );
     });
 
     it('returns error on failure', async () => {
