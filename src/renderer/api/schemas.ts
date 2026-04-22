@@ -28,45 +28,10 @@ export const IpcResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 // Entity Schemas
 // ============================================================================
 
-export const NoteSchema = z.object({
-  id: z.string(),
-  title: z.string().nullable(),
-  filePath: z.string().nullable(),
-  notebookId: z.string().nullable(),
-  workspaceId: z.string().nullable(),
-  isPinned: z.boolean().nullable(),
-  isFavorite: z.boolean().nullable(),
-  isArchived: z.boolean().nullable(),
-  isDeleted: z.boolean().nullable(),
-  deletedAt: z.union([z.string(), z.date(), z.number()]).nullable(),
-  embedding: z.unknown().nullable(),
-  createdAt: z.union([z.string(), z.date(), z.number()]),
-  updatedAt: z.union([z.string(), z.date(), z.number()]),
-});
-
-export const NoteWithMetaSchema = NoteSchema.extend({
-  tags: z
-    .array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        color: z.string().nullable(),
-      }),
-    )
-    .optional(),
-  topics: z
-    .array(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        color: z.string().nullable(),
-        confidence: z.number(),
-      }),
-    )
-    .optional(),
-  // API may return path instead of filePath for backwards compatibility
-  path: z.string().optional(),
-});
+// NoteSchema and NoteWithMetaSchema have been promoted to the shared IPC
+// wire-schema layer (src/shared/schemas/notes.ts) so main and renderer
+// share a single source of truth. Re-export keeps existing callers working.
+export { NoteSchema, NoteWithMetaSchema } from '@shared/schemas';
 
 export const NotebookSchema = z.object({
   id: z.string(),
