@@ -413,6 +413,7 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     appConfigRepository,
+    eventPublisher,
   });
 
   // Journal use cases

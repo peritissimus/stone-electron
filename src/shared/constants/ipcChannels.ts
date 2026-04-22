@@ -193,6 +193,7 @@ export const EVENTS = {
   FILE_CHANGED: 'files:changed',
   FILE_CREATED: 'files:created',
   FILE_DELETED: 'files:deleted',
+  FILE_SYNCED: 'files:synced',
 
   // Note events
   NOTE_CREATED: 'notes:created',
