@@ -4,6 +4,8 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
+import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import { DOMAIN_EVENT_TYPES } from '../../../domain/ports/out/IEventPublisher';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { logger } from '../../../shared/utils';
 
@@ -13,6 +15,7 @@ export class AppendToJournalUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(
@@ -61,6 +64,7 @@ export class AppendToJournalUseCase {
       const noteEntity = NoteEntity.fromPersistence(journalNote);
       await this.noteRepository.save(noteEntity);
 
+      this.publishUpdated(journalNote.id);
       logger.info(`[QuickCapture] Appended to journal ${journalNote.id}`);
       return { noteId: journalNote.id, appended: true };
     } else {
@@ -81,6 +85,7 @@ export class AppendToJournalUseCase {
         note.updateFilePath(journalFilePath);
         await this.noteRepository.save(note);
 
+        this.publishUpdated(note.id);
         logger.info(`[QuickCapture] Appended to existing file and created DB entry ${note.id}`);
         return { noteId: note.id, appended: true };
       }
@@ -106,5 +111,17 @@ export class AppendToJournalUseCase {
       logger.info(`[QuickCapture] Created new journal ${note.id}`);
       return { noteId: note.id, appended: false };
     }
+  }
+
+  // Notify the renderer that the journal's content changed on disk so any
+  // open editor buffer for this note re-reads. Without this, QuickCapture
+  // silently writes to the file but the already-open journal shows stale
+  // content until the user switches notes and back.
+  private publishUpdated(noteId: string): void {
+    this.eventPublisher?.publish({
+      type: DOMAIN_EVENT_TYPES.NOTE_UPDATED,
+      timestamp: new Date(),
+      payload: { id: noteId },
+    });
   }
 }

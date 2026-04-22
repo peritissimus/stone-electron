@@ -72,6 +72,12 @@ export const events = {
   onFileDeleted: (handler: EventHandler) => subscribe(EVENTS.FILE_DELETED, handler),
 
   /**
+   * Unified file-watcher event. Payload: { filePath, operation }.
+   * Emitted by the main-process FileWatcher for any detected change.
+   */
+  onFileSynced: (handler: EventHandler) => subscribe(EVENTS.FILE_SYNCED, handler),
+
+  /**
    * Subscribe to note events
    */
   onNoteUpdated: (handler: EventHandler) => subscribe(EVENTS.NOTE_UPDATED, handler),

@@ -48,6 +48,19 @@ export function useFileEvents(handlers: FileEventHandlers): void {
       );
     }
 
+    // FILE_SYNCED is the unified watcher event. Re-dispatch to the op-specific
+    // handlers with a normalized `{ path }` shape so consumers written against
+    // the legacy FILE_CREATED/CHANGED/DELETED channels keep working.
+    unsubscribers.push(
+      events.onFileSynced((payload) => {
+        const data = (payload ?? {}) as { filePath?: string; operation?: 'created' | 'updated' | 'deleted' };
+        const forwarded = { path: data.filePath };
+        if (data.operation === 'created') handlersRef.current.onCreated?.(forwarded);
+        else if (data.operation === 'updated') handlersRef.current.onChanged?.(forwarded);
+        else if (data.operation === 'deleted') handlersRef.current.onDeleted?.(forwarded);
+      }),
+    );
+
     return () => {
       unsubscribers.forEach((unsub) => unsub());
     };
