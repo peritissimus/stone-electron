@@ -402,6 +402,9 @@ export function createContainer(deps: ContainerDeps): Container {
   // Database use cases
   const databaseUseCases = createDatabaseUseCases({
     getDatabaseManager,
+    noteRepository,
+    notebookRepository,
+    tagRepository,
   });
 
   // Quick capture use cases

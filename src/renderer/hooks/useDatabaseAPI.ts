@@ -1,11 +1,15 @@
 /**
  * Database API Hook - React hook for database operations
+ *
+ * Backs the three channels the main process actually implements
+ * (getStatus / vacuum / checkIntegrity). Backup / restore / migrations
+ * are not wired on the backend and have been removed from this hook.
  */
 
 import { useCallback, useState } from 'react';
 import { databaseAPI } from '@renderer/api';
 import { logger } from '@renderer/lib/logger';
-import type { DatabaseStatus, BackupResult, VacuumResult, IntegrityResult } from '@shared/types';
+import type { DatabaseStatus, VacuumResult, IntegrityResult } from '@shared/types';
 
 interface UseDatabaseAPIState {
   status: DatabaseStatus | null;
@@ -43,29 +47,6 @@ export function useDatabaseAPI() {
       return null;
     }
   }, [setError]);
-
-  const backup = useCallback(
-    async (path?: string): Promise<BackupResult | null> => {
-      setState((s) => ({ ...s, loading: true, error: null }));
-      try {
-        const response = await databaseAPI.backup(path);
-        setState((s) => ({ ...s, loading: false }));
-        if (response.success && response.data) {
-          logger.info('[useDatabaseAPI.backup] Backup created', { path: response.data.path });
-          return response.data;
-        } else {
-          setError(response.error?.message || 'Failed to create backup');
-          return null;
-        }
-      } catch (err) {
-        logger.error('[useDatabaseAPI.backup] Error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to create backup');
-        setState((s) => ({ ...s, loading: false }));
-        return null;
-      }
-    },
-    [setError],
-  );
 
   const vacuum = useCallback(async (): Promise<VacuumResult | null> => {
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -114,7 +95,6 @@ export function useDatabaseAPI() {
     error: state.error,
     // Actions
     getStatus,
-    backup,
     vacuum,
     checkIntegrity,
     clearError: () => setError(null),

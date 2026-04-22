@@ -176,20 +176,15 @@ export interface BackupMetadata {
   checksum: string;
 }
 
-// Database Status
+// Database Status — mirrors DatabaseStatusResponseSchema in
+// src/shared/schemas/database.ts.
 export interface DatabaseStatus {
-  version: number;
-  isMigrating: boolean;
+  path: string;
+  databaseSize: number;
+  isOpen: boolean;
   noteCount: number;
   notebookCount: number;
   tagCount: number;
-  attachmentCount: number;
-  databaseSize: number;
-  vectorSize: number;
-  lastBackup?: UnixTimestamp;
-  lastDefrag?: UnixTimestamp;
-  integrityOk: boolean;
-  error?: string;
 }
 
 // Database Operation Responses
@@ -207,9 +202,7 @@ export interface VacuumResult {
 
 export interface IntegrityResult {
   ok: boolean;
-  foreign_keys_ok: boolean;
   errors: string[];
-  warnings: string[];
 }
 
 // Error Types

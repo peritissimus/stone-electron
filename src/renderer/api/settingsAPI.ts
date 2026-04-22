@@ -12,14 +12,17 @@ import {
   DATABASE_CHANNELS,
   SYSTEM_CHANNELS,
 } from '@shared/constants/ipcChannels';
-import { SystemGetFontsResponseSchema } from '@shared/schemas';
+import {
+  CheckDatabaseIntegrityResponseSchema,
+  DatabaseStatusResponseSchema,
+  SystemGetFontsResponseSchema,
+  VacuumDatabaseResponseSchema,
+} from '@shared/schemas';
 import type {
   Settings,
   DatabaseStatus,
-  BackupResult,
   VacuumResult,
   IntegrityResult,
-  Migration,
   IpcResponse,
 } from '@shared/types';
 import type {
@@ -37,11 +40,6 @@ import {
   AppearanceSettingsSchema,
   EditorSettingsSchema,
   ShortcutsConfigSchema,
-  DatabaseStatusSchema,
-  BackupResultSchema,
-  VacuumResultSchema,
-  IntegrityResultSchema,
-  MigrationSchema,
 } from './schemas';
 
 export const settingsAPI = {
@@ -143,53 +141,24 @@ export const settingsAPI = {
   },
 };
 
+/**
+ * Database API
+ *
+ * Only surfaces the three channels the backend actually registers
+ * (GET_STATUS / VACUUM / CHECK_INTEGRITY). BACKUP / RESTORE / EXPORT /
+ * IMPORT / RUN_MIGRATIONS / GET_MIGRATION_HISTORY are declared under
+ * DATABASE_CHANNELS but have no handlers — historically this API
+ * exposed client methods for them that always failed. They're removed
+ * here to avoid pretending they work; if those features land, add the
+ * methods back alongside the handlers.
+ */
 export const databaseAPI = {
   /**
    * Get database status
    */
   getStatus: async (): Promise<IpcResponse<DatabaseStatus>> => {
     const response = await invokeIpc(DATABASE_CHANNELS.GET_STATUS, {});
-    return validateResponse(response, DatabaseStatusSchema);
-  },
-
-  /**
-   * Run pending migrations
-   */
-  runMigrations: async (): Promise<IpcResponse<{ applied: number }>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.RUN_MIGRATIONS, {});
-    return validateResponse(response, z.object({ applied: z.number() }));
-  },
-
-  /**
-   * Create a backup
-   */
-  backup: async (path?: string): Promise<IpcResponse<BackupResult>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.BACKUP, { path });
-    return validateResponse(response, BackupResultSchema);
-  },
-
-  /**
-   * Restore from backup
-   */
-  restore: async (path: string): Promise<IpcResponse<void>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.RESTORE, { path });
-    return validateResponse(response, z.void());
-  },
-
-  /**
-   * Export database
-   */
-  export: async (format: 'json' | 'sqlite'): Promise<IpcResponse<{ path: string }>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.EXPORT, { format });
-    return validateResponse(response, z.object({ path: z.string() }));
-  },
-
-  /**
-   * Import database
-   */
-  import: async (path: string): Promise<IpcResponse<void>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.IMPORT, { path });
-    return validateResponse(response, z.void());
+    return validateResponse(response, DatabaseStatusResponseSchema);
   },
 
   /**
@@ -197,7 +166,7 @@ export const databaseAPI = {
    */
   vacuum: async (): Promise<IpcResponse<VacuumResult>> => {
     const response = await invokeIpc(DATABASE_CHANNELS.VACUUM, {});
-    return validateResponse(response, VacuumResultSchema);
+    return validateResponse(response, VacuumDatabaseResponseSchema);
   },
 
   /**
@@ -205,15 +174,7 @@ export const databaseAPI = {
    */
   checkIntegrity: async (): Promise<IpcResponse<IntegrityResult>> => {
     const response = await invokeIpc(DATABASE_CHANNELS.CHECK_INTEGRITY, {});
-    return validateResponse(response, IntegrityResultSchema);
-  },
-
-  /**
-   * Get migration history
-   */
-  getMigrationHistory: async (): Promise<IpcResponse<{ migrations: Migration[] }>> => {
-    const response = await invokeIpc(DATABASE_CHANNELS.GET_MIGRATION_HISTORY, {});
-    return validateResponse(response, z.object({ migrations: z.array(MigrationSchema) }));
+    return validateResponse(response, CheckDatabaseIntegrityResponseSchema);
   },
 };
 

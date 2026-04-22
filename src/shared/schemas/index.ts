@@ -1,4 +1,5 @@
 export * from './base';
+export * from './database';
 export * from './export';
 export * from './graph';
 export * from './journal';
