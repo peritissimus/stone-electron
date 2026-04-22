@@ -54,6 +54,33 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const editor = useTipTapEditor();
   const creatingNoteRef = useRef(false);
 
+  // Autofocus: arm at render time (BEFORE any effect runs) and consume on the
+  // editor's next 'update' event. The listener must be registered *before*
+  // useDocumentBuffer's loadContent effect — otherwise a synchronous
+  // setContent for cached notes fires 'update' before our listener is
+  // attached and the flag is never consumed. That's why this block lives
+  // above useDocumentBuffer.
+  const autofocusPendingRef = useRef(false);
+  const prevAutofocusNoteIdRef = useRef<string | null>(null);
+  if (prevAutofocusNoteIdRef.current !== activeNoteId && activeNoteId) {
+    autofocusPendingRef.current = true;
+  }
+  prevAutofocusNoteIdRef.current = activeNoteId;
+
+  useEffect(() => {
+    if (!editor) return;
+    const consume = () => {
+      if (!autofocusPendingRef.current) return;
+      autofocusPendingRef.current = false;
+      const isEmpty = editor.state.doc.textContent.length === 0;
+      editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
+    };
+    editor.on('update', consume);
+    return () => {
+      editor.off('update', consume);
+    };
+  }, [editor]);
+
   const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
     saveFn: async ({ noteId, title: nextTitle }) => {
       await updateNote(noteId, { title: nextTitle }, false);
@@ -143,39 +170,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     enabled: !!activeNoteId,
   });
 
-  // Autofocus the rich editor once fresh content has been loaded for a note.
-  // Arming the flag on activeNoteId change and consuming it in the editor's
-  // next 'update' event means we focus after useDocumentBuffer has flushed
-  // the new content — works for both cached (sync setContent) and disk-loaded
-  // (async) paths, and ignores every other 'update' so typing isn't disturbed.
-  // We skip the first render so bootstrap doesn't steal focus from loading UI,
-  // and trust Radix's focus-trap to manage focus while overlays are open.
-  const autofocusPendingRef = useRef(false);
-  const hasMountedRef = useRef(false);
-
-  useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
-    if (activeNoteId) {
-      autofocusPendingRef.current = true;
-    }
-  }, [activeNoteId]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const consume = () => {
-      if (!autofocusPendingRef.current) return;
-      autofocusPendingRef.current = false;
-      const isEmpty = editor.state.doc.textContent.length === 0;
-      editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
-    };
-    editor.on('update', consume);
-    return () => {
-      editor.off('update', consume);
-    };
-  }, [editor]);
 
   // Create sibling note
   const handleCreateSiblingNote = useCallback(async () => {
