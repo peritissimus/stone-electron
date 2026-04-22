@@ -54,12 +54,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   const editor = useTipTapEditor();
   const creatingNoteRef = useRef(false);
 
-  // Autofocus: arm at render time (BEFORE any effect runs) and consume on the
-  // editor's next 'update' event. The listener must be registered *before*
-  // useDocumentBuffer's loadContent effect — otherwise a synchronous
-  // setContent for cached notes fires 'update' before our listener is
-  // attached and the flag is never consumed. That's why this block lives
-  // above useDocumentBuffer.
+  // Autofocus: arm at render time (BEFORE any effect runs) and consume when
+  // the editor is both hydrated with content AND mounted in the DOM. We
+  // guard on editor.view.dom.isConnected because NoteEditor renders
+  // NoteEditorEmptyState (no editor in DOM) while activeNote is still null
+  // — for example during the "create today's journal from command center"
+  // flow, where the note exists on the backend and the content has loaded
+  // but the noteStore entry hasn't arrived yet. The 'update' event still
+  // fires in that window, so without the DOM-connected check we'd burn the
+  // pending flag on an invisible editor and the user would land unfocused.
   const autofocusPendingRef = useRef(false);
   const prevAutofocusNoteIdRef = useRef<string | null>(null);
   if (prevAutofocusNoteIdRef.current !== activeNoteId && activeNoteId) {
@@ -67,19 +70,32 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   }
   prevAutofocusNoteIdRef.current = activeNoteId;
 
+  const consumeAutofocus = useCallback(() => {
+    if (!editor || !autofocusPendingRef.current) return;
+    if (!editor.view?.dom?.isConnected) return;
+    autofocusPendingRef.current = false;
+    const isEmpty = editor.state.doc.textContent.length === 0;
+    editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
+  }, [editor]);
+
+  // Primary path: fires when useDocumentBuffer flushes new content into the
+  // editor. Registered above useDocumentBuffer so the listener is attached
+  // before its sync setContent for cached notes.
   useEffect(() => {
     if (!editor) return;
-    const consume = () => {
-      if (!autofocusPendingRef.current) return;
-      autofocusPendingRef.current = false;
-      const isEmpty = editor.state.doc.textContent.length === 0;
-      editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
-    };
-    editor.on('update', consume);
+    editor.on('update', consumeAutofocus);
     return () => {
-      editor.off('update', consume);
+      editor.off('update', consumeAutofocus);
     };
-  }, [editor]);
+  }, [editor, consumeAutofocus]);
+
+  // Secondary path: fires when the editor transitions from the empty-state
+  // render (no DOM) to NoteEditorContent (DOM mounted) because activeNote
+  // finally arrived. If 'update' fired while the editor was off-screen and
+  // was skipped, we still owe the user a focus call once the surface is real.
+  useEffect(() => {
+    consumeAutofocus();
+  }, [activeNote, consumeAutofocus]);
 
   const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
     saveFn: async ({ noteId, title: nextTitle }) => {
