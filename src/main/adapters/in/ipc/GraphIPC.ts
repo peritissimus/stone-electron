@@ -1,5 +1,12 @@
 /**
  * Graph IPC Adapter - Handles note links and graph visualization IPC channels
+ *
+ * NOTE: not yet migrated to the shared-schema pattern. Backend produces
+ * NoteLink[] (sourceId/targetId/linkText) for getBacklinks/getForwardLinks,
+ * but the renderer UI in BacklinksPanel iterates these as Note objects
+ * (`note.id`), so aligning the wire schema to backend reality breaks the
+ * renderer and aligning it to the renderer's expectation breaks runtime
+ * validation. Needs a real backend/renderer reconciliation before migration.
  */
 
 import { ipcMain } from 'electron';
