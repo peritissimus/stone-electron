@@ -37,3 +37,6 @@ sonar-issues.json
 bundle-stats.html
 .kairos/
 .codegraph/
+playwright-report/
+test-results/
+
