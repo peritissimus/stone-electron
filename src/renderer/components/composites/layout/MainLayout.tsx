@@ -125,9 +125,14 @@ export function MainLayout() {
   const requestSidebarFocus = useSidebarFocusStore((s) => s.requestFocus);
   const handleFocusSidebar = useCallback(() => {
     if (!sidebarOpen) toggleSidebar();
-    // Starting cursor: the active note's file (contextual pickup) or the
-    // folder containing it if no file path; else null (first j lands on 0).
-    requestSidebarFocus(selectedFile ?? activeFolder ?? null);
+    // The cursor is sticky across ⌘E presses: if the user has navigated the
+    // tree (or opened a note from elsewhere and hasn't explicitly reset), we
+    // keep them where they are. Only seed from the active note when the
+    // cursor is null — the true "first entry" case, or after an explicit
+    // clear. This matches the user's muscle memory: ⌘E drops you back into
+    // the tree at your last position, not the current route's position.
+    const existing = useSidebarFocusStore.getState().cursorPath;
+    requestSidebarFocus(existing ?? selectedFile ?? activeFolder ?? null);
   }, [sidebarOpen, toggleSidebar, requestSidebarFocus, selectedFile, activeFolder]);
 
   const { loadFileTree } = useFileTreeAPI();
