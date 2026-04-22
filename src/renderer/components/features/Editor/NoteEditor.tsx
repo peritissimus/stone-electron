@@ -75,14 +75,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
     if (!editor.view?.dom?.isConnected) return;
     // Don't steal focus while the sidebar owns it — "preview on move" needs
     // j/k to keep the caller in the tree, not whiplash into the editor on
-    // every content load. Radix dialogs manage their own focus traps, so
-    // this single check covers the sidebar case without special-casing
-    // modals.
+    // every content load. Defer (don't clear the flag) so the focusout
+    // handler below can drain it when the sidebar releases focus.
     const active = document.activeElement as HTMLElement | null;
-    if (active && active.closest('[data-sidebar-root]')) {
-      autofocusPendingRef.current = false;
-      return;
-    }
+    if (active && active.closest('[data-sidebar-root]')) return;
     autofocusPendingRef.current = false;
     const isEmpty = editor.state.doc.textContent.length === 0;
     editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
@@ -106,6 +102,26 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
   useEffect(() => {
     consumeAutofocus();
   }, [activeNote, consumeAutofocus]);
+
+  // Tertiary path: drain a deferred autofocus when focus leaves the sidebar.
+  // While the sidebar held focus, consumeAutofocus deliberately skipped
+  // without clearing the flag (so preview-on-move wouldn't whiplash focus
+  // into the editor). When the user blurs the sidebar (Escape, click
+  // elsewhere) we re-attempt — on the next microtask so the new
+  // activeElement has settled before we re-check the sidebar-focus guard.
+  useEffect(() => {
+    const handleFocusOut = (event: FocusEvent) => {
+      const from = event.target as HTMLElement | null;
+      if (!from?.closest?.('[data-sidebar-root]')) return;
+      queueMicrotask(() => {
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.closest?.('[data-sidebar-root]')) return;
+        consumeAutofocus();
+      });
+    };
+    document.addEventListener('focusout', handleFocusOut);
+    return () => document.removeEventListener('focusout', handleFocusOut);
+  }, [consumeAutofocus]);
 
   const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
     saveFn: async ({ noteId, title: nextTitle }) => {

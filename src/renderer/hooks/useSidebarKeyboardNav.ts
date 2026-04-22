@@ -45,9 +45,14 @@ export function useSidebarKeyboardNav() {
         return;
       }
       const loaded = await loadNoteByPath(normalized);
-      if (loaded) {
-        navigateToNote(loaded.id);
-      }
+      if (!loaded) return;
+      // Rapid j/k can kick off several loadNoteByPath calls that resolve
+      // out of order. Only navigate if this load is still the cursor
+      // target — stale resolutions would otherwise yank the user back to
+      // a note they've already moved past.
+      const currentCursor = useSidebarFocusStore.getState().cursorPath;
+      if (currentCursor !== normalized) return;
+      navigateToNote(loaded.id);
     },
     [navigateToNote, loadNoteByPath],
   );
