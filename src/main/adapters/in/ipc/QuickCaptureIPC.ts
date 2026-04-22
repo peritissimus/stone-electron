@@ -4,7 +4,11 @@
 
 import { ipcMain } from 'electron';
 import { QUICK_CAPTURE_CHANNELS } from '@shared/constants/ipcChannels';
-import { handleIpcRequest } from '@main/shared/utils';
+import {
+  AppendToJournalRequestSchema,
+  type AppendToJournalResponse,
+} from '@shared/schemas';
+import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface QuickCaptureIPCDeps {
@@ -16,31 +20,25 @@ export interface QuickCaptureIPCDeps {
 
 export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
   const { appendToJournal } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
-    handleIpcRequest(fn, {
-      loggerPrefix: 'QuickCaptureIPC',
-      defaultCode: 'QUICK_CAPTURE_ERROR',
-      context,
-    });
 
-  ipcMain.handle(
-    QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL,
-    async (_, request: { text?: string; content?: string; workspaceId?: string }) => {
-      return handleRequest(
-        async () => {
-          // Accept both 'text' and 'content' for flexibility
-          const text = request.text || request.content || '';
-          const result = await appendToJournal(text, request.workspaceId);
-          return result;
-        },
-        {
+  ipcMain.handle(QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, async (_event, rawRequest) => {
+    const request = AppendToJournalRequestSchema.parse(rawRequest);
+    // Accept both 'text' and 'content' for flexibility.
+    const text = request.text ?? request.content ?? '';
+    return handleIpcRequest<AppendToJournalResponse>(
+      async () => appendToJournal(text, request.workspaceId),
+      {
+        loggerPrefix: 'QuickCaptureIPC',
+        defaultCode: 'QUICK_CAPTURE_ERROR',
+        errorMap: { ...COMMON_IPC_ERROR_MAP },
+        context: {
           channel: QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL,
           workspaceId: request.workspaceId,
-          textLength: (request.text || request.content || '').length,
+          textLength: text.length,
         },
-      );
-    },
-  );
+      },
+    );
+  });
 
   logger.info('[IPC] QuickCapture handlers registered');
 }
