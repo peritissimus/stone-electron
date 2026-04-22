@@ -66,14 +66,9 @@ export const SimilarNoteSchema = z.object({
   distance: z.number(),
 });
 
-export const WorkspaceSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  folderPath: z.string(),
-  isActive: z.boolean(),
-  createdAt: z.union([z.string(), z.date(), z.number()]),
-  lastAccessedAt: z.union([z.string(), z.date(), z.number()]),
-});
+// WorkspaceSchema is promoted to the shared IPC wire-schema layer
+// (src/shared/schemas/workspace.ts).
+export { WorkspaceSchema } from '@shared/schemas';
 
 export const AttachmentSchema = z.object({
   id: z.string(),

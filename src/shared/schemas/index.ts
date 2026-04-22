@@ -3,3 +3,4 @@ export * from './notebooks';
 export * from './notes';
 export * from './system';
 export * from './tags';
+export * from './workspace';
