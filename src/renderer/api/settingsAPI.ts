@@ -12,6 +12,7 @@ import {
   DATABASE_CHANNELS,
   SYSTEM_CHANNELS,
 } from '@shared/constants/ipcChannels';
+import { SystemGetFontsResponseSchema } from '@shared/schemas';
 import type {
   Settings,
   DatabaseStatus,
@@ -222,6 +223,6 @@ export const systemAPI = {
    */
   getFonts: async (): Promise<IpcResponse<{ fonts: string[] }>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.GET_FONTS, {});
-    return validateResponse(response, z.object({ fonts: z.array(z.string()) }));
+    return validateResponse(response, SystemGetFontsResponseSchema);
   },
 };

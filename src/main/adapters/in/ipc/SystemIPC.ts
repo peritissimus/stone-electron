@@ -1,9 +1,14 @@
 /**
  * System IPC Adapter - Handles system-level IPC channels
+ *
+ * Return types are bound to shared wire schemas (src/shared/schemas/system.ts).
+ * If the handler drifts from the renderer's expected shape, TypeScript fails
+ * at compile time.
  */
 
 import { ipcMain } from 'electron';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
+import type { SystemGetFontsResponse } from '@shared/schemas';
 import type { IGetSystemFontsUseCase } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
@@ -14,16 +19,17 @@ export interface SystemIPCDeps {
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
   const { getSystemFonts } = deps;
-  const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
-    handleIpcRequest(fn, { loggerPrefix: 'SystemIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
-    return handleRequest(
+    return handleIpcRequest<SystemGetFontsResponse>(
       async () => {
-        const result = await getSystemFonts.execute();
-        return result.fonts;
+        return await getSystemFonts.execute();
       },
-      { channel: SYSTEM_CHANNELS.GET_FONTS },
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.GET_FONTS },
+      },
     );
   });
 
