@@ -268,7 +268,8 @@ export type AppShortcutAction =
   | 'todayJournal'
   | 'findReplace'
   | 'toggleEditorMode'
-  | 'focusSidebar';
+  | 'focusSidebar'
+  | 'openFile';
 
 export type EditorShortcutAction =
   | 'indent'

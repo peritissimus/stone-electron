@@ -7,6 +7,7 @@ export * from './notebooks';
 export * from './notes';
 export * from './quickCapture';
 export * from './quickNote';
+export * from './scratch';
 export * from './system';
 export * from './tags';
 export * from './version';
