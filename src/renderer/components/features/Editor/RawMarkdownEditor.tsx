@@ -3,7 +3,7 @@
  * A plain text editor for editing raw markdown without formatting
  */
 
-import React, { useCallback, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useCallback, useEffect, useRef, forwardRef } from 'react';
 import { cn } from '@renderer/lib/utils';
 import type { CursorPosition } from '@renderer/hooks/useDocumentBuffer';
 
