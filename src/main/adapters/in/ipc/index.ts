@@ -68,6 +68,13 @@ export {
   type QuickNoteIPCDeps,
 } from './QuickNoteIPC';
 
+// Scratch editor (open arbitrary .md files)
+export {
+  registerScratchHandlers,
+  unregisterScratchHandlers,
+  type ScratchIPCDeps,
+} from './ScratchIPC';
+
 // System utilities
 export { registerSystemHandlers, unregisterSystemHandlers, type SystemIPCDeps } from './SystemIPC';
 

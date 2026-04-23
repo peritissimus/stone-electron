@@ -21,6 +21,7 @@ import {
   getContainer,
 } from '@main/infrastructure/di/container';
 import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
+import { EVENTS } from '@shared/constants/ipcChannels';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();
@@ -81,6 +82,92 @@ async function resolveDevServerUrl(): Promise<string> {
 
   return `http://localhost:${configuredPort}`;
 }
+
+// --- "Open With" handling -----------------------------------------------
+//
+// When macOS/Windows launches Stone with a file (Finder → Open With, or a
+// second click while Stone is already running), we route the path into the
+// scratch editor. Three entry points:
+//
+//   1. macOS cold start: `open-file` fires BEFORE `ready`. We can't send IPC
+//      yet (no window), so we buffer paths in `pendingOpenPaths` and drain
+//      them after the window is ready.
+//   2. macOS warm: `open-file` fires with mainWindow already alive.
+//   3. Windows/Linux: no `open-file` event. The initial path arrives in
+//      `process.argv`; subsequent clicks re-launch and collide with the
+//      single-instance lock, triggering `second-instance` with the argv
+//      of the new invocation. Parse that argv for the path.
+//
+// Single-instance lock: without it, clicking N files spawns N Stones. The
+// lock causes subsequent launches to hand their argv to us and exit.
+
+const pendingOpenPaths: string[] = [];
+
+function queueOrDeliverScratchPath(filePath: string): void {
+  if (!filePath) return;
+  logger.info(`[OpenWith] Received file path: ${filePath}`);
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+    // If the window is still loading, defer until it finishes so the
+    // renderer's subscriber is mounted.
+    if (mainWindow.webContents.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow?.webContents.send(EVENTS.SCRATCH_OPEN_PATH, filePath);
+      });
+    } else {
+      mainWindow.webContents.send(EVENTS.SCRATCH_OPEN_PATH, filePath);
+    }
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
+  pendingOpenPaths.push(filePath);
+}
+
+function drainPendingOpenPaths(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  while (pendingOpenPaths.length > 0) {
+    const p = pendingOpenPaths.shift();
+    if (p) mainWindow.webContents.send(EVENTS.SCRATCH_OPEN_PATH, p);
+  }
+}
+
+function pickFilePathFromArgv(argv: string[]): string | null {
+  // Skip argv[0] (electron binary) and argv[1] (app path on packaged
+  // builds) — the interesting entry is typically the first argument
+  // that looks like a .md file.
+  for (const arg of argv.slice(1)) {
+    if (!arg || arg.startsWith('-')) continue;
+    const lower = arg.toLowerCase();
+    if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
+      return path.resolve(arg);
+    }
+  }
+  return null;
+}
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+  // Another Stone already owns the lock — our argv has been forwarded to
+  // that instance via second-instance; quit quietly.
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    const filePath = pickFilePathFromArgv(argv);
+    if (filePath) queueOrDeliverScratchPath(filePath);
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
+
+// macOS-only: fires when the user opens a file from Finder/Dock. May fire
+// before `ready` on cold start — queue in that case.
+app.on('open-file', (event, filePath) => {
+  event.preventDefault();
+  queueOrDeliverScratchPath(filePath);
+});
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
@@ -251,6 +338,22 @@ app.on('ready', async () => {
     await createWindow();
     perfMonitor.markStartupPhase('windowCreationTime');
     logger.info('✓ Application window created');
+
+    // Windows/Linux cold start: the path comes on argv, not via open-file.
+    // On macOS this is a no-op — open-file already queued anything relevant.
+    const coldStartPath = pickFilePathFromArgv(process.argv);
+    if (coldStartPath) queueOrDeliverScratchPath(coldStartPath);
+
+    // Drain any paths queued before the window existed. Wait for the
+    // renderer to finish loading so the subscriber is guaranteed mounted.
+    if (mainWindow) {
+      const deliverPending = () => drainPendingOpenPaths();
+      if (mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.once('did-finish-load', deliverPending);
+      } else {
+        deliverPending();
+      }
+    }
 
     // Register global shortcut for quick capture
     const quickCaptureShortcut = 'Alt+Space';
