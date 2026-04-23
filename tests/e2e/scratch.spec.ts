@@ -74,7 +74,7 @@ test('scratch editor: open, edit, save, round-trip through disk', async ({ app }
       const range = document.createRange();
       range.selectNodeContents(pmDom);
       range.collapse(false); // collapse to end
-      const sel = window.getSelection();
+      const sel = document.getSelection();
       if (!sel) throw new Error('No selection available');
       sel.removeAllRanges();
       sel.addRange(range);

@@ -140,18 +140,29 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
               </pre>
             </div>
           ) : (
-            // Diagram preview
-            <div className="p-4 bg-background relative">
-              <MermaidRenderer
-                code={codeContent}
-                language={isFlowDSL ? 'flowdsl' : 'mermaid'}
-                isDarkMode={isDarkMode}
-                onEditCode={() => setShowCode(true)}
-                onUpdateSource={handleUpdateSource}
-                isFullscreen={isFullscreen}
-                onFullscreenChange={setIsFullscreen}
-              />
-            </div>
+            // Diagram preview. NodeViewContent must STAY mounted even when
+            // we're showing the rendered diagram — it's TipTap's anchor for
+            // the node's child text. Without it, ProseMirror can't map the
+            // contentDOM and editor.getJSON() returns the node empty, so
+            // saving round-trips away the mermaid source. We hide it via
+            // sr-only + aria-hidden; the React renderer above is purely
+            // decorative.
+            <>
+              <div className="p-4 bg-background relative">
+                <MermaidRenderer
+                  code={codeContent}
+                  language={isFlowDSL ? 'flowdsl' : 'mermaid'}
+                  isDarkMode={isDarkMode}
+                  onEditCode={() => setShowCode(true)}
+                  onUpdateSource={handleUpdateSource}
+                  isFullscreen={isFullscreen}
+                  onFullscreenChange={setIsFullscreen}
+                />
+              </div>
+              <pre className="sr-only" aria-hidden="true">
+                <NodeViewContent as="code" />
+              </pre>
+            </>
           )
         ) : (
           // Regular code block - always show code
