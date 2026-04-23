@@ -10,7 +10,7 @@
 
 import { useEffect, useRef } from 'react';
 import { FileTree } from '@renderer/components/features/FileSystem';
-import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
+import { useSidebarFocusHandoff } from '@renderer/hooks/useSidebarFocusHandoff';
 import { useSidebarKeyboardNav } from '@renderer/hooks/useSidebarKeyboardNav';
 import { WorkspaceSelectorHeader } from './WorkspaceSelectorHeader';
 import { SidebarNavList } from './SidebarNavList';
@@ -18,8 +18,7 @@ import { SidebarStatusRail } from './SidebarStatusRail';
 
 export function Sidebar() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const pendingFocus = useSidebarFocusStore((s) => s.pendingFocus);
-  const acknowledgeFocus = useSidebarFocusStore((s) => s.acknowledgeFocus);
+  const { pendingFocus, acknowledgeFocus } = useSidebarFocusHandoff();
   const { handleKeyDown } = useSidebarKeyboardNav();
 
   useEffect(() => {

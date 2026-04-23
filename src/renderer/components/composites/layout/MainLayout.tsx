@@ -9,7 +9,7 @@ import type { NoteEditorHandle } from '@renderer/components/features/Editor/Note
 import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
 import { useTreeSelection } from '@renderer/hooks/useTreeSelection';
-import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
+import { useSidebarCursor } from '@renderer/hooks/useSidebarCursor';
 import { useNavigateToNote } from '@renderer/navigation';
 import {
   LayoutContainer,
@@ -153,7 +153,7 @@ export function MainLayout() {
     return unsubscribe;
   }, [navigate]);
 
-  const requestSidebarFocus = useSidebarFocusStore((s) => s.requestFocus);
+  const { requestFocus: requestSidebarFocus, getCursorPath } = useSidebarCursor();
   const handleFocusSidebar = useCallback(() => {
     if (!sidebarOpen) toggleSidebar();
     // The cursor is sticky across ⌘E presses: if the user has navigated the
@@ -162,9 +162,9 @@ export function MainLayout() {
     // cursor is null — the true "first entry" case, or after an explicit
     // clear. This matches the user's muscle memory: ⌘E drops you back into
     // the tree at your last position, not the current route's position.
-    const existing = useSidebarFocusStore.getState().cursorPath;
+    const existing = getCursorPath();
     requestSidebarFocus(existing ?? selectedFile ?? activeFolder ?? null);
-  }, [sidebarOpen, toggleSidebar, requestSidebarFocus, selectedFile, activeFolder]);
+  }, [sidebarOpen, toggleSidebar, requestSidebarFocus, getCursorPath, selectedFile, activeFolder]);
 
   const { loadFileTree } = useFileTreeAPI();
   const { loadTags } = useTagAPI();
