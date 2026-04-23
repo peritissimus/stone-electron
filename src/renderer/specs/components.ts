@@ -10,7 +10,7 @@
  */
 
 import type { SizeVariant } from './tokens';
-import type { Note, Notebook, Tag, Topic, FileTreeNode, TodoItem } from './entities';
+import type { Note, Notebook, Tag, FileTreeNode, TodoItem } from './entities';
 import type { ViewMode } from './stores';
 
 // =============================================================================

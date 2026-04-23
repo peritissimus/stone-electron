@@ -8,19 +8,14 @@
 
 import type {
   Note,
-  NoteWithRelations,
-  Notebook,
   NotebookWithCount,
-  Tag,
   TagWithCount,
-  Topic,
   TopicWithCount,
   Workspace,
   FileTreeNode,
   UUID,
   FilePath,
 } from './entities';
-import type { SizeVariant } from './tokens';
 
 // =============================================================================
 // COMMON PATTERNS
