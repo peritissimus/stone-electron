@@ -74,7 +74,7 @@ const api = {
   /**
    * Remove an IPC listener
    */
-  off: (channel: string, listener: (...args: unknown[]) => void) => {
+  off: (channel: string, _listener: (...args: unknown[]) => void) => {
     ipcRenderer.removeAllListeners(channel);
   },
 };
