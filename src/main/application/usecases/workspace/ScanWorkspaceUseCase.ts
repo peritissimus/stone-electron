@@ -37,7 +37,6 @@ export class ScanWorkspaceUseCase implements IScanWorkspaceUseCase {
     for (const file of files) {
       const parts = file.relativePath.split('/');
       if (parts.length > 1) {
-        const folderPath = parts.slice(0, -1).join('/');
         // Count for each level of the path
         let currentPath = '';
         for (const part of parts.slice(0, -1)) {

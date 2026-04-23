@@ -17,7 +17,6 @@ import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
-const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 
 interface PendingRequest {
   resolve: (value: unknown) => void;

@@ -2,7 +2,7 @@
  * Topic Repository Implementation
  */
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { topics, noteTopics, type Database } from '../../../shared';
 import type { ITopicRepository, TopicProps, TopicEntity, TopicWithCount } from '../../../domain';
 import { handleOperation } from '../../../shared/utils';
@@ -348,7 +348,7 @@ export class TopicRepository implements ITopicRepository {
 
   async getNotesForTopic(
     topicId: string,
-    options?: { limit?: number; offset?: number; excludeJournal?: boolean },
+    _options?: { limit?: number; offset?: number; excludeJournal?: boolean },
   ): Promise<{ noteId: string; confidence: number; isManual: boolean }[]> {
     return this.handle(
       'getNotesForTopic',
