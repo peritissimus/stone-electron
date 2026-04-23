@@ -5,6 +5,8 @@
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+const isTest = process.env.NODE_ENV === 'test';
+
 const formatTimestamp = () => {
   const now = new Date();
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
@@ -13,6 +15,7 @@ const formatTimestamp = () => {
 const createLogFn =
   (level: LogLevel) =>
   (...args: unknown[]) => {
+    if (isTest) return;
     const timestamp = formatTimestamp();
     const prefix = `${timestamp} ›`;
 

@@ -51,6 +51,7 @@ try {
 // - Electron: app.isPackaged is false in dev, true in packaged prod
 // - Non-Electron (tests/scripts): only treat NODE_ENV=development as dev
 const isDev = app ? !app.isPackaged : process.env.NODE_ENV === 'development';
+const isTest = process.env.NODE_ENV === 'test';
 const levels: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
 const minLevel: LogLevel = isDev ? 'debug' : 'info';
 
@@ -162,6 +163,7 @@ function normalizeArgs(
 }
 
 function write(level: LogLevel, ...args: unknown[]): void {
+  if (isTest) return;
   if (levels[level] < levels[minLevel]) return;
 
   const ctx = asyncContext.getStore();
