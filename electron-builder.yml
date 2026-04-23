@@ -3,6 +3,22 @@ productName: Stone
 nodeGypRebuild: false
 npmRebuild: false
 
+# File associations — registers Stone in the OS "Open With" menu for
+# Markdown files. On macOS this writes CFBundleDocumentTypes into the
+# app's Info.plist; on Windows it writes registry entries during install.
+# `rank: Alternate` makes Stone appear in the Open With menu without
+# claiming the default handler on install — change to `Owner` if you
+# want Stone to become the default when installed.
+fileAssociations:
+  - ext:
+      - md
+      - markdown
+    name: Markdown Document
+    description: Markdown source file
+    role: Editor
+    rank: Alternate
+    mimeType: text/markdown
+
 directories:
   buildResources: build
   output: dist/build
