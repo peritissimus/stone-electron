@@ -32,7 +32,11 @@ interface ProseMirrorDoc {
 }
 
 interface SerializerState {
-  out: string;
+  // Append into an array and `.join('')` once at the end. `a += b` on a
+  // string reallocates the whole buffer on every call — for a 1 MB result
+  // built from ~100k small writes that's O(N²) and costs ~10s. Array push
+  // + single join is O(N).
+  parts: string[];
   closed: boolean;
   inTightList: boolean;
   listIndent: number;
@@ -43,7 +47,7 @@ export function serializeMarkdown(doc: ProseMirrorDoc): string {
   if (!doc.content) return '';
 
   const state: SerializerState = {
-    out: '',
+    parts: [],
     closed: false,
     inTightList: false,
     listIndent: 0,
@@ -52,7 +56,8 @@ export function serializeMarkdown(doc: ProseMirrorDoc): string {
 
   processNodes(doc.content, state);
 
-  return state.out
+  return state.parts
+    .join('')
     .split('\n')
     .map((line) => line.trimEnd())
     .join('\n')
@@ -61,14 +66,15 @@ export function serializeMarkdown(doc: ProseMirrorDoc): string {
 }
 
 function write(state: SerializerState, text: string) {
-  state.out += text;
+  if (!text) return;
+  state.parts.push(text);
   state.closed = false;
 }
 
 function ensureNewline(state: SerializerState) {
-  if (state.out.length > 0 && !state.out.endsWith('\n')) {
-    state.out += '\n';
-  }
+  if (state.parts.length === 0) return;
+  const last = state.parts[state.parts.length - 1];
+  if (!last.endsWith('\n')) state.parts.push('\n');
 }
 
 function closeBlock(state: SerializerState) {
@@ -197,11 +203,14 @@ function processNode(node: ProseMirrorNode, state: SerializerState): void {
     case 'blockquote': {
       closeBlock(state);
       if (content) {
-        const oldOut = state.out;
-        state.out = '';
+        // Recursively serialize into a fresh parts buffer so we can
+        // prefix each resulting line with `> `. Restore the outer buffer
+        // before continuing.
+        const outerParts = state.parts;
+        state.parts = [];
         processNodes(content, state);
-        const quoteContent = state.out.trim();
-        state.out = oldOut;
+        const quoteContent = state.parts.join('').trim();
+        state.parts = outerParts;
 
         const lines = quoteContent.split('\n');
         for (const line of lines) {
