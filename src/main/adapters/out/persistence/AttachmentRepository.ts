@@ -2,7 +2,7 @@
  * Attachment Repository Implementation
  */
 
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { attachments, type Database } from '../../../shared';
 import type { IAttachmentRepository, AttachmentProps, AttachmentEntity } from '../../../domain';
 import { handleOperation } from '../../../shared/utils';

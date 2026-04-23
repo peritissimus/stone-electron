@@ -2,7 +2,7 @@
  * Version Repository Implementation
  */
 
-import { eq, desc, asc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { noteVersions, type Database } from '../../../shared';
 import type {
   IVersionRepository,
