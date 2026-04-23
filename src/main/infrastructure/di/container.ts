@@ -49,6 +49,7 @@ import type {
   ISettingsUseCases,
   IJournalUseCases,
   IQuickNoteUseCases,
+  IScratchUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -71,6 +72,7 @@ import {
   createSettingsUseCases,
   createJournalUseCases,
   createQuickNoteUseCases,
+  createScratchUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -103,6 +105,8 @@ import {
   unregisterJournalHandlers,
   registerQuickNoteHandlers,
   unregisterQuickNoteHandlers,
+  registerScratchHandlers,
+  unregisterScratchHandlers,
   registerSystemHandlers,
   unregisterSystemHandlers,
   registerSettingsHandlers,
@@ -200,6 +204,7 @@ export interface Container {
   settingsUseCases: ISettingsUseCases;
   journalUseCases: IJournalUseCases;
   quickNoteUseCases: IQuickNoteUseCases;
+  scratchUseCases: IScratchUseCases;
 
   // IPC Adapters (class-based)
   noteIPC: NoteIPC;
@@ -434,6 +439,12 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
   });
 
+  // Scratch editor use cases (open arbitrary .md files outside any workspace)
+  const scratchUseCases = createScratchUseCases({
+    fileStorage,
+    systemBridge,
+  });
+
   // Export use cases
   const exportUseCases = createExportUseCases({
     noteRepository,
@@ -512,6 +523,7 @@ export function createContainer(deps: ContainerDeps): Container {
     settingsUseCases,
     journalUseCases,
     quickNoteUseCases,
+    scratchUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -601,6 +613,9 @@ export function registerIPCHandlers(): void {
   registerQuickNoteHandlers({
     quickNoteUseCases: container.quickNoteUseCases,
   });
+  registerScratchHandlers({
+    scratchUseCases: container.scratchUseCases,
+  });
   registerSystemHandlers({
     getSystemFonts: container.systemUseCases.getFonts,
   });
@@ -658,6 +673,7 @@ export function unregisterIPCHandlers(): void {
   unregisterQuickCaptureHandlers();
   unregisterJournalHandlers();
   unregisterQuickNoteHandlers();
+  unregisterScratchHandlers();
   unregisterSystemHandlers();
   unregisterSettingsHandlers();
   unregisterPerformanceHandlers();

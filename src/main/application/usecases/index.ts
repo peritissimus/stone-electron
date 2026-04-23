@@ -154,6 +154,15 @@ export {
   type QuickNoteUseCasesDeps,
 } from './quickNote';
 
+// Scratch Editor Use Cases
+export {
+  PickScratchFileUseCase,
+  ReadScratchFileUseCase,
+  WriteScratchFileUseCase,
+  createScratchUseCases,
+  type ScratchUseCasesDeps,
+} from './scratch';
+
 // Export Use Cases
 export { createExportUseCases, type ExportUseCasesDeps } from './export';
 

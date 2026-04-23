@@ -23,3 +23,4 @@ export * from './IExportUseCases';
 export * from './ISettingsUseCases';
 export * from './IJournalUseCases';
 export * from './IQuickNoteUseCases';
+export * from './IScratchUseCases';
