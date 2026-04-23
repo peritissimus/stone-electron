@@ -24,6 +24,11 @@ const NoteEditor = lazy(() =>
     default: m.NoteEditor,
   })),
 );
+const ScratchEditor = lazy(() =>
+  import('@renderer/components/features/Editor/ScratchEditor').then((m) => ({
+    default: m.ScratchEditor,
+  })),
+);
 const HomePage = lazy(() =>
   import('@renderer/components/features/HomePage/HomePage').then((m) => ({ default: m.HomePage })),
 );
@@ -47,10 +52,13 @@ import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
+import { scratchAPI } from '@renderer/api';
+import { subscribe } from '@renderer/lib/events';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/lib/draftStorage';
 import { logger } from '@renderer/lib/logger';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Lazy load overlay components
 const SettingsModal = lazy(() =>
@@ -111,6 +119,7 @@ function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle>
 
 export function MainLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const navigateToNote = useNavigateToNote();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
 
@@ -121,6 +130,28 @@ export function MainLayout() {
   useAutoExpandAncestors();
   const { selectedFile, activeFolder } = useTreeSelection();
   useSidebarEvents({ activeFolder });
+
+  // Open any .md file on disk in the scratch editor. Shortcut: ⌘O.
+  // Opens the system file picker via main-process IPC, then navigates to
+  // /scratch?path=<abs>. No workspace or DB involvement — scratch is
+  // ephemeral and lives entirely at the absolute path.
+  const handleOpenFile = useCallback(async () => {
+    const response = await scratchAPI.pick();
+    if (!response.success || !response.data?.path) return;
+    navigate(`/scratch?path=${encodeURIComponent(response.data.path)}`);
+  }, [navigate]);
+
+  // "Open With Stone" from Finder / Windows Explorer — main process pushes
+  // the absolute path via SCRATCH_OPEN_PATH after resolving open-file
+  // (macOS), second-instance argv, or cold-start argv. Navigate straight to
+  // the scratch editor; the same seam the ⌘O shortcut uses.
+  useEffect(() => {
+    const unsubscribe = subscribe(EVENTS.SCRATCH_OPEN_PATH, (payload: unknown) => {
+      if (typeof payload !== 'string' || !payload) return;
+      navigate(`/scratch?path=${encodeURIComponent(payload)}`);
+    });
+    return unsubscribe;
+  }, [navigate]);
 
   const requestSidebarFocus = useSidebarFocusStore((s) => s.requestFocus);
   const handleFocusSidebar = useCallback(() => {
@@ -240,6 +271,7 @@ export function MainLayout() {
     onNewWorkNote: () => createWork(),
     onTodayJournal: () => openOrCreateTodayJournal(),
     onFocusSidebar: handleFocusSidebar,
+    onOpenFile: () => void handleOpenFile(),
   });
 
   // Handle draft recovery — open the note through the single navigate-to-note
@@ -312,6 +344,14 @@ export function MainLayout() {
                 }
               />
               <Route path="/note/:noteId" element={<NoteRoute editorRef={editorRef} />} />
+              <Route
+                path="/scratch"
+                element={
+                  <Suspense fallback={<EditorSkeleton />}>
+                    <ScratchEditor />
+                  </Suspense>
+                }
+              />
               {/* Catch-all redirect to home */}
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>

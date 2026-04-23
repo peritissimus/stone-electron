@@ -58,6 +58,11 @@ const APP_SHORTCUT_META: Record<
     description: 'Move keyboard focus into the sidebar for vim-style navigation',
     category: 'navigation',
   },
+  openFile: {
+    label: 'Open File',
+    description: 'Open any .md file from disk in a scratch editor (no workspace, no DB)',
+    category: 'navigation',
+  },
   goHome: {
     label: 'Go Home',
     description: 'Navigate to home page',

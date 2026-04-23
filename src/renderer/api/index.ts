@@ -63,6 +63,14 @@ export type { OpenOrCreateJournalResponse } from './journalAPI';
 export { quickNoteAPI } from './quickNoteAPI';
 export type { QuickNoteSlot, CreateQuickNoteResponse } from './quickNoteAPI';
 
+// Scratch editor API (arbitrary .md files)
+export { scratchAPI } from './scratchAPI';
+export type {
+  ScratchPickResponse,
+  ScratchReadResponse,
+  ScratchWriteResponse,
+} from './scratchAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

@@ -19,6 +19,7 @@ interface UseAppShortcutsOptions {
   onFindReplace?: () => void;
   onToggleEditorMode?: () => void;
   onFocusSidebar?: () => void;
+  onOpenFile?: () => void;
 }
 
 /**
@@ -36,6 +37,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
     onFindReplace,
     onToggleEditorMode,
     onFocusSidebar,
+    onOpenFile,
   } = options;
 
   const navigateHome = useNavigateHome();
@@ -84,6 +86,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
           toggleEditorMode();
         }
       },
+      openFile: () => onOpenFile?.(),
     }),
     [
       onSave,
@@ -95,6 +98,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       onFindReplace,
       onToggleEditorMode,
       onFocusSidebar,
+      onOpenFile,
       openSettings,
       closeSettings,
       settingsOpen,
@@ -122,6 +126,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       'todayJournal',
       'findReplace',
       'toggleEditorMode',
+      'openFile',
     ];
 
     return shortcutIds.map((id) => {
