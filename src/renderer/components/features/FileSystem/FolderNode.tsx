@@ -16,7 +16,7 @@ import {
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
 import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
-import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
+import { useSidebarCursor } from '@renderer/hooks/useSidebarCursor';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath } from '@renderer/lib/path';
@@ -52,8 +52,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
     const isExpanded = expandedPaths.has(normalizedPath);
     const isActive = normalizePath(activeFolder || '') === normalizedPath;
 
-    const cursorPath = useSidebarFocusStore((s) => s.cursorPath);
-    const setCursor = useSidebarFocusStore((s) => s.setCursor);
+    const { cursorPath, setCursor } = useSidebarCursor();
     const isCursor = cursorPath === normalizedPath;
     const rowRef = useRef<HTMLDivElement | null>(null);
 

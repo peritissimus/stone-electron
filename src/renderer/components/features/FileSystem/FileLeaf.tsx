@@ -12,7 +12,7 @@ import { type FileTreeNode } from '@renderer/hooks/useFileTree';
 import { useNotes, getNotesByPathSnapshot } from '@renderer/hooks/useNotes';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNavigateToNote } from '@renderer/navigation';
-import { useSidebarFocusStore } from '@renderer/stores/sidebarFocusStore';
+import { useSidebarCursor } from '@renderer/hooks/useSidebarCursor';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath, getDisplayName } from '@renderer/lib/path';
@@ -37,8 +37,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
   const isActive = note?.id === activeNoteId;
   const [isHovered, setIsHovered] = useState(false);
 
-  const cursorPath = useSidebarFocusStore((s) => s.cursorPath);
-  const setCursor = useSidebarFocusStore((s) => s.setCursor);
+  const { cursorPath, setCursor } = useSidebarCursor();
   const isCursor = cursorPath === normalizedPath;
   const rowRef = useRef<HTMLDivElement | null>(null);
 
