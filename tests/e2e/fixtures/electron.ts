@@ -17,7 +17,9 @@ export const test = base.extend<ElectronFixtures>({
   app: async ({ userDataDir }, use) => {
     const app = await electron.launch({
       args: ['.', `--user-data-dir=${userDataDir}`],
-      env: { ...process.env, NODE_ENV: 'production' },
+      env: { ...process.env, NODE_ENV: 'production', E2E_TEST: 'true' },
+      // First boot on CI / cold caches can exceed Playwright's 30s default.
+      timeout: 60_000,
     });
     await use(app);
     await app.close();
@@ -25,3 +27,7 @@ export const test = base.extend<ElectronFixtures>({
 });
 
 export const expect = test.expect;
+
+// Platform-aware primary modifier — Meta on macOS, Control elsewhere.
+// Use with Playwright's keyboard API, e.g. `window.keyboard.press(primaryModifier + '+k')`.
+export const primaryModifier = process.platform === 'darwin' ? 'Meta' : 'Control';
