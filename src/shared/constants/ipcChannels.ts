@@ -171,6 +171,13 @@ export const QUICK_NOTE_CHANNELS = {
   CREATE_IN_SLOT: 'quickNote:createInSlot',
 } as const;
 
+// Scratch Editor Operations (open arbitrary .md files outside any workspace)
+export const SCRATCH_CHANNELS = {
+  PICK: 'scratch:pick',
+  READ: 'scratch:read',
+  WRITE: 'scratch:write',
+} as const;
+
 // Performance Monitoring Operations
 export const PERFORMANCE_CHANNELS = {
   GET_SNAPSHOT: 'performance:getSnapshot',
@@ -200,6 +207,9 @@ export const EVENTS = {
   NOTE_UPDATED: 'notes:updated',
   NOTE_DELETED: 'notes:deleted',
   NOTE_VERSION_RESTORED: 'notes:versionRestored',
+
+  // Scratch editor events (main → renderer push)
+  SCRATCH_OPEN_PATH: 'scratch:openPath',
 
   // Notebook events
   NOTEBOOK_CREATED: 'notebooks:created',
@@ -261,6 +271,7 @@ export const ALL_CHANNELS = [
   ...Object.values(QUICK_CAPTURE_CHANNELS),
   ...Object.values(JOURNAL_CHANNELS),
   ...Object.values(QUICK_NOTE_CHANNELS),
+  ...Object.values(SCRATCH_CHANNELS),
   ...Object.values(PERFORMANCE_CHANNELS),
 ];
 
