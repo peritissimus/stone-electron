@@ -62,6 +62,11 @@ export function useScratchDocument(
       try {
         const doc = parseMarkdown(response.data.content);
         editor.commands.setContent(doc);
+        // setContent fires a synchronous 'update' event which our dirty
+        // tracker would misread as a user edit. React batches the two
+        // setIsDirty calls in this effect, so the later `false` wins and
+        // the freshly-loaded doc starts clean.
+        setIsDirty(false);
         loadedPathRef.current = absolutePath;
         setName(response.data.name);
         setStatus('ready');
