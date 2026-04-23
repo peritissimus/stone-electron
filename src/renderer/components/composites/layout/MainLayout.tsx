@@ -52,7 +52,7 @@ import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
 import { useAppShortcuts } from '@renderer/hooks/useAppShortcuts';
-import { scratchAPI } from '@renderer/api';
+import { useScratchAPI } from '@renderer/hooks/useScratchAPI';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
@@ -121,6 +121,7 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const navigateToNote = useNavigateToNote();
+  const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
@@ -136,10 +137,10 @@ export function MainLayout() {
   // /scratch?path=<abs>. No workspace or DB involvement — scratch is
   // ephemeral and lives entirely at the absolute path.
   const handleOpenFile = useCallback(async () => {
-    const response = await scratchAPI.pick();
-    if (!response.success || !response.data?.path) return;
-    navigate(`/scratch?path=${encodeURIComponent(response.data.path)}`);
-  }, [navigate]);
+    const pickedPath = await pickScratchFile();
+    if (!pickedPath) return;
+    navigate(`/scratch?path=${encodeURIComponent(pickedPath)}`);
+  }, [navigate, pickScratchFile]);
 
   // "Open With Stone" from Finder / Windows Explorer — main process pushes
   // the absolute path via SCRATCH_OPEN_PATH after resolving open-file

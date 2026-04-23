@@ -29,7 +29,7 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['@renderer/stores/*', '@renderer/api/*'],
+                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
                 message:
                   'Components must not import stores or API directly. Use a hook from @renderer/hooks.',
               },
@@ -56,7 +56,12 @@ module.exports = {
             ],
             patterns: [
               {
-                group: ['@renderer/hooks/*', '@renderer/components/*'],
+                group: [
+                  '@renderer/hooks',
+                  '@renderer/hooks/*',
+                  '@renderer/components',
+                  '@renderer/components/*',
+                ],
                 message: 'Stores must not depend on hooks or components.',
               },
             ],
@@ -74,11 +79,17 @@ module.exports = {
             patterns: [
               {
                 group: [
+                  '@renderer/api',
                   '@renderer/api/*',
+                  '@renderer/stores',
                   '@renderer/stores/*',
+                  '@renderer/hooks',
                   '@renderer/hooks/*',
+                  '@renderer/components',
                   '@renderer/components/*',
+                  '@renderer/pages',
                   '@renderer/pages/*',
+                  '@renderer/lib',
                   '@renderer/lib/*',
                 ],
                 message:
@@ -105,9 +116,13 @@ module.exports = {
             patterns: [
               {
                 group: [
+                  '@renderer/stores',
                   '@renderer/stores/*',
+                  '@renderer/hooks',
                   '@renderer/hooks/*',
+                  '@renderer/components',
                   '@renderer/components/*',
+                  '@renderer/pages',
                   '@renderer/pages/*',
                 ],
                 message: 'API modules must only depend on specs and lib utilities.',
@@ -126,12 +141,12 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['@renderer/stores/*', '@renderer/api/*'],
+                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
                 message:
                   'Components must not import stores or API directly. Use a hook from @renderer/hooks.',
               },
               {
-                group: ['@renderer/components/features/*'],
+                group: ['@renderer/components/features', '@renderer/components/features/*'],
                 message:
                   'features/ are leaves — no sibling-feature imports. Promote shared pieces to composites/.',
               },
@@ -150,10 +165,15 @@ module.exports = {
             patterns: [
               {
                 group: [
+                  '@renderer/components/composites',
                   '@renderer/components/composites/*',
+                  '@renderer/components/features',
                   '@renderer/components/features/*',
+                  '@renderer/stores',
                   '@renderer/stores/*',
+                  '@renderer/api',
                   '@renderer/api/*',
+                  '@renderer/hooks',
                   '@renderer/hooks/*',
                 ],
                 message:
@@ -173,7 +193,12 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['@renderer/components/*', '@renderer/pages/*'],
+                group: [
+                  '@renderer/components',
+                  '@renderer/components/*',
+                  '@renderer/pages',
+                  '@renderer/pages/*',
+                ],
                 message:
                   'Hooks must not depend on components or pages. Dependency direction is components → hooks, not the reverse.',
               },
@@ -191,7 +216,7 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['@renderer/stores/*', '@renderer/api/*'],
+                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
                 message:
                   'Pages must not import stores or API directly. Use a hook from @renderer/hooks.',
               },
@@ -211,10 +236,15 @@ module.exports = {
             patterns: [
               {
                 group: [
+                  '@renderer/components',
                   '@renderer/components/*',
+                  '@renderer/hooks',
                   '@renderer/hooks/*',
+                  '@renderer/stores',
                   '@renderer/stores/*',
+                  '@renderer/api',
                   '@renderer/api/*',
+                  '@renderer/pages',
                   '@renderer/pages/*',
                 ],
                 message:
@@ -235,7 +265,14 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['@renderer/stores/*', '@renderer/api/*', '@renderer/hooks/*'],
+                group: [
+                  '@renderer/stores',
+                  '@renderer/stores/*',
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/hooks',
+                  '@renderer/hooks/*',
+                ],
                 message:
                   'Extensions may import components for node views, but not stores, api, or hooks directly.',
               },

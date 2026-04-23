@@ -4,7 +4,7 @@
  * Tests use case orchestration with mocked OUT ports.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createQuickCaptureUseCases } from '../../../../src/main/application/usecases/quickCapture';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -107,6 +107,13 @@ function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
   };
 }
 
+function formatLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+const FIXED_NOW = new Date(2026, 3, 24, 12, 0, 0);
+const FIXED_TODAY = formatLocalDate(FIXED_NOW);
+
 describe('QuickCaptureUseCases', () => {
   let noteRepo: INoteRepository;
   let workspaceRepo: IWorkspaceRepository;
@@ -115,6 +122,8 @@ describe('QuickCaptureUseCases', () => {
   let useCases: IQuickCaptureUseCases;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     noteRepo = createMockNoteRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
@@ -125,6 +134,10 @@ describe('QuickCaptureUseCases', () => {
       fileStorage,
       appConfigRepository,
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('appendToJournal', () => {
@@ -147,16 +160,15 @@ describe('QuickCaptureUseCases', () => {
 
     it('appends to existing journal note', async () => {
       const workspace = createWorkspaceProps();
-      const today = new Date().toISOString().split('T')[0];
       const journalNote = createNoteProps({
         id: 'journal-1',
-        title: today,
-        filePath: `Journal/${today}.md`,
+        title: FIXED_TODAY,
+        filePath: `Journal/${FIXED_TODAY}.md`,
       });
 
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
       vi.mocked(noteRepo.findByFilePath).mockResolvedValue(journalNote);
-      vi.mocked(fileStorage.read).mockResolvedValue(`# ${today}\n\nExisting content`);
+      vi.mocked(fileStorage.read).mockResolvedValue(`# ${FIXED_TODAY}\n\nExisting content`);
       vi.mocked(fileStorage.write).mockResolvedValue(undefined);
       vi.mocked(noteRepo.save).mockResolvedValue(undefined);
 
@@ -184,7 +196,6 @@ describe('QuickCaptureUseCases', () => {
 
     it('uses the configured journal folder instead of a hardcoded name', async () => {
       const workspace = createWorkspaceProps();
-      const today = new Date().toISOString().split('T')[0];
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
       vi.mocked(noteRepo.findByFilePath).mockResolvedValue(null);
       vi.mocked(fileStorage.exists).mockResolvedValue(false);
@@ -203,7 +214,10 @@ describe('QuickCaptureUseCases', () => {
 
       await useCases.appendToJournal('Content');
 
-      expect(noteRepo.findByFilePath).toHaveBeenCalledWith(`Daily/${today}.md`, workspace.id);
+      expect(noteRepo.findByFilePath).toHaveBeenCalledWith(
+        `Daily/${FIXED_TODAY}.md`,
+        workspace.id,
+      );
       expect(fileStorage.createDirectory).toHaveBeenCalledWith('/test/workspace/Daily');
     });
 
