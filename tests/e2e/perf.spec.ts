@@ -79,12 +79,17 @@ interface RealCase {
 
 type Case = SyntheticCase | RealCase;
 
+// Order matters: if we load the 1MB synthetic first, subsequent cases
+// inherit a huge prior ProseMirror doc state that has to be cleared on
+// each setContent — conflating "how fast does this file load" with "how
+// fast does TipTap clear the previous state". Real files + small synthetic
+// run first (cold editor state); larger synthetic go last.
 const CASES: Case[] = [
+  ...REAL_FILES.map<RealCase>((f) => ({ kind: 'real', label: f.label, path: f.path })),
   { kind: 'synthetic', name: '10KB', bytes: 10 * 1024 },
   { kind: 'synthetic', name: '100KB', bytes: 100 * 1024 },
   { kind: 'synthetic', name: '500KB', bytes: 500 * 1024 },
   { kind: 'synthetic', name: '1MB', bytes: 1024 * 1024 },
-  ...REAL_FILES.map<RealCase>((f) => ({ kind: 'real', label: f.label, path: f.path })),
 ];
 
 interface Row {
@@ -123,6 +128,24 @@ function resolveContentForCase(c: Case): { basename: string; content: string; sr
 test('perf: large-document open + save', async ({ app }) => {
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
+
+  // Capture renderer-side save timings emitted by useScratchDocument.
+  // The logger uses console.info under the hood; we filter for our marker.
+  const saveTimings: Array<{ getJsonMs: number; serializeMs: number; ipcWriteMs: number; bytes: number }> = [];
+  window.on('console', (msg) => {
+    const text = msg.text();
+    if (!text.includes('[Scratch] save timings')) return;
+    // Extract the JSON-ish payload following the message prefix.
+    const match = text.match(/bytes:\s*(\d+).*getJsonMs:\s*(\d+).*serializeMs:\s*(\d+).*ipcWriteMs:\s*(\d+)/s);
+    if (match) {
+      saveTimings.push({
+        bytes: parseInt(match[1], 10),
+        getJsonMs: parseInt(match[2], 10),
+        serializeMs: parseInt(match[3], 10),
+        ipcWriteMs: parseInt(match[4], 10),
+      });
+    }
+  });
 
   const editor = window.locator('.ProseMirror');
   await expect(editor).toBeVisible({ timeout: 15_000 });
@@ -217,6 +240,22 @@ test('perf: large-document open + save', async ({ app }) => {
       r.saveMs.toString().padStart(6),
     ].join(' ');
     console.log(row);
+  }
+
+  // Save-phase breakdown captured from the renderer console.
+  if (saveTimings.length > 0) {
+    console.log('\n=== Save breakdown (ms) ===');
+    console.log('bytes      getJSON  serialize  ipcWrite');
+    for (const t of saveTimings) {
+      console.log(
+        [
+          t.bytes.toString().padStart(8),
+          t.getJsonMs.toString().padStart(9),
+          t.serializeMs.toString().padStart(9),
+          t.ipcWriteMs.toString().padStart(9),
+        ].join('  '),
+      );
+    }
   }
 
   // Generous envelopes — breach implies a serious regression.

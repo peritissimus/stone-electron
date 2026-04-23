@@ -99,8 +99,21 @@ export function useScratchDocument(
     if (!isDirty) return true;
 
     try {
-      const markdown = serializeMarkdown(editor.getJSON());
+      // Instrument the save path to localize bottlenecks for large docs.
+      // Remove these measurements once perf is stable.
+      const tGetJson0 = performance.now();
+      const json = editor.getJSON();
+      const tGetJson1 = performance.now();
+      const markdown = serializeMarkdown(json);
+      const tSerialize1 = performance.now();
       const response = await scratchAPI.write(absolutePath, markdown);
+      const tWrite1 = performance.now();
+      logger.info('[Scratch] save timings', {
+        bytes: markdown.length,
+        getJsonMs: Math.round(tGetJson1 - tGetJson0),
+        serializeMs: Math.round(tSerialize1 - tGetJson1),
+        ipcWriteMs: Math.round(tWrite1 - tSerialize1),
+      });
       if (!response.success) {
         setError(response.error?.message ?? 'Failed to save file');
         logger.error('[Scratch] Failed to save file:', response.error);
