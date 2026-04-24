@@ -2,7 +2,7 @@
  * Topic Repository Implementation
  */
 
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray, sql } from 'drizzle-orm';
 import { topics, noteTopics, type Database } from '../../../shared';
 import type { ITopicRepository, TopicProps, TopicEntity, TopicWithCount } from '../../../domain';
 import { handleOperation } from '../../../shared/utils';
@@ -44,17 +44,29 @@ export class TopicRepository implements ITopicRepository {
   async findAllWithCounts(): Promise<TopicWithCount[]> {
     return this.handle('findAllWithCounts', async () => {
       const allTopics = await this.deps.db.select().from(topics);
-      const result: TopicWithCount[] = [];
-
-      for (const topic of allTopics) {
-        const countResults = await this.deps.db
-          .select()
-          .from(noteTopics)
-          .where(eq(noteTopics.topicId, topic.id));
-        result.push({ ...this.toProps(topic), noteCount: countResults.length });
+      if (allTopics.length === 0) {
+        return [];
       }
 
-      return result;
+      const topicIds = allTopics.map((topic) => topic.id);
+      const countRows = await this.deps.db
+        .select({
+          topicId: noteTopics.topicId,
+          count: sql<number>`count(*)`,
+        })
+        .from(noteTopics)
+        .where(inArray(noteTopics.topicId, topicIds))
+        .groupBy(noteTopics.topicId);
+
+      const countByTopicId = new Map<string, number>();
+      for (const row of countRows) {
+        countByTopicId.set(row.topicId, row.count ?? 0);
+      }
+
+      return allTopics.map((topic) => ({
+        ...this.toProps(topic),
+        noteCount: countByTopicId.get(topic.id) ?? 0,
+      }));
     });
   }
 

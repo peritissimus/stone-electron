@@ -27,6 +27,10 @@ import { logger } from '@renderer/lib/logger';
 
 import type { Editor } from '@tiptap/react';
 
+interface NoteEditorProps {
+  onEditorChange?: (editor: Editor | null) => void;
+}
+
 /**
  * NoteEditor ref API - exposed actions for keyboard shortcuts
  */
@@ -37,7 +41,10 @@ export interface NoteEditorHandle {
   getEditor: () => Editor | null;
 }
 
-export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
+export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
+  { onEditorChange },
+  ref,
+) {
   const navigateToNote = useNavigateToNote();
   const navigateHome = useNavigateHome();
   const {
@@ -53,6 +60,13 @@ export const NoteEditor = forwardRef<NoteEditorHandle>((_, ref) => {
 
   const editor = useTipTapEditor();
   const creatingNoteRef = useRef(false);
+
+  useEffect(() => {
+    onEditorChange?.(editor);
+    return () => {
+      onEditorChange?.(null);
+    };
+  }, [editor, onEditorChange]);
 
   // Autofocus: arm at render time (BEFORE any effect runs) and consume when
   // the editor is both hydrated with content AND mounted in the DOM. We

@@ -109,10 +109,16 @@ const PageSkeleton = () => (
 
 // Note route wrapper — the route itself owns which note is active (via useParams).
 // Children read it with useActiveNoteId(); no store mirror is required.
-function NoteRoute({ editorRef }: { editorRef: React.RefObject<NoteEditorHandle> }) {
+function NoteRoute({
+  editorRef,
+  onEditorChange,
+}: {
+  editorRef: React.RefObject<NoteEditorHandle>;
+  onEditorChange: (editor: Editor | null) => void;
+}) {
   return (
     <Suspense fallback={<EditorSkeleton />}>
-      <NoteEditor ref={editorRef} />
+      <NoteEditor ref={editorRef} onEditorChange={onEditorChange} />
     </Suspense>
   );
 }
@@ -121,6 +127,7 @@ export function MainLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const navigateToNote = useNavigateToNote();
+  const initialPathRef = useRef(location.pathname);
   const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
 
@@ -203,20 +210,9 @@ export function MainLayout() {
 
   // Track editor instance for FindReplaceModal
   const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
-
-  // Update editor reference when it changes
-  useEffect(() => {
-    const checkEditor = () => {
-      const editor = editorRef.current?.getEditor() ?? null;
-      if (editor !== currentEditor) {
-        setCurrentEditor(editor);
-      }
-    };
-
-    checkEditor();
-    const interval = setInterval(checkEditor, 500);
-    return () => clearInterval(interval);
-  }, [currentEditor]);
+  const handleEditorChange = useCallback((editor: Editor | null) => {
+    setCurrentEditor(editor);
+  }, []);
 
   // Track bootstrap state
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
@@ -224,23 +220,70 @@ export function MainLayout() {
 
   // Load initial data
   useEffect(() => {
+    let cancelled = false;
+    let idleHandle: number | null = null;
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleBackgroundNotesLoad = () => {
+      const loadNotesInBackground = async () => {
+        try {
+          await loadNotes();
+          if (!cancelled) {
+            logger.info('[MainLayout] Notes loaded in background');
+          }
+        } catch (error) {
+          if (!cancelled) {
+            logger.error('[MainLayout] Background notes load failed:', error);
+          }
+        }
+      };
+
+      if (typeof window.requestIdleCallback === 'function') {
+        idleHandle = window.requestIdleCallback(() => {
+          idleHandle = null;
+          void loadNotesInBackground();
+        });
+        return;
+      }
+
+      timeoutHandle = setTimeout(() => {
+        timeoutHandle = null;
+        void loadNotesInBackground();
+      }, 0);
+    };
+
     const bootstrap = async () => {
       const startTime = performance.now();
+      const shouldPrioritizeNotes = initialPathRef.current.startsWith('/note/');
 
       await loadWorkspaces();
+      if (cancelled) return;
       logger.info(`[MainLayout] Workspaces loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
 
       await Promise.all([
         loadFileTree().then(() => {
-          logger.info(`[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+          if (!cancelled) {
+            logger.info(`[MainLayout] FileTree loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+          }
         }),
         loadTags().then(() => {
-          logger.info(`[MainLayout] Tags loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+          if (!cancelled) {
+            logger.info(`[MainLayout] Tags loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
+          }
         }),
-        loadNotes().then(() => {
-          logger.info(`[MainLayout] Notes loaded: ${(performance.now() - startTime).toFixed(0)}ms`);
-        }),
+        ...(shouldPrioritizeNotes
+          ? [
+              loadNotes().then(() => {
+                if (!cancelled) {
+                  logger.info(
+                    `[MainLayout] Notes loaded: ${(performance.now() - startTime).toFixed(0)}ms`,
+                  );
+                }
+              }),
+            ]
+          : []),
       ]);
+      if (cancelled) return;
 
       const drafts = getAllDrafts();
       if (drafts.length > 0) {
@@ -250,9 +293,23 @@ export function MainLayout() {
 
       logger.info(`[MainLayout] Bootstrap complete: ${(performance.now() - startTime).toFixed(0)}ms`);
       setBootstrapComplete(true);
+
+      if (!shouldPrioritizeNotes) {
+        scheduleBackgroundNotesLoad();
+      }
     };
 
     void bootstrap();
+
+    return () => {
+      cancelled = true;
+      if (idleHandle !== null && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
+      }
+      if (timeoutHandle !== null) {
+        clearTimeout(timeoutHandle);
+      }
+    };
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
   // Auto-open today's journal on startup
@@ -344,7 +401,10 @@ export function MainLayout() {
                   </Suspense>
                 }
               />
-              <Route path="/note/:noteId" element={<NoteRoute editorRef={editorRef} />} />
+              <Route
+                path="/note/:noteId"
+                element={<NoteRoute editorRef={editorRef} onEditorChange={handleEditorChange} />}
+              />
               <Route
                 path="/scratch"
                 element={
