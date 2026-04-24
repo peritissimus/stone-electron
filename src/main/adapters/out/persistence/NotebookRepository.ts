@@ -4,7 +4,7 @@
  * Implements INotebookRepository port using SQLite via Drizzle ORM.
  */
 
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull, inArray, sql } from 'drizzle-orm';
 import { notebooks, notes, type Database } from '../../../shared';
 import type {
   NotebookEntity,
@@ -83,21 +83,31 @@ export class NotebookRepository implements INotebookRepository {
           .from(notebooks)
           .where(conditions.length > 0 ? and(...conditions) : undefined);
 
-        const result: NotebookWithCount[] = [];
-
-        for (const notebook of allNotebooks) {
-          const countResult = await this.deps.db
-            .select({ count: sql<number>`count(*)` })
-            .from(notes)
-            .where(and(eq(notes.notebookId, notebook.id), eq(notes.isDeleted, false)));
-
-          result.push({
-            ...this.toNotebookProps(notebook),
-            noteCount: countResult[0]?.count ?? 0,
-          });
+        if (allNotebooks.length === 0) {
+          return [];
         }
 
-        return result;
+        const notebookIds = allNotebooks.map((notebook) => notebook.id);
+        const countRows = await this.deps.db
+          .select({
+            notebookId: notes.notebookId,
+            count: sql<number>`count(*)`,
+          })
+          .from(notes)
+          .where(and(inArray(notes.notebookId, notebookIds), eq(notes.isDeleted, false)))
+          .groupBy(notes.notebookId);
+
+        const countByNotebookId = new Map<string, number>();
+        for (const row of countRows) {
+          if (row.notebookId) {
+            countByNotebookId.set(row.notebookId, row.count ?? 0);
+          }
+        }
+
+        return allNotebooks.map((notebook) => ({
+          ...this.toNotebookProps(notebook),
+          noteCount: countByNotebookId.get(notebook.id) ?? 0,
+        }));
       },
       { workspaceId },
     );

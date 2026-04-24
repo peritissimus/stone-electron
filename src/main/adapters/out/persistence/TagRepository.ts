@@ -58,22 +58,29 @@ export class TagRepository implements ITagRepository {
   async findAllWithCounts(): Promise<TagWithCount[]> {
     return this.handle('findAllWithCounts', async () => {
       const allTags = await this.deps.db.select().from(tags);
-
-      const result: TagWithCount[] = [];
-
-      for (const tag of allTags) {
-        const countResult = await this.deps.db
-          .select({ count: sql<number>`count(*)` })
-          .from(noteTags)
-          .where(eq(noteTags.tagId, tag.id));
-
-        result.push({
-          ...this.toTagProps(tag),
-          noteCount: countResult[0]?.count ?? 0,
-        });
+      if (allTags.length === 0) {
+        return [];
       }
 
-      return result;
+      const tagIds = allTags.map((tag) => tag.id);
+      const countRows = await this.deps.db
+        .select({
+          tagId: noteTags.tagId,
+          count: sql<number>`count(*)`,
+        })
+        .from(noteTags)
+        .where(inArray(noteTags.tagId, tagIds))
+        .groupBy(noteTags.tagId);
+
+      const countByTagId = new Map<string, number>();
+      for (const row of countRows) {
+        countByTagId.set(row.tagId, row.count ?? 0);
+      }
+
+      return allTags.map((tag) => ({
+        ...this.toTagProps(tag),
+        noteCount: countByTagId.get(tag.id) ?? 0,
+      }));
     });
   }
 
