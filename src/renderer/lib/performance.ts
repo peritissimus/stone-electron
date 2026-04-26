@@ -106,7 +106,7 @@ export function startRendererMonitoring(): void {
   if (isMonitoring) return;
 
   isMonitoring = true;
-  initPerfData();
+  const data = initPerfData();
 
   // Start FPS tracking
   data.lastFrameTime = performance.now();

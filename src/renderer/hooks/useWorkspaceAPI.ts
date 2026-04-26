@@ -6,6 +6,8 @@ import { useCallback } from 'react';
 import { useWorkspaceStore } from '@renderer/stores/workspaceStore';
 import { useNavigateHome } from '@renderer/navigation';
 import { workspaceAPI } from '@renderer/api';
+import { clearPathCache } from '@renderer/lib/pathCache';
+import { clearMermaidCache } from '@renderer/lib/mermaid';
 
 export function useWorkspaceAPI() {
   const navigateHome = useNavigateHome();
@@ -34,6 +36,8 @@ export function useWorkspaceAPI() {
       try {
         const response = await workspaceAPI.setActive(workspaceId);
         if (response.success) {
+          clearPathCache();
+          clearMermaidCache();
           setActiveWorkspaceId(workspaceId);
           // Tree selection is derived from the route; navigating home
           // drops the active note and the derivation follows automatically.
