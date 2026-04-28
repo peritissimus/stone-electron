@@ -15,8 +15,22 @@ export const test = base.extend<ElectronFixtures>({
     rmSync(dir, { recursive: true, force: true });
   },
   app: async ({ userDataDir }, use) => {
+    // Set STONE_E2E_BINARY to a packaged Electron binary (e.g. Stone.app's
+    // .../MacOS/Stone) to exercise the real asar/asarUnpack resolution.
+    // Default uses `electron .` against the dev-built dist/, which loads
+    // node_modules from the project root and hides packaging issues.
+    const packagedBinary = process.env.STONE_E2E_BINARY;
+    const launchOptions = packagedBinary
+      ? {
+          executablePath: packagedBinary,
+          args: [`--user-data-dir=${userDataDir}`],
+        }
+      : {
+          args: ['.', `--user-data-dir=${userDataDir}`],
+        };
+
     const app = await electron.launch({
-      args: ['.', `--user-data-dir=${userDataDir}`],
+      ...launchOptions,
       env: { ...process.env, NODE_ENV: 'production', E2E_TEST: 'true' },
       // First boot on CI / cold caches can exceed Playwright's 30s default.
       timeout: 60_000,

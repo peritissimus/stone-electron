@@ -5,7 +5,7 @@
  * This isolates heavy ML operations from the main Electron process.
  */
 
-import { parentPort } from 'worker_threads';
+import { parentPort, workerData } from 'worker_threads';
 
 // Types for messages
 interface InitMessage {
@@ -66,6 +66,14 @@ async function initialize(): Promise<{ model: string; dims: number }> {
   // Configure for Node.js environment
   env.allowLocalModels = true;
   env.useBrowserCache = false;
+
+  // Default cache dir is inside the package install path, which lives in
+  // app.asar in packaged builds and is read-only. Main process passes a
+  // writable userData path via workerData.
+  const cacheDir = (workerData as { cacheDir?: string } | null)?.cacheDir;
+  if (cacheDir) {
+    env.cacheDir = cacheDir;
+  }
 
   // Create feature extraction pipeline with quantized model
   pipeline = await createPipeline('feature-extraction', MODEL_NAME, {

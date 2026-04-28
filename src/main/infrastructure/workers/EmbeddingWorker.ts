@@ -13,6 +13,7 @@
 
 import { Worker } from 'worker_threads';
 import path from 'node:path';
+import { app } from 'electron';
 import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
 
@@ -75,7 +76,12 @@ export class EmbeddingWorker {
       const workerPath = this.getWorkerPath();
       logger.info(`[Embedder] Worker path: ${workerPath}`);
 
-      this.worker = new Worker(workerPath);
+      // Pass a user-writable cache dir. Default ${install}/.cache lives inside
+      // app.asar in packaged builds and fails to mkdir, forcing a model
+      // re-download on every cold start.
+      const cacheDir = path.join(app.getPath('userData'), 'ml-cache');
+
+      this.worker = new Worker(workerPath, { workerData: { cacheDir } });
 
       // Wait for worker to be ready
       await new Promise<void>((resolve, reject) => {
