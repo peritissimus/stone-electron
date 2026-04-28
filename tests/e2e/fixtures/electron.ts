@@ -12,6 +12,10 @@ export const test = base.extend<ElectronFixtures>({
   userDataDir: async ({}, use) => {
     const dir = mkdtempSync(join(tmpdir(), 'stone-e2e-'));
     await use(dir);
+    if (process.env.STONE_E2E_KEEP_USERDATA) {
+      console.log(`[fixture] keeping userDataDir: ${dir}`);
+      return;
+    }
     rmSync(dir, { recursive: true, force: true });
   },
   app: async ({ userDataDir }, use) => {
