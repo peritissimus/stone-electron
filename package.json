@@ -51,7 +51,7 @@
     "release": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
-    "postinstall": "electron-rebuild --ignore better-sqlite3",
+    "postinstall": "electron-rebuild",
     "react-devtools": "react-devtools"
   },
   "dependencies": {
