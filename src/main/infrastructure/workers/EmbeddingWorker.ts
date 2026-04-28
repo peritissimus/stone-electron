@@ -44,10 +44,14 @@ export class EmbeddingWorker {
    * Get the worker script path (handles both dev and packaged app)
    */
   private getWorkerPath(): string {
-    // Main process is bundled to dist/main/index.cjs
-    // Worker is at dist/main/workers/embedding.worker.cjs
-    // So from __dirname (dist/main/), worker is in ./workers/
-    return path.join(__dirname, 'workers', 'embedding.worker.cjs');
+    // worker_threads.Worker() cannot load entry files from inside app.asar.
+    // electron-builder unpacks the worker bundle (asarUnpack rule), but
+    // __dirname still points into the asar — translate to the unpacked
+    // sibling so Node can read the file off real disk.
+    const sep = path.sep;
+    return path
+      .join(__dirname, 'workers', 'embedding.worker.cjs')
+      .replace(`${sep}app.asar${sep}`, `${sep}app.asar.unpacked${sep}`);
   }
 
   /**

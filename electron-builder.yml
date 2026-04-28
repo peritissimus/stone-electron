@@ -41,18 +41,17 @@ files:
   - "!**/node_modules/**/LICENSE*"
   - "!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**"
 
-# Enable asar compression
+# Enable asar for app code, but unpack all node_modules. Selective unpacking
+# breaks once a native module needs to require() a sibling dep — Node's
+# resolver can't walk from app.asar.unpacked back into app.asar — so any
+# unpacked module's full transitive closure must also be unpacked. Doing it
+# wholesale avoids the whack-a-mole. Also unpack the worker bundle, since
+# worker_threads.Worker() can't load entry files from inside app.asar.
 asar: true
 compression: maximum
 
-# Native modules that need to be unpacked
 asarUnpack:
-  - node_modules/@libsql/**/*
-  - node_modules/libsql/**/*
-  - node_modules/@xenova/transformers/**/*
-  - node_modules/onnxruntime-node/**/*
-  # worker_threads.Worker() cannot load entry files from inside app.asar —
-  # Electron's asar shim doesn't patch the Worker resolver. Must be unpacked.
+  - node_modules/**/*
   - dist/main/workers/**/*
 
 mac:
