@@ -4,6 +4,7 @@
   "description": "Production-ready note-taking desktop application",
   "main": "./dist/main/index.cjs",
   "type": "module",
+  "packageManager": "pnpm@10.27.0",
   "author": "peritissimus",
   "license": "MIT",
   "repository": {
