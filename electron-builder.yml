@@ -51,6 +51,9 @@ asarUnpack:
   - node_modules/libsql/**/*
   - node_modules/@xenova/transformers/**/*
   - node_modules/onnxruntime-node/**/*
+  # worker_threads.Worker() cannot load entry files from inside app.asar —
+  # Electron's asar shim doesn't patch the Worker resolver. Must be unpacked.
+  - dist/main/workers/**/*
 
 mac:
   target:
