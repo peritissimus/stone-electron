@@ -13,6 +13,8 @@ import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileSt
 import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
+import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import type { ITopicUseCases } from '../../../../src/main/domain/ports/in/ITopicUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -137,10 +139,19 @@ function createTopicProps(overrides: Partial<TopicProps> = {}): TopicProps {
 
 import { EVENTS } from '@shared/constants/ipcChannels';
 
+function createMockAppConfigRepository(): IAppConfigRepository {
+  return {
+    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
+    set: vi.fn(),
+    update: vi.fn(),
+  } as unknown as IAppConfigRepository;
+}
+
 describe('TopicUseCases', () => {
   let noteRepo: INoteRepository;
   let topicRepo: ITopicRepository;
   let workspaceRepo: IWorkspaceRepository;
+  let appConfigRepo: IAppConfigRepository;
   let fileStorage: IFileStorage;
   let embedder: IEmbedder;
   let markdownProcessor: IMarkdownProcessor;
@@ -151,6 +162,7 @@ describe('TopicUseCases', () => {
     noteRepo = createMockNoteRepository();
     topicRepo = createMockTopicRepository();
     workspaceRepo = createMockWorkspaceRepository();
+    appConfigRepo = createMockAppConfigRepository();
     fileStorage = createMockFileStorage();
     embedder = createMockEmbedder();
     markdownProcessor = createMockMarkdownProcessor();
@@ -159,6 +171,7 @@ describe('TopicUseCases', () => {
       noteRepository: noteRepo,
       topicRepository: topicRepo,
       workspaceRepository: workspaceRepo,
+      appConfigRepository: appConfigRepo,
       fileStorage,
       embedder,
       markdownProcessor,

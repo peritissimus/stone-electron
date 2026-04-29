@@ -110,19 +110,34 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     },
   );
 
-  ipcMain.handle(TOPIC_CHANNELS.CLASSIFY_ALL, async (_event, options?: { force?: boolean }) => {
-    return handleRequest(async () => topicUseCases.classifyAllNotes.execute(options), {
-      channel: TOPIC_CHANNELS.CLASSIFY_ALL,
-      force: options?.force,
-    });
-  });
+  ipcMain.handle(
+    TOPIC_CHANNELS.CLASSIFY_ALL,
+    async (_event, options?: { force?: boolean; excludeJournal?: boolean }) => {
+      return handleRequest(async () => topicUseCases.classifyAllNotes.execute(options), {
+        channel: TOPIC_CHANNELS.CLASSIFY_ALL,
+        force: options?.force,
+        excludeJournal: options?.excludeJournal,
+      });
+    },
+  );
 
-  ipcMain.handle(TOPIC_CHANNELS.RECLASSIFY_ALL, async () => {
-    return handleRequest(
-      async () => topicUseCases.classifyAllNotes.execute({ force: true }),
-      { channel: TOPIC_CHANNELS.RECLASSIFY_ALL, force: true },
-    );
-  });
+  ipcMain.handle(
+    TOPIC_CHANNELS.RECLASSIFY_ALL,
+    async (_event, options?: { excludeJournal?: boolean }) => {
+      return handleRequest(
+        async () =>
+          topicUseCases.classifyAllNotes.execute({
+            force: true,
+            excludeJournal: options?.excludeJournal,
+          }),
+        {
+          channel: TOPIC_CHANNELS.RECLASSIFY_ALL,
+          force: true,
+          excludeJournal: options?.excludeJournal,
+        },
+      );
+    },
+  );
 
   ipcMain.handle(
     TOPIC_CHANNELS.SEMANTIC_SEARCH,

@@ -74,18 +74,22 @@ export class ClassifyNoteUseCase implements IClassifyNoteUseCase {
 
     const matchedTopics = TopicClassifier.classify(embedding, candidates);
 
-    if (matchedTopics.length > 0) {
-      const bestTopic = matchedTopics[0];
-      await this.topicRepository.assignToNote(noteId, bestTopic.topicId, {
-        confidence: bestTopic.confidence,
+    // Drop stale auto-assignments before writing fresh ones; manual assignments
+    // are preserved. Without this, a note that previously matched topic A and
+    // now matches topic B would carry both indefinitely.
+    await this.topicRepository.clearAutoTopicsForNote(noteId);
+
+    for (const match of matchedTopics) {
+      await this.topicRepository.assignToNote(noteId, match.topicId, {
+        confidence: match.confidence,
       });
       this.eventPublisher?.publish({
         type: DOMAIN_EVENT_TYPES.NOTE_CLASSIFIED,
         timestamp: new Date(),
         payload: {
           noteId,
-          topicId: bestTopic.topicId,
-          confidence: bestTopic.confidence,
+          topicId: match.topicId,
+          confidence: match.confidence,
         },
       });
     }

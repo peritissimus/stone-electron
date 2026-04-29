@@ -106,6 +106,11 @@ export interface ITopicRepository {
   clearTopicsForNote(noteId: string): Promise<void>;
 
   /**
+   * Clear only auto-assigned topics for a note (preserves manual assignments)
+   */
+  clearAutoTopicsForNote(noteId: string): Promise<void>;
+
+  /**
    * Update topic centroid (ML)
    */
   updateCentroid(topicId: string, centroid: Uint8Array): Promise<void>;

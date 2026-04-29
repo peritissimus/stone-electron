@@ -452,6 +452,18 @@ export class TopicRepository implements ITopicRepository {
     );
   }
 
+  async clearAutoTopicsForNote(noteId: string): Promise<void> {
+    return this.handle(
+      'clearAutoTopicsForNote',
+      async () => {
+        await this.deps.db
+          .delete(noteTopics)
+          .where(and(eq(noteTopics.noteId, noteId), eq(noteTopics.isManual, false)));
+      },
+      { noteId },
+    );
+  }
+
   async updateNoteCount(topicId: string): Promise<void> {
     return this.handle(
       'updateNoteCount',

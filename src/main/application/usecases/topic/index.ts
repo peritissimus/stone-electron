@@ -5,6 +5,7 @@ import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { ITopicUseCases } from '../../../domain/ports/in/ITopicUseCases';
 import { InitializeTopicsUseCase } from './InitializeTopicsUseCase';
 import { GetAllTopicsUseCase } from './GetAllTopicsUseCase';
@@ -44,6 +45,7 @@ export interface TopicUseCasesDeps {
   noteRepository: INoteRepository;
   topicRepository: ITopicRepository;
   workspaceRepository: IWorkspaceRepository;
+  appConfigRepository: IAppConfigRepository;
   fileStorage: IFileStorage;
   embedder: IEmbedder;
   markdownProcessor: IMarkdownProcessor;
@@ -55,6 +57,7 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
     noteRepository,
     topicRepository,
     workspaceRepository,
+    appConfigRepository,
     fileStorage,
     embedder,
     markdownProcessor,
@@ -72,7 +75,7 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
   );
 
   return {
-    initialize: new InitializeTopicsUseCase(embedder),
+    initialize: new InitializeTopicsUseCase(embedder, topicRepository),
     getAllTopics: new GetAllTopicsUseCase(topicRepository),
     getTopicById: new GetTopicByIdUseCase(topicRepository),
     createTopic: new CreateTopicUseCase(topicRepository, eventPublisher),
@@ -81,7 +84,9 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
     classifyNote,
     classifyAllNotes: new ClassifyAllNotesUseCase(
       noteRepository,
+      topicRepository,
       workspaceRepository,
+      appConfigRepository,
       classifyNote,
       eventPublisher,
     ),

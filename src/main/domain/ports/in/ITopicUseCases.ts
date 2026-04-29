@@ -92,7 +92,7 @@ export interface IClassifyNoteUseCase {
 }
 
 export interface IClassifyAllNotesUseCase {
-  execute(options?: { force?: boolean }): Promise<ClassifyAllResult>;
+  execute(options?: { force?: boolean; excludeJournal?: boolean }): Promise<ClassifyAllResult>;
 }
 
 export interface IAssignTopicToNoteUseCase {

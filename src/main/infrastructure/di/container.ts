@@ -384,6 +384,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     topicRepository,
     workspaceRepository,
+    appConfigRepository,
     fileStorage,
     embedder,
     markdownProcessor,

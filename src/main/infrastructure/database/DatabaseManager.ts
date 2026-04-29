@@ -164,17 +164,55 @@ export class DatabaseManager {
     });
     const appConfig = await appConfigRepository.get();
 
-    // Seed predefined topics
-    const existingTopics = await this.db.select().from(schema.topics);
-    if (existingTopics.length === 0) {
-      const predefinedTopics = [
-        { id: 'topic_work', name: 'Work', color: '#3b82f6', isPredefined: true },
-        { id: 'topic_personal', name: 'Personal', color: '#22c55e', isPredefined: true },
-        { id: 'topic_learning', name: 'Learning', color: '#a855f7', isPredefined: true },
-        { id: 'topic_projects', name: 'Projects', color: '#f97316', isPredefined: true },
-        { id: 'topic_ideas', name: 'Ideas', color: '#eab308', isPredefined: true },
-      ];
+    // Seed/refresh predefined topics. Descriptions feed the centroid seed in
+    // InitializeTopicsUseCase — name-only embeddings are too weak a signal.
+    const predefinedTopics = [
+      {
+        id: 'topic_work',
+        name: 'Work',
+        color: '#3b82f6',
+        isPredefined: true,
+        description:
+          'Job, employer, meetings, deliverables, OKRs, performance, infrastructure, code reviews, on-call, customers, releases, deadlines.',
+      },
+      {
+        id: 'topic_personal',
+        name: 'Personal',
+        color: '#22c55e',
+        isPredefined: true,
+        description:
+          'Health, family, friends, finances, home, hobbies, travel, relationships, self-care, errands, food, fitness, mental wellbeing.',
+      },
+      {
+        id: 'topic_learning',
+        name: 'Learning',
+        color: '#a855f7',
+        isPredefined: true,
+        description:
+          'Courses, tutorials, books, papers, technical concepts, study notes, languages, skills practice, takeaways, references.',
+      },
+      {
+        id: 'topic_projects',
+        name: 'Projects',
+        color: '#f97316',
+        isPredefined: true,
+        description:
+          'Side projects, builds, prototypes, experiments, plans, milestones, todos, designs, scope, architecture decisions.',
+      },
+      {
+        id: 'topic_ideas',
+        name: 'Ideas',
+        color: '#eab308',
+        isPredefined: true,
+        description:
+          'Hunches, half-formed thoughts, brainstorms, product concepts, what-ifs, hypotheses, observations, sparks, inspiration.',
+      },
+    ];
 
+    const existingTopicRows: Array<{ id: string; description: string | null }> = await this.db
+      .select({ id: schema.topics.id, description: schema.topics.description })
+      .from(schema.topics);
+    if (existingTopicRows.length === 0) {
       for (const topic of predefinedTopics) {
         await this.db.insert(schema.topics).values({
           ...topic,
@@ -183,6 +221,25 @@ export class DatabaseManager {
         });
       }
       logger.info('Seeded predefined topics');
+    } else {
+      // Backfill descriptions onto existing predefined topics that lack one,
+      // and invalidate their centroid so InitializeTopicsUseCase reseeds it
+      // from the now-richer text. User-edited descriptions are preserved.
+      const byId = new Map(existingTopicRows.map((t) => [t.id, t]));
+      let backfilled = 0;
+      for (const seed of predefinedTopics) {
+        const existing = byId.get(seed.id);
+        if (existing && (existing.description === null || existing.description === '')) {
+          await this.db
+            .update(schema.topics)
+            .set({ description: seed.description, centroid: null, updatedAt: new Date() })
+            .where(eq(schema.topics.id, seed.id));
+          backfilled++;
+        }
+      }
+      if (backfilled > 0) {
+        logger.info(`Backfilled descriptions for ${backfilled} predefined topics`);
+      }
     }
 
     // Seed default workspace, notebooks, and notes if not present
