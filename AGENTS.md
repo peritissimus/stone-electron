@@ -118,7 +118,7 @@ domain/
 │ Examples:                       │ Examples:                     │
 │ • INoteUseCases                 │ • INoteRepository             │
 │ • IAuthUseCases                 │ • IFileStorage                │
-│ • ISearchUseCases               │ • IEmbeddingService           │
+│ • ISearchUseCases               │ • IEmbedder                   │
 └─────────────────────────────────┴───────────────────────────────┘
 ```
 
@@ -193,7 +193,7 @@ adapters/
 └── out/               # Driven adapters (external systems)
     ├── persistence/   # Database repositories
     ├── storage/       # File system
-    ├── services/      # External service implementations
+    ├── integrations/  # Third-party libs / OS / ML / git
     └── external/      # Third-party APIs
 ```
 
@@ -299,16 +299,25 @@ domain/services/     domain/ports/out/ (interface)
 
 ## 11. Naming Conventions (Backend)
 
-| Type           | Convention              | Example                 |
-| -------------- | ----------------------- | ----------------------- |
-| Entity         | PascalCase noun         | `Note`, `Notebook`      |
-| Value Object   | PascalCase noun         | `NoteId`, `FilePath`    |
-| Port Interface | `I` + PascalCase        | `INoteRepository`       |
-| Use Case       | PascalCase + `UseCases` | `NoteUseCases`          |
-| Domain Service | PascalCase              | `TaskExtractor`         |
-| Adapter        | Descriptive + type      | `DrizzleNoteRepository` |
-| DTO            | PascalCase + `DTO`      | `CreateNoteDTO`         |
-| Domain Error   | PascalCase + `Error`    | `NoteNotFoundError`     |
+| Type                 | Convention                              | Example                            |
+| -------------------- | --------------------------------------- | ---------------------------------- |
+| Entity               | PascalCase noun + `Entity` suffix       | `NoteEntity`, `NotebookEntity`     |
+| Entity file          | PascalCase noun (no suffix)             | `Note.ts`, `Notebook.ts`           |
+| Value Object         | PascalCase noun                         | `NoteId`, `FilePath`               |
+| Port Interface       | `I` + PascalCase                        | `INoteRepository`                  |
+| Use Case             | PascalCase + `UseCases` (plural)        | `NoteUseCases`                     |
+| Domain Service       | PascalCase                              | `TaskExtractor`                    |
+| Persistence Adapter  | PascalCase noun + `Repository`          | `NoteRepository`                   |
+| IPC Adapter          | PascalCase noun + `IPC`                 | `NoteIPC`                          |
+| Other Out Adapter    | Descriptive PascalCase                  | `FileSystemStorage`, `GitClient`, `Embedder`, `Exporter` |
+| DTO                  | PascalCase + `DTO`                      | `CreateNoteDTO`                    |
+| Domain Error         | PascalCase + `Error`                    | `NoteNotFoundError`                |
+
+**Notes:**
+
+- Entity classes use the `Entity` suffix to disambiguate from wire-type DTOs in `@shared/types` that share the bare noun (e.g. domain `NoteEntity` vs shared `Note` DTO). Files keep the bare noun.
+- Persistence adapters omit the tech prefix (e.g. `NoteRepository`, not `DrizzleNoteRepository`) since there is one persistence implementation per repo and no plan to swap. Add a tech prefix only when introducing a parallel implementation (e.g. `InMemoryNoteRepository` for tests).
+- Do NOT use generic suffixes like `Service` for adapters — name by the role they play (`Embedder`, `Exporter`, `GitClient`, `SystemBridge`, `FileWatcher`).
 
 ---
 
@@ -904,6 +913,10 @@ BOTH:
 | Add React behavior       | —                                          | `hooks/`          |
 | Add UI                   | —                                          | `components/`     |
 | Share types              | `shared/types/`                            | `shared/types/`   |
+
+### Settings storage rule
+
+Editor settings, keyboard shortcuts, and any other typed user preferences live **only** in `AppConfig` (`config.json`) via `IAppConfigRepository`. Do **not** add new editor- or shortcut-related rows to the DB `settings` table or `ISettingsRepository`. The DB-backed settings path remains for legacy free-form key/value preferences only; new preference categories should extend `AppConfig` and be managed by typed use cases under `application/usecases/settings/` that emit `settings:changed` domain events with a discriminating `scope`.
 
 ---
 
