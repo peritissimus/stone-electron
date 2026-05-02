@@ -36,15 +36,23 @@ function createMockNoteRepository(): INoteRepository {
 function createMockTopicRepository(): ITopicRepository {
   return {
     findById: vi.fn(),
+    findByName: vi.fn(),
     findAll: vi.fn(),
     findAllWithCounts: vi.fn(),
+    findPredefined: vi.fn(),
     save: vi.fn(),
     delete: vi.fn(),
+    exists: vi.fn(),
     getNotesForTopic: vi.fn(),
     getTopicsForNote: vi.fn(),
+    getTopicsForNotes: vi.fn(),
     assignToNote: vi.fn(),
     removeFromNote: vi.fn(),
+    setTopicsForNote: vi.fn(),
+    clearTopicsForNote: vi.fn(),
+    clearAutoTopicsForNote: vi.fn(),
     updateCentroid: vi.fn(),
+    updateNoteCount: vi.fn(),
   } as unknown as ITopicRepository;
 }
 

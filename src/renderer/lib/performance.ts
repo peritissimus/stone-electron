@@ -224,10 +224,7 @@ export async function measureAsync<T>(name: string, fn: () => Promise<T>): Promi
   }
 }
 
-// Reference to perf data for FPS tracking
-let data: RendererPerformanceData;
-
 // Auto-start monitoring when module loads (can be disabled)
 if (typeof window !== 'undefined') {
-  data = initPerfData();
+  initPerfData();
 }
