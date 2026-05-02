@@ -2,8 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { PRIMARY_DESTINATIONS } from '@renderer/navigation';
 
 describe('navigation/destinations', () => {
-  it('lists Home, Tasks, Graph, Topics as primary destinations', () => {
-    expect(PRIMARY_DESTINATIONS.map((d) => d.id)).toEqual(['home', 'tasks', 'graph', 'topics']);
+  it('lists Home, Journals, Tasks, Graph, Topics as primary destinations', () => {
+    expect(PRIMARY_DESTINATIONS.map((d) => d.id)).toEqual([
+      'home',
+      'journals',
+      'tasks',
+      'graph',
+      'topics',
+    ]);
   });
 
   it('marks each destination active only when pathname matches exactly', () => {

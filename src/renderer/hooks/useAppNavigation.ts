@@ -7,12 +7,13 @@
 
 import { useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { toHome, toTasks, toGraph, toTopics, toNote } from '@renderer/navigation';
+import { toHome, toJournals, toTasks, toGraph, toTopics, toNote } from '@renderer/navigation';
 
-export type AppPage = 'home' | 'tasks' | 'graph' | 'topics';
+export type AppPage = 'home' | 'journals' | 'tasks' | 'graph' | 'topics';
 
 const PAGE_ROUTES: Record<AppPage, string> = {
   home: toHome(),
+  journals: toJournals(),
   tasks: toTasks(),
   graph: toGraph(),
   topics: toTopics(),
@@ -51,6 +52,7 @@ export function useAppNavigation() {
   const getCurrentPage = useCallback((): AppPage | null => {
     const path = location.pathname;
     if (path === '/home' || path === '/') return 'home';
+    if (path === '/journals') return 'journals';
     if (path === '/tasks') return 'tasks';
     if (path === '/graph') return 'graph';
     if (path === '/topics') return 'topics';

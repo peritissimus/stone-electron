@@ -1097,6 +1097,23 @@ span[data-type="task-marker"][data-state="idea"] {
   color: inherit;
 }
 
+/* Inline journal day editor — TipTap mounted per visible day. Strip the
+   editor frame so multiple days flow as one continuous reading column. */
+.journal-day-editor .ProseMirror {
+  outline: none;
+  font-family: var(--font-editor-body);
+  font-size: var(--font-editor-size);
+  line-height: var(--font-editor-line-height);
+}
+
+.journal-day-editor .ProseMirror > :first-child {
+  margin-top: 0;
+}
+
+.journal-day-editor .ProseMirror > :last-child {
+  margin-bottom: 0;
+}
+
 /* Notion-like focus and cursor styles */
 .ProseMirror-focused {
   outline: none;

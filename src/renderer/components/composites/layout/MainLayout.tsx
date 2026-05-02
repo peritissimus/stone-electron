@@ -32,6 +32,7 @@ const ScratchEditor = lazy(() =>
 const HomePage = lazy(() =>
   import('@renderer/components/features/HomePage/HomePage').then((m) => ({ default: m.HomePage })),
 );
+const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
 const TasksPage = lazy(() =>
   import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
 );
@@ -216,7 +217,6 @@ export function MainLayout() {
 
   // Track bootstrap state
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
-  const initialJournalOpenedRef = useRef(false);
 
   // Load initial data
   useEffect(() => {
@@ -312,15 +312,6 @@ export function MainLayout() {
     };
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
-  // Auto-open today's journal on startup
-  useEffect(() => {
-    if (bootstrapComplete && !initialJournalOpenedRef.current && !showRecoveryDialog) {
-      initialJournalOpenedRef.current = true;
-      logger.info("[MainLayout] Auto-opening today's journal");
-      openOrCreateTodayJournal();
-    }
-  }, [bootstrapComplete, showRecoveryDialog, openOrCreateTodayJournal]);
-
   // Keyboard shortcuts
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
@@ -364,7 +355,7 @@ export function MainLayout() {
         mainContent={
           <MainContentArea>
             <Routes>
-              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/" element={<Navigate to="/journals" replace />} />
               <Route
                 path="/home"
                 element={
@@ -375,6 +366,14 @@ export function MainLayout() {
                   ) : (
                     <PageSkeleton />
                   )
+                }
+              />
+              <Route
+                path="/journals"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <JournalsPage />
+                  </Suspense>
                 }
               />
               <Route

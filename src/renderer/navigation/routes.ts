@@ -8,6 +8,7 @@
  */
 
 export const toHome = (): string => '/home';
+export const toJournals = (): string => '/journals';
 export const toTasks = (): string => '/tasks';
 export const toGraph = (): string => '/graph';
 export const toTopics = (): string => '/topics';

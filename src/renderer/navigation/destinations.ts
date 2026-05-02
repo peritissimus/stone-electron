@@ -1,7 +1,7 @@
 import { createElement } from 'react';
-import { House, CheckSquare, Graph, Tag } from 'phosphor-react';
+import { House, BookOpen, CheckSquare, Graph, Tag } from 'phosphor-react';
 import type { NavDescriptor } from './types';
-import { toHome, toTasks, toGraph, toTopics } from './routes';
+import { toHome, toJournals, toTasks, toGraph, toTopics } from './routes';
 
 const exactMatch = (path: string) => (pathname: string) =>
   pathname === path && !pathname.startsWith('/note/');
@@ -13,6 +13,14 @@ export const PRIMARY_DESTINATIONS: readonly NavDescriptor[] = Object.freeze([
     label: 'Home',
     icon: createElement(House, { size: 14 }),
     isActive: exactMatch(toHome()),
+    section: 'primary',
+  },
+  {
+    id: 'journals',
+    path: toJournals(),
+    label: 'Journals',
+    icon: createElement(BookOpen, { size: 14 }),
+    isActive: exactMatch(toJournals()),
     section: 'primary',
   },
   {

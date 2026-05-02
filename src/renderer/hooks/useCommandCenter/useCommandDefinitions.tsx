@@ -7,12 +7,14 @@ import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
-import { useActiveNoteId, useNavigateHome } from '@renderer/navigation';
+import { toJournals, useActiveNoteId, useNavigateHome } from '@renderer/navigation';
+import { useNavigate } from 'react-router-dom';
 import {
   Gear,
   House,
   Plus,
   SidebarSimple,
+  BookOpen,
   Calendar,
   CalendarBlank,
   Briefcase,
@@ -23,6 +25,7 @@ import type { CommandItem } from './types';
 
 export function useCommandDefinitions(query: string) {
   const navigateHome = useNavigateHome();
+  const navigate = useNavigate();
   const notes = useNoteStore((s) => s.notes);
   const activeNoteId = useActiveNoteId();
   const registerCommands = useCommandStore((state) => state.register);
@@ -85,6 +88,16 @@ export function useCommandDefinitions(query: string) {
         shortcut: '⌘⇧H',
         run: () => {
           navigateHome();
+          handleClose();
+        },
+      },
+      {
+        id: 'go-journals',
+        title: 'Journals',
+        subtitle: 'Open journal feed',
+        icon: <BookOpen size={18} />,
+        run: () => {
+          navigate(toJournals());
           handleClose();
         },
       },
@@ -159,6 +172,7 @@ export function useCommandDefinitions(query: string) {
     [
       handleClose,
       navigateHome,
+      navigate,
       openOrCreateTodayJournal,
       openOrCreateYesterdayJournal,
       handleCreateWorkNote,

@@ -9,6 +9,7 @@ import { Navigate } from 'react-router-dom';
 const HomePage = lazy(() =>
   import('@renderer/components/features/HomePage/HomePage').then((m) => ({ default: m.HomePage })),
 );
+const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
 const TasksPage = lazy(() =>
   import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
 );
@@ -55,13 +56,21 @@ const PageSkeleton = () => (
 export const routes = [
   {
     path: '/',
-    element: <Navigate to="/home" replace />,
+    element: <Navigate to="/journals" replace />,
   },
   {
     path: '/home',
     element: (
       <Suspense fallback={<PageSkeleton />}>
         <HomePage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/journals',
+    element: (
+      <Suspense fallback={<PageSkeleton />}>
+        <JournalsPage />
       </Suspense>
     ),
   },

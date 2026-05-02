@@ -31,10 +31,11 @@ function displayInfoForDate(date: Date) {
 }
 
 async function openOrCreateForDate(
-  date: Date,
+  date: Date | string,
   navigate: (id: string) => void,
 ): Promise<string | null> {
-  const response = await journalAPI.openOrCreateForDate(toIsoDate(date));
+  const journalDate = typeof date === 'string' ? date : toIsoDate(date);
+  const response = await journalAPI.openOrCreateForDate(journalDate);
   if (!response.success || !response.data) {
     logger.error('[useJournalActions] journalAPI.openOrCreateForDate failed', response.error);
     return null;
@@ -57,12 +58,18 @@ export function useJournalActions() {
     [navigateToNote],
   );
 
+  const openOrCreateJournalForDate = useCallback(
+    (date: Date | string) => openOrCreateForDate(date, navigateToNote),
+    [navigateToNote],
+  );
+
   const getTodayInfo = useCallback(() => displayInfoForDate(new Date()), []);
   const getYesterdayInfo = useCallback(() => displayInfoForDate(yesterday()), []);
 
   return {
     openOrCreateTodayJournal,
     openOrCreateYesterdayJournal,
+    openOrCreateJournalForDate,
     getTodayInfo,
     getYesterdayInfo,
     navigateToNote,
