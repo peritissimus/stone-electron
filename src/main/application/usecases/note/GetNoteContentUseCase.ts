@@ -6,6 +6,7 @@ import {
   NoteNotFoundError,
 } from '../../../domain';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import { stripFirstHeading } from '../../../shared/utils';
 
 export class GetNoteContentUseCase implements IGetNoteContentUseCase {
   constructor(
@@ -42,26 +43,6 @@ export class GetNoteContentUseCase implements IGetNoteContentUseCase {
       return { content: '' };
     }
 
-    return { content: this.stripFirstHeading(markdown) };
-  }
-
-  private stripFirstHeading(markdown: string): string {
-    const lines = markdown.split('\n');
-    let foundHeading = false;
-    const result: string[] = [];
-
-    for (const line of lines) {
-      if (!foundHeading && /^#\s+.+$/.test(line)) {
-        foundHeading = true;
-        continue;
-      }
-      result.push(line);
-    }
-
-    while (result.length > 0 && result[0].trim() === '') {
-      result.shift();
-    }
-
-    return result.join('\n');
+    return { content: stripFirstHeading(markdown) };
   }
 }

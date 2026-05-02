@@ -164,6 +164,7 @@ export const QUICK_CAPTURE_CHANNELS = {
 // Journal Operations
 export const JOURNAL_CHANNELS = {
   OPEN_OR_CREATE_FOR_DATE: 'journal:openOrCreateForDate',
+  LIST_RANGE: 'journal:listRange',
 } as const;
 
 // Quick Note (slot-based) Operations

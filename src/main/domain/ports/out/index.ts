@@ -25,3 +25,4 @@ export * from './ISettingsRepository';
 export * from './IAppConfigRepository';
 export * from './IFileWatcher';
 export * from './IPerformanceMonitor';
+export * from './IJournalReader';

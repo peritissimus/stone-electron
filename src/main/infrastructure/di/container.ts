@@ -125,6 +125,7 @@ import {
   NoteLinkRepository,
   SettingsRepository,
   AppConfigRepository,
+  JournalReader,
   // Outbound (Secondary) - Storage
   FileSystemStorage,
   // Outbound (Secondary) - Services
@@ -298,6 +299,8 @@ export function createContainer(deps: ContainerDeps): Container {
     getWorkspacePath,
   });
 
+  const journalReader = new JournalReader({ db, fileStorage });
+
   const fileWatcher = new FileWatcher({
     workspaceRepository,
     noteRepository,
@@ -428,6 +431,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // Journal use cases
   const journalUseCases = createJournalUseCases({
     noteRepository,
+    journalReader,
     workspaceRepository,
     fileStorage,
     appConfigRepository,

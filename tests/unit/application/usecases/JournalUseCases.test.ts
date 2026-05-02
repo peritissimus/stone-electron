@@ -10,6 +10,7 @@ import { createJournalUseCases } from '../../../../src/main/application/usecases
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
+import type { IJournalReader } from '../../../../src/main/domain/ports/out/IJournalReader';
 import type { IJournalUseCases } from '../../../../src/main/domain/ports/in/IJournalUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -77,6 +78,12 @@ function createMockAppConfigRepository(): IAppConfigRepository {
   } as unknown as IAppConfigRepository;
 }
 
+function createMockJournalReader(): IJournalReader {
+  return {
+    findRecent: vi.fn().mockResolvedValue([]),
+  };
+}
+
 function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
     id: 'ws-1',
@@ -112,6 +119,7 @@ describe('JournalUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
   let appConfigRepository: IAppConfigRepository;
+  let journalReader: IJournalReader;
   let useCases: IJournalUseCases;
 
   beforeEach(() => {
@@ -119,8 +127,10 @@ describe('JournalUseCases', () => {
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
     appConfigRepository = createMockAppConfigRepository();
+    journalReader = createMockJournalReader();
     useCases = createJournalUseCases({
       noteRepository: noteRepo,
+      journalReader,
       workspaceRepository: workspaceRepo,
       fileStorage,
       appConfigRepository,

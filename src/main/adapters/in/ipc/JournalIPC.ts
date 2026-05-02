@@ -5,6 +5,8 @@
 import { ipcMain } from 'electron';
 import { JOURNAL_CHANNELS } from '@shared/constants/ipcChannels';
 import {
+  ListJournalRangeRequestSchema,
+  type ListJournalRangeResponse,
   OpenOrCreateJournalRequestSchema,
   type OpenOrCreateJournalResponse,
 } from '@shared/schemas';
@@ -32,9 +34,23 @@ export function registerJournalHandlers(deps: JournalIPCDeps): void {
     );
   });
 
+  ipcMain.handle(JOURNAL_CHANNELS.LIST_RANGE, async (_event, rawRequest) => {
+    const request = ListJournalRangeRequestSchema.parse(rawRequest);
+    return handleIpcRequest<ListJournalRangeResponse>(() => journalUseCases.listRange(request), {
+      loggerPrefix: 'JournalIPC',
+      defaultCode: 'JOURNAL_ERROR',
+      errorMap: { ...COMMON_IPC_ERROR_MAP },
+      context: {
+        channel: JOURNAL_CHANNELS.LIST_RANGE,
+        limit: request.limit,
+      },
+    });
+  });
+
   logger.info('[IPC] Journal handlers registered');
 }
 
 export function unregisterJournalHandlers(): void {
   ipcMain.removeHandler(JOURNAL_CHANNELS.OPEN_OR_CREATE_FOR_DATE);
+  ipcMain.removeHandler(JOURNAL_CHANNELS.LIST_RANGE);
 }

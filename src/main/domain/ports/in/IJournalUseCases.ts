@@ -18,8 +18,29 @@ export interface OpenOrCreateJournalForDateResponse {
   created: boolean;
 }
 
+export interface ListJournalRangeRequest {
+  /** Number of recent calendar days to include (going back from today). */
+  limit: number;
+  /** Optional workspace override; defaults to active workspace. */
+  workspaceId?: string;
+}
+
+export interface JournalEntryDTO {
+  date: string;
+  noteId: string | null;
+  exists: boolean;
+  /** Markdown content; null when the entry has no file or is unreadable. */
+  content: string | null;
+}
+
+export interface ListJournalRangeResponse {
+  entries: JournalEntryDTO[];
+}
+
 export interface IJournalUseCases {
   openOrCreateForDate(
     request: OpenOrCreateJournalForDateRequest,
   ): Promise<OpenOrCreateJournalForDateResponse>;
+
+  listRange(request: ListJournalRangeRequest): Promise<ListJournalRangeResponse>;
 }

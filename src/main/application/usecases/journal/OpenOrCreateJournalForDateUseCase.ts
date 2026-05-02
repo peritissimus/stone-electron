@@ -8,21 +8,7 @@ import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher'
 import { NoteEntity } from '../../../domain/entities/Note';
 import { DOMAIN_EVENT_TYPES } from '../../../domain';
 import { logger } from '../../../shared/utils';
-
-function formatJournalDate(date: Date): string {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function parseDate(input: string): Date {
-  const d = new Date(input);
-  if (Number.isNaN(d.getTime())) {
-    throw new Error(`Invalid journal date: ${input}`);
-  }
-  return d;
-}
+import { formatJournalDate, parseJournalDate } from './journalDate';
 
 export class OpenOrCreateJournalForDateUseCase {
   constructor(
@@ -48,7 +34,7 @@ export class OpenOrCreateJournalForDateUseCase {
     const config = await this.appConfigRepository.get();
     const journalFolder = config.notes.locationPolicy.journalFolder;
 
-    const date = parseDate(input.date);
+    const date = parseJournalDate(input.date);
     const dateStr = formatJournalDate(date);
     const journalFilePath = `${journalFolder}/${dateStr}.md`;
 
