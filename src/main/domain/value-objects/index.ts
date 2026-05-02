@@ -9,3 +9,14 @@ export { NotebookId } from './NotebookId';
 export { WorkspaceId } from './WorkspaceId';
 export { FilePath } from './FilePath';
 export { HexColor } from './HexColor';
+export type {
+  AppConfig,
+  AppearanceSettings,
+  AppTheme,
+  AppAccentColor,
+  EditorSettings,
+  ShortcutsConfig,
+  NotesConfig,
+  NoteLocationPolicy,
+  QuickNoteSlotFolders,
+} from './AppConfig';

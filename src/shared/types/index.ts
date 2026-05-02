@@ -1,32 +1,10 @@
 /**
  * Shared Types for Stone Application
  *
- * Implementation Layer - Drizzle-inferred types used at runtime.
- * These types are tightly coupled to the database schema.
- *
- * Notes:
- *   - `src/specs/*` are UI/reference specs (renderer-facing, cross-platform friendly).
- *   - `src/main/domain/*` is the source of truth for backend contracts (ports) and rules.
- *   - `src/shared/types/*` are runtime implementation types for main↔renderer data transfer.
- *
- * Key differences vs specs:
- *   - Timestamps: Date objects (Drizzle) vs UnixTimestamp (specs)
- *   - Property names: snake_case counts vs camelCase (specs)
- *   - Workspace: isActive (impl) vs isDefault (spec reference)
+ * Serializable DTO-style types used across main ↔ renderer boundaries.
+ * This module intentionally does not import from main, renderer, adapters,
+ * infrastructure, or database schema modules.
  */
-
-import {
-  workspaces,
-  notes,
-  notebooks,
-  tags,
-  noteTags,
-  noteLinks,
-  attachments,
-  noteVersions,
-  topics,
-  noteTopics,
-} from '../../main/shared/database/schema';
 
 // IDs
 export type UUID = string & { readonly __brand: 'UUID' };
@@ -34,41 +12,112 @@ export type UUID = string & { readonly __brand: 'UUID' };
 // Timestamps
 export type UnixTimestamp = number;
 
-// Infer types from Drizzle schema
-export type Workspace = typeof workspaces.$inferSelect;
-export type InsertWorkspace = typeof workspaces.$inferInsert;
+// Entity DTOs
+export interface Workspace {
+  id: string;
+  name: string;
+  folderPath: string;
+  isActive: boolean;
+  createdAt: Date;
+  lastAccessedAt: Date;
+}
 
-export type Note = typeof notes.$inferSelect;
-export type InsertNote = typeof notes.$inferInsert;
+export type InsertWorkspace = Partial<Workspace> & Pick<Workspace, 'id' | 'name' | 'folderPath'>;
 
-export type Notebook = typeof notebooks.$inferSelect;
-export type InsertNotebook = typeof notebooks.$inferInsert;
+export interface Note {
+  id: string;
+  title: string | null;
+  filePath: string | null;
+  notebookId: string | null;
+  workspaceId: string | null;
+  isFavorite: boolean;
+  isPinned: boolean;
+  isArchived: boolean;
+  isDeleted: boolean;
+  deletedAt: Date | null;
+  embedding?: unknown;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InsertNote = Partial<Note> & Pick<Note, 'id'>;
+
+export interface Notebook {
+  id: string;
+  name: string;
+  parentId: string | null;
+  workspaceId: string | null;
+  folderPath: string | null;
+  icon: string | null;
+  color: string | null;
+  position: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InsertNotebook = Partial<Notebook> & Pick<Notebook, 'id' | 'name'>;
 
 export interface NotebookWithCount extends Notebook {
   note_count: number;
 }
 
-export type Tag = typeof tags.$inferSelect;
-export type InsertTag = typeof tags.$inferInsert;
+export interface Tag {
+  id: string;
+  name: string;
+  color: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InsertTag = Partial<Tag> & Pick<Tag, 'id' | 'name'>;
 
 export interface TagWithCount extends Tag {
   note_count: number;
 }
-export type NoteTag = typeof noteTags.$inferSelect;
-export type InsertNoteTag = typeof noteTags.$inferInsert;
 
-export type NoteLink = typeof noteLinks.$inferSelect;
-export type InsertNoteLink = typeof noteLinks.$inferInsert;
+export interface NoteTag {
+  noteId: string;
+  tagId: string;
+  createdAt: Date;
+}
 
-export type Topic = typeof topics.$inferSelect;
-export type InsertTopic = typeof topics.$inferInsert;
+export type InsertNoteTag = NoteTag;
+
+export interface NoteLink {
+  sourceNoteId: string;
+  targetNoteId: string;
+  createdAt: Date;
+}
+
+export type InsertNoteLink = NoteLink;
+
+export interface Topic {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  isPredefined: boolean;
+  centroid: Uint8Array | null;
+  noteCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type InsertTopic = Partial<Topic> & Pick<Topic, 'id' | 'name'>;
 
 export interface TopicWithCount extends Topic {
   noteCount: number;
 }
 
-export type NoteTopic = typeof noteTopics.$inferSelect;
-export type InsertNoteTopic = typeof noteTopics.$inferInsert;
+export interface NoteTopic {
+  noteId: string;
+  topicId: string;
+  confidence: number;
+  isManual: boolean;
+  createdAt: Date;
+}
+
+export type InsertNoteTopic = Partial<NoteTopic> & Pick<NoteTopic, 'noteId' | 'topicId'>;
 
 export interface NoteTopicWithDetails extends NoteTopic {
   topicName: string;
@@ -97,11 +146,28 @@ export interface EmbeddingStatus {
   pendingNotes: number;
 }
 
-export type Attachment = typeof attachments.$inferSelect;
-export type InsertAttachment = typeof attachments.$inferInsert;
+export interface Attachment {
+  id: string;
+  noteId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  path: string;
+  createdAt: Date;
+}
 
-export type NoteVersion = typeof noteVersions.$inferSelect;
-export type InsertNoteVersion = typeof noteVersions.$inferInsert;
+export type InsertAttachment = Attachment;
+
+export interface NoteVersion {
+  id: string;
+  noteId: string;
+  title: string;
+  content: string;
+  versionNumber: number;
+  createdAt: Date;
+}
+
+export type InsertNoteVersion = NoteVersion;
 
 // Settings
 export interface Settings {

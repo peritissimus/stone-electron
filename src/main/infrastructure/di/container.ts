@@ -7,6 +7,7 @@
 
 // Shared Layer
 import type { Database } from '@main/shared';
+import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
 
 // Domain Layer - Ports
 import type {
@@ -276,6 +277,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
   const gitClient: IGitClient = new GitClient();
+  const embeddingWorker = createEmbeddingWorker();
 
   // ---------------------------------------------------------------------------
   // Layer 2: Repositories (depend on db, some services)
@@ -309,6 +311,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const embedder: IEmbedder = new Embedder({
     noteRepository,
     markdownProcessor,
+    workerService: embeddingWorker,
   });
 
   const searchEngine: ISearchEngine = new SearchEngine({

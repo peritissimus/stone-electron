@@ -1,4 +1,4 @@
-import type { AppConfig } from '@shared/types/settings';
+import type { AppConfig } from '../../value-objects/AppConfig';
 
 export interface IAppConfigRepository {
   get(): Promise<AppConfig>;
