@@ -19,6 +19,7 @@ import type { ITagRepository } from '../../../../src/main/domain/ports/out/ITagR
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { TagNotFoundError } from '../../../../src/main/domain/errors';
 import type { TagProps } from '../../../../src/main/domain/entities/Tag';
+import { createMockIdGenerator } from './testDoubles';
 
 // Mock factories
 function createMockTagRepository(): ITagRepository {
@@ -66,7 +67,7 @@ describe('TagUseCases', () => {
     beforeEach(() => {
       tagRepo = createMockTagRepository();
       eventPublisher = createMockEventPublisher();
-      useCase = new CreateTagUseCase(tagRepo, eventPublisher);
+      useCase = new CreateTagUseCase(tagRepo, createMockIdGenerator(), eventPublisher);
     });
 
     it('creates tag with name', async () => {

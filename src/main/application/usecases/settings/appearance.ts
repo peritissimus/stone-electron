@@ -1,12 +1,12 @@
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
-import {
-  DEFAULT_APP_CONFIG,
-  type AppearanceSettings,
-  type AppAccentColor,
-  type AppTheme,
-  type FontSettings,
-} from '@shared/types/settings';
+import type {
+  AppearanceSettings,
+  AppAccentColor,
+  AppTheme,
+  FontSettings,
+} from '../../../domain/value-objects/AppConfig';
+import { DEFAULT_APP_CONFIG } from '../../../domain/value-objects/AppConfig';
 
 function publishAppearanceChanged(eventPublisher?: IEventPublisher): void {
   eventPublisher?.publish({

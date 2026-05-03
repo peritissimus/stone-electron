@@ -1,12 +1,11 @@
-import path from 'node:path';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IVersionRepository } from '../../../domain/ports/out/IVersionRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IRestoreVersionUseCase } from '../../../domain/ports/in/IVersionUseCases';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { VersionDiffer } from '../../../domain/services/VersionDiffer';
-import { logger } from '../../../shared/utils';
 
 /**
  * Restore a note to a specific version
@@ -17,6 +16,7 @@ export class RestoreVersionUseCase implements IRestoreVersionUseCase {
     private readonly versionRepository: IVersionRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(noteId: string, versionId: string): Promise<void> {
@@ -40,14 +40,12 @@ export class RestoreVersionUseCase implements IRestoreVersionUseCase {
     }
 
     // Write version content to file
-    const absolutePath = path.join(workspace.folderPath, note.filePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, note.filePath);
     await this.fileStorage.write(absolutePath, version.content);
 
     // Update note - reconstruct entity from props
     const noteEntity = NoteEntity.fromPersistence(note);
     noteEntity.updateTitle(version.title);
     await this.noteRepository.save(noteEntity);
-
-    logger.info(`[VersionUseCases] Restored note ${noteId} to version ${version.versionNumber}`);
   }
 }

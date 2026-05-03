@@ -14,6 +14,7 @@ import type { IVersionUseCases } from '../../../../src/main/domain/ports/in/IVer
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { VersionProps } from '../../../../src/main/domain/entities/Version';
+import { createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -113,6 +114,7 @@ describe('VersionUseCases', () => {
       versionRepository: versionRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
+      pathService: createMockPathService(),
     });
   });
 

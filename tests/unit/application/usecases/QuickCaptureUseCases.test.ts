@@ -14,6 +14,7 @@ import type { IQuickCaptureUseCases } from '../../../../src/main/domain/ports/in
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -133,6 +134,8 @@ describe('QuickCaptureUseCases', () => {
       workspaceRepository: workspaceRepo,
       fileStorage,
       appConfigRepository,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
     });
   });
 

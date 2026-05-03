@@ -3,8 +3,10 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { QuickNoteSlot } from '../../../domain/ports/in/IQuickNoteUseCases';
-import type { QuickNoteSlotFolders } from '@shared/types/settings';
+import type { QuickNoteSlotFolders } from '../../../domain/value-objects/AppConfig';
 import { CreateNoteUseCase } from '../note/CreateNoteUseCase';
 
 function resolveSlotFolder(folders: QuickNoteSlotFolders, slot: QuickNoteSlot): string {
@@ -31,6 +33,8 @@ export class CreateQuickNoteUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -52,6 +56,8 @@ export class CreateQuickNoteUseCase {
       this.workspaceRepository,
       this.fileStorage,
       this.appConfigRepository,
+      this.idGenerator,
+      this.pathService,
       this.eventPublisher,
     );
 

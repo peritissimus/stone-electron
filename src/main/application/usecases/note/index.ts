@@ -4,6 +4,8 @@ import type {
   IMarkdownProcessor,
   IAppConfigRepository,
   INoteUseCases,
+  IIdGenerator,
+  IPathService,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -43,6 +45,8 @@ export interface NoteUseCasesDeps {
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
   appConfigRepository: IAppConfigRepository;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
@@ -53,6 +57,8 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
     fileStorage,
     markdownProcessor,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   } = deps;
 
@@ -62,33 +68,49 @@ export function createNoteUseCases(deps: NoteUseCasesDeps): INoteUseCases {
       workspaceRepository,
       fileStorage,
       appConfigRepository,
+      idGenerator,
+      pathService,
       eventPublisher,
     ),
     updateNote: new UpdateNoteUseCase(
       noteRepository,
       workspaceRepository,
       fileStorage,
+      pathService,
       eventPublisher,
     ),
-    getNote: new GetNoteUseCase(noteRepository, workspaceRepository, fileStorage),
+    getNote: new GetNoteUseCase(noteRepository, workspaceRepository, fileStorage, pathService),
     listNotes: new ListNotesUseCase(noteRepository, workspaceRepository),
     deleteNote: new DeleteNoteUseCase(
       noteRepository,
       workspaceRepository,
       fileStorage,
+      pathService,
       eventPublisher,
     ),
     restoreNote: new RestoreNoteUseCase(noteRepository, eventPublisher),
     moveNote: new MoveNoteUseCase(noteRepository, eventPublisher),
     searchNotes: new SearchNotesUseCase(noteRepository, workspaceRepository),
-    getNoteContent: new GetNoteContentUseCase(noteRepository, workspaceRepository, fileStorage),
-    saveNoteContent: new SaveNoteContentUseCase(noteRepository, workspaceRepository, fileStorage),
+    getNoteContent: new GetNoteContentUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      pathService,
+    ),
+    saveNoteContent: new SaveNoteContentUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      pathService,
+    ),
     getNoteByPath: new GetNoteByPathUseCase(
       noteRepository,
       workspaceRepository,
       fileStorage,
       markdownProcessor,
       appConfigRepository,
+      idGenerator,
+      pathService,
       eventPublisher,
     ),
     toggleFavorite: new ToggleFavoriteUseCase(noteRepository, eventPublisher),

@@ -1,8 +1,8 @@
-import path from 'node:path';
 import {
   type INoteRepository,
   type IFileStorage,
   type ISaveNoteContentUseCase,
+  type IPathService,
   NoteNotFoundError,
 } from '../../../domain';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -12,6 +12,7 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: { id: string; content: string }): Promise<void> {
@@ -31,7 +32,7 @@ export class SaveNoteContentUseCase implements ISaveNoteContentUseCase {
       throw new Error('Workspace not found for note');
     }
 
-    const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, noteProps.filePath);
     const bodyMarkdown = request.content;
     const titleHeading = `# ${noteProps.title}\n\n`;
     const fullMarkdown = titleHeading + bodyMarkdown;

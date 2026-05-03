@@ -35,3 +35,19 @@ export type {
 export { VersionDiffer } from './VersionDiffer';
 
 export { NoteGraphBuilder } from './NoteGraphBuilder';
+export { stripFirstHeading } from './MarkdownTitle';
+export {
+  canonicalizeChord,
+  detectConflicts,
+  formatChord,
+  isReservedChord,
+  parseChord,
+  resolveShortcuts,
+  validateChord,
+} from './ShortcutRules';
+export type {
+  ParsedChord,
+  ResolvedBinding,
+  ResolvedShortcuts,
+  ShortcutConflict,
+} from './ShortcutRules';

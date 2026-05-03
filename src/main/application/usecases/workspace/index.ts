@@ -1,4 +1,6 @@
 import type {
+  IIdGenerator,
+  IPathService,
   IWorkspaceRepository,
   IWorkspaceUseCases,
 } from '../../../domain';
@@ -47,6 +49,8 @@ export interface WorkspaceUseCasesDeps {
   systemBridge: ISystemBridge;
   markdownProcessor: IMarkdownProcessor;
   appConfigRepository: IAppConfigRepository;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
@@ -58,11 +62,13 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     systemBridge,
     markdownProcessor,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   } = deps;
 
   return {
-    createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, eventPublisher),
+    createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, idGenerator, eventPublisher),
     getWorkspace: new GetWorkspaceUseCase(workspaceRepository),
     listWorkspaces: new ListWorkspacesUseCase(workspaceRepository),
     setActiveWorkspace: new SetActiveWorkspaceUseCase(workspaceRepository, eventPublisher),
@@ -71,16 +77,18 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository, eventPublisher),
     selectFolder: new SelectFolderUseCase(systemBridge, appConfigRepository),
     validatePath: new ValidatePathUseCase(systemBridge),
-    createFolder: new CreateFolderUseCase(workspaceRepository, fileStorage),
-    renameFolder: new RenameFolderUseCase(workspaceRepository, fileStorage),
-    deleteFolder: new DeleteFolderUseCase(workspaceRepository, fileStorage),
-    moveFolder: new MoveFolderUseCase(workspaceRepository, fileStorage),
-    scanWorkspace: new ScanWorkspaceUseCase(workspaceRepository, fileStorage),
+    createFolder: new CreateFolderUseCase(workspaceRepository, fileStorage, pathService),
+    renameFolder: new RenameFolderUseCase(workspaceRepository, fileStorage, pathService),
+    deleteFolder: new DeleteFolderUseCase(workspaceRepository, fileStorage, pathService),
+    moveFolder: new MoveFolderUseCase(workspaceRepository, fileStorage, pathService),
+    scanWorkspace: new ScanWorkspaceUseCase(workspaceRepository, fileStorage, pathService),
     syncWorkspace: new SyncWorkspaceUseCase(
       workspaceRepository,
       noteRepository,
       fileStorage,
       markdownProcessor,
+      idGenerator,
+      pathService,
       eventPublisher,
     ),
   };

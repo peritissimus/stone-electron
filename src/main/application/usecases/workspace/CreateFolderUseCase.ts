@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   type IWorkspaceRepository,
   type ICreateFolderUseCase,
   type CreateFolderRequest,
   type CreateFolderResponse,
+  type IPathService,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 
@@ -11,6 +11,7 @@ export class CreateFolderUseCase implements ICreateFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: CreateFolderRequest): Promise<CreateFolderResponse> {
@@ -20,14 +21,14 @@ export class CreateFolderUseCase implements ICreateFolderUseCase {
     }
 
     const basePath = request.parentPath
-      ? path.join(activeWorkspace.folderPath, request.parentPath)
+      ? this.pathService.join(activeWorkspace.folderPath, request.parentPath)
       : activeWorkspace.folderPath;
-    const folderPath = path.join(basePath, request.name);
+    const folderPath = this.pathService.join(basePath, request.name);
 
     await this.fileStorage.createDirectory(folderPath);
 
     // Return relative path from workspace root
-    const relativePath = path.relative(activeWorkspace.folderPath, folderPath);
+    const relativePath = this.pathService.relative(activeWorkspace.folderPath, folderPath);
     return { path: relativePath };
   }
 }

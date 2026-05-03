@@ -1,5 +1,5 @@
-import path from 'node:path';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IReadScratchFileUseCase } from '../../../domain/ports/in/IScratchUseCases';
 
 // Prevent the renderer from pulling a huge file into an in-memory TipTap
@@ -9,11 +9,14 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(['.md', '.markdown']);
 
 export class ReadScratchFileUseCase implements IReadScratchFileUseCase {
-  constructor(private readonly fileStorage: IFileStorage) {}
+  constructor(
+    private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
+  ) {}
 
   async execute(request: { path: string }): Promise<{ path: string; name: string; content: string }> {
-    const abs = path.isAbsolute(request.path) ? request.path : path.resolve(request.path);
-    const ext = path.extname(abs).toLowerCase();
+    const abs = this.pathService.isAbsolute(request.path) ? request.path : this.pathService.resolve(request.path);
+    const ext = this.pathService.extname(abs).toLowerCase();
     if (!ALLOWED_EXTENSIONS.has(ext)) {
       throw new Error(`Unsupported file type for scratch editor: ${ext || '(none)'}`);
     }
@@ -29,6 +32,6 @@ export class ReadScratchFileUseCase implements IReadScratchFileUseCase {
     }
 
     const content = (await this.fileStorage.read(abs)) ?? '';
-    return { path: abs, name: path.basename(abs), content };
+    return { path: abs, name: this.pathService.basename(abs), content };
   }
 }

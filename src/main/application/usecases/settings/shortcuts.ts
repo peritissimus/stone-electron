@@ -2,24 +2,24 @@ import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigR
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { ShortcutsScope } from '../../../domain/ports/in/ISettingsUseCases';
 import { ShortcutConflictError } from '../../../domain/errors';
+import type {
+  AppShortcutAction,
+  ChordBinding,
+  EditorShortcutAction,
+  ShortcutsConfig,
+} from '../../../domain/value-objects/AppConfig';
 import {
   DEFAULT_APP_CONFIG,
-  type AppShortcutAction,
-  type ChordBinding,
-  type EditorShortcutAction,
-  type ShortcutsConfig,
-} from '@shared/types/settings';
-import {
   DEFAULT_APP_SHORTCUTS,
   DEFAULT_EDITOR_SHORTCUTS,
-} from '@shared/constants/defaultShortcuts';
+} from '../../../domain/value-objects/AppConfig';
 import {
   canonicalizeChord,
   detectConflicts,
   isReservedChord,
   resolveShortcuts,
   validateChord,
-} from '@shared/utils/shortcuts';
+} from '../../../domain/services';
 
 const KNOWN_APP_ACTIONS = new Set(Object.keys(DEFAULT_APP_SHORTCUTS) as AppShortcutAction[]);
 const KNOWN_EDITOR_ACTIONS = new Set(

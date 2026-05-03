@@ -2,7 +2,6 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
 import type { IRecomputeCentroidsUseCase } from '../../../domain/ports/in/ITopicUseCases';
 import { SimilarityCalculator } from '../../../domain/services/SimilarityCalculator';
-import { logger } from '../../../shared/utils';
 
 export class RecomputeCentroidsUseCase implements IRecomputeCentroidsUseCase {
   constructor(
@@ -31,7 +30,5 @@ export class RecomputeCentroidsUseCase implements IRecomputeCentroidsUseCase {
         );
       }
     }
-
-    logger.info('[TopicUseCases] Recomputed all topic centroids');
   }
 }

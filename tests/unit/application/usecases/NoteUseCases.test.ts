@@ -30,6 +30,7 @@ import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import { NoteNotFoundError } from '../../../../src/main/domain/errors';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 // Mock factories using type assertions
 function createMockNoteRepository(): INoteRepository {
@@ -147,7 +148,12 @@ describe('NoteUseCases', () => {
       noteRepo = createMockNoteRepository();
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new GetNoteUseCase(noteRepo, workspaceRepo, fileStorage);
+      useCase = new GetNoteUseCase(
+        noteRepo,
+        workspaceRepo,
+        fileStorage,
+        createMockPathService(),
+      );
     });
 
     it('returns note without content by default', async () => {
@@ -209,6 +215,8 @@ describe('NoteUseCases', () => {
         workspaceRepo,
         fileStorage,
         appConfigRepo,
+        createMockIdGenerator(),
+        createMockPathService(),
         eventPublisher,
       );
     });
@@ -263,6 +271,7 @@ describe('NoteUseCases', () => {
         noteRepo,
         workspaceRepo,
         fileStorage,
+        createMockPathService(),
         eventPublisher,
       );
     });
@@ -328,7 +337,13 @@ describe('NoteUseCases', () => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
       eventPublisher = createMockEventPublisher();
-      useCase = new DeleteNoteUseCase(noteRepo, workspaceRepo, fileStorage, eventPublisher);
+      useCase = new DeleteNoteUseCase(
+        noteRepo,
+        workspaceRepo,
+        fileStorage,
+        createMockPathService(),
+        eventPublisher,
+      );
     });
 
     it('soft deletes note by default', async () => {
@@ -403,7 +418,12 @@ describe('NoteUseCases', () => {
       noteRepo = createMockNoteRepository();
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new GetNoteContentUseCase(noteRepo, workspaceRepo, fileStorage);
+      useCase = new GetNoteContentUseCase(
+        noteRepo,
+        workspaceRepo,
+        fileStorage,
+        createMockPathService(),
+      );
     });
 
     it('returns raw markdown body when file exists', async () => {
@@ -463,7 +483,12 @@ describe('NoteUseCases', () => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
       markdownProcessor = createMockMarkdownProcessor();
-      useCase = new SaveNoteContentUseCase(noteRepo, workspaceRepo, fileStorage);
+      useCase = new SaveNoteContentUseCase(
+        noteRepo,
+        workspaceRepo,
+        fileStorage,
+        createMockPathService(),
+      );
     });
 
     it('saves content to file', async () => {
@@ -513,6 +538,8 @@ describe('NoteUseCases', () => {
         fileStorage,
         markdownProcessor,
         appConfigRepo,
+        createMockIdGenerator(),
+        createMockPathService(),
         eventPublisher,
       );
     });

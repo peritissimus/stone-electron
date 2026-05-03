@@ -5,7 +5,7 @@ import type {
   ListJournalRangeRequest,
   ListJournalRangeResponse,
 } from '../../../domain/ports/in/IJournalUseCases';
-import { stripFirstHeading } from '../../../shared/utils';
+import { stripFirstHeading } from '../../../domain/services';
 import { addCalendarDays, formatJournalDate } from './journalDate';
 
 const MAX_LIMIT = 31;

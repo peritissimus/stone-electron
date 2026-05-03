@@ -1,4 +1,4 @@
-import type { ITagRepository, ITagUseCases } from '../../../domain';
+import type { IIdGenerator, ITagRepository, ITagUseCases } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import { CreateTagUseCase } from './CreateTagUseCase';
 import { UpdateTagUseCase } from './UpdateTagUseCase';
@@ -20,14 +20,15 @@ export { GetNoteTagsUseCase } from './GetNoteTagsUseCase';
 
 export interface TagUseCasesDeps {
   tagRepository: ITagRepository;
+  idGenerator: IIdGenerator;
   eventPublisher?: IEventPublisher;
 }
 
 export function createTagUseCases(deps: TagUseCasesDeps): ITagUseCases {
-  const { tagRepository, eventPublisher } = deps;
+  const { tagRepository, idGenerator, eventPublisher } = deps;
 
   return {
-    createTag: new CreateTagUseCase(tagRepository, eventPublisher),
+    createTag: new CreateTagUseCase(tagRepository, idGenerator, eventPublisher),
     updateTag: new UpdateTagUseCase(tagRepository, eventPublisher),
     getTag: new GetTagUseCase(tagRepository),
     listTags: new ListTagsUseCase(tagRepository),

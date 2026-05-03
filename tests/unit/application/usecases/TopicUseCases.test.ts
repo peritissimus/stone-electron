@@ -19,6 +19,7 @@ import type { ITopicUseCases } from '../../../../src/main/domain/ports/in/ITopic
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { TopicProps } from '../../../../src/main/domain/entities/Topic';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -183,6 +184,8 @@ describe('TopicUseCases', () => {
       fileStorage,
       embedder,
       markdownProcessor,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
       eventPublisher,
     });
   });

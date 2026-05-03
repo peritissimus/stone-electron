@@ -5,7 +5,6 @@ import type {
   GitInitRequest,
   GitInitResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class InitGitRepoUseCase implements IInitGitRepoUseCase {
   constructor(
@@ -20,7 +19,6 @@ export class InitGitRepoUseCase implements IInitGitRepoUseCase {
     }
 
     const result = await this.gitClient.init(workspace.folderPath);
-    logger.info(`[GitUseCases] Initialized git repo in workspace ${request.workspaceId}`);
     return { success: result.success };
   }
 }

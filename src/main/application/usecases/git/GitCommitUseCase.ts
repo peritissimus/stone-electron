@@ -5,7 +5,6 @@ import type {
   GitCommitRequest,
   GitCommitResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class GitCommitUseCase implements IGitCommitUseCase {
   constructor(
@@ -31,8 +30,6 @@ export class GitCommitUseCase implements IGitCommitUseCase {
 
     const commits = await this.gitClient.getCommits(workspace.folderPath, 1);
     const latestCommit = commits[0];
-
-    logger.info(`[GitUseCases] Committed changes in workspace ${request.workspaceId}`);
     return {
       hash: latestCommit?.hash || '',
       shortHash: latestCommit?.shortHash || '',

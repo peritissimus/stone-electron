@@ -1,10 +1,10 @@
-import path from 'node:path';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import {
   DOMAIN_EVENT_TYPES,
   type IEventPublisher,
@@ -28,6 +28,7 @@ export class ClassifyNoteUseCase implements IClassifyNoteUseCase {
     private readonly fileStorage: IFileStorage,
     private readonly embedder: IEmbedder,
     private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -51,7 +52,7 @@ export class ClassifyNoteUseCase implements IClassifyNoteUseCase {
       return { noteId, topics: [] };
     }
 
-    const absolutePath = path.join(workspace.folderPath, note.filePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, note.filePath);
     const markdown = await this.fileStorage.read(absolutePath);
     if (!markdown) {
       return { noteId, topics: [] };

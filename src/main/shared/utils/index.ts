@@ -17,4 +17,3 @@ export {
   type HandleRequestOptions,
   type HandleOperationOptions,
 } from './operation';
-export { stripFirstHeading } from './markdownTitle';

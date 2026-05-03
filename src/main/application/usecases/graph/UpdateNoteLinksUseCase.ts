@@ -1,7 +1,6 @@
 import type { IUpdateNoteLinksUseCase } from '../../../domain/ports/in/IGraphUseCases';
 import { LinkExtractor } from '../../../domain/services/LinkExtractor';
 import { NoteLinkEntity } from '../../../domain/entities';
-import { logger } from '../../../shared/utils';
 import type { GraphUseCasesDeps } from './types';
 
 /**
@@ -45,9 +44,5 @@ export class UpdateNoteLinksUseCase implements IUpdateNoteLinksUseCase {
         await noteLinkRepository.save(linkEntity);
       }
     }
-
-    logger.info(
-      `[GraphUseCases] Updated links for note ${noteId}: ${referencedTitles.length} references`,
-    );
   }
 }

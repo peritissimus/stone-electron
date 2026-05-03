@@ -2,6 +2,7 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { ITaskUseCases } from '../../../domain/ports/in/ITaskUseCases';
 import { GetAllTasksUseCase } from './GetAllTasksUseCase';
 import { GetNoteTasksUseCase } from './GetNoteTasksUseCase';
@@ -18,6 +19,7 @@ export interface TaskUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
+  pathService: IPathService;
 }
 
 export function createTaskUseCases(deps: TaskUseCasesDeps): ITaskUseCases {

@@ -14,6 +14,7 @@ import type { IExporter } from '../../../../src/main/domain/ports/out/IExporter'
 import type { IExportUseCases } from '../../../../src/main/domain/ports/in/IExportUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import { createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -110,6 +111,7 @@ describe('ExportUseCases', () => {
       fileStorage,
       markdownProcessor,
       exporter,
+      pathService: createMockPathService(),
     });
   });
 

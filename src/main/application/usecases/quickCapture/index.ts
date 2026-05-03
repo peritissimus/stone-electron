@@ -3,6 +3,8 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IQuickCaptureUseCases } from '../../../domain/ports/in/IQuickCaptureUseCases';
 import { AppendToJournalUseCase } from './AppendToJournalUseCase';
 
@@ -13,17 +15,29 @@ export interface QuickCaptureUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   appConfigRepository: IAppConfigRepository;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
 export function createQuickCaptureUseCases(deps: QuickCaptureUseCasesDeps): IQuickCaptureUseCases {
-  const { noteRepository, workspaceRepository, fileStorage, appConfigRepository, eventPublisher } = deps;
+  const {
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    appConfigRepository,
+    idGenerator,
+    pathService,
+    eventPublisher,
+  } = deps;
 
   const appendToJournalUseCase = new AppendToJournalUseCase(
     noteRepository,
     workspaceRepository,
     fileStorage,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   );
 

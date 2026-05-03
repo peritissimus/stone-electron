@@ -5,7 +5,6 @@ import type {
   GitSetRemoteRequest,
   GitSetRemoteResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class SetGitRemoteUseCase implements ISetGitRemoteUseCase {
   constructor(
@@ -20,9 +19,6 @@ export class SetGitRemoteUseCase implements ISetGitRemoteUseCase {
     }
 
     const result = await this.gitClient.setRemote(workspace.folderPath, request.url, 'origin');
-    logger.info(
-      `[GitUseCases] Set remote origin to ${request.url} in workspace ${request.workspaceId}`,
-    );
     return { success: result.success };
   }
 }

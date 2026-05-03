@@ -9,7 +9,6 @@ import type {
   ClassifyAllResult,
 } from '../../../domain/ports/in/ITopicUseCases';
 import { DOMAIN_EVENT_TYPES } from '../../../domain/ports/out/IEventPublisher';
-import { logger } from '../../../shared/utils';
 
 export class ClassifyAllNotesUseCase implements IClassifyAllNotesUseCase {
   constructor(
@@ -64,13 +63,10 @@ export class ClassifyAllNotesUseCase implements IClassifyAllNotesUseCase {
             failed,
           },
         });
-      } catch (error) {
+      } catch {
         failed++;
-        logger.error(`[TopicUseCases] Failed to classify note ${note.id}:`, error);
       }
     }
-
-    logger.info(`[TopicUseCases] Classified ${processed}/${total} notes (${failed} failed)`);
     return { processed, total, failed };
   }
 }

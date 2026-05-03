@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   type IWorkspaceRepository,
   type IRenameFolderUseCase,
   type RenameFolderRequest,
   type RenameFolderResponse,
+  type IPathService,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 
@@ -11,6 +11,7 @@ export class RenameFolderUseCase implements IRenameFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: RenameFolderRequest): Promise<RenameFolderResponse> {
@@ -23,17 +24,17 @@ export class RenameFolderUseCase implements IRenameFolderUseCase {
       throw new Error('Folder name is required');
     }
 
-    const absolutePath = path.join(activeWorkspace.folderPath, request.path);
+    const absolutePath = this.pathService.join(activeWorkspace.folderPath, request.path);
     const exists = await this.fileStorage.exists(absolutePath);
     if (!exists) {
       throw new Error(`Folder does not exist: ${request.path}`);
     }
 
-    const parentDir = path.dirname(absolutePath);
-    const newAbsolutePath = path.join(parentDir, request.name);
+    const parentDir = this.pathService.dirname(absolutePath);
+    const newAbsolutePath = this.pathService.join(parentDir, request.name);
     await this.fileStorage.rename(absolutePath, newAbsolutePath);
 
-    const newRelativePath = path.relative(activeWorkspace.folderPath, newAbsolutePath);
+    const newRelativePath = this.pathService.relative(activeWorkspace.folderPath, newAbsolutePath);
     return { oldPath: request.path, newPath: newRelativePath };
   }
 }

@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { generateId } from '@shared/utils/id';
 import {
   NoteEntity,
   type NoteProps,
@@ -8,6 +6,8 @@ import {
   type IMarkdownProcessor,
   type IAppConfigRepository,
   type IGetNoteByPathUseCase,
+  type IIdGenerator,
+  type IPathService,
   NoteNotFoundError,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
@@ -21,6 +21,8 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
     private readonly fileStorage: IFileStorage,
     private readonly markdownProcessor: IMarkdownProcessor,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -40,7 +42,7 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
       throw new NoteNotFoundError(`file:${request.filePath} (workspace:${workspaceId})`);
     }
 
-    const absolutePath = path.join(workspace.folderPath, request.filePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, request.filePath);
     const fileExists = await this.fileStorage.exists(absolutePath);
 
     if (!fileExists) {
@@ -48,7 +50,7 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
     }
 
     const fileContent = await this.fileStorage.read(absolutePath);
-    const filenameWithoutExt = path.basename(request.filePath, '.md');
+    const filenameWithoutExt = this.pathService.basename(request.filePath, '.md');
 
     const config = await this.appConfigRepository.get();
     const journalFolder = config.notes.locationPolicy.journalFolder;
@@ -63,7 +65,7 @@ export class GetNoteByPathUseCase implements IGetNoteByPathUseCase {
     }
 
     const note = NoteEntity.create({
-      id: generateId(),
+      id: this.idGenerator.generate(),
       title,
       filePath: request.filePath,
       workspaceId: workspace.id,

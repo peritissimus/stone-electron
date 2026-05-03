@@ -13,6 +13,7 @@ import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/I
 import type { ITaskUseCases } from '../../../../src/main/domain/ports/in/ITaskUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import { createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -97,6 +98,7 @@ describe('TaskUseCases', () => {
       workspaceRepository: workspaceRepo,
       fileStorage,
       markdownProcessor,
+      pathService: createMockPathService(),
     });
   });
 

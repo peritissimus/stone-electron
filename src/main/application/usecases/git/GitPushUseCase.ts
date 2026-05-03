@@ -5,7 +5,6 @@ import type {
   GitPushRequest,
   GitPushResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class GitPushUseCase implements IGitPushUseCase {
   constructor(
@@ -20,7 +19,6 @@ export class GitPushUseCase implements IGitPushUseCase {
     }
 
     const result = await this.gitClient.push(workspace.folderPath);
-    logger.info(`[GitUseCases] Pushed changes in workspace ${request.workspaceId}`);
     return { success: result.success, error: result.error };
   }
 }

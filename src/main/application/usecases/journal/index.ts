@@ -4,6 +4,8 @@ import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IJournalReader } from '../../../domain/ports/out/IJournalReader';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type {
   IJournalUseCases,
   ListJournalRangeRequest,
@@ -21,6 +23,8 @@ export interface JournalUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   appConfigRepository: IAppConfigRepository;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
@@ -30,6 +34,8 @@ export function createJournalUseCases(deps: JournalUseCasesDeps): IJournalUseCas
     deps.workspaceRepository,
     deps.fileStorage,
     deps.appConfigRepository,
+    deps.idGenerator,
+    deps.pathService,
     deps.eventPublisher,
   );
   const listRange = new ListJournalRangeUseCase(

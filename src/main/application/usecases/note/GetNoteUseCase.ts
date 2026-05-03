@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   type NoteProps,
   type INoteRepository,
   type IFileStorage,
   type IGetNoteUseCase,
+  type IPathService,
   NoteNotFoundError,
 } from '../../../domain';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
@@ -13,6 +13,7 @@ export class GetNoteUseCase implements IGetNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: {
@@ -31,7 +32,7 @@ export class GetNoteUseCase implements IGetNoteUseCase {
       const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
 
       if (workspace) {
-        const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+        const absolutePath = this.pathService.join(workspace.folderPath, noteProps.filePath);
         const exists = await this.fileStorage.exists(absolutePath);
         if (exists) {
           const markdown = await this.fileStorage.read(absolutePath);

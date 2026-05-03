@@ -1,10 +1,10 @@
-import { generateId } from '@shared/utils/id';
 import {
   WorkspaceEntity,
   type IWorkspaceRepository,
   type ICreateWorkspaceUseCase,
   type CreateWorkspaceRequest,
   type CreateWorkspaceResponse,
+  type IIdGenerator,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
@@ -12,12 +12,13 @@ import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher'
 export class CreateWorkspaceUseCase implements ICreateWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
+    private readonly idGenerator: IIdGenerator,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
   async execute(request: CreateWorkspaceRequest): Promise<CreateWorkspaceResponse> {
     const workspace = WorkspaceEntity.create({
-      id: generateId(),
+      id: this.idGenerator.generate(),
       name: request.name,
       folderPath: request.folderPath,
       isActive: false,

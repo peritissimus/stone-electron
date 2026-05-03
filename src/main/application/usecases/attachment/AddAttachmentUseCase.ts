@@ -1,11 +1,10 @@
-import path from 'node:path';
-import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IAttachmentRepository } from '../../../domain/ports/out/IAttachmentRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import { AttachmentEntity } from '../../../domain/entities/Attachment';
-import { logger } from '../../../shared/utils';
 
 export interface AddAttachmentResult {
   id: string;
@@ -26,6 +25,8 @@ export class AddAttachmentUseCase {
     private readonly attachmentRepository: IAttachmentRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(noteId: string, filePath: string, filename?: string): Promise<AddAttachmentResult> {
@@ -39,17 +40,17 @@ export class AddAttachmentUseCase {
       throw new Error(`Workspace not found: ${note.workspaceId}`);
     }
 
-    const originalName = filename || path.basename(filePath);
-    const ext = path.extname(originalName);
-    const uniqueFilename = `${crypto.randomUUID()}${ext}`;
+    const originalName = filename || this.pathService.basename(filePath);
+    const ext = this.pathService.extname(originalName);
+    const uniqueFilename = `${this.idGenerator.generate()}${ext}`;
     const mimeType = AddAttachmentUseCase.getMimeType(ext);
 
     // Create attachments directory
-    const attachmentsDir = path.join(workspace.folderPath, '.attachments', noteId);
+    const attachmentsDir = this.pathService.join(workspace.folderPath, '.attachments', noteId);
     await this.fileStorage.createDirectory(attachmentsDir);
 
     // Copy file to attachments directory
-    const destPath = path.join(attachmentsDir, uniqueFilename);
+    const destPath = this.pathService.join(attachmentsDir, uniqueFilename);
     await this.fileStorage.copy(filePath, destPath);
 
     // Get file info
@@ -57,17 +58,15 @@ export class AddAttachmentUseCase {
 
     // Create attachment entity
     const attachment = AttachmentEntity.create({
-      id: crypto.randomUUID(),
+      id: this.idGenerator.generate(),
       noteId,
       filename: uniqueFilename,
       mimeType,
       size: fileInfo?.size || 0,
-      path: path.relative(workspace.folderPath, destPath),
+      path: this.pathService.relative(workspace.folderPath, destPath),
     });
 
     await this.attachmentRepository.save(attachment);
-
-    logger.info(`[AttachmentUseCases] Added attachment ${attachment.id} to note ${noteId}`);
 
     return {
       id: attachment.id,

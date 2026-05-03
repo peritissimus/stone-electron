@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   type IWorkspaceRepository,
   type IMoveFolderUseCase,
   type MoveFolderRequest,
   type MoveFolderResponse,
+  type IPathService,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 
@@ -11,6 +11,7 @@ export class MoveFolderUseCase implements IMoveFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: MoveFolderRequest): Promise<MoveFolderResponse> {
@@ -23,26 +24,26 @@ export class MoveFolderUseCase implements IMoveFolderUseCase {
       throw new Error('Source path is required');
     }
 
-    const sourceAbsolutePath = path.join(activeWorkspace.folderPath, request.sourcePath);
+    const sourceAbsolutePath = this.pathService.join(activeWorkspace.folderPath, request.sourcePath);
     const exists = await this.fileStorage.exists(sourceAbsolutePath);
     if (!exists) {
       throw new Error(`Folder does not exist: ${request.sourcePath}`);
     }
 
-    const folderName = path.basename(request.sourcePath);
+    const folderName = this.pathService.basename(request.sourcePath);
     const destParent = request.destinationPath
-      ? path.join(activeWorkspace.folderPath, request.destinationPath)
+      ? this.pathService.join(activeWorkspace.folderPath, request.destinationPath)
       : activeWorkspace.folderPath;
-    const destAbsolutePath = path.join(destParent, folderName);
+    const destAbsolutePath = this.pathService.join(destParent, folderName);
 
     // Prevent moving a folder into itself
-    if (destAbsolutePath.startsWith(sourceAbsolutePath + path.sep)) {
+    if (destAbsolutePath.startsWith(sourceAbsolutePath + this.pathService.separator)) {
       throw new Error('Cannot move a folder into itself');
     }
 
     await this.fileStorage.rename(sourceAbsolutePath, destAbsolutePath);
 
-    const newRelativePath = path.relative(activeWorkspace.folderPath, destAbsolutePath);
+    const newRelativePath = this.pathService.relative(activeWorkspace.folderPath, destAbsolutePath);
     return { oldPath: request.sourcePath, newPath: newRelativePath };
   }
 }

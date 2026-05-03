@@ -31,6 +31,8 @@ import type {
   IExporter,
   ISystemBridge,
   IGitClient,
+  IIdGenerator,
+  IPathService,
   // Inbound Ports (Use Cases)
   INoteUseCases,
   INotebookUseCases,
@@ -135,6 +137,8 @@ import {
   Exporter,
   SystemBridge,
   GitClient,
+  CryptoIdGenerator,
+  NodePathService,
   FileWatcher,
   getPerformanceMonitor,
   // Outbound (Secondary) - Events
@@ -183,6 +187,8 @@ export interface Container {
   exporter: IExporter;
   systemBridge: ISystemBridge;
   gitClient: IGitClient;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   fileWatcher: FileWatcher;
 
   // Use Cases - Core
@@ -278,6 +284,8 @@ export function createContainer(deps: ContainerDeps): Container {
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
   const gitClient: IGitClient = new GitClient();
+  const idGenerator: IIdGenerator = new CryptoIdGenerator();
+  const pathService: IPathService = new NodePathService();
   const embeddingWorker = createEmbeddingWorker();
 
   // ---------------------------------------------------------------------------
@@ -332,11 +340,14 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
     markdownProcessor,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
   const notebookUseCases = createNotebookUseCases({
     notebookRepository,
+    idGenerator,
     eventPublisher,
   });
 
@@ -347,11 +358,14 @@ export function createContainer(deps: ContainerDeps): Container {
     systemBridge,
     markdownProcessor,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
   const tagUseCases = createTagUseCases({
     tagRepository,
+    idGenerator,
     eventPublisher,
   });
 
@@ -367,6 +381,7 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     markdownProcessor,
+    pathService,
   });
 
   // Graph use cases
@@ -383,6 +398,7 @@ export function createContainer(deps: ContainerDeps): Container {
     versionRepository,
     workspaceRepository,
     fileStorage,
+    pathService,
   });
 
   // Topic use cases
@@ -394,6 +410,8 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
     embedder,
     markdownProcessor,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
@@ -403,6 +421,8 @@ export function createContainer(deps: ContainerDeps): Container {
     attachmentRepository,
     workspaceRepository,
     fileStorage,
+    idGenerator,
+    pathService,
   });
 
   // Git use cases
@@ -425,6 +445,8 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
@@ -435,6 +457,8 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
@@ -444,6 +468,8 @@ export function createContainer(deps: ContainerDeps): Container {
     workspaceRepository,
     fileStorage,
     appConfigRepository,
+    idGenerator,
+    pathService,
     eventPublisher,
   });
 
@@ -451,6 +477,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const scratchUseCases = createScratchUseCases({
     fileStorage,
     systemBridge,
+    pathService,
   });
 
   // Export use cases
@@ -460,6 +487,7 @@ export function createContainer(deps: ContainerDeps): Container {
     fileStorage,
     markdownProcessor,
     exporter,
+    pathService,
   });
 
   // System use cases
@@ -508,6 +536,8 @@ export function createContainer(deps: ContainerDeps): Container {
     exporter,
     systemBridge,
     gitClient,
+    idGenerator,
+    pathService,
     fileWatcher,
 
     // Use Cases - Core

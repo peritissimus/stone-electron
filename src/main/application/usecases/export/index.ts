@@ -3,6 +3,7 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
 import type { IExporter } from '../../../domain/ports/out/IExporter';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IExportUseCases } from '../../../domain/ports/in/IExportUseCases';
 import { ExportHtmlUseCase } from './ExportHtmlUseCase';
 import { ExportPdfUseCase } from './ExportPdfUseCase';
@@ -18,10 +19,12 @@ export interface ExportUseCasesDeps {
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
   exporter: IExporter;
+  pathService: IPathService;
 }
 
 export function createExportUseCases(deps: ExportUseCasesDeps): IExportUseCases {
-  const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exporter } = deps;
+  const { noteRepository, workspaceRepository, fileStorage, markdownProcessor, exporter, pathService } =
+    deps;
 
   return {
     exportHtml: new ExportHtmlUseCase(
@@ -30,6 +33,7 @@ export function createExportUseCases(deps: ExportUseCasesDeps): IExportUseCases 
       fileStorage,
       markdownProcessor,
       exporter,
+      pathService,
     ),
     exportPdf: new ExportPdfUseCase(
       noteRepository,
@@ -37,7 +41,13 @@ export function createExportUseCases(deps: ExportUseCasesDeps): IExportUseCases 
       fileStorage,
       markdownProcessor,
       exporter,
+      pathService,
     ),
-    exportMarkdown: new ExportMarkdownUseCase(noteRepository, workspaceRepository, fileStorage),
+    exportMarkdown: new ExportMarkdownUseCase(
+      noteRepository,
+      workspaceRepository,
+      fileStorage,
+      pathService,
+    ),
   };
 }

@@ -2,6 +2,8 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IAttachmentRepository } from '../../../domain/ports/out/IAttachmentRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IAttachmentUseCases } from '../../../domain/ports/in/IAttachmentUseCases';
 import { AddAttachmentUseCase } from './AddAttachmentUseCase';
 import { DeleteAttachmentUseCase } from './DeleteAttachmentUseCase';
@@ -18,22 +20,34 @@ export interface AttachmentUseCasesDeps {
   attachmentRepository: IAttachmentRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
 }
 
 export function createAttachmentUseCases(deps: AttachmentUseCasesDeps): IAttachmentUseCases {
-  const { noteRepository, attachmentRepository, workspaceRepository, fileStorage } = deps;
+  const {
+    noteRepository,
+    attachmentRepository,
+    workspaceRepository,
+    fileStorage,
+    idGenerator,
+    pathService,
+  } = deps;
 
   const addAttachmentUseCase = new AddAttachmentUseCase(
     noteRepository,
     attachmentRepository,
     workspaceRepository,
     fileStorage,
+    idGenerator,
+    pathService,
   );
   const deleteAttachmentUseCase = new DeleteAttachmentUseCase(
     noteRepository,
     attachmentRepository,
     workspaceRepository,
     fileStorage,
+    pathService,
   );
   const getAttachmentsUseCase = new GetAttachmentsUseCase(attachmentRepository);
   const uploadImageUseCase = new UploadImageUseCase(
@@ -41,6 +55,8 @@ export function createAttachmentUseCases(deps: AttachmentUseCasesDeps): IAttachm
     workspaceRepository,
     fileStorage,
     addAttachmentUseCase,
+    idGenerator,
+    pathService,
   );
 
   return {

@@ -4,6 +4,16 @@
  * Defines the contract for settings operations.
  */
 
+import type {
+  AppearanceSettings,
+  AppAccentColor,
+  AppTheme,
+  ChordBinding,
+  EditorSettings,
+  FontSettings,
+  ShortcutsConfig,
+} from '../../value-objects/AppConfig';
+
 export interface SettingDTO {
   key: string;
   value: string;
@@ -23,19 +33,19 @@ export interface IGetAllSettingsUseCase {
 }
 
 export interface IGetAppearanceSettingsUseCase {
-  execute(): Promise<import('@shared/types/settings').AppearanceSettings>;
+  execute(): Promise<AppearanceSettings>;
 }
 
 export interface ISetThemeUseCase {
-  execute(request: { theme: import('@shared/types/settings').AppTheme }): Promise<void>;
+  execute(request: { theme: AppTheme }): Promise<void>;
 }
 
 export interface ISetAccentColorUseCase {
-  execute(request: { accentColor: import('@shared/types/settings').AppAccentColor }): Promise<void>;
+  execute(request: { accentColor: AppAccentColor }): Promise<void>;
 }
 
 export interface IUpdateFontSettingsUseCase {
-  execute(request: { fontSettings: Partial<import('@shared/types/settings').FontSettings> }): Promise<void>;
+  execute(request: { fontSettings: Partial<FontSettings> }): Promise<void>;
 }
 
 export interface IResetFontSettingsUseCase {
@@ -45,17 +55,17 @@ export interface IResetFontSettingsUseCase {
 // ----- editor settings -----
 
 export interface IGetEditorSettingsUseCase {
-  execute(): Promise<import('@shared/types/settings').EditorSettings>;
+  execute(): Promise<EditorSettings>;
 }
 
 export interface IUpdateEditorSettingsUseCase {
   execute(request: {
-    editor: Partial<import('@shared/types/settings').EditorSettings>;
-  }): Promise<import('@shared/types/settings').EditorSettings>;
+    editor: Partial<EditorSettings>;
+  }): Promise<EditorSettings>;
 }
 
 export interface IResetEditorSettingsUseCase {
-  execute(): Promise<import('@shared/types/settings').EditorSettings>;
+  execute(): Promise<EditorSettings>;
 }
 
 // ----- shortcuts -----
@@ -63,28 +73,26 @@ export interface IResetEditorSettingsUseCase {
 export type ShortcutsScope = 'app' | 'editor';
 
 export interface IGetShortcutsUseCase {
-  execute(): Promise<import('@shared/types/settings').ShortcutsConfig>;
+  execute(): Promise<ShortcutsConfig>;
 }
 
 export interface ISetShortcutUseCase {
   execute(request: {
     scope: ShortcutsScope;
     action: string;
-    binding:
-      | import('@shared/types/settings').ChordBinding
-      | import('@shared/types/settings').ChordBinding[];
-  }): Promise<import('@shared/types/settings').ShortcutsConfig>;
+    binding: ChordBinding | ChordBinding[];
+  }): Promise<ShortcutsConfig>;
 }
 
 export interface IResetShortcutUseCase {
   execute(request: {
     scope: ShortcutsScope;
     action: string;
-  }): Promise<import('@shared/types/settings').ShortcutsConfig>;
+  }): Promise<ShortcutsConfig>;
 }
 
 export interface IResetAllShortcutsUseCase {
-  execute(): Promise<import('@shared/types/settings').ShortcutsConfig>;
+  execute(): Promise<ShortcutsConfig>;
 }
 
 /**

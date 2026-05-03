@@ -5,7 +5,6 @@ import type {
   GitSyncRequest,
   GitSyncResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class GitSyncUseCase implements IGitSyncUseCase {
   constructor(
@@ -23,7 +22,6 @@ export class GitSyncUseCase implements IGitSyncUseCase {
       workspace.folderPath,
       request.message || `Sync: ${new Date().toISOString()}`,
     );
-    logger.info(`[GitUseCases] Synced workspace ${request.workspaceId}`);
     return {
       success: result.success,
       pulled: 0,

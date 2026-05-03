@@ -4,7 +4,6 @@ import {
   type IEventPublisher,
 } from '../../../domain/ports/out/IEventPublisher';
 import type { IAssignTopicToNoteUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { logger } from '../../../shared/utils';
 
 export class AssignTopicToNoteUseCase implements IAssignTopicToNoteUseCase {
   constructor(
@@ -27,6 +26,5 @@ export class AssignTopicToNoteUseCase implements IAssignTopicToNoteUseCase {
         isManual: true,
       },
     });
-    logger.info(`[TopicUseCases] Assigned topic ${topicId} to note ${noteId}`);
   }
 }

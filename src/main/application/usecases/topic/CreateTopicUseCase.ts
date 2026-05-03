@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
 import {
   DOMAIN_EVENT_TYPES,
   type IEventPublisher,
@@ -13,6 +13,7 @@ import { TopicEntity } from '../../../domain/entities/Topic';
 export class CreateTopicUseCase implements ICreateTopicUseCase {
   constructor(
     private readonly topicRepository: ITopicRepository,
+    private readonly idGenerator: IIdGenerator,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -22,7 +23,7 @@ export class CreateTopicUseCase implements ICreateTopicUseCase {
     color?: string;
   }): Promise<TopicDTO> {
     const topic = TopicEntity.create({
-      id: crypto.randomUUID(),
+      id: this.idGenerator.generate(),
       name: data.name,
       description: data.description || '',
       color: data.color || '#6366f1',

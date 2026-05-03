@@ -1,13 +1,12 @@
-import path from 'node:path';
-import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { DOMAIN_EVENT_TYPES } from '../../../domain';
-import { logger } from '../../../shared/utils';
 import { formatJournalDate, parseJournalDate } from './journalDate';
 
 export class OpenOrCreateJournalForDateUseCase {
@@ -16,6 +15,8 @@ export class OpenOrCreateJournalForDateUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -43,17 +44,17 @@ export class OpenOrCreateJournalForDateUseCase {
       return { noteId: existing.id, created: false };
     }
 
-    const absolutePath = path.join(workspace.folderPath, journalFilePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, journalFilePath);
     const fileExists = await this.fileStorage.exists(absolutePath);
 
     if (!fileExists) {
-      const journalDir = path.join(workspace.folderPath, journalFolder);
+      const journalDir = this.pathService.join(workspace.folderPath, journalFolder);
       await this.fileStorage.createDirectory(journalDir);
       await this.fileStorage.write(absolutePath, `# ${dateStr}\n\n`);
     }
 
     const note = NoteEntity.create({
-      id: crypto.randomUUID(),
+      id: this.idGenerator.generate(),
       title: dateStr,
       workspaceId: workspace.id,
     });
@@ -69,8 +70,6 @@ export class OpenOrCreateJournalForDateUseCase {
       timestamp: new Date(),
       payload: { id: note.id },
     });
-
-    logger.info(`[Journal] ${fileExists ? 'Indexed existing' : 'Created'} journal ${note.id}`);
     return { noteId: note.id, created: !fileExists };
   }
 }

@@ -1,10 +1,10 @@
-import path from 'node:path';
 import {
   NoteEntity,
   type NoteProps,
   type INoteRepository,
   type IFileStorage,
   type IUpdateNoteUseCase,
+  type IPathService,
   NoteNotFoundError,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
@@ -16,6 +16,7 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -59,7 +60,7 @@ export class UpdateNoteUseCase implements IUpdateNoteUseCase {
         throw new Error('Workspace not found for note');
       }
 
-      const absolutePath = path.join(workspace.folderPath, note.filePath);
+      const absolutePath = this.pathService.join(workspace.folderPath, note.filePath);
       const bodyMarkdown = request.content;
       const titleHeading = `# ${note.title}\n\n`;
       const fullMarkdown = titleHeading + bodyMarkdown;

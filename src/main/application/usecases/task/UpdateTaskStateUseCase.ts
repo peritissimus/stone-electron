@@ -1,16 +1,16 @@
-import path from 'node:path';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IUpdateTaskStateUseCase } from '../../../domain/ports/in/ITaskUseCases';
 import { TaskExtractor, type TaskState } from '../../../domain/services/TaskExtractor';
 import { NoteEntity } from '../../../domain/entities/Note';
-import { logger } from '../../../shared/utils';
 
 export interface UpdateTaskStateUseCaseDeps {
   noteRepository: INoteRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
+  pathService: IPathService;
 }
 
 /**
@@ -36,7 +36,7 @@ export class UpdateTaskStateUseCase implements IUpdateTaskStateUseCase {
       throw new Error(`Workspace not found: ${note.workspaceId}`);
     }
 
-    const absolutePath = path.join(workspace.folderPath, note.filePath);
+    const absolutePath = this.deps.pathService.join(workspace.folderPath, note.filePath);
     const markdown = await fileStorage.read(absolutePath);
     if (!markdown) {
       throw new Error('Could not read note content');
@@ -54,7 +54,5 @@ export class UpdateTaskStateUseCase implements IUpdateTaskStateUseCase {
     // Update note timestamp - reconstruct entity from props
     const noteEntity = NoteEntity.fromPersistence(note);
     await noteRepository.save(noteEntity);
-
-    logger.info(`[TaskUseCases] Updated task ${taskIndex} in note ${noteId} to ${newState}`);
   }
 }

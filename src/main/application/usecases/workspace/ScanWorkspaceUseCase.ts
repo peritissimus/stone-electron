@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   type IWorkspaceRepository,
   type IScanWorkspaceUseCase,
   type ScanWorkspaceRequest,
   type ScanWorkspaceResponse,
+  type IPathService,
   WorkspaceNotFoundError,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
@@ -12,6 +12,7 @@ export class ScanWorkspaceUseCase implements IScanWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: ScanWorkspaceRequest): Promise<ScanWorkspaceResponse> {
@@ -26,7 +27,7 @@ export class ScanWorkspaceUseCase implements IScanWorkspaceUseCase {
     // Build files array with relativePath and absolute path
     const files: ScanWorkspaceResponse['files'] = markdownPaths.map((relativePath) => ({
       relativePath: relativePath.replace(/\\/g, '/'), // Normalize to posix
-      path: path.join(workspace.folderPath, relativePath),
+      path: this.pathService.join(workspace.folderPath, relativePath),
     }));
 
     // Build folder structure tree
@@ -58,7 +59,7 @@ export class ScanWorkspaceUseCase implements IScanWorkspaceUseCase {
     basePath: string,
     relativePath: string,
   ): Promise<ScanWorkspaceResponse['structure']> {
-    const currentPath = relativePath ? path.join(basePath, relativePath) : basePath;
+    const currentPath = relativePath ? this.pathService.join(basePath, relativePath) : basePath;
     const items = await this.fileStorage.listFiles(currentPath);
 
     const result: ScanWorkspaceResponse['structure'] = [];

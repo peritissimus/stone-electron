@@ -15,6 +15,7 @@ import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out
 import type { IQuickNoteUseCases } from '../../../../src/main/domain/ports/in/IQuickNoteUseCases';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 function createMockNoteRepository(): INoteRepository {
   return {
@@ -110,6 +111,8 @@ describe('QuickNoteUseCases', () => {
       workspaceRepository: workspaceRepo,
       fileStorage,
       appConfigRepository,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
     });
   });
 

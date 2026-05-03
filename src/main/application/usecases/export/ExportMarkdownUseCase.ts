@@ -1,19 +1,19 @@
-import path from 'node:path';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type {
   IExportMarkdownUseCase,
   ExportOptions,
   ExportResult,
 } from '../../../domain/ports/in/IExportUseCases';
-import { logger } from '../../../shared/utils';
 
 export class ExportMarkdownUseCase implements IExportMarkdownUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(noteId: string, options?: ExportOptions): Promise<ExportResult> {
@@ -27,7 +27,7 @@ export class ExportMarkdownUseCase implements IExportMarkdownUseCase {
       throw new Error(`Workspace not found: ${note.workspaceId}`);
     }
 
-    const absolutePath = path.join(workspace.folderPath, note.filePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, note.filePath);
     let markdown = await this.fileStorage.read(absolutePath);
     if (!markdown) {
       throw new Error('Could not read note content');
@@ -48,8 +48,6 @@ export class ExportMarkdownUseCase implements IExportMarkdownUseCase {
     }
 
     const filename = `${note.title || 'note'}.md`;
-
-    logger.info(`[ExportUseCases] Exported note ${noteId} to Markdown`);
 
     return {
       content: markdown,

@@ -17,6 +17,20 @@ export interface FontSettings {
   monoFontSize: number;
 }
 
+export const DEFAULT_FONT_SETTINGS: FontSettings = {
+  uiFont:
+    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  uiFontSize: 13,
+  editorHeadingFont:
+    '"Barlow Semi Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  editorBodyFont:
+    'Barlow, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  editorFontSize: 16,
+  editorLineHeight: 1.65,
+  monoFont: '"Fira Code", "SF Mono", ui-monospace, Menlo, Monaco, monospace',
+  monoFontSize: 14,
+};
+
 export type AppTheme = 'light' | 'dark' | 'system';
 
 export type AppAccentColor = 'blue' | 'purple' | 'pink' | 'red' | 'orange' | 'green' | 'teal';
@@ -26,6 +40,12 @@ export interface AppearanceSettings {
   accentColor: AppAccentColor;
   fontSettings: FontSettings;
 }
+
+export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
+  theme: 'system',
+  accentColor: 'blue',
+  fontSettings: DEFAULT_FONT_SETTINGS,
+};
 
 export interface WorkspaceConfig {
   defaultWorkspacePath: string;
@@ -72,6 +92,38 @@ export interface EditorSettings {
   codeBlock: EditorCodeBlockConfig;
 }
 
+export const DEFAULT_EDITOR_SETTINGS: EditorSettings = {
+  behavior: {
+    placeholder: 'Type / for commands, or start writing...',
+    defaultMode: 'rich',
+  },
+  indent: {
+    types: ['paragraph', 'heading'],
+    maxIndent: 8,
+  },
+  table: {
+    resizable: false,
+    allowNodeSelection: true,
+  },
+  task: {
+    states: [
+      { value: 'todo', label: 'TODO' },
+      { value: 'doing', label: 'DOING' },
+      { value: 'waiting', label: 'WAIT', shortLabel: 'WAIT' },
+      { value: 'hold', label: 'HOLD' },
+      { value: 'done', label: 'DONE', done: true },
+      { value: 'canceled', label: 'CANCELED', done: true, shortLabel: 'CAN' },
+      { value: 'idea', label: 'IDEA' },
+    ],
+    defaultState: 'todo',
+    doneStates: ['done', 'canceled'],
+    nested: true,
+  },
+  codeBlock: {
+    preloadLanguages: ['javascript', 'typescript', 'json'],
+  },
+};
+
 export type ChordBinding = string;
 
 export type AppShortcutAction =
@@ -104,6 +156,60 @@ export interface ShortcutsConfig {
   editor: Partial<Record<EditorShortcutAction, ChordBinding | ChordBinding[]>>;
 }
 
+export const DEFAULT_APP_SHORTCUTS: Record<AppShortcutAction, ChordBinding> = {
+  save: 'Mod-s',
+  newNote: 'Mod-n',
+  newPersonalNote: 'Mod-Shift-p',
+  newWorkNote: 'Mod-Shift-w',
+  settings: 'Mod-,',
+  commandCenter: 'Mod-k',
+  toggleSidebar: 'Mod-\\',
+  goHome: 'Mod-Shift-h',
+  closeNote: 'Mod-w',
+  todayJournal: 'Mod-j',
+  findReplace: 'Mod-f',
+  toggleEditorMode: 'Mod-Shift-m',
+  focusSidebar: 'Mod-e',
+  openFile: 'Mod-o',
+};
+
+export const DEFAULT_EDITOR_SHORTCUTS: Record<EditorShortcutAction, ChordBinding> = {
+  indent: 'Tab',
+  outdent: 'Shift-Tab',
+  taskCycleForward: 'Mod-Shift-Enter',
+  taskCycleBackward: 'Mod-Alt-Shift-Enter',
+  tableNextCell: 'Tab',
+  tablePrevCell: 'Shift-Tab',
+  tableExit: 'Mod-Enter',
+};
+
+export const RESERVED_CHORDS: ReadonlySet<string> = new Set([
+  'Mod-b',
+  'Mod-i',
+  'Mod-`',
+  'Mod-Shift-x',
+  'Mod-z',
+  'Mod-Shift-z',
+  'Mod-y',
+  'Mod-Shift-7',
+  'Mod-Shift-8',
+  'Mod-Shift-9',
+  'Mod-Alt-1',
+  'Mod-Alt-2',
+  'Mod-Alt-3',
+  'Mod-Alt-4',
+  'Mod-Alt-5',
+  'Mod-Alt-6',
+  'Mod-Alt-c',
+  'Mod-Shift-b',
+  'Shift-Enter',
+]);
+
+export const DEFAULT_SHORTCUTS_CONFIG: ShortcutsConfig = {
+  app: {},
+  editor: {},
+};
+
 export interface QuickNoteSlotFolders {
   personal: string;
   work: string;
@@ -115,9 +221,22 @@ export interface NoteLocationPolicy {
   quickNoteSlotFolders: QuickNoteSlotFolders;
 }
 
+export const DEFAULT_NOTE_LOCATION_POLICY: NoteLocationPolicy = {
+  journalFolder: 'Journal',
+  defaultNoteFolder: 'Personal',
+  quickNoteSlotFolders: {
+    personal: 'Personal',
+    work: 'Work',
+  },
+};
+
 export interface NotesConfig {
   locationPolicy: NoteLocationPolicy;
 }
+
+export const DEFAULT_NOTES_CONFIG: NotesConfig = {
+  locationPolicy: DEFAULT_NOTE_LOCATION_POLICY,
+};
 
 export interface AppConfig {
   appearance: AppearanceSettings;
@@ -126,3 +245,13 @@ export interface AppConfig {
   shortcuts: ShortcutsConfig;
   notes: NotesConfig;
 }
+
+export const DEFAULT_APP_CONFIG: AppConfig = {
+  appearance: DEFAULT_APPEARANCE_SETTINGS,
+  workspace: {
+    defaultWorkspacePath: 'NoteBook',
+  },
+  editor: DEFAULT_EDITOR_SETTINGS,
+  shortcuts: DEFAULT_SHORTCUTS_CONFIG,
+  notes: DEFAULT_NOTES_CONFIG,
+};

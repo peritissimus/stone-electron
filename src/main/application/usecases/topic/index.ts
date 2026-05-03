@@ -6,6 +6,8 @@ import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { ITopicUseCases } from '../../../domain/ports/in/ITopicUseCases';
 import { InitializeTopicsUseCase } from './InitializeTopicsUseCase';
 import { GetAllTopicsUseCase } from './GetAllTopicsUseCase';
@@ -49,6 +51,8 @@ export interface TopicUseCasesDeps {
   fileStorage: IFileStorage;
   embedder: IEmbedder;
   markdownProcessor: IMarkdownProcessor;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
@@ -61,6 +65,8 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
     fileStorage,
     embedder,
     markdownProcessor,
+    idGenerator,
+    pathService,
     eventPublisher,
   } = deps;
 
@@ -71,6 +77,7 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
     fileStorage,
     embedder,
     markdownProcessor,
+    pathService,
     eventPublisher,
   );
 
@@ -78,7 +85,7 @@ export function createTopicUseCases(deps: TopicUseCasesDeps): ITopicUseCases {
     initialize: new InitializeTopicsUseCase(embedder, topicRepository),
     getAllTopics: new GetAllTopicsUseCase(topicRepository),
     getTopicById: new GetTopicByIdUseCase(topicRepository),
-    createTopic: new CreateTopicUseCase(topicRepository, eventPublisher),
+    createTopic: new CreateTopicUseCase(topicRepository, idGenerator, eventPublisher),
     updateTopic: new UpdateTopicUseCase(topicRepository, eventPublisher),
     deleteTopic: new DeleteTopicUseCase(topicRepository, eventPublisher),
     classifyNote,

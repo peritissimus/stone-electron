@@ -1,9 +1,9 @@
-import path from 'node:path';
 import {
   NoteEntity,
   type INoteRepository,
   type IFileStorage,
   type IDeleteNoteUseCase,
+  type IPathService,
   NoteNotFoundError,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
@@ -15,6 +15,7 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -31,7 +32,7 @@ export class DeleteNoteUseCase implements IDeleteNoteUseCase {
         const workspace = workspaceId ? await this.workspaceRepository.findById(workspaceId) : null;
 
         if (workspace) {
-          const absolutePath = path.join(workspace.folderPath, noteProps.filePath);
+          const absolutePath = this.pathService.join(workspace.folderPath, noteProps.filePath);
           const exists = await this.fileStorage.exists(absolutePath);
           if (exists) {
             await this.fileStorage.delete(absolutePath);

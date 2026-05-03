@@ -1,7 +1,6 @@
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { ITopicRepository } from '../../../domain/ports/out/ITopicRepository';
 import type { IInitializeTopicsUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { logger } from '../../../shared/utils';
 
 export class InitializeTopicsUseCase implements IInitializeTopicsUseCase {
   constructor(
@@ -17,11 +16,8 @@ export class InitializeTopicsUseCase implements IInitializeTopicsUseCase {
       if (ready) {
         await this.seedMissingCentroids();
       }
-
-      logger.info('[TopicUseCases] Embedding service initialized, ready:', ready);
       return { success: true, ready };
-    } catch (error) {
-      logger.error('[TopicUseCases] Failed to initialize embedding service:', error);
+    } catch {
       return { success: false, ready: false };
     }
   }
@@ -47,6 +43,5 @@ export class InitializeTopicsUseCase implements IInitializeTopicsUseCase {
       );
       await this.topicRepository.updateCentroid(seedable[i].id, new Uint8Array(buf));
     }
-    logger.info(`[TopicUseCases] Seeded centroids for ${seedable.length} topics`);
   }
 }

@@ -1,13 +1,12 @@
-import path from 'node:path';
-import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import { DOMAIN_EVENT_TYPES } from '../../../domain/ports/out/IEventPublisher';
 import { NoteEntity } from '../../../domain/entities/Note';
-import { logger } from '../../../shared/utils';
 
 export class AppendToJournalUseCase {
   constructor(
@@ -15,6 +14,8 @@ export class AppendToJournalUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -53,7 +54,7 @@ export class AppendToJournalUseCase {
     });
 
     const entryContent = `\n\n[${timestamp}] ${content}`;
-    const absolutePath = path.join(workspace.folderPath, journalFilePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, journalFilePath);
 
     if (journalNote) {
       // Append to existing journal
@@ -65,7 +66,6 @@ export class AppendToJournalUseCase {
       await this.noteRepository.save(noteEntity);
 
       this.publishUpdated(journalNote.id);
-      logger.info(`[QuickCapture] Appended to journal ${journalNote.id}`);
       return { noteId: journalNote.id, appended: true };
     } else {
       // Check if file exists on disk (may not be in DB yet)
@@ -78,7 +78,7 @@ export class AppendToJournalUseCase {
 
         // Create DB entry for existing file
         const note = NoteEntity.create({
-          id: crypto.randomUUID(),
+          id: this.idGenerator.generate(),
           title: journalTitle,
           workspaceId: workspace.id,
         });
@@ -86,19 +86,18 @@ export class AppendToJournalUseCase {
         await this.noteRepository.save(note);
 
         this.publishUpdated(note.id);
-        logger.info(`[QuickCapture] Appended to existing file and created DB entry ${note.id}`);
         return { noteId: note.id, appended: true };
       }
 
       // Create new journal note
       const note = NoteEntity.create({
-        id: crypto.randomUUID(),
+        id: this.idGenerator.generate(),
         title: journalTitle,
         workspaceId: workspace.id,
       });
 
       // Ensure journal directory exists
-      const journalDir = path.join(workspace.folderPath, journalFolder);
+      const journalDir = this.pathService.join(workspace.folderPath, journalFolder);
       await this.fileStorage.createDirectory(journalDir);
 
       const initialContent = `# ${journalTitle}${entryContent}`;
@@ -107,8 +106,6 @@ export class AppendToJournalUseCase {
       // Set the file path on the entity and save
       note.updateFilePath(journalFilePath);
       await this.noteRepository.save(note);
-
-      logger.info(`[QuickCapture] Created new journal ${note.id}`);
       return { noteId: note.id, appended: false };
     }
   }

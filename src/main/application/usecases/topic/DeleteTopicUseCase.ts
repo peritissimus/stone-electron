@@ -4,7 +4,6 @@ import {
   type IEventPublisher,
 } from '../../../domain/ports/out/IEventPublisher';
 import type { IDeleteTopicUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { logger } from '../../../shared/utils';
 
 export class DeleteTopicUseCase implements IDeleteTopicUseCase {
   constructor(
@@ -27,6 +26,5 @@ export class DeleteTopicUseCase implements IDeleteTopicUseCase {
       timestamp: new Date(),
       payload: { id },
     });
-    logger.info(`[TopicUseCases] Deleted topic ${id}`);
   }
 }

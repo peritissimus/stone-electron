@@ -1,5 +1,6 @@
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { ISystemBridge } from '../../../domain/ports/out/ISystemBridge';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IScratchUseCases } from '../../../domain/ports/in/IScratchUseCases';
 import { PickScratchFileUseCase } from './PickScratchFileUseCase';
 import { ReadScratchFileUseCase } from './ReadScratchFileUseCase';
@@ -12,12 +13,13 @@ export { WriteScratchFileUseCase } from './WriteScratchFileUseCase';
 export interface ScratchUseCasesDeps {
   fileStorage: IFileStorage;
   systemBridge: ISystemBridge;
+  pathService: IPathService;
 }
 
 export function createScratchUseCases(deps: ScratchUseCasesDeps): IScratchUseCases {
   return {
     pickScratchFile: new PickScratchFileUseCase(deps.systemBridge),
-    readScratchFile: new ReadScratchFileUseCase(deps.fileStorage),
-    writeScratchFile: new WriteScratchFileUseCase(deps.fileStorage),
+    readScratchFile: new ReadScratchFileUseCase(deps.fileStorage, deps.pathService),
+    writeScratchFile: new WriteScratchFileUseCase(deps.fileStorage, deps.pathService),
   };
 }

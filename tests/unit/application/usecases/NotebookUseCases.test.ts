@@ -17,6 +17,7 @@ import type { INotebookRepository } from '../../../../src/main/domain/ports/out/
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { NotebookNotFoundError } from '../../../../src/main/domain/errors';
 import type { NotebookProps } from '../../../../src/main/domain/entities/Notebook';
+import { createMockIdGenerator } from './testDoubles';
 
 // Mock factories
 function createMockNotebookRepository(): INotebookRepository {
@@ -68,7 +69,7 @@ describe('NotebookUseCases', () => {
     beforeEach(() => {
       notebookRepo = createMockNotebookRepository();
       eventPublisher = createMockEventPublisher();
-      useCase = new CreateNotebookUseCase(notebookRepo, eventPublisher);
+      useCase = new CreateNotebookUseCase(notebookRepo, createMockIdGenerator(), eventPublisher);
     });
 
     it('creates notebook with name', async () => {

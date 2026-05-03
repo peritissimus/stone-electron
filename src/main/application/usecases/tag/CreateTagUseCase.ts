@@ -1,10 +1,10 @@
-import { generateId } from '@shared/utils/id';
 import {
   TagEntity,
   type ITagRepository,
   type ICreateTagUseCase,
   type CreateTagRequest,
   type CreateTagResponse,
+  type IIdGenerator,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
@@ -12,6 +12,7 @@ import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher'
 export class CreateTagUseCase implements ICreateTagUseCase {
   constructor(
     private readonly tagRepository: ITagRepository,
+    private readonly idGenerator: IIdGenerator,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -26,7 +27,7 @@ export class CreateTagUseCase implements ICreateTagUseCase {
     }
 
     const tag = TagEntity.create({
-      id: generateId(),
+      id: this.idGenerator.generate(),
       name: request.name,
       color: request.color,
     });

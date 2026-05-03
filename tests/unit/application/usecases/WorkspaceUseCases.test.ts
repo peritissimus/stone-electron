@@ -32,6 +32,7 @@ import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/I
 import { WorkspaceNotFoundError } from '../../../../src/main/domain/errors';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockWorkspaceRepository(): IWorkspaceRepository {
@@ -135,7 +136,11 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       eventPublisher = createMockEventPublisher();
-      useCase = new CreateWorkspaceUseCase(workspaceRepo, eventPublisher);
+      useCase = new CreateWorkspaceUseCase(
+        workspaceRepo,
+        createMockIdGenerator(),
+        eventPublisher,
+      );
     });
 
     it('creates workspace with name and folderPath', async () => {
@@ -389,7 +394,7 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new CreateFolderUseCase(workspaceRepo, fileStorage);
+      useCase = new CreateFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
     });
 
     it('creates folder in active workspace', async () => {
@@ -418,7 +423,7 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new RenameFolderUseCase(workspaceRepo, fileStorage);
+      useCase = new RenameFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
     });
 
     it('renames folder', async () => {
@@ -462,7 +467,7 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new DeleteFolderUseCase(workspaceRepo, fileStorage);
+      useCase = new DeleteFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
     });
 
     it('deletes folder', async () => {
@@ -502,7 +507,7 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new MoveFolderUseCase(workspaceRepo, fileStorage);
+      useCase = new MoveFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
     });
 
     it('moves folder to new location', async () => {
@@ -562,7 +567,7 @@ describe('WorkspaceUseCases', () => {
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       fileStorage = createMockFileStorage();
-      useCase = new ScanWorkspaceUseCase(workspaceRepo, fileStorage);
+      useCase = new ScanWorkspaceUseCase(workspaceRepo, fileStorage, createMockPathService());
     });
 
     it('scans workspace and returns file structure', async () => {
@@ -639,7 +644,14 @@ describe('WorkspaceUseCases', () => {
       noteRepo = createMockNoteRepository();
       fileStorage = createMockFileStorage();
       markdownProcessor = createMockMarkdownProcessor();
-      useCase = new SyncWorkspaceUseCase(workspaceRepo, noteRepo, fileStorage, markdownProcessor);
+      useCase = new SyncWorkspaceUseCase(
+        workspaceRepo,
+        noteRepo,
+        fileStorage,
+        markdownProcessor,
+        createMockIdGenerator(),
+        createMockPathService(),
+      );
     });
 
     it('syncs workspace files to database', async () => {

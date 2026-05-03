@@ -14,6 +14,7 @@ import type { IAttachmentUseCases } from '../../../../src/main/domain/ports/in/I
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { AttachmentProps } from '../../../../src/main/domain/entities/Attachment';
+import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -116,6 +117,8 @@ describe('AttachmentUseCases', () => {
       attachmentRepository: attachmentRepo,
       workspaceRepository: workspaceRepo,
       fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
     });
   });
 

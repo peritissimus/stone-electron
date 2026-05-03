@@ -4,7 +4,6 @@ import {
   type IEventPublisher,
 } from '../../../domain/ports/out/IEventPublisher';
 import type { IRemoveTopicFromNoteUseCase } from '../../../domain/ports/in/ITopicUseCases';
-import { logger } from '../../../shared/utils';
 
 export class RemoveTopicFromNoteUseCase implements IRemoveTopicFromNoteUseCase {
   constructor(
@@ -23,6 +22,5 @@ export class RemoveTopicFromNoteUseCase implements IRemoveTopicFromNoteUseCase {
         removed: true,
       },
     });
-    logger.info(`[TopicUseCases] Removed topic ${topicId} from note ${noteId}`);
   }
 }

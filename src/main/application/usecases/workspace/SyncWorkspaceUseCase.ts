@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { generateId } from '@shared/utils/id';
 import {
   NoteEntity,
   type WorkspaceProps,
@@ -7,6 +5,8 @@ import {
   type ISyncWorkspaceUseCase,
   type SyncWorkspaceRequest,
   type SyncWorkspaceResponse,
+  type IIdGenerator,
+  type IPathService,
   WorkspaceNotFoundError,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
@@ -26,6 +26,8 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly fileStorage: IFileStorage,
     private readonly markdownProcessor: IMarkdownProcessor,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -47,7 +49,7 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
     const markdownFiles = await this.fileStorage.glob('**/*.md', workspace.folderPath);
     const fsEntries: FsEntry[] = [];
     for (const relativePath of markdownFiles) {
-      const absolutePath = path.join(workspace.folderPath, relativePath);
+      const absolutePath = this.pathService.join(workspace.folderPath, relativePath);
       const fileInfo = await this.fileStorage.getFileInfo(absolutePath);
       if (!fileInfo) continue;
       fsEntries.push({ relativePath, modifiedAt: fileInfo.modifiedAt });
@@ -73,17 +75,17 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
 
     // Act on `added` — create new note rows.
     for (const entry of plan.added) {
-      const absolutePath = path.join(workspace.folderPath, entry.relativePath);
+      const absolutePath = this.pathService.join(workspace.folderPath, entry.relativePath);
       const fileContent = await this.fileStorage.read(absolutePath);
 
       // Extract title from content or derive from filename
       let title = fileContent ? this.markdownProcessor.extractTitle(fileContent) : null;
       if (!title) {
-        title = path.basename(entry.relativePath, '.md');
+        title = this.pathService.basename(entry.relativePath, '.md');
       }
 
       const note = NoteEntity.create({
-        id: generateId(),
+        id: this.idGenerator.generate(),
         title,
         filePath: entry.relativePath,
         workspaceId: workspace.id,
@@ -104,7 +106,7 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       const existingNote = existingById.get(entry.dbId);
       if (!existingNote) continue;
 
-      const absolutePath = path.join(workspace.folderPath, entry.relativePath);
+      const absolutePath = this.pathService.join(workspace.folderPath, entry.relativePath);
       const noteEntity = NoteEntity.fromPersistence(existingNote);
 
       // Re-extract title in case it changed

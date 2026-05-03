@@ -3,6 +3,8 @@ import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceR
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type {
   IQuickNoteUseCases,
   CreateQuickNoteRequest,
@@ -16,6 +18,8 @@ export interface QuickNoteUseCasesDeps {
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
   appConfigRepository: IAppConfigRepository;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
   eventPublisher?: IEventPublisher;
 }
 
@@ -25,6 +29,8 @@ export function createQuickNoteUseCases(deps: QuickNoteUseCasesDeps): IQuickNote
     deps.workspaceRepository,
     deps.fileStorage,
     deps.appConfigRepository,
+    deps.idGenerator,
+    deps.pathService,
     deps.eventPublisher,
   );
 

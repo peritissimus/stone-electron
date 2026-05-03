@@ -1,5 +1,3 @@
-import path from 'node:path';
-import { generateId } from '@shared/utils/id';
 import {
   NoteEntity,
   type NoteProps,
@@ -7,6 +5,8 @@ import {
   type IFileStorage,
   type IAppConfigRepository,
   type ICreateNoteUseCase,
+  type IIdGenerator,
+  type IPathService,
   DOMAIN_EVENT_TYPES,
 } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
@@ -18,6 +18,8 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -29,7 +31,7 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     notebookId?: string;
     workspaceId?: string;
   }): Promise<{ note: NoteProps }> {
-    const id = request.id || generateId();
+    const id = request.id || this.idGenerator.generate();
 
     const workspace = await this.workspaceRepository.findActive();
     if (!workspace) {
@@ -67,7 +69,7 @@ export class CreateNoteUseCase implements ICreateNoteUseCase {
     const relativePath = `${folderPath}/${filename}`;
     note.updateFilePath(relativePath);
 
-    const absolutePath = path.join(workspace.folderPath, relativePath);
+    const absolutePath = this.pathService.join(workspace.folderPath, relativePath);
     const content = request.content || '';
     await this.fileStorage.write(absolutePath, content);
 

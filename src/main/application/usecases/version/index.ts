@@ -2,6 +2,7 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IVersionRepository } from '../../../domain/ports/out/IVersionRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IVersionUseCases } from '../../../domain/ports/in/IVersionUseCases';
 import { GetVersionsUseCase } from './GetVersionsUseCase';
 import { CreateVersionUseCase } from './CreateVersionUseCase';
@@ -18,10 +19,11 @@ export interface VersionUseCasesDeps {
   versionRepository: IVersionRepository;
   workspaceRepository: IWorkspaceRepository;
   fileStorage: IFileStorage;
+  pathService: IPathService;
 }
 
 export function createVersionUseCases(deps: VersionUseCasesDeps): IVersionUseCases {
-  const { noteRepository, versionRepository, workspaceRepository, fileStorage } = deps;
+  const { noteRepository, versionRepository, workspaceRepository, fileStorage, pathService } = deps;
 
   return {
     getVersions: new GetVersionsUseCase(noteRepository, versionRepository),
@@ -30,12 +32,14 @@ export function createVersionUseCases(deps: VersionUseCasesDeps): IVersionUseCas
       versionRepository,
       workspaceRepository,
       fileStorage,
+      pathService,
     ),
     restoreVersion: new RestoreVersionUseCase(
       noteRepository,
       versionRepository,
       workspaceRepository,
       fileStorage,
+      pathService,
     ),
     getVersion: new GetVersionUseCase(versionRepository),
   };

@@ -5,7 +5,6 @@ import type {
   GitPullRequest,
   GitPullResponse,
 } from '../../../domain/ports/in/IGitUseCases';
-import { logger } from '../../../shared/utils';
 
 export class GitPullUseCase implements IGitPullUseCase {
   constructor(
@@ -20,7 +19,6 @@ export class GitPullUseCase implements IGitPullUseCase {
     }
 
     const result = await this.gitClient.pull(workspace.folderPath);
-    logger.info(`[GitUseCases] Pulled changes in workspace ${request.workspaceId}`);
     return { success: result.success, error: result.error };
   }
 }

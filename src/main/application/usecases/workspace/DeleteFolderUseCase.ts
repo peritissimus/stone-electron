@@ -1,8 +1,8 @@
-import path from 'node:path';
 import {
   type IWorkspaceRepository,
   type IDeleteFolderUseCase,
   type DeleteFolderRequest,
+  type IPathService,
 } from '../../../domain';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 
@@ -10,6 +10,7 @@ export class DeleteFolderUseCase implements IDeleteFolderUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: DeleteFolderRequest): Promise<void> {
@@ -22,7 +23,7 @@ export class DeleteFolderUseCase implements IDeleteFolderUseCase {
       throw new Error('Folder path is required');
     }
 
-    const absolutePath = path.join(activeWorkspace.folderPath, request.path);
+    const absolutePath = this.pathService.join(activeWorkspace.folderPath, request.path);
     const exists = await this.fileStorage.exists(absolutePath);
     if (!exists) {
       throw new Error(`Folder does not exist: ${request.path}`);

@@ -1,8 +1,8 @@
 /**
- * Strip the first H1 heading (`# Title`) from a markdown string and the
- * blank lines that follow it. Mirrors the convention used by note save
- * (`UpdateNoteUseCase` prepends `# ${title}\n\n`) so reads return body-only
- * markdown ready for the editor.
+ * Markdown title helpers.
+ *
+ * Pure note-content transformations used by use cases that expose editor body
+ * markdown separately from a note's title.
  */
 export function stripFirstHeading(markdown: string): string {
   const lines = markdown.split('\n');

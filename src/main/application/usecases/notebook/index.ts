@@ -1,4 +1,4 @@
-import type { INotebookRepository, INotebookUseCases } from '../../../domain';
+import type { IIdGenerator, INotebookRepository, INotebookUseCases } from '../../../domain';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import { CreateNotebookUseCase } from './CreateNotebookUseCase';
 import { UpdateNotebookUseCase } from './UpdateNotebookUseCase';
@@ -16,14 +16,15 @@ export { MoveNotebookUseCase } from './MoveNotebookUseCase';
 
 export interface NotebookUseCasesDeps {
   notebookRepository: INotebookRepository;
+  idGenerator: IIdGenerator;
   eventPublisher?: IEventPublisher;
 }
 
 export function createNotebookUseCases(deps: NotebookUseCasesDeps): INotebookUseCases {
-  const { notebookRepository, eventPublisher } = deps;
+  const { notebookRepository, idGenerator, eventPublisher } = deps;
 
   return {
-    createNotebook: new CreateNotebookUseCase(notebookRepository, eventPublisher),
+    createNotebook: new CreateNotebookUseCase(notebookRepository, idGenerator, eventPublisher),
     updateNotebook: new UpdateNotebookUseCase(notebookRepository, eventPublisher),
     getNotebook: new GetNotebookUseCase(notebookRepository),
     listNotebooks: new ListNotebooksUseCase(notebookRepository),

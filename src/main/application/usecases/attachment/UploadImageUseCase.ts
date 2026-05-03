@@ -1,8 +1,8 @@
-import path from 'node:path';
-import crypto from 'node:crypto';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import { AddAttachmentUseCase, type AddAttachmentResult } from './AddAttachmentUseCase';
 
 export interface UploadImageResult {
@@ -16,6 +16,8 @@ export class UploadImageUseCase {
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly addAttachmentUseCase: AddAttachmentUseCase,
+    private readonly idGenerator: IIdGenerator,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(
@@ -35,10 +37,14 @@ export class UploadImageUseCase {
     }
 
     // Create temp file from buffer/base64
-    const ext = path.extname(filename) || '.png';
-    const tempPath = path.join(workspace.folderPath, '.temp', `${crypto.randomUUID()}${ext}`);
+    const ext = this.pathService.extname(filename) || '.png';
+    const tempPath = this.pathService.join(
+      workspace.folderPath,
+      '.temp',
+      `${this.idGenerator.generate()}${ext}`,
+    );
 
-    await this.fileStorage.createDirectory(path.dirname(tempPath));
+    await this.fileStorage.createDirectory(this.pathService.dirname(tempPath));
 
     const buffer = typeof imageData === 'string' ? Buffer.from(imageData, 'base64') : imageData;
     await this.fileStorage.write(tempPath, buffer.toString('base64'));

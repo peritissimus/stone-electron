@@ -1,15 +1,18 @@
-import path from 'node:path';
 import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
+import type { IPathService } from '../../../domain/ports/out/IPathService';
 import type { IWriteScratchFileUseCase } from '../../../domain/ports/in/IScratchUseCases';
 
 const ALLOWED_EXTENSIONS = new Set(['.md', '.markdown']);
 
 export class WriteScratchFileUseCase implements IWriteScratchFileUseCase {
-  constructor(private readonly fileStorage: IFileStorage) {}
+  constructor(
+    private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
+  ) {}
 
   async execute(request: { path: string; content: string }): Promise<{ path: string }> {
-    const abs = path.isAbsolute(request.path) ? request.path : path.resolve(request.path);
-    const ext = path.extname(abs).toLowerCase();
+    const abs = this.pathService.isAbsolute(request.path) ? request.path : this.pathService.resolve(request.path);
+    const ext = this.pathService.extname(abs).toLowerCase();
     if (!ALLOWED_EXTENSIONS.has(ext)) {
       throw new Error(`Unsupported file type for scratch editor: ${ext || '(none)'}`);
     }

@@ -1,9 +1,7 @@
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
-import {
-  DEFAULT_APP_CONFIG,
-  type EditorSettings,
-} from '@shared/types/settings';
+import type { EditorSettings } from '../../../domain/value-objects/AppConfig';
+import { DEFAULT_APP_CONFIG } from '../../../domain/value-objects/AppConfig';
 
 function publishEditorChanged(eventPublisher?: IEventPublisher): void {
   eventPublisher?.publish({
