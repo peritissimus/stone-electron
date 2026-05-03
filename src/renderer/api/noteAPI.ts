@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem } from '@shared/types';
-import type { NoteFilters, GraphData as SpecGraphData } from '@renderer/specs';
 import {
   ExportHtmlResponseSchema,
   ExportMarkdownResponseSchema,
@@ -22,16 +21,35 @@ import {
 import { validateResponse } from './validation';
 import { NoteSchema, TodoItemSchema, GraphDataSchema } from './schemas';
 
-// Re-export types aligned with specs
-export type GetAllNotesParams = NoteFilters;
+export interface GetAllNotesParams {
+  notebookId?: string;
+  folderPath?: string;
+  tagIds?: string[];
+  isFavorite?: boolean;
+  isPinned?: boolean;
+  isArchived?: boolean;
+  includeArchived?: boolean;
+  includeTags?: boolean;
+  includeTopics?: boolean;
+}
 
 export interface NoteWithMeta extends Note {
   tags?: Array<{ id: string; name: string; color: string | null }>;
   topics?: Array<{ id: string; name: string; color: string | null; confidence: number }>;
 }
 
-// GraphData matches specs/entities.ts#GraphData
-export interface GraphData extends SpecGraphData {}
+export interface GraphData {
+  nodes: Array<{
+    id: string;
+    name: string;
+    val: number;
+    color?: string;
+  }>;
+  links: Array<{
+    source: string;
+    target: string;
+  }>;
+}
 
 export const noteAPI = {
   /**

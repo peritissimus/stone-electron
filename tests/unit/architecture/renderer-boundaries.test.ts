@@ -95,6 +95,23 @@ function collectImports(source: string): string[] {
   return [...staticImports, ...dynamicImports].map((match) => match[1]);
 }
 
+const STATEFUL_HOOK_API_EXCEPTIONS = new Set([
+  // Migration list: these hooks currently mix shared renderer state with IPC.
+  // New hooks should either go Store -> API or be command/service hooks that
+  // call API directly without importing stores.
+  'src/renderer/hooks/useDocumentBuffer.ts',
+  'src/renderer/hooks/useFileTreeAPI.ts',
+  'src/renderer/hooks/useNoteAPI/useNoteReads.ts',
+  'src/renderer/hooks/useNoteAPI/useNoteWrites.ts',
+  'src/renderer/hooks/useNotebookAPI.ts',
+  'src/renderer/hooks/useSidebarEvents.ts',
+  'src/renderer/hooks/useTagAPI.ts',
+  'src/renderer/hooks/useTopicAPI/useTopicCrud.ts',
+  'src/renderer/hooks/useTopicAPI/useTopicEmbedding.ts',
+  'src/renderer/hooks/useTopicAPI/useTopicSearch.ts',
+  'src/renderer/hooks/useWorkspaceAPI.ts',
+]);
+
 function canImportEditorImplementation(file: string): boolean {
   const relativeFile = toPosix(file);
   return (
@@ -111,6 +128,18 @@ function canImportEditorConversion(file: string): boolean {
   return (
     relativeFile.startsWith('src/renderer/editor/') ||
     relativeFile.startsWith('src/renderer/lib/extensions/')
+  );
+}
+
+function isApiLayerAllowedImport(
+  importPath: string,
+  targetLayer: RendererLayer | 'external',
+): boolean {
+  return (
+    targetLayer === 'external' ||
+    targetLayer === 'shared' ||
+    targetLayer === 'api' ||
+    importPath === '@renderer/lib/ipc'
   );
 }
 
@@ -155,12 +184,15 @@ describe('renderer architecture boundaries', () => {
 
     for (const file of walk(rendererRoot)) {
       const sourceLayer = layerOfPath(file);
+      const relativeFile = toPosix(file);
       const source = fs.readFileSync(file, 'utf8');
+      let hookImportsStore = false;
+      let hookImportsApi = false;
 
       for (const importPath of collectImports(source)) {
         if (sourceLayer === 'stores' && importPath.startsWith('@renderer/editor')) {
           violations.push({
-            file: toPosix(file),
+            file: relativeFile,
             importPath,
             reason: 'stores must keep editor state as app data, not editor implementation types',
           });
@@ -169,10 +201,10 @@ describe('renderer architecture boundaries', () => {
 
         if (
           importPath.startsWith('@renderer/editor/tiptap') &&
-          !toPosix(file).startsWith('src/renderer/editor/')
+          !relativeFile.startsWith('src/renderer/editor/')
         ) {
           violations.push({
-            file: toPosix(file),
+            file: relativeFile,
             importPath,
             reason: 'app-facing renderer code must import editor APIs through the editor facade',
           });
@@ -181,7 +213,7 @@ describe('renderer architecture boundaries', () => {
 
         if (importPath.startsWith('@tiptap/') && !canImportEditorImplementation(file)) {
           violations.push({
-            file: toPosix(file),
+            file: relativeFile,
             importPath,
             reason: 'app-facing renderer code must import editor APIs through @renderer/editor',
           });
@@ -194,7 +226,7 @@ describe('renderer architecture boundaries', () => {
           !canImportEditorConversion(file)
         ) {
           violations.push({
-            file: toPosix(file),
+            file: relativeFile,
             importPath,
             reason: 'markdown parse/serialize belongs behind the editor facade',
           });
@@ -202,10 +234,37 @@ describe('renderer architecture boundaries', () => {
         }
 
         const targetLayer = resolveImport(file, importPath);
+        if (sourceLayer === 'hooks') {
+          hookImportsStore ||= targetLayer === 'stores';
+          hookImportsApi ||= targetLayer === 'api';
+        }
+
+        if (sourceLayer === 'api' && !isApiLayerAllowedImport(importPath, targetLayer)) {
+          violations.push({
+            file: relativeFile,
+            importPath,
+            reason: 'API modules must only depend on IPC helpers, shared contracts, local API files, and external validation libraries',
+          });
+          continue;
+        }
+
         const reason = violationFor(sourceLayer, targetLayer);
         if (reason) {
-          violations.push({ file: toPosix(file), importPath, reason });
+          violations.push({ file: relativeFile, importPath, reason });
         }
+      }
+
+      if (
+        sourceLayer === 'hooks' &&
+        hookImportsStore &&
+        hookImportsApi &&
+        !STATEFUL_HOOK_API_EXCEPTIONS.has(relativeFile)
+      ) {
+        violations.push({
+          file: relativeFile,
+          importPath: '@renderer/stores + @renderer/api',
+          reason: 'hooks are the UI boundary: stateful hooks go through stores, while command/service hooks may call API only when they do not import stores',
+        });
       }
     }
 
