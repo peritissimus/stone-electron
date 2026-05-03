@@ -4,7 +4,7 @@
 
 import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import type { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
 import { useSidebarEvents } from '@renderer/hooks/useSidebarEvents';
@@ -115,7 +115,7 @@ function NoteRoute({
   onEditorChange,
 }: {
   editorRef: React.RefObject<NoteEditorHandle>;
-  onEditorChange: (editor: Editor | null) => void;
+  onEditorChange: (editor: RichTextEditor | null) => void;
 }) {
   return (
     <Suspense fallback={<EditorSkeleton />}>
@@ -210,8 +210,8 @@ export function MainLayout() {
   const [showRecoveryDialog, setShowRecoveryDialog] = useState(false);
 
   // Track editor instance for FindReplaceModal
-  const [currentEditor, setCurrentEditor] = useState<Editor | null>(null);
-  const handleEditorChange = useCallback((editor: Editor | null) => {
+  const [currentEditor, setCurrentEditor] = useState<RichTextEditor | null>(null);
+  const handleEditorChange = useCallback((editor: RichTextEditor | null) => {
     setCurrentEditor(editor);
   }, []);
 

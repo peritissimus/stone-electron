@@ -5,13 +5,13 @@
  */
 
 import { useCallback } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { getRenderedEditorContent, buildExportHTML } from '@renderer/lib/exportUtils';
 
 interface UseNoteExportOptions {
   activeNoteId: string | null;
-  editor: Editor | null;
+  editor: RichTextEditor | null;
   title: string;
 }
 

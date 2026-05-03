@@ -93,6 +93,17 @@ function collectImports(source: string): string[] {
   return [...staticImports, ...dynamicImports].map((match) => match[1]);
 }
 
+function canImportEditorImplementation(file: string): boolean {
+  const relativeFile = toPosix(file);
+  return (
+    relativeFile.startsWith('src/renderer/editor/') ||
+    relativeFile.startsWith('src/renderer/lib/editor/') ||
+    relativeFile.startsWith('src/renderer/lib/extensions/') ||
+    relativeFile === 'src/renderer/lib/markdownParser.ts' ||
+    relativeFile === 'src/renderer/components/features/Editor/CodeBlockComponent.tsx'
+  );
+}
+
 function violationFor(
   sourceLayer: RendererLayer,
   targetLayer: RendererLayer | 'external',
@@ -133,6 +144,15 @@ describe('renderer architecture boundaries', () => {
       const source = fs.readFileSync(file, 'utf8');
 
       for (const importPath of collectImports(source)) {
+        if (importPath.startsWith('@tiptap/') && !canImportEditorImplementation(file)) {
+          violations.push({
+            file: toPosix(file),
+            importPath,
+            reason: 'app-facing renderer code must import editor APIs through @renderer/editor',
+          });
+          continue;
+        }
+
         const targetLayer = resolveImport(file, importPath);
         const reason = violationFor(sourceLayer, targetLayer);
         if (reason) {

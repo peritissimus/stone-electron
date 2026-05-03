@@ -8,7 +8,7 @@ import type { JournalEntry } from '@shared/schemas';
 
 /**
  * Hydrate the documentBufferStore with markdown that arrived in the timeline
- * payload, so each per-day TipTap editor can mount without an extra IPC
+ * payload, so each per-day rich-text editor can mount without an extra IPC
  * round-trip. Skip notes that already have a buffer because the user may have
  * unsaved edits in that buffer.
  */

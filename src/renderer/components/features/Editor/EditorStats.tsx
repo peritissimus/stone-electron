@@ -2,10 +2,10 @@
  * Editor Stats Component - Shows word count, character count, and reading time
  */
 import { useMemo } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 
 export interface EditorStatsProps {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
 }
 
 export function EditorStats({ editor }: EditorStatsProps) {

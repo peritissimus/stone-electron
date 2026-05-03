@@ -8,11 +8,11 @@
  */
 
 import { create } from 'zustand';
-import { JSONContent } from '@tiptap/react';
+import type { EditorDocument } from '@renderer/editor';
 import { logger } from '@renderer/lib/logger';
 
 export interface CursorPosition {
-  // For rich editor (TipTap) - character-based position
+  // For rich editor - character-based position
   from: number;
   to: number;
   // For raw editor - line and column for better accuracy
@@ -22,7 +22,7 @@ export interface CursorPosition {
 
 export interface DocumentBuffer {
   noteId: string;
-  content: JSONContent;
+  content: EditorDocument;
   isDirty: boolean;
   lastModified: number;
   title?: string;
@@ -35,8 +35,8 @@ interface DocumentBufferState {
 
   // Actions
   getBuffer: (noteId: string) => DocumentBuffer | undefined;
-  setBuffer: (noteId: string, content: JSONContent, title?: string) => void;
-  updateBuffer: (noteId: string, content: JSONContent) => void;
+  setBuffer: (noteId: string, content: EditorDocument, title?: string) => void;
+  updateBuffer: (noteId: string, content: EditorDocument) => void;
   markDirty: (noteId: string, dirty?: boolean) => void;
   markClean: (noteId: string) => void;
   removeBuffer: (noteId: string) => void;
@@ -57,7 +57,7 @@ export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) =
     return get().buffers.get(noteId);
   },
 
-  setBuffer: (noteId: string, content: JSONContent, title?: string) => {
+  setBuffer: (noteId: string, content: EditorDocument, title?: string) => {
     set((state) => {
       const newBuffers = new Map(state.buffers);
 
@@ -93,7 +93,7 @@ export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) =
     });
   },
 
-  updateBuffer: (noteId: string, content: JSONContent) => {
+  updateBuffer: (noteId: string, content: EditorDocument) => {
     set((state) => {
       const existing = state.buffers.get(noteId);
       if (!existing) {

@@ -410,7 +410,7 @@ textarea:focus {
   display: none;
 }
 
-/* TipTap Editor Styles */
+/* Rich text editor styles */
 .tiptap-editor {
   @apply text-foreground;
 }
@@ -1097,7 +1097,7 @@ span[data-type="task-marker"][data-state="idea"] {
   color: inherit;
 }
 
-/* Inline journal day editor — TipTap mounted per visible day. Strip the
+/* Inline journal day editor — rich editor mounted per visible day. Strip the
    editor frame so multiple days flow as one continuous reading column. */
 .journal-day-editor .ProseMirror {
   outline: none;

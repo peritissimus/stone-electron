@@ -5,7 +5,7 @@
  * (config.json). Hydrated on boot via IPC; re-syncs on settings:changed
  * events with scope === 'editor'.
  *
- * Consumers (Step 6): useTipTapEditor / buildEditorExtensions reads from
+ * Consumers (Step 6): useRichTextEditor / buildEditorExtensions reads from
  * this store at editor mount time. Live updates while a document is open
  * surface a "reload to apply" banner rather than re-creating the editor.
  */

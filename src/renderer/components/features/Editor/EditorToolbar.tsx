@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { cn } from '@renderer/lib/utils';
 import {
   ArrowCounterClockwise,
@@ -43,7 +43,7 @@ import {
 import { UrlInsertPopover } from './UrlInsertPopover';
 
 export interface EditorToolbarProps {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
   className?: string;
 }
 
@@ -174,7 +174,7 @@ const TABLE_BUTTONS: ToolbarButtonConfig[] = [
 /**
  * Hook that creates memoized editor command handlers.
  */
-function useEditorCommands(editor: Editor | null) {
+function useEditorCommands(editor: RichTextEditor | null) {
   return useMemo(() => {
     const toggle = (command: string) => () => {
       (editor?.chain().focus() as any)[command]?.().run();
@@ -214,7 +214,7 @@ function useEditorCommands(editor: Editor | null) {
 /**
  * Hook for code block language synchronization.
  */
-function useCodeBlockLanguage(editor: Editor | null) {
+function useCodeBlockLanguage(editor: RichTextEditor | null) {
   const [selectedLanguage, setSelectedLanguage] = useState('javascript');
 
   useEffect(() => {

@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import type { CursorPosition } from '@renderer/stores/documentBufferStore';
 export type { CursorPosition };
@@ -22,7 +22,7 @@ import { useNoteStore } from '@renderer/stores/noteStore';
 
 interface UseDocumentBufferOptions {
   noteId: string | null;
-  editor: Editor | null;
+  editor: RichTextEditor | null;
 }
 
 interface UseDocumentBufferResult {

@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useModals } from '@renderer/hooks/useUI';
 import { X, MagnifyingGlass, ArrowUp, ArrowDown, TextAa } from 'phosphor-react';
-import type { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';
 import { Toggle } from '@renderer/components/base/ui/toggle';
@@ -13,7 +13,7 @@ import { Text } from '@renderer/components/base/ui/text';
 import { cn } from '@renderer/lib/utils';
 
 interface FindReplaceModalProps {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
 }
 
 export function FindReplaceModal({ editor }: FindReplaceModalProps) {

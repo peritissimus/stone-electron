@@ -9,14 +9,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { useEditorUI } from '@renderer/hooks/useUI';
 import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
 import { parseMarkdown } from '@renderer/lib/markdownParser';
 import { logger } from '@renderer/lib/logger';
 
 interface UseEditorModeOptions {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
   activeNoteId: string | null;
   isDirty: boolean;
   onSaveRaw: (markdown: string) => Promise<void>;

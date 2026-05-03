@@ -1,5 +1,5 @@
 /**
- * useScratchDocument — binds a TipTap editor to a file on disk by absolute
+ * useScratchDocument — binds the rich-text editor to a file on disk by absolute
  * path, outside the workspace/notes pipeline. Load on mount, save on demand.
  *
  * Intentionally sparse: no buffer store, no autosave, no draft recovery,
@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { scratchAPI } from '@renderer/api';
 import { parseMarkdown } from '@renderer/lib/markdownParser';
 import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
@@ -27,7 +27,7 @@ export interface UseScratchDocumentResult {
 }
 
 export function useScratchDocument(
-  editor: Editor | null,
+  editor: RichTextEditor | null,
   absolutePath: string | null,
 ): UseScratchDocumentResult {
   const [status, setStatus] = useState<Status>('idle');

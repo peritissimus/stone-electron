@@ -1,5 +1,5 @@
 /**
- * JournalDayEditor — inline TipTap editor for a single journal day.
+ * JournalDayEditor — inline rich-text editor for a single journal day.
  *
  * Mounted once per day in the journals timeline. Content is preloaded into
  * the documentBufferStore by useJournalTimeline when the timeline loads, so
@@ -7,8 +7,7 @@
  * standard documentBuffer + useDocumentAutosave path — saved on window blur.
  */
 
-import { EditorContent } from '@tiptap/react';
-import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
+import { RichTextEditorContent, useRichTextEditor } from '@renderer/editor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
 
 interface JournalDayEditorProps {
@@ -16,12 +15,12 @@ interface JournalDayEditorProps {
 }
 
 export function JournalDayEditor({ noteId }: JournalDayEditorProps) {
-  const editor = useTipTapEditor();
+  const editor = useRichTextEditor();
   useDocumentBuffer({ noteId, editor });
 
   return (
     <div className="journal-day-editor">
-      <EditorContent editor={editor} />
+      <RichTextEditorContent editor={editor} />
     </div>
   );
 }

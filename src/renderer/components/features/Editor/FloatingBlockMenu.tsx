@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import {
   Plus,
   DotsSixVertical,
@@ -28,7 +28,7 @@ import {
 import { CommandMenuItem } from '@renderer/components/composites';
 
 export interface FloatingBlockMenuProps {
-  editor: Editor;
+  editor: RichTextEditor;
 }
 
 export function FloatingBlockMenu({ editor }: FloatingBlockMenuProps) {

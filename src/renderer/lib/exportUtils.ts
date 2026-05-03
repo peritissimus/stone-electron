@@ -5,7 +5,7 @@
  * including Mermaid diagrams as SVGs, syntax-highlighted code, and all applied styles.
  */
 
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { decodeBase64ToUtf8 } from '@renderer/lib/base64';
 import { getEmbeddedFontFaces } from '@renderer/lib/fontLoader';
 
@@ -22,7 +22,7 @@ const GOOGLE_FONTS_URL =
  * - Syntax highlighted code
  * - All applied styles
  */
-export function getRenderedEditorContent(editor: Editor): string {
+export function getRenderedEditorContent(editor: RichTextEditor): string {
   // Get the ProseMirror DOM element which has the rendered content
   const editorElement = editor.view.dom as HTMLElement;
 

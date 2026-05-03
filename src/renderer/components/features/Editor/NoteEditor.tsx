@@ -1,5 +1,5 @@
 /**
- * Note Editor Component - TipTap Rich Text Editor
+ * Note Editor Component - Rich Text Editor
  *
  * Implements: specs/components.ts#NoteEditorProps
  * Uses document buffer for instant note switching
@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState, useImperativeHandle, forwardR
 import { useEditorOperations } from '@renderer/hooks/useNoteEditor';
 import { useNavigateToNote, useNavigateHome } from '@renderer/navigation';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
-import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
+import { useRichTextEditor, type RichTextEditor } from '@renderer/editor';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
 import { useImageUpload } from '@renderer/hooks/useImageUpload';
 import { useEditorMode } from '@renderer/hooks/useEditorMode';
@@ -25,10 +25,8 @@ import { BacklinksPanel } from './BacklinksPanel';
 import { Copy, Check } from 'phosphor-react';
 import { logger } from '@renderer/lib/logger';
 
-import type { Editor } from '@tiptap/react';
-
 interface NoteEditorProps {
-  onEditorChange?: (editor: Editor | null) => void;
+  onEditorChange?: (editor: RichTextEditor | null) => void;
 }
 
 /**
@@ -38,7 +36,7 @@ export interface NoteEditorHandle {
   save: () => Promise<void>;
   createSiblingNote: () => Promise<void>;
   restoreDraft: (content: string) => void;
-  getEditor: () => Editor | null;
+  getEditor: () => RichTextEditor | null;
 }
 
 export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
@@ -58,7 +56,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
   const { updateNote, toggleFavorite, togglePin, toggleArchive, deleteNote, createNote } =
     useNoteAPI();
 
-  const editor = useTipTapEditor();
+  const editor = useRichTextEditor();
   const creatingNoteRef = useRef(false);
 
   useEffect(() => {

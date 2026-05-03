@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import {
   Plus,
   DotsSixVertical,
@@ -28,7 +28,7 @@ import {
 import { CommandMenuItem } from '@renderer/components/composites';
 
 export interface BlockMenuProps {
-  editor: Editor;
+  editor: RichTextEditor;
   className?: string;
 }
 

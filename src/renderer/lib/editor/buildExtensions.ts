@@ -2,7 +2,8 @@
  * TipTap extension factory.
  *
  * Pure function of (editorConfig, resolvedShortcuts) → extensions array.
- * Used by useTipTapEditor; isolates extension assembly from React lifecycle
+ * Used by the current rich-text editor implementation; isolates extension
+ * assembly from React lifecycle
  * so the same code can be tested or reconstructed without re-mounting.
  *
  * Notes:

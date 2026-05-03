@@ -3,14 +3,14 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Editor } from '@tiptap/react';
+import type { RichTextEditor } from '@renderer/editor';
 import { ToolbarButton } from '@renderer/components/composites';
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/base/ui/popover';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 
 export interface UrlInsertPopoverProps {
-  editor: Editor;
+  editor: RichTextEditor;
   type: 'link' | 'image';
   icon: React.ReactNode;
   tooltip: string;

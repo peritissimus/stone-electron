@@ -3,11 +3,11 @@
  */
 
 import React from 'react';
-import { Editor, EditorContent } from '@tiptap/react';
+import { RichTextEditorContent, type RichTextEditor } from '@renderer/editor';
 import { FloatingBlockMenu } from './FloatingBlockMenu';
 
 export interface EditorWithBlockMenuProps {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
 }
 
 export function EditorWithBlockMenu({ editor }: EditorWithBlockMenuProps) {
@@ -23,7 +23,7 @@ export function EditorWithBlockMenu({ editor }: EditorWithBlockMenuProps) {
       </div>
 
       {/* Editor Content */}
-      <EditorContent
+      <RichTextEditorContent
         editor={editor}
         className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden"
       />

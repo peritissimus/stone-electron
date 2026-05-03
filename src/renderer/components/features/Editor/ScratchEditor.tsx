@@ -1,5 +1,5 @@
 /**
- * ScratchEditor — renders TipTap bound to an arbitrary .md file on disk.
+ * ScratchEditor — renders the rich-text editor bound to an arbitrary .md file on disk.
  *
  * Reads the file path from the URL (`/scratch?path=<encoded absolute path>`),
  * loads content via scratchAPI, and saves back to the same path on ⌘S.
@@ -9,8 +9,7 @@
 
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { EditorContent } from '@tiptap/react';
-import { useTipTapEditor } from '@renderer/hooks/useTipTapEditor';
+import { RichTextEditorContent, useRichTextEditor } from '@renderer/editor';
 import { useScratchDocument } from '@renderer/hooks/useScratchDocument';
 import { logger } from '@renderer/lib/logger';
 
@@ -21,7 +20,7 @@ export function ScratchEditor() {
   const params = new URLSearchParams(location.search);
   const path = params.get('path');
 
-  const editor = useTipTapEditor();
+  const editor = useRichTextEditor();
   const { status, error, name, isDirty, save } = useScratchDocument(editor, path);
 
   // ⌘S / Ctrl+S saves. Scoped here (not via useAppShortcuts) so the
@@ -102,7 +101,7 @@ export function ScratchEditor() {
 
       <div className="flex-1 min-h-0 overflow-y-auto bg-background">
         <div className="max-w-[900px] mx-auto px-16 py-12">
-          <EditorContent
+          <RichTextEditorContent
             editor={editor}
             className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"
           />

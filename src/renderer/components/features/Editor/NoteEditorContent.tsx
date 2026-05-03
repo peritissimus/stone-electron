@@ -2,14 +2,13 @@
  * Note Editor Content Component
  */
 import { forwardRef } from 'react';
-import { Editor } from '@tiptap/react';
-import { EditorContent } from '@tiptap/react';
+import { RichTextEditorContent, type RichTextEditor } from '@renderer/editor';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { useEditorUI } from '@renderer/hooks/useUI';
 import { useEditorConfig } from '@renderer/hooks/useEditorConfig';
 
 export interface NoteEditorContentProps {
-  editor: Editor | null;
+  editor: RichTextEditor | null;
   isLoading: boolean;
 }
 
@@ -64,7 +63,7 @@ export const NoteEditorContent = forwardRef<HTMLDivElement, NoteEditorContentPro
           <div
             className={`max-w-[900px] mx-auto px-16 py-12 ${!showBlockIndicators ? 'hide-block-indicators' : ''}`}
           >
-            <EditorContent
+            <RichTextEditorContent
               editor={editor}
               className="prose prose-stone dark:prose-invert max-w-none focus-within:outline-hidden min-h-[300px]"
             />
