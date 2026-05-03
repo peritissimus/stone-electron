@@ -33,6 +33,7 @@ interface UseDocumentBufferResult {
   isLoading: boolean;
   save: () => Promise<boolean>;
   saveAll: () => Promise<void>;
+  replaceContent: (markdown: string, options?: { dirty?: boolean }) => void;
 }
 
 // Track loading state outside of store to avoid re-renders
@@ -122,6 +123,18 @@ export function useDocumentBuffer({
 
     return subscribeToEditorUpdates(editor, handleUpdate);
   }, [editor, noteId, updateBuffer]);
+
+  const replaceContent = useCallback(
+    (markdown: string, options: { dirty?: boolean } = {}) => {
+      if (!noteId) return;
+      if (options.dirty) {
+        updateBuffer(noteId, markdown);
+      } else {
+        setBuffer(noteId, markdown);
+      }
+    },
+    [noteId, setBuffer, updateBuffer],
+  );
 
   // Debounce reload to prevent double-triggering from NOTE_UPDATED + FILE_CHANGED
   const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -250,6 +263,7 @@ export function useDocumentBuffer({
     isLoading: isLoadingRef.current,
     save,
     saveAll,
+    replaceContent,
   };
 }
 

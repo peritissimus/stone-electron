@@ -446,13 +446,20 @@ Stores       ✗ React hooks
 API          ✗ State management
 ```
 
+Hook dependency rule:
+
+- Data/state hooks go through stores when they read or mutate shared renderer state.
+- Command/service hooks may call API directly when they do not own shared state.
+- Components and pages still never import stores or API directly.
+
 ```
 ┌─────────────────────────────────────────────────┐
 │               COMPONENTS                        │
 │              (uses hooks)                       │
 ├─────────────────────────────────────────────────┤
 │                  HOOKS                          │
-│          (uses stores + api)                    │
+│       (state hooks use stores; command hooks    │
+│        may call api directly)                   │
 ├─────────────────────────────────────────────────┤
 │                 STORES                          │
 │              (uses api)                         │

@@ -148,7 +148,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
   const scrollPercentRef = useRef<number>(0);
 
   // Document buffer for content management
-  const { isDirty, save } = useDocumentBuffer({
+  const { isDirty, save, replaceContent } = useDocumentBuffer({
     noteId: activeNoteId,
     editor,
   });
@@ -170,11 +170,20 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
     isDirty,
     onSaveRaw: async (markdown) => {
       if (activeNoteId) {
-        await updateNote(activeNoteId, { content: markdown }, false);
+        const result = await updateNote(activeNoteId, { content: markdown }, false);
+        if (!result) {
+          throw new Error('Failed to save raw note content');
+        }
       }
     },
     onSaveRich: async () => {
       await save();
+    },
+    onRawContentSaved: (markdown) => {
+      replaceContent(markdown);
+    },
+    onRawContentSynced: (markdown, dirty) => {
+      replaceContent(markdown, { dirty });
     },
   });
 

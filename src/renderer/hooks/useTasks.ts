@@ -1,7 +1,8 @@
 /**
  * useTasks Hook - Manages task filtering, grouping, and state
  *
- * Follows architecture: Components → Hooks → Stores/API
+ * Follows architecture: data/state hooks own local state and may call
+ * command/service hooks for API-backed actions.
  */
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';

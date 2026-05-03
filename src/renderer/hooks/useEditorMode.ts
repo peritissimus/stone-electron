@@ -20,6 +20,8 @@ interface UseEditorModeOptions {
   isDirty: boolean;
   onSaveRaw: (markdown: string) => Promise<void>;
   onSaveRich: () => Promise<void>;
+  onRawContentSaved?: (markdown: string) => void;
+  onRawContentSynced?: (markdown: string, dirty: boolean) => void;
 }
 
 export function useEditorMode({
@@ -28,6 +30,8 @@ export function useEditorMode({
   isDirty,
   onSaveRaw,
   onSaveRich,
+  onRawContentSaved,
+  onRawContentSynced,
 }: UseEditorModeOptions) {
   const { editorMode, setEditorMode } = useEditorUI();
   const [rawMarkdown, setRawMarkdown] = useState('');
@@ -36,6 +40,7 @@ export function useEditorMode({
   // Track previous mode and last synced content
   const previousModeRef = useRef(editorMode);
   const lastSyncedMarkdownRef = useRef('');
+  const lastSavedRawMarkdownRef = useRef<string | null>(null);
 
   // Handle mode switching - convert content between formats
   useEffect(() => {
@@ -56,6 +61,8 @@ export function useEditorMode({
     } else {
       if (rawMarkdown !== lastSyncedMarkdownRef.current) {
         setEditorMarkdown(editor, rawMarkdown);
+        const rawContentDirty = rawDirty && rawMarkdown !== lastSavedRawMarkdownRef.current;
+        onRawContentSynced?.(rawMarkdown, rawContentDirty);
         lastSyncedMarkdownRef.current = rawMarkdown;
         setRawDirty(false);
         logger.info('[useEditorMode] Switched to rich mode, content updated');
@@ -63,7 +70,7 @@ export function useEditorMode({
         logger.info('[useEditorMode] Switched to rich mode, no changes');
       }
     }
-  }, [editorMode, editor, rawMarkdown]);
+  }, [editorMode, editor, rawMarkdown, rawDirty, onRawContentSynced]);
 
   // Reset to rich mode when switching notes
   const prevNoteIdRef = useRef(activeNoteId);
@@ -75,6 +82,7 @@ export function useEditorMode({
     setEditorMode('rich');
     setRawMarkdown('');
     lastSyncedMarkdownRef.current = '';
+    lastSavedRawMarkdownRef.current = null;
     setRawDirty(false);
   }, [activeNoteId, setEditorMode]);
 
@@ -88,12 +96,14 @@ export function useEditorMode({
   const handleSave = useCallback(async () => {
     if (editorMode === 'raw' && rawDirty) {
       await onSaveRaw(rawMarkdown);
+      lastSavedRawMarkdownRef.current = rawMarkdown;
+      onRawContentSaved?.(rawMarkdown);
       setRawDirty(false);
       logger.info('[useEditorMode] Raw markdown saved');
     } else {
       await onSaveRich();
     }
-  }, [editorMode, rawDirty, rawMarkdown, onSaveRaw, onSaveRich]);
+  }, [editorMode, rawDirty, rawMarkdown, onSaveRaw, onSaveRich, onRawContentSaved]);
 
   // Handle mode toggle - auto-save before switching
   const handleModeToggle = useCallback(async () => {

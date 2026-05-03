@@ -12,7 +12,7 @@ import type { NoteProps } from '../../entities';
  */
 export interface ICreateNoteUseCase {
   execute(request: {
-    id: string;
+    id?: string;
     title?: string;
     content?: string;
     folderPath?: string;

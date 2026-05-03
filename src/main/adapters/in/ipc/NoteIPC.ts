@@ -13,7 +13,6 @@
 
 import { ipcMain } from 'electron';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
-import { generateId } from '@shared/utils/id';
 import {
   CreateNoteRequestSchema,
   DeleteNoteRequestSchema,
@@ -47,16 +46,13 @@ export class NoteIPC {
     const { noteUseCases } = this.deps;
 
     ipcMain.handle(NOTE_CHANNELS.CREATE, async (_event, rawRequest) => {
-      const { id, ...rest } = CreateNoteRequestSchema.parse(rawRequest);
-      // ICreateNoteUseCase requires a string id; generate one if the caller
-      // didn't supply one.
-      const resolvedId = id ?? generateId();
+      const request = CreateNoteRequestSchema.parse(rawRequest);
       return this.handleRequest<NoteResponse>(
         async () => {
-          const result = await noteUseCases.createNote.execute({ id: resolvedId, ...rest });
+          const result = await noteUseCases.createNote.execute(request);
           return result.note;
         },
-        { channel: NOTE_CHANNELS.CREATE, requestId: resolvedId },
+        { channel: NOTE_CHANNELS.CREATE, requestId: request.id },
       );
     });
 

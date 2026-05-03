@@ -2,7 +2,7 @@
  * useNoteEditor Hook - Provides all state and actions for the note editor
  *
  * Abstracts store access per architecture rules:
- * Components → Hooks → Stores
+ * Components → Hooks → Stores for shared state.
  *
  * activeNoteId is sourced from the route (see useActiveNoteId). The store
  * no longer mirrors it — if you need to change which note is active, use

@@ -10,6 +10,7 @@ type RendererLayer =
   | 'pages'
   | 'types'
   | 'utils'
+  | 'editor'
   | 'lib'
   | 'navigation'
   | 'shared'
@@ -51,6 +52,7 @@ function layerOfPath(filePath: string): RendererLayer {
     ['pages', path.join(rendererRoot, 'pages')],
     ['types', path.join(rendererRoot, 'types')],
     ['utils', path.join(rendererRoot, 'utils')],
+    ['editor', path.join(rendererRoot, 'editor')],
     ['lib', path.join(rendererRoot, 'lib')],
     ['navigation', path.join(rendererRoot, 'navigation')],
     ['shared', sharedRoot],
@@ -104,6 +106,14 @@ function canImportEditorImplementation(file: string): boolean {
   );
 }
 
+function canImportEditorConversion(file: string): boolean {
+  const relativeFile = toPosix(file);
+  return (
+    relativeFile.startsWith('src/renderer/editor/') ||
+    relativeFile.startsWith('src/renderer/lib/extensions/')
+  );
+}
+
 function violationFor(
   sourceLayer: RendererLayer,
   targetLayer: RendererLayer | 'external',
@@ -117,9 +127,12 @@ function violationFor(
 
   if (
     sourceLayer === 'stores' &&
-    (targetLayer === 'hooks' || targetLayer === 'components' || targetLayer === 'pages')
+    (targetLayer === 'hooks' ||
+      targetLayer === 'components' ||
+      targetLayer === 'pages' ||
+      targetLayer === 'editor')
   ) {
-    return 'stores must not depend on hooks, components, or pages';
+    return 'stores must not depend on hooks, components, pages, or editor implementations';
   }
 
   if (
@@ -127,9 +140,10 @@ function violationFor(
     (targetLayer === 'stores' ||
       targetLayer === 'hooks' ||
       targetLayer === 'components' ||
-      targetLayer === 'pages')
+      targetLayer === 'pages' ||
+      targetLayer === 'editor')
   ) {
-    return 'API wrappers must stay below state, hooks, and UI';
+    return 'API wrappers must stay below state, hooks, editor, and UI';
   }
 
   return null;
@@ -153,11 +167,36 @@ describe('renderer architecture boundaries', () => {
           continue;
         }
 
+        if (
+          importPath.startsWith('@renderer/editor/tiptap') &&
+          !toPosix(file).startsWith('src/renderer/editor/')
+        ) {
+          violations.push({
+            file: toPosix(file),
+            importPath,
+            reason: 'app-facing renderer code must import editor APIs through the editor facade',
+          });
+          continue;
+        }
+
         if (importPath.startsWith('@tiptap/') && !canImportEditorImplementation(file)) {
           violations.push({
             file: toPosix(file),
             importPath,
             reason: 'app-facing renderer code must import editor APIs through @renderer/editor',
+          });
+          continue;
+        }
+
+        if (
+          (importPath === '@renderer/lib/markdownParser' ||
+            importPath === '@renderer/lib/markdownSerializer') &&
+          !canImportEditorConversion(file)
+        ) {
+          violations.push({
+            file: toPosix(file),
+            importPath,
+            reason: 'markdown parse/serialize belongs behind the editor facade',
           });
           continue;
         }

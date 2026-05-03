@@ -131,18 +131,17 @@ test('perf: large-document open + save', async ({ app }) => {
 
   // Capture renderer-side save timings emitted by useScratchDocument.
   // The logger uses console.info under the hood; we filter for our marker.
-  const saveTimings: Array<{ getJsonMs: number; serializeMs: number; ipcWriteMs: number; bytes: number }> = [];
+  const saveTimings: Array<{ getMarkdownMs: number; ipcWriteMs: number; bytes: number }> = [];
   window.on('console', (msg) => {
     const text = msg.text();
     if (!text.includes('[Scratch] save timings')) return;
     // Extract the JSON-ish payload following the message prefix.
-    const match = text.match(/bytes:\s*(\d+).*getJsonMs:\s*(\d+).*serializeMs:\s*(\d+).*ipcWriteMs:\s*(\d+)/s);
+    const match = text.match(/bytes:\s*(\d+).*getMarkdownMs:\s*(\d+).*ipcWriteMs:\s*(\d+)/s);
     if (match) {
       saveTimings.push({
         bytes: parseInt(match[1], 10),
-        getJsonMs: parseInt(match[2], 10),
-        serializeMs: parseInt(match[3], 10),
-        ipcWriteMs: parseInt(match[4], 10),
+        getMarkdownMs: parseInt(match[2], 10),
+        ipcWriteMs: parseInt(match[3], 10),
       });
     }
   });
@@ -245,18 +244,19 @@ test('perf: large-document open + save', async ({ app }) => {
   // Save-phase breakdown captured from the renderer console.
   if (saveTimings.length > 0) {
     console.log('\n=== Save breakdown (ms) ===');
-    console.log('bytes      getJSON  serialize  ipcWrite');
+    console.log('bytes      getMarkdown  ipcWrite');
     for (const t of saveTimings) {
       console.log(
         [
           t.bytes.toString().padStart(8),
-          t.getJsonMs.toString().padStart(9),
-          t.serializeMs.toString().padStart(9),
+          t.getMarkdownMs.toString().padStart(11),
           t.ipcWriteMs.toString().padStart(9),
         ].join('  '),
       );
     }
   }
+
+  expect.soft(saveTimings.length, 'captured save timing rows').toBe(results.length);
 
   // Generous envelopes — breach implies a serious regression.
   for (const r of results) {

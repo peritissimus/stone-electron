@@ -95,7 +95,15 @@ function collectImports(source: string): string[] {
   return [...staticImports, ...dynamicImports].map((match) => match[1]);
 }
 
-function violationFor(sourceLayer: Layer, targetLayer: Layer | 'external'): string | null {
+function isAllowedRootSharedExternal(importPath: string): boolean {
+  return importPath === 'zod';
+}
+
+function violationFor(
+  sourceLayer: Layer,
+  targetLayer: Layer | 'external',
+  importPath: string,
+): string | null {
   switch (sourceLayer) {
     case 'domain':
       return targetLayer === 'domain' ? null : 'domain must only import domain files';
@@ -108,10 +116,13 @@ function violationFor(sourceLayer: Layer, targetLayer: Layer | 'external'): stri
         ? 'adapters must not import infrastructure, renderer, or preload'
         : null;
     case 'main-shared':
-    case 'root-shared':
       return targetLayer === 'external' || targetLayer === 'main-shared' || targetLayer === 'root-shared'
         ? null
         : 'shared must not import application layers';
+    case 'root-shared':
+      if (targetLayer === 'root-shared') return null;
+      if (targetLayer === 'external' && isAllowedRootSharedExternal(importPath)) return null;
+      return 'root shared must stay to wire types, constants, schemas, and pure shared helpers';
     default:
       return null;
   }
@@ -127,7 +138,7 @@ describe('backend architecture boundaries', () => {
 
       for (const importPath of collectImports(source)) {
         const targetLayer = resolveImport(file, importPath);
-        const reason = violationFor(sourceLayer, targetLayer);
+        const reason = violationFor(sourceLayer, targetLayer, importPath);
         if (reason) {
           violations.push({ file: toPosix(file), importPath, reason });
         }
