@@ -1,4 +1,4 @@
-import { CaretRight, MagnifyingGlass } from 'phosphor-react';
+import { CaretRight } from 'phosphor-react';
 import { useJournalTimeline } from '@renderer/hooks/useJournalTimeline';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
@@ -45,7 +45,7 @@ export function JournalsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[46rem] px-5 pb-16 pt-4 sm:px-8">
+        <div className="mx-auto w-full max-w-[54rem] px-4 pb-16 pt-3 sm:px-8">
           {loading && !loadedOnce ? (
             <JournalSkeleton />
           ) : (
@@ -65,11 +65,8 @@ export function JournalsPage() {
                 />
               ))}
 
-              {loadedOnce && (
-                <div className="mt-6 flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
-                  <MagnifyingGlass size={13} />
-                  <span>Older entries are searchable from the command center.</span>
-                </div>
+              {loadedOnce && entries.length === 0 && (
+                <div className="py-10 text-center text-sm text-muted-foreground">No journals</div>
               )}
             </>
           )}

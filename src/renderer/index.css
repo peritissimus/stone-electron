@@ -1104,6 +1104,26 @@ span[data-type="task-marker"][data-state="idea"] {
   font-family: var(--font-editor-body);
   font-size: var(--font-editor-size);
   line-height: var(--font-editor-line-height);
+  min-height: 2.5rem !important;
+  padding-bottom: 0.125rem;
+}
+
+.journal-entry-surface {
+  border-left: 1px solid hsl(var(--border) / 0.45);
+  padding-left: 1.125rem;
+}
+
+.journal-day-editor .ProseMirror > p,
+.journal-day-editor .ProseMirror > h1,
+.journal-day-editor .ProseMirror > h2,
+.journal-day-editor .ProseMirror > h3,
+.journal-day-editor .ProseMirror > h4,
+.journal-day-editor .ProseMirror > h5,
+.journal-day-editor .ProseMirror > h6,
+.journal-day-editor .ProseMirror > blockquote {
+  margin-left: -1.125rem;
+  margin-right: 0;
+  padding-left: 1.25rem;
 }
 
 .journal-day-editor .ProseMirror > :first-child {

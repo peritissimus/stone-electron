@@ -1,7 +1,5 @@
 import { create } from 'zustand';
 import { journalAPI } from '@renderer/api';
-import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
 import { logger } from '@renderer/lib/logger';
 import type { JournalEntry } from '@shared/schemas';
 
@@ -13,28 +11,8 @@ interface JournalState {
   loadedOnce: boolean;
   error: string | null;
   load: () => Promise<void>;
-  materialize: (date: string) => Promise<void>;
+  materialize: (date: string) => Promise<string | null>;
   reset: () => void;
-}
-
-/**
- * Hydrate the documentBufferStore with markdown that arrived in the timeline
- * payload, so each per-day TipTap editor can mount without an extra IPC
- * round-trip. Skip notes that already have a buffer — the user may be in the
- * middle of editing them, and we'd otherwise discard their unsaved work.
- */
-function preloadDocumentBuffers(entries: JournalEntry[]): void {
-  const bufferStore = useDocumentBufferStore.getState();
-  for (const entry of entries) {
-    if (!entry.noteId || entry.content === null) continue;
-    if (bufferStore.hasBuffer(entry.noteId)) continue;
-    try {
-      const json = parseMarkdown(entry.content);
-      bufferStore.setBuffer(entry.noteId, json);
-    } catch (error) {
-      logger.error('[journalStore] Failed to parse journal markdown', { date: entry.date, error });
-    }
-  }
 }
 
 export const useJournalStore = create<JournalState>()((set, get) => ({
@@ -59,11 +37,8 @@ export const useJournalStore = create<JournalState>()((set, get) => ({
         return;
       }
 
-      const { entries } = response.data;
-      preloadDocumentBuffers(entries);
-
       set({
-        entries,
+        entries: response.data.entries,
         loading: false,
         loadedOnce: true,
       });
@@ -83,22 +58,18 @@ export const useJournalStore = create<JournalState>()((set, get) => ({
         date,
         error: response.error,
       });
-      return;
+      return null;
     }
 
     const { noteId } = response.data;
-    // Seed an empty buffer so the editor that's about to mount doesn't
-    // round-trip to disk for a freshly-created file we know is empty.
-    const bufferStore = useDocumentBufferStore.getState();
-    if (!bufferStore.hasBuffer(noteId)) {
-      bufferStore.setBuffer(noteId, { type: 'doc', content: [] });
-    }
 
     set((state) => ({
       entries: state.entries.map((entry) =>
         entry.date === date ? { ...entry, noteId, exists: true, content: '' } : entry,
       ),
     }));
+
+    return noteId;
   },
 
   reset: () =>

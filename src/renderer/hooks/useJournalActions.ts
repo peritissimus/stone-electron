@@ -8,9 +8,8 @@
  */
 
 import { useCallback } from 'react';
-import { journalAPI } from '@renderer/api';
 import { useNavigateToNote } from '@renderer/navigation';
-import { logger } from '@renderer/lib/logger';
+import { useJournalStore } from '@renderer/stores/journalStore';
 
 function toIsoDate(date: Date): string {
   const yyyy = date.getFullYear();
@@ -33,34 +32,34 @@ function displayInfoForDate(date: Date) {
 async function openOrCreateForDate(
   date: Date | string,
   navigate: (id: string) => void,
+  materialize: (date: string) => Promise<string | null>,
 ): Promise<string | null> {
   const journalDate = typeof date === 'string' ? date : toIsoDate(date);
-  const response = await journalAPI.openOrCreateForDate(journalDate);
-  if (!response.success || !response.data) {
-    logger.error('[useJournalActions] journalAPI.openOrCreateForDate failed', response.error);
+  const noteId = await materialize(journalDate);
+  if (!noteId) {
     return null;
   }
-  const { noteId } = response.data;
   navigate(noteId);
   return noteId;
 }
 
 export function useJournalActions() {
   const navigateToNote = useNavigateToNote();
+  const materialize = useJournalStore((state) => state.materialize);
 
   const openOrCreateTodayJournal = useCallback(
-    () => openOrCreateForDate(new Date(), navigateToNote),
-    [navigateToNote],
+    () => openOrCreateForDate(new Date(), navigateToNote, materialize),
+    [navigateToNote, materialize],
   );
 
   const openOrCreateYesterdayJournal = useCallback(
-    () => openOrCreateForDate(yesterday(), navigateToNote),
-    [navigateToNote],
+    () => openOrCreateForDate(yesterday(), navigateToNote, materialize),
+    [navigateToNote, materialize],
   );
 
   const openOrCreateJournalForDate = useCallback(
-    (date: Date | string) => openOrCreateForDate(date, navigateToNote),
-    [navigateToNote],
+    (date: Date | string) => openOrCreateForDate(date, navigateToNote, materialize),
+    [navigateToNote, materialize],
   );
 
   const getTodayInfo = useCallback(() => displayInfoForDate(new Date()), []);

@@ -1,6 +1,40 @@
 import { useCallback, useEffect } from 'react';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useJournalStore } from '@renderer/stores/journalStore';
+import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
+import { parseMarkdown } from '@renderer/lib/markdownParser';
+import { logger } from '@renderer/lib/logger';
+import type { JournalEntry } from '@shared/schemas';
+
+/**
+ * Hydrate the documentBufferStore with markdown that arrived in the timeline
+ * payload, so each per-day TipTap editor can mount without an extra IPC
+ * round-trip. Skip notes that already have a buffer because the user may have
+ * unsaved edits in that buffer.
+ */
+function preloadDocumentBuffers(entries: JournalEntry[]): void {
+  const bufferStore = useDocumentBufferStore.getState();
+  for (const entry of entries) {
+    if (!entry.noteId || entry.content === null) continue;
+    if (bufferStore.hasBuffer(entry.noteId)) continue;
+    try {
+      const json = parseMarkdown(entry.content);
+      bufferStore.setBuffer(entry.noteId, json);
+    } catch (error) {
+      logger.error('[useJournalTimeline] Failed to parse journal markdown', {
+        date: entry.date,
+        error,
+      });
+    }
+  }
+}
+
+function seedEmptyDocumentBuffer(noteId: string): void {
+  const bufferStore = useDocumentBufferStore.getState();
+  if (!bufferStore.hasBuffer(noteId)) {
+    bufferStore.setBuffer(noteId, { type: 'doc', content: [] });
+  }
+}
 
 export function useJournalTimeline() {
   const entries = useJournalStore((state) => state.entries);
@@ -17,6 +51,10 @@ export function useJournalTimeline() {
     return () => reset();
   }, [load, reset]);
 
+  useEffect(() => {
+    preloadDocumentBuffers(entries);
+  }, [entries]);
+
   // Open a day in the dedicated single-note editor (separate from the inline
   // timeline editor). Used by the date-heading button + the corner action icon.
   const handleEntryOpen = useCallback(
@@ -29,7 +67,10 @@ export function useJournalTimeline() {
 
   const handleMaterialize = useCallback(
     async (date: string) => {
-      await materialize(date);
+      const noteId = await materialize(date);
+      if (noteId) {
+        seedEmptyDocumentBuffer(noteId);
+      }
     },
     [materialize],
   );
