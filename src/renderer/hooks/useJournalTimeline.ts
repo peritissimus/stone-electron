@@ -2,8 +2,6 @@ import { useCallback, useEffect } from 'react';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useJournalStore } from '@renderer/stores/journalStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { logger } from '@renderer/lib/logger';
 import type { JournalEntry } from '@shared/schemas';
 
 /**
@@ -17,22 +15,14 @@ function preloadDocumentBuffers(entries: JournalEntry[]): void {
   for (const entry of entries) {
     if (!entry.noteId || entry.content === null) continue;
     if (bufferStore.hasBuffer(entry.noteId)) continue;
-    try {
-      const json = parseMarkdown(entry.content);
-      bufferStore.setBuffer(entry.noteId, json);
-    } catch (error) {
-      logger.error('[useJournalTimeline] Failed to parse journal markdown', {
-        date: entry.date,
-        error,
-      });
-    }
+    bufferStore.setBuffer(entry.noteId, entry.content);
   }
 }
 
 function seedEmptyDocumentBuffer(noteId: string): void {
   const bufferStore = useDocumentBufferStore.getState();
   if (!bufferStore.hasBuffer(noteId)) {
-    bufferStore.setBuffer(noteId, { type: 'doc', content: [] });
+    bufferStore.setBuffer(noteId, '');
   }
 }
 

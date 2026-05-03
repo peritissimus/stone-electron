@@ -144,6 +144,15 @@ describe('renderer architecture boundaries', () => {
       const source = fs.readFileSync(file, 'utf8');
 
       for (const importPath of collectImports(source)) {
+        if (sourceLayer === 'stores' && importPath.startsWith('@renderer/editor')) {
+          violations.push({
+            file: toPosix(file),
+            importPath,
+            reason: 'stores must keep editor state as app data, not editor implementation types',
+          });
+          continue;
+        }
+
         if (importPath.startsWith('@tiptap/') && !canImportEditorImplementation(file)) {
           violations.push({
             file: toPosix(file),

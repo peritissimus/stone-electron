@@ -9,10 +9,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RichTextEditor } from '@renderer/editor';
+import { getEditorMarkdown, setEditorMarkdown } from '@renderer/editor/document';
+import type { RichTextEditor } from '@renderer/editor/types';
 import { useEditorUI } from '@renderer/hooks/useUI';
-import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
 import { logger } from '@renderer/lib/logger';
 
 interface UseEditorModeOptions {
@@ -49,15 +48,14 @@ export function useEditorMode({
     if (prevMode === editorMode) return;
 
     if (editorMode === 'raw') {
-      const json = editor.getJSON();
-      const markdown = serializeMarkdown(json);
+      const markdown = getEditorMarkdown(editor);
       setRawMarkdown(markdown);
       lastSyncedMarkdownRef.current = markdown;
       setRawDirty(false);
       logger.info('[useEditorMode] Switched to raw mode');
     } else {
       if (rawMarkdown !== lastSyncedMarkdownRef.current) {
-        editor.commands.setContent(parseMarkdown(rawMarkdown));
+        setEditorMarkdown(editor, rawMarkdown);
         lastSyncedMarkdownRef.current = rawMarkdown;
         setRawDirty(false);
         logger.info('[useEditorMode] Switched to rich mode, content updated');

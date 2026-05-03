@@ -11,6 +11,7 @@ import { useEditorOperations } from '@renderer/hooks/useNoteEditor';
 import { useNavigateToNote, useNavigateHome } from '@renderer/navigation';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useRichTextEditor, type RichTextEditor } from '@renderer/editor';
+import { setEditorDocument } from '@renderer/editor/document';
 import { useDocumentBuffer } from '@renderer/hooks/useDocumentBuffer';
 import { useImageUpload } from '@renderer/hooks/useImageUpload';
 import { useEditorMode } from '@renderer/hooks/useEditorMode';
@@ -259,7 +260,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
       if (!editor) return;
       try {
         const contentJson = JSON.parse(content);
-        editor.commands.setContent(contentJson);
+        setEditorDocument(editor, contentJson);
         logger.info('[NoteEditor] Draft content restored');
       } catch (error) {
         logger.error('[NoteEditor] Failed to restore draft:', error);

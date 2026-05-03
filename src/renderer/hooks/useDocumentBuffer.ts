@@ -6,15 +6,18 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { RichTextEditor } from '@renderer/editor';
+import {
+  getEditorMarkdown,
+  setEditorMarkdown,
+  subscribeToEditorUpdates,
+} from '@renderer/editor/document';
+import type { RichTextEditor } from '@renderer/editor/types';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import type { CursorPosition } from '@renderer/stores/documentBufferStore';
 export type { CursorPosition };
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
-import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
 import { logger } from '@renderer/lib/logger';
 import { deleteDraft } from '@renderer/lib/draftStorage';
 import { noteAPI } from '@renderer/api';
@@ -40,10 +43,26 @@ export function useDocumentBuffer({
   editor,
 }: UseDocumentBufferOptions): UseDocumentBufferResult {
   const { updateNote } = useNoteAPI();
-  const { getBuffer, setBuffer, updateBuffer, markClean, isDirty, getDirtyBuffers, hasBuffer } =
+  const { getBuffer, setBuffer, updateBuffer, markClean, isDirty, getDirtyBuffers } =
     useDocumentBufferStore();
 
   const isLoadingRef = useRef(false);
+  const suppressEditorUpdateRef = useRef(false);
+
+  const hydrateEditor = useCallback(
+    (markdown: string) => {
+      if (!editor) return;
+      suppressEditorUpdateRef.current = true;
+      try {
+        setEditorMarkdown(editor, markdown);
+      } finally {
+        setTimeout(() => {
+          suppressEditorUpdateRef.current = false;
+        }, 0);
+      }
+    },
+    [editor],
+  );
 
   // Load content into buffer and editor when note changes
   useEffect(() => {
@@ -54,7 +73,7 @@ export function useDocumentBuffer({
       const existingBuffer = getBuffer(noteId);
       if (existingBuffer) {
         logger.debug('[useDocumentBuffer] Loading from buffer:', noteId);
-        editor.commands.setContent(existingBuffer.content);
+        hydrateEditor(existingBuffer.content);
         return;
       }
 
@@ -68,16 +87,16 @@ export function useDocumentBuffer({
         const response = await noteAPI.getContent(noteId);
 
         if (response.success && response.data) {
-          const jsonContent = parseMarkdown(response.data.content);
-          editor.commands.setContent(jsonContent);
-          setBuffer(noteId, jsonContent);
+          hydrateEditor(response.data.content);
+          setBuffer(noteId, response.data.content);
         } else {
-          editor.commands.setContent('');
-          setBuffer(noteId, { type: 'doc', content: [] });
+          hydrateEditor('');
+          setBuffer(noteId, '');
         }
       } catch (error) {
         logger.error('[useDocumentBuffer] Failed to load content:', error);
-        editor.commands.setContent('');
+        hydrateEditor('');
+        setBuffer(noteId, '');
       } finally {
         loadingNotes.delete(noteId);
         isLoadingRef.current = false;
@@ -85,25 +104,23 @@ export function useDocumentBuffer({
     };
 
     loadContent();
-  }, [noteId, editor, getBuffer, setBuffer, hasBuffer]);
+  }, [noteId, editor, getBuffer, setBuffer, hydrateEditor]);
 
   // Listen for editor updates and update buffer
   useEffect(() => {
     if (!editor || !noteId) return;
 
     const handleUpdate = () => {
+      if (suppressEditorUpdateRef.current) return;
+
       try {
-        const content = editor.getJSON();
-        updateBuffer(noteId, content);
+        updateBuffer(noteId, getEditorMarkdown(editor));
       } catch (error) {
         logger.error('[useDocumentBuffer] Failed to update buffer:', error);
       }
     };
 
-    editor.on('update', handleUpdate);
-    return () => {
-      editor.off('update', handleUpdate);
-    };
+    return subscribeToEditorUpdates(editor, handleUpdate);
   }, [editor, noteId, updateBuffer]);
 
   // Debounce reload to prevent double-triggering from NOTE_UPDATED + FILE_CHANGED
@@ -131,9 +148,8 @@ export function useDocumentBuffer({
       try {
         const response = await noteAPI.getContent(noteId);
         if (response.success && response.data) {
-          const jsonContent = parseMarkdown(response.data.content);
-          editor.commands.setContent(jsonContent);
-          setBuffer(noteId, jsonContent);
+          hydrateEditor(response.data.content);
+          setBuffer(noteId, response.data.content);
           logger.info('[useDocumentBuffer] Reloaded content from external update');
         }
       } catch (error) {
@@ -142,7 +158,7 @@ export function useDocumentBuffer({
         loadingNotes.delete(noteId);
       }
     }, 100); // 100ms debounce
-  }, [noteId, editor, setBuffer]);
+  }, [noteId, editor, setBuffer, hydrateEditor]);
 
   // Cleanup reload timer on unmount
   useEffect(() => {
@@ -194,7 +210,7 @@ export function useDocumentBuffer({
     }
 
     try {
-      const markdown = serializeMarkdown(buffer.content as any);
+      const markdown = buffer.content;
       const result = await updateNote(noteId, { content: markdown }, false);
 
       if (result) {
@@ -217,7 +233,7 @@ export function useDocumentBuffer({
 
     for (const buffer of dirtyBuffers) {
       try {
-        const markdown = serializeMarkdown(buffer.content as any);
+        const markdown = buffer.content;
         const result = await updateNote(buffer.noteId, { content: markdown }, false);
         if (result) {
           markClean(buffer.noteId);
@@ -254,7 +270,7 @@ export function useDocumentAutosave() {
 
     for (const buffer of dirtyBuffers) {
       try {
-        const markdown = serializeMarkdown(buffer.content as any);
+        const markdown = buffer.content;
         const result = await updateNote(buffer.noteId, { content: markdown }, false);
         if (result) {
           markClean(buffer.noteId);
@@ -274,7 +290,7 @@ export function useDocumentAutosave() {
 
     logger.debug('[useDocumentAutosave] Saving note on switch:', noteId);
     try {
-      const markdown = serializeMarkdown(buffer.content as any);
+      const markdown = buffer.content;
       const result = await updateNote(noteId, { content: markdown }, false);
       if (result) {
         markClean(noteId);
@@ -298,7 +314,7 @@ export function useDocumentAutosave() {
       const dirtyBuffers = getDirtyBuffers();
       for (const buffer of dirtyBuffers) {
         try {
-          const markdown = serializeMarkdown(buffer.content as any);
+          const markdown = buffer.content;
           // Fire and forget - can't await in beforeunload
           updateNote(buffer.noteId, { content: markdown }, false);
         } catch {

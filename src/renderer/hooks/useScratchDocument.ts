@@ -9,10 +9,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RichTextEditor } from '@renderer/editor';
+import {
+  getEditorMarkdown,
+  setEditorMarkdown,
+  subscribeToEditorUpdates,
+} from '@renderer/editor/document';
+import type { RichTextEditor } from '@renderer/editor/types';
 import { scratchAPI } from '@renderer/api';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
 import { logger } from '@renderer/lib/logger';
 
 type Status = 'idle' | 'loading' | 'ready' | 'error';
@@ -38,6 +41,7 @@ export function useScratchDocument(
   // Track the path we've loaded so we don't clobber changes while the user
   // is editing if the parent re-renders with the same path.
   const loadedPathRef = useRef<string | null>(null);
+  const suppressEditorUpdateRef = useRef(false);
 
   useEffect(() => {
     if (!editor || !absolutePath) return;
@@ -60,12 +64,14 @@ export function useScratchDocument(
       }
 
       try {
-        const doc = parseMarkdown(response.data.content);
-        editor.commands.setContent(doc);
-        // setContent fires a synchronous 'update' event which our dirty
-        // tracker would misread as a user edit. React batches the two
-        // setIsDirty calls in this effect, so the later `false` wins and
-        // the freshly-loaded doc starts clean.
+        suppressEditorUpdateRef.current = true;
+        try {
+          setEditorMarkdown(editor, response.data.content);
+        } finally {
+          setTimeout(() => {
+            suppressEditorUpdateRef.current = false;
+          }, 0);
+        }
         setIsDirty(false);
         loadedPathRef.current = absolutePath;
         setName(response.data.name);
@@ -87,11 +93,11 @@ export function useScratchDocument(
   // current doc and write.
   useEffect(() => {
     if (!editor) return;
-    const markDirty = () => setIsDirty(true);
-    editor.on('update', markDirty);
-    return () => {
-      editor.off('update', markDirty);
+    const markDirty = () => {
+      if (suppressEditorUpdateRef.current) return;
+      setIsDirty(true);
     };
+    return subscribeToEditorUpdates(editor, markDirty);
   }, [editor]);
 
   const save = useCallback(async (): Promise<boolean> => {
@@ -101,18 +107,15 @@ export function useScratchDocument(
     try {
       // Instrument the save path to localize bottlenecks for large docs.
       // Remove these measurements once perf is stable.
-      const tGetJson0 = performance.now();
-      const json = editor.getJSON();
-      const tGetJson1 = performance.now();
-      const markdown = serializeMarkdown(json);
-      const tSerialize1 = performance.now();
+      const tMarkdown0 = performance.now();
+      const markdown = getEditorMarkdown(editor);
+      const tMarkdown1 = performance.now();
       const response = await scratchAPI.write(absolutePath, markdown);
       const tWrite1 = performance.now();
       logger.info('[Scratch] save timings', {
         bytes: markdown.length,
-        getJsonMs: Math.round(tGetJson1 - tGetJson0),
-        serializeMs: Math.round(tSerialize1 - tGetJson1),
-        ipcWriteMs: Math.round(tWrite1 - tSerialize1),
+        getMarkdownMs: Math.round(tMarkdown1 - tMarkdown0),
+        ipcWriteMs: Math.round(tWrite1 - tMarkdown1),
       });
       if (!response.success) {
         setError(response.error?.message ?? 'Failed to save file');

@@ -8,7 +8,7 @@
  */
 
 import { create } from 'zustand';
-import type { EditorDocument } from '@renderer/editor';
+import type { DocumentMarkdown } from '@renderer/types/document';
 import { logger } from '@renderer/lib/logger';
 
 export interface CursorPosition {
@@ -22,7 +22,7 @@ export interface CursorPosition {
 
 export interface DocumentBuffer {
   noteId: string;
-  content: EditorDocument;
+  content: DocumentMarkdown;
   isDirty: boolean;
   lastModified: number;
   title?: string;
@@ -35,8 +35,8 @@ interface DocumentBufferState {
 
   // Actions
   getBuffer: (noteId: string) => DocumentBuffer | undefined;
-  setBuffer: (noteId: string, content: EditorDocument, title?: string) => void;
-  updateBuffer: (noteId: string, content: EditorDocument) => void;
+  setBuffer: (noteId: string, content: DocumentMarkdown, title?: string) => void;
+  updateBuffer: (noteId: string, content: DocumentMarkdown) => void;
   markDirty: (noteId: string, dirty?: boolean) => void;
   markClean: (noteId: string) => void;
   removeBuffer: (noteId: string) => void;
@@ -57,7 +57,7 @@ export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) =
     return get().buffers.get(noteId);
   },
 
-  setBuffer: (noteId: string, content: EditorDocument, title?: string) => {
+  setBuffer: (noteId: string, content: DocumentMarkdown, title?: string) => {
     set((state) => {
       const newBuffers = new Map(state.buffers);
 
@@ -93,7 +93,7 @@ export const useDocumentBufferStore = create<DocumentBufferState>()((set, get) =
     });
   },
 
-  updateBuffer: (noteId: string, content: EditorDocument) => {
+  updateBuffer: (noteId: string, content: DocumentMarkdown) => {
     set((state) => {
       const existing = state.buffers.get(noteId);
       if (!existing) {
