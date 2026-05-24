@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowSquareOut, Circle, PlusCircle } from 'phosphor-react';
+import { ArrowSquareOut, Circle } from 'phosphor-react';
 import type { JournalEntry } from '@shared/schemas';
 import { cn } from '@renderer/lib/utils';
 import { JournalDayEditor } from './JournalDayEditor';
@@ -19,14 +19,6 @@ function formatMonth(date: string): string {
 
 function formatDayOfMonth(date: string): string {
   return String(parseDateOnly(date).getDate()).padStart(2, '0');
-}
-
-function formatDisplayDate(date: string): string {
-  return parseDateOnly(date).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function isToday(date: string): boolean {
@@ -94,38 +86,23 @@ export function JournalEntrySection({
         </button>
       </aside>
 
-      <section className="min-w-0">
-        <header className="mb-2 flex items-center gap-2">
+      <section className="relative min-w-0">
+        {entry.exists && (
           <button
             type="button"
             onClick={handlePrimaryAction}
-            disabled={!entry.exists && materializing}
             className={cn(
-              'min-w-0 flex-1 truncate text-left text-base font-semibold leading-tight',
-              'transition-colors hover:text-primary disabled:cursor-progress disabled:opacity-60',
-              today ? 'text-primary' : 'text-foreground',
-            )}
-          >
-            {formatDisplayDate(entry.date)}
-          </button>
-          <button
-            type="button"
-            onClick={handlePrimaryAction}
-            disabled={!entry.exists && materializing}
-            className={cn(
-              'ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
+              'absolute right-0 top-0 z-[1] flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
               'opacity-0 transition-[background-color,color,opacity,transform] hover:bg-muted hover:text-foreground active:scale-[0.96] group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-              !entry.exists && 'opacity-100',
-              'disabled:cursor-progress disabled:opacity-60',
             )}
-            aria-label={entry.exists ? `Open ${entry.date}` : `Start ${entry.date}`}
-            title={entry.exists ? 'Open' : 'Start'}
+            aria-label={`Open ${entry.date}`}
+            title="Open"
           >
-            {entry.exists ? <ArrowSquareOut size={15} /> : <PlusCircle size={15} />}
+            <ArrowSquareOut size={15} />
           </button>
-        </header>
+        )}
 
-        <div className="journal-entry-surface">
+        <div className={cn('journal-entry-surface', entry.exists && 'pr-9')}>
           {entry.noteId ? (
             <JournalDayEditor noteId={entry.noteId} />
           ) : (
