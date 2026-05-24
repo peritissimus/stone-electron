@@ -32,10 +32,16 @@ export function MetricCard({
       <div className="flex-1 min-w-0">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="flex items-baseline gap-1">
-          <span className={cn('text-lg font-semibold', statusColors[status])}>{value}</span>
+          <span
+            className={cn('text-lg font-semibold tabular-nums', statusColors[status])}
+          >
+            {value}
+          </span>
           {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
         </div>
-        {subtext && <div className="text-xs text-muted-foreground truncate">{subtext}</div>}
+        {subtext && (
+          <div className="text-xs text-muted-foreground truncate tabular-nums">{subtext}</div>
+        )}
       </div>
     </div>
   );

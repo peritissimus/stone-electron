@@ -6,31 +6,78 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTree } from '@renderer/hooks/useFileTree';
 import { logger } from '@renderer/lib/logger';
 
+export interface SyncSummary {
+  workspaceId: string;
+  notes: {
+    created: number;
+    updated: number;
+    deleted: number;
+    embedded: number;
+    errors: string[];
+  };
+  notebooks: { created: number; updated: number; errors: string[] };
+}
+
+export interface SyncOptions {
+  /**
+   * Quiet by default — only toast when something actually changed (or failed).
+   * The big top-bar Sync button passes silent: false to also confirm "nothing
+   * to sync" on demand.
+   */
+  silent?: boolean;
+}
+
 export function useWorkspaceSync() {
   const { syncWorkspace, loadWorkspaces } = useWorkspaceAPI();
   const { loadFileTree } = useFileTreeAPI();
   const { loadNotes } = useNoteAPI();
   const { activeFolder } = useFileTree();
 
-  return useCallback(async () => {
-    try {
-      const res = await syncWorkspace();
-      if (res.success) {
-        logger.info('Sync complete', res.data);
+  return useCallback(
+    async (opts: SyncOptions = {}): Promise<SyncSummary | null> => {
+      const silent = opts.silent ?? false;
+      try {
+        const res = await syncWorkspace();
+        if (!res.success || !res.data) {
+          const message = res.error?.message || 'Sync failed';
+          logger.error('Sync failed', res.error);
+          toast.error(message);
+          return null;
+        }
+
+        const summary = res.data as unknown as SyncSummary;
+        logger.info('Sync complete', summary);
+
         await loadWorkspaces();
         await loadFileTree();
-        if (activeFolder) {
-          await loadNotes({ folderPath: activeFolder });
-        } else {
-          await loadNotes();
+        await (activeFolder ? loadNotes({ folderPath: activeFolder }) : loadNotes());
+
+        const created = summary.notes.created;
+        const deleted = summary.notes.deleted;
+        const embedded = summary.notes.embedded;
+
+        if (created > 0 || deleted > 0) {
+          const parts: string[] = [];
+          if (created > 0) {
+            parts.push(
+              embedded === created
+                ? `imported ${created}`
+                : `imported ${created} (${embedded} indexed)`,
+            );
+          }
+          if (deleted > 0) parts.push(`removed ${deleted}`);
+          toast.success(`Workspace synced — ${parts.join(', ')}`);
+        } else if (!silent) {
+          toast.success('Workspace synced — nothing to update');
         }
-      } else {
-        logger.error('Sync failed', res.error);
-        toast.error(res.error?.message || 'Sync failed');
+
+        return summary;
+      } catch (e) {
+        logger.error('Sync error', e);
+        toast.error('Sync failed');
+        return null;
       }
-    } catch (e) {
-      logger.error('Sync error', e);
-      toast.error('Sync failed');
-    }
-  }, [syncWorkspace, loadWorkspaces, loadFileTree, loadNotes, activeFolder]);
+    },
+    [syncWorkspace, loadWorkspaces, loadFileTree, loadNotes, activeFolder],
+  );
 }

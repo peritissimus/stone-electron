@@ -43,6 +43,20 @@ export type { FileTreeNode } from './workspaceAPI';
 export { searchAPI } from './searchAPI';
 export type { SearchParams, DateRangeParams } from './searchAPI';
 
+export { aiAPI } from './aiAPI';
+export { indexAPI } from './indexAPI';
+export type {
+  IndexStatsDTO,
+  IndexNoteResultDTO,
+  RebuildAllResultDTO,
+} from './indexAPI';
+export type {
+  AskNotesResponseDTO,
+  CitationSourceDTO,
+  SuggestLinksResponseDTO,
+  SummarizeNoteResponseDTO,
+} from './aiAPI';
+
 export { attachmentAPI } from './attachmentAPI';
 
 // Settings & System APIs

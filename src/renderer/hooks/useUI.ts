@@ -46,11 +46,11 @@ export function useUI() {
   const searchQuery = useUIStore((s) => s.searchQuery);
 
   // Modal state
-  const settingsOpen = useUIStore((s) => s.settingsOpen);
   const exportModalOpen = useUIStore((s) => s.exportModalOpen);
   const importModalOpen = useUIStore((s) => s.importModalOpen);
   const commandCenterOpen = useUIStore((s) => s.commandCenterOpen);
   const findReplaceOpen = useUIStore((s) => s.findReplaceOpen);
+  const askNotesOpen = useUIStore((s) => s.askNotesOpen);
 
   // Theme state
   const theme = useSettingsStore((s) => s.appearance.theme);
@@ -72,8 +72,6 @@ export function useUI() {
   const toggleEditorMode = useUIStore((s) => s.toggleEditorMode);
   const setEditorMode = useUIStore((s) => s.setEditorMode);
   const setSearchQuery = useUIStore((s) => s.setSearchQuery);
-  const openSettings = useUIStore((s) => s.openSettings);
-  const closeSettings = useUIStore((s) => s.closeSettings);
   const openExportModal = useUIStore((s) => s.openExportModal);
   const closeExportModal = useUIStore((s) => s.closeExportModal);
   const openImportModal = useUIStore((s) => s.openImportModal);
@@ -84,6 +82,9 @@ export function useUI() {
   const openFindReplace = useUIStore((s) => s.openFindReplace);
   const closeFindReplace = useUIStore((s) => s.closeFindReplace);
   const toggleFindReplace = useUIStore((s) => s.toggleFindReplace);
+  const openAskNotes = useUIStore((s) => s.openAskNotes);
+  const closeAskNotes = useUIStore((s) => s.closeAskNotes);
+  const toggleAskNotes = useUIStore((s) => s.toggleAskNotes);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
   const setFontSettings = useSettingsStore((s) => s.setFontSettings);
@@ -127,13 +128,10 @@ export function useUI() {
     setSearchQuery,
 
     // Modals
-    settingsOpen,
     exportModalOpen,
     importModalOpen,
     commandCenterOpen,
     findReplaceOpen,
-    openSettings,
-    closeSettings,
     openExportModal,
     closeExportModal,
     openImportModal,
@@ -144,6 +142,10 @@ export function useUI() {
     openFindReplace,
     closeFindReplace,
     toggleFindReplace,
+    askNotesOpen,
+    openAskNotes,
+    closeAskNotes,
+    toggleAskNotes,
 
     // Theme
     theme,
@@ -262,13 +264,11 @@ export function useTheme() {
  * Modal state hook
  */
 export function useModals() {
-  const settingsOpen = useUIStore((s) => s.settingsOpen);
   const exportModalOpen = useUIStore((s) => s.exportModalOpen);
   const importModalOpen = useUIStore((s) => s.importModalOpen);
   const commandCenterOpen = useUIStore((s) => s.commandCenterOpen);
   const findReplaceOpen = useUIStore((s) => s.findReplaceOpen);
-  const openSettings = useUIStore((s) => s.openSettings);
-  const closeSettings = useUIStore((s) => s.closeSettings);
+  const askNotesOpen = useUIStore((s) => s.askNotesOpen);
   const openExportModal = useUIStore((s) => s.openExportModal);
   const closeExportModal = useUIStore((s) => s.closeExportModal);
   const openImportModal = useUIStore((s) => s.openImportModal);
@@ -279,15 +279,16 @@ export function useModals() {
   const openFindReplace = useUIStore((s) => s.openFindReplace);
   const closeFindReplace = useUIStore((s) => s.closeFindReplace);
   const toggleFindReplace = useUIStore((s) => s.toggleFindReplace);
+  const openAskNotes = useUIStore((s) => s.openAskNotes);
+  const closeAskNotes = useUIStore((s) => s.closeAskNotes);
+  const toggleAskNotes = useUIStore((s) => s.toggleAskNotes);
 
   return {
-    settingsOpen,
     exportModalOpen,
     importModalOpen,
     commandCenterOpen,
     findReplaceOpen,
-    openSettings,
-    closeSettings,
+    askNotesOpen,
     openExportModal,
     closeExportModal,
     openImportModal,
@@ -298,6 +299,9 @@ export function useModals() {
     openFindReplace,
     closeFindReplace,
     toggleFindReplace,
+    openAskNotes,
+    closeAskNotes,
+    toggleAskNotes,
   };
 }
 

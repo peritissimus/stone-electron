@@ -63,11 +63,11 @@ interface UIState {
   searchQuery: string;
 
   // Modals
-  settingsOpen: boolean;
   exportModalOpen: boolean;
   importModalOpen: boolean;
   commandCenterOpen: boolean;
   findReplaceOpen: boolean;
+  askNotesOpen: boolean;
 
   // Actions
   toggleSidebar: () => void;
@@ -84,8 +84,6 @@ interface UIState {
   toggleEditorMode: () => void;
   setEditorMode: (mode: EditorMode) => void;
   setSearchQuery: (query: string) => void;
-  openSettings: () => void;
-  closeSettings: () => void;
   openExportModal: () => void;
   closeExportModal: () => void;
   openImportModal: () => void;
@@ -96,6 +94,9 @@ interface UIState {
   openFindReplace: () => void;
   closeFindReplace: () => void;
   toggleFindReplace: () => void;
+  openAskNotes: () => void;
+  closeAskNotes: () => void;
+  toggleAskNotes: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -124,11 +125,11 @@ export const useUIStore = create<UIState>()(
       searchQuery: '',
 
       // Modals
-      settingsOpen: false,
       exportModalOpen: false,
       importModalOpen: false,
       commandCenterOpen: false,
       findReplaceOpen: false,
+      askNotesOpen: false,
 
       // Actions
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -162,10 +163,6 @@ export const useUIStore = create<UIState>()(
 
       setSearchQuery: (query) => set({ searchQuery: query }),
 
-      openSettings: () => set({ settingsOpen: true }),
-
-      closeSettings: () => set({ settingsOpen: false }),
-
       openExportModal: () => set({ exportModalOpen: true }),
 
       closeExportModal: () => set({ exportModalOpen: false }),
@@ -185,6 +182,12 @@ export const useUIStore = create<UIState>()(
       closeFindReplace: () => set({ findReplaceOpen: false }),
 
       toggleFindReplace: () => set((state) => ({ findReplaceOpen: !state.findReplaceOpen })),
+
+      openAskNotes: () => set({ askNotesOpen: true }),
+
+      closeAskNotes: () => set({ askNotesOpen: false }),
+
+      toggleAskNotes: () => set((state) => ({ askNotesOpen: !state.askNotesOpen })),
     }),
     {
       name: 'stone-ui-preferences',

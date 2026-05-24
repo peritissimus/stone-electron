@@ -1,14 +1,21 @@
 import { Activity } from 'phosphor-react';
 import { usePerformance } from '@renderer/hooks/usePerformance';
-import { Body, Heading4 } from '@renderer/components/base/ui/text';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
+import { cn } from '@renderer/lib/utils';
+import { SettingsSection } from '../SettingsSection';
 import { StartupMetricsSection } from './StartupMetricsSection';
 import { MemoryMetricsSection } from './MemoryMetricsSection';
 import { CPUMetricsSection } from './CPUMetricsSection';
 import { IPCMetricsSection } from './IPCMetricsSection';
 import { DatabaseMetricsSection } from './DatabaseMetricsSection';
 import { RendererMetricsSection } from './RendererMetricsSection';
+
+function formatUptime(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}m ${s}s`;
+}
 
 export function PerformanceSettings() {
   const {
@@ -30,63 +37,72 @@ export function PerformanceSettings() {
     clearHistory,
   } = usePerformance({ autoStart: true, pollInterval: 2000 });
 
+  const description =
+    uptime !== null ? `App uptime ${formatUptime(uptime)} · sampling every 2s` : undefined;
+
   return (
-    <ContainerStack className="gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Heading4>Performance Monitor</Heading4>
-          {uptime !== null && (
-            <Body className="text-muted-foreground">
-              App uptime: {Math.floor(uptime / 60)}m {Math.floor(uptime % 60)}s
-            </Body>
-          )}
-        </div>
+    <SettingsSection
+      title="Performance Monitor"
+      description={description}
+      action={
         <div className="flex items-center gap-2">
+          <div
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs',
+              isPolling
+                ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'
+                : 'border-border bg-muted/50 text-muted-foreground',
+            )}
+          >
+            <span
+              className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                isPolling ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/60',
+              )}
+              aria-hidden
+            />
+            {isPolling ? 'Live' : 'Paused'}
+          </div>
           <Button variant="outline" size="sm" onClick={isPolling ? stopPolling : startPolling}>
-            {isPolling ? 'Stop Monitoring' : 'Start Monitoring'}
+            {isPolling ? 'Pause' : 'Resume'}
           </Button>
           <Button variant="outline" size="sm" onClick={fetchSnapshot} disabled={loading}>
             Refresh
           </Button>
           <Button variant="ghost" size="sm" onClick={clearHistory}>
-            Clear History
+            Clear
           </Button>
         </div>
-      </div>
+      }
+    >
+      <ContainerStack className="gap-6">
+        {error && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
+        )}
 
-      {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>
-      )}
+        {loading && !snapshot && (
+          <div className="flex items-center justify-center py-12 text-muted-foreground">
+            <Activity className="animate-spin" size={20} />
+            <span className="ml-2 text-sm">Loading performance data…</span>
+          </div>
+        )}
 
-      {loading && !snapshot && (
-        <div className="flex items-center justify-center py-12">
-          <Activity className="animate-spin" size={24} />
-          <span className="ml-2">Loading performance data...</span>
-        </div>
-      )}
-
-      {snapshot && (
-        <>
-          {startup && <StartupMetricsSection startup={startup} />}
-          <Separator />
-          {memory && <MemoryMetricsSection memory={memory} />}
-          <Separator />
-          {cpu && eventLoop && <CPUMetricsSection cpu={cpu} eventLoop={eventLoop} />}
-          <Separator />
-          {ipc && <IPCMetricsSection ipc={ipc} />}
-          <Separator />
-          {database && <DatabaseMetricsSection database={database} />}
-          <Separator />
-          {renderer && <RendererMetricsSection renderer={renderer} />}
-        </>
-      )}
-
-      {isPolling && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Live monitoring active (updating every 2s)
-        </div>
-      )}
-    </ContainerStack>
+        {snapshot && (
+          <>
+            {startup && <StartupMetricsSection startup={startup} />}
+            <Separator />
+            {memory && <MemoryMetricsSection memory={memory} />}
+            <Separator />
+            {cpu && eventLoop && <CPUMetricsSection cpu={cpu} eventLoop={eventLoop} />}
+            <Separator />
+            {ipc && <IPCMetricsSection ipc={ipc} />}
+            <Separator />
+            {database && <DatabaseMetricsSection database={database} />}
+            <Separator />
+            {renderer && <RendererMetricsSection renderer={renderer} />}
+          </>
+        )}
+      </ContainerStack>
+    </SettingsSection>
   );
 }

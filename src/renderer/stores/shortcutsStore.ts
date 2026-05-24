@@ -108,6 +108,11 @@ const APP_SHORTCUT_META: Record<
     description: 'Switch between rich text and raw markdown',
     category: 'editor',
   },
+  askNotes: {
+    label: 'Ask Notes',
+    description: 'Open the Ask Notes panel to query your workspace with AI',
+    category: 'general',
+  },
 };
 
 /**

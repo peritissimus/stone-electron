@@ -15,6 +15,7 @@ import type {
   SimilarNote,
   EmbeddingStatus,
   IpcResponse,
+  SuggestedTopic,
 } from '@shared/types';
 import { validateResponse } from './validation';
 import {
@@ -220,4 +221,50 @@ export const topicAPI = {
     const response = await invokeIpc(TOPIC_CHANNELS.GET_EMBEDDING_STATUS, {});
     return validateResponse(response, EmbeddingStatusSchema);
   },
+
+  /**
+   * Get suggested topics (unsupervised clusters over chunk embeddings).
+   */
+  getSuggestions: async (
+    workspaceId?: string,
+  ): Promise<IpcResponse<{ suggestions: SuggestedTopic[] }>> => {
+    const response = await invokeIpc(TOPIC_CHANNELS.GET_SUGGESTIONS, { workspaceId });
+    return validateResponse(
+      response,
+      z.object({ suggestions: z.array(SuggestedTopicSchema) }),
+    );
+  },
+
+  /**
+   * Adopt a suggested topic: create the topic and assign member notes.
+   */
+  adoptSuggestion: async (
+    request: { name: string; color?: string; noteIds: string[] },
+  ): Promise<IpcResponse<{ topicId: string; assignedNoteCount: number }>> => {
+    const response = await invokeIpc(TOPIC_CHANNELS.ADOPT_SUGGESTION, request);
+    return validateResponse(
+      response,
+      z.object({ topicId: z.string(), assignedNoteCount: z.number() }),
+    );
+  },
 };
+
+const SuggestedTopicRepresentativeSchema = z.object({
+  chunkId: z.string(),
+  noteId: z.string(),
+  noteTitle: z.string(),
+  headingPath: z.array(z.string()),
+  excerpt: z.string(),
+});
+
+const SuggestedTopicSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  altLabels: z.array(z.string()),
+  noteIds: z.array(z.string()),
+  chunkIds: z.array(z.string()),
+  noteCount: z.number(),
+  chunkCount: z.number(),
+  cohesion: z.number(),
+  representatives: z.array(SuggestedTopicRepresentativeSchema),
+});

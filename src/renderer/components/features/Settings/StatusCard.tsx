@@ -24,7 +24,7 @@ export function StatusCard({ title, items, className }: StatusCardProps) {
               <Text size="sm" variant="muted" as="span">
                 {item.label}:
               </Text>
-              <Text size="sm" weight="medium" as="span">
+              <Text size="sm" weight="medium" as="span" className="tabular-nums">
                 {item.value}
               </Text>
             </ContainerFlex>

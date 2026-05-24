@@ -1,7 +1,6 @@
 import { Clock } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Body } from '@renderer/components/base/ui/text';
 import { MetricCard } from './MetricCard';
 
 type Startup = NonNullable<ReturnType<typeof usePerformance>['startup']>;
@@ -16,8 +15,11 @@ export function StartupMetricsSection({ startup }: { startup: Startup }) {
   ].filter((p) => p.value !== undefined);
 
   return (
-    <SettingsSection title="Startup Performance">
-      <Body className="text-muted-foreground text-sm mb-2">Time taken for each startup phase</Body>
+    <SettingsSection
+      title="Startup Performance"
+      description="Time taken for each startup phase"
+      variant="sub"
+    >
       <div className="grid grid-cols-2 gap-2">
         <MetricCard
           icon={<Clock size={18} />}
@@ -38,7 +40,7 @@ export function StartupMetricsSection({ startup }: { startup: Startup }) {
             className="flex justify-between items-center p-2 rounded bg-secondary/20"
           >
             <span className="text-xs text-muted-foreground">{phase.label}</span>
-            <span className="text-sm font-medium">{phase.value?.toFixed(0)}ms</span>
+            <span className="text-sm font-medium tabular-nums">{phase.value?.toFixed(0)}ms</span>
           </div>
         ))}
       </div>

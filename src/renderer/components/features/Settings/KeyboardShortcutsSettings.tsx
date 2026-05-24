@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Command, ArrowClockwise } from 'phosphor-react';
+import { ArrowClockwise } from 'phosphor-react';
 import { toast } from 'sonner';
 import {
   useShortcuts,
@@ -15,7 +15,7 @@ import {
 } from '@renderer/hooks/useShortcuts';
 import { SettingsSection } from './SettingsSection';
 import { Button } from '@renderer/components/base/ui/button';
-import { Label, Body } from '@renderer/components/base/ui/text';
+import { Label } from '@renderer/components/base/ui/text';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { cn } from '@renderer/lib/utils';
 
@@ -44,9 +44,10 @@ function ShortcutRow({ shortcut, isCustomized, onEdit, onReset }: ShortcutRowPro
         <button
           onClick={onEdit}
           className={cn(
-            'px-3 py-1.5 rounded-md text-xs font-mono',
-            'bg-muted/50 hover:bg-muted transition-colors',
+            'px-3 py-1.5 rounded-md text-xs font-mono tabular-nums',
+            'bg-muted/50 hover:bg-muted',
             'border border-border',
+            'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
           )}
         >
           {formatShortcutDisplay(shortcut)}
@@ -54,7 +55,10 @@ function ShortcutRow({ shortcut, isCustomized, onEdit, onReset }: ShortcutRowPro
         {isCustomized && (
           <button
             onClick={onReset}
-            className="p-1.5 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+            className={cn(
+              'p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50',
+              'transition-[background-color,color,transform] duration-150 ease-out active:scale-[0.96]',
+            )}
             title="Reset to default"
           >
             <ArrowClockwise size={14} />
@@ -130,7 +134,8 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
           <button
             onClick={() => setRecording(true)}
             className={cn(
-              'w-full py-6 rounded-lg border-2 border-dashed transition-colors',
+              'w-full py-6 rounded-lg border-2 border-dashed',
+              'transition-[background-color,border-color,transform] duration-150 ease-out active:scale-[0.96]',
               recording
                 ? 'border-primary bg-primary/10'
                 : 'border-border hover:border-muted-foreground',
@@ -141,7 +146,9 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
                 Press your shortcut keys...
               </span>
             ) : (
-              <span className="text-2xl font-mono">{formatShortcutDisplay(displayBinding)}</span>
+              <span className="text-2xl font-mono tabular-nums">
+                {formatShortcutDisplay(displayBinding)}
+              </span>
             )}
           </button>
           <p className="text-xs text-muted-foreground">
@@ -210,6 +217,7 @@ export function KeyboardShortcutsSettings() {
   return (
     <SettingsSection
       title="Keyboard Shortcuts"
+      description="Click any shortcut to record a new chord. Cmd/Ctrl is required."
       action={
         <Button variant="ghost" size="sm" onClick={handleResetAll}>
           <ArrowClockwise size={14} className="mr-1" />
@@ -241,10 +249,6 @@ export function KeyboardShortcutsSettings() {
           </div>
         ))}
 
-        <Body size="sm" variant="muted" className="text-center">
-          <Command size={14} className="inline mr-1" />
-          Click on a shortcut to customize it
-        </Body>
       </ContainerStack>
 
       {editingShortcut && (

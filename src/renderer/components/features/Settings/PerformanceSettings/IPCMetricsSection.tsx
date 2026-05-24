@@ -1,7 +1,7 @@
 import { Activity, Clock } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Label, Body } from '@renderer/components/base/ui/text';
+import { Label } from '@renderer/components/base/ui/text';
 import { MetricCard } from './MetricCard';
 
 type IPC = NonNullable<ReturnType<typeof usePerformance>['ipc']>;
@@ -14,10 +14,11 @@ export function IPCMetricsSection({ ipc }: { ipc: IPC }) {
     .slice(0, 5);
 
   return (
-    <SettingsSection title="IPC Performance">
-      <Body className="text-muted-foreground text-sm mb-2">
-        Inter-process communication statistics
-      </Body>
+    <SettingsSection
+      title="IPC Performance"
+      description="Inter-process communication statistics"
+      variant="sub"
+    >
       <div className="grid grid-cols-3 gap-2">
         <MetricCard
           icon={<Activity size={18} />}
@@ -51,7 +52,7 @@ export function IPCMetricsSection({ ipc }: { ipc: IPC }) {
                 className="flex justify-between items-center p-2 rounded bg-secondary/20 text-xs"
               >
                 <span className="font-mono truncate max-w-[200px]">{channel}</span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground tabular-nums">
                   {stats.avgDurationMs.toFixed(1)}ms ({stats.calls} calls)
                 </span>
               </div>
@@ -60,7 +61,7 @@ export function IPCMetricsSection({ ipc }: { ipc: IPC }) {
         </div>
       )}
 
-      <div className="mt-4 flex gap-4 text-xs text-muted-foreground">
+      <div className="mt-4 flex gap-4 text-xs text-muted-foreground tabular-nums">
         <span>P50: {ipc.p50DurationMs.toFixed(1)}ms</span>
         <span>P95: {ipc.p95DurationMs.toFixed(1)}ms</span>
         <span>P99: {ipc.p99DurationMs.toFixed(1)}ms</span>

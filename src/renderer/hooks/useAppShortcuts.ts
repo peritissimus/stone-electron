@@ -6,8 +6,9 @@
 import { useMemo } from 'react';
 import { useShortcutsStore, type ShortcutAction } from '@renderer/stores/shortcutsStore';
 import { useUIStore } from '@renderer/stores/uiStore';
-import { useNavigateHome } from '@renderer/navigation';
+import { toSettings, useNavigateHome } from '@renderer/navigation';
 import { useKeyboardShortcuts, ShortcutConfig, isMacOS } from './useKeyboardShortcuts';
+import { useNavigate } from 'react-router-dom';
 
 interface UseAppShortcutsOptions {
   onSave?: () => void;
@@ -41,15 +42,14 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
   } = options;
 
   const navigateHome = useNavigateHome();
+  const navigate = useNavigate();
   const { getShortcut } = useShortcutsStore();
   const {
-    openSettings,
-    closeSettings,
-    settingsOpen,
     toggleSidebar,
     toggleCommandCenter,
     toggleFindReplace,
     toggleEditorMode,
+    toggleAskNotes,
   } = useUIStore();
 
   // Action handlers mapped by shortcut ID
@@ -59,13 +59,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       newNote: () => onNewNote?.(),
       newPersonalNote: () => onNewPersonalNote?.(),
       newWorkNote: () => onNewWorkNote?.(),
-      settings: () => {
-        if (settingsOpen) {
-          closeSettings();
-        } else {
-          openSettings();
-        }
-      },
+      settings: () => navigate(toSettings()),
       commandCenter: () => toggleCommandCenter(),
       toggleSidebar: () => toggleSidebar(),
       focusSidebar: () => onFocusSidebar?.(),
@@ -87,6 +81,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
         }
       },
       openFile: () => onOpenFile?.(),
+      askNotes: () => toggleAskNotes(),
     }),
     [
       onSave,
@@ -99,14 +94,13 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       onToggleEditorMode,
       onFocusSidebar,
       onOpenFile,
-      openSettings,
-      closeSettings,
-      settingsOpen,
       toggleCommandCenter,
       toggleFindReplace,
       toggleEditorMode,
       toggleSidebar,
+      toggleAskNotes,
       navigateHome,
+      navigate,
     ],
   );
 
@@ -127,6 +121,7 @@ export function useAppShortcuts(options: UseAppShortcutsOptions = {}) {
       'findReplace',
       'toggleEditorMode',
       'openFile',
+      'askNotes',
     ];
 
     return shortcutIds.map((id) => {

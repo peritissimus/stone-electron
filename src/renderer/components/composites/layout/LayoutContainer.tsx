@@ -4,12 +4,12 @@
 
 import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
-import { useModals } from '@renderer/hooks/useUI';
+import { useNavigate } from 'react-router-dom';
 import { Heading3 } from '@renderer/components/base/ui/text';
-import { Gear, ArrowsClockwise } from 'phosphor-react';
+import { Gear } from 'phosphor-react';
 import { Header, IconButton, ControlGroup } from '@renderer/components/composites';
-import { useWorkspaceSync } from '@renderer/hooks/useWorkspaceSync';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
+import { toSettings } from '@renderer/navigation/routes';
 
 export interface LayoutContainerProps {
   sidebar?: React.ReactNode;
@@ -35,8 +35,7 @@ export function LayoutContainer({
 
   className = '',
 }: LayoutContainerProps) {
-  const { openSettings } = useModals();
-  const syncWorkspace = useWorkspaceSync();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -48,17 +47,10 @@ export function LayoutContainer({
           <ControlGroup gap="sm" background="bg-transparent">
             <IconButton
               size="compact"
-              icon={<ArrowsClockwise size={12} />}
-              label="Sync"
-              tooltip="Sync with file system"
-              onClick={syncWorkspace}
-            />
-            <IconButton
-              size="compact"
               icon={<Gear size={12} />}
               label="Settings"
               tooltip={`Settings (${formatShortcut(',', true)})`}
-              onClick={openSettings}
+              onClick={() => navigate(toSettings())}
             />
           </ControlGroup>
         }

@@ -1,7 +1,6 @@
 import { Cpu, Gauge } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Body } from '@renderer/components/base/ui/text';
 import { MetricCard } from './MetricCard';
 
 type CPU = NonNullable<ReturnType<typeof usePerformance>['cpu']>;
@@ -9,10 +8,11 @@ type EventLoop = NonNullable<ReturnType<typeof usePerformance>['eventLoop']>;
 
 export function CPUMetricsSection({ cpu, eventLoop }: { cpu: CPU; eventLoop: EventLoop }) {
   return (
-    <SettingsSection title="CPU & Event Loop">
-      <Body className="text-muted-foreground text-sm mb-2">
-        Process CPU usage and event loop health
-      </Body>
+    <SettingsSection
+      title="CPU & Event Loop"
+      description="Process CPU usage and event loop health"
+      variant="sub"
+    >
       <div className="grid grid-cols-2 gap-2">
         <MetricCard
           icon={<Cpu size={18} />}

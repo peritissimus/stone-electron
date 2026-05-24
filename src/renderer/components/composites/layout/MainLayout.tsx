@@ -44,11 +44,13 @@ const TopicsPage = lazy(() =>
     default: m.TopicsPage,
   })),
 );
+const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
 
 import { useUI } from '@renderer/hooks/useUI';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useWorkspaceSync } from '@renderer/hooks/useWorkspaceSync';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
@@ -62,11 +64,6 @@ import { logger } from '@renderer/lib/logger';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // Lazy load overlay components
-const SettingsModal = lazy(() =>
-  import('@renderer/components/features/Settings/SettingsModal').then((m) => ({
-    default: m.SettingsModal,
-  })),
-);
 const CommandCenter = lazy(() =>
   import('@renderer/components/features/CommandCenter/CommandCenter').then((m) => ({
     default: m.CommandCenter,
@@ -80,6 +77,11 @@ const DraftRecoveryDialog = lazy(() =>
 const FindReplaceModal = lazy(() =>
   import('@renderer/components/features/FindReplace/FindReplaceModal').then((m) => ({
     default: m.FindReplaceModal,
+  })),
+);
+const AskNotesPanel = lazy(() =>
+  import('@renderer/components/features/AI').then((m) => ({
+    default: m.AskNotesPanel,
   })),
 );
 
@@ -179,6 +181,7 @@ export function MainLayout() {
   const { loadTags } = useTagAPI();
   const { loadNotes } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
+  const syncWorkspace = useWorkspaceSync();
   const { openOrCreateTodayJournal } = useJournalActions();
   const { createPersonal, createWork } = useQuickNoteActions();
 
@@ -297,6 +300,22 @@ export function MainLayout() {
       if (!shouldPrioritizeNotes) {
         scheduleBackgroundNotesLoad();
       }
+
+      // Reconcile orphan files (markdown created outside the app, via git
+      // pull, QuickCapture races, etc.) on idle so they become searchable
+      // without the user having to click the top-bar Sync button.
+      const reconcileWhenIdle = () => {
+        const trigger = () => {
+          if (cancelled) return;
+          void syncWorkspace({ silent: true });
+        };
+        if (typeof window.requestIdleCallback === 'function') {
+          window.requestIdleCallback(trigger, { timeout: 5000 });
+        } else {
+          setTimeout(trigger, 1000);
+        }
+      };
+      reconcileWhenIdle();
     };
 
     void bootstrap();
@@ -401,6 +420,14 @@ export function MainLayout() {
                 }
               />
               <Route
+                path="/settings/:section?"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <SettingsPage />
+                  </Suspense>
+                }
+              />
+              <Route
                 path="/note/:noteId"
                 element={<NoteRoute editorRef={editorRef} onEditorChange={handleEditorChange} />}
               />
@@ -420,13 +447,13 @@ export function MainLayout() {
         overlayContent={
           <>
             <Suspense fallback={null}>
-              <SettingsModal />
-            </Suspense>
-            <Suspense fallback={null}>
               <CommandCenter />
             </Suspense>
             <Suspense fallback={null}>
               <FindReplaceModal editor={currentEditor} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <AskNotesPanel />
             </Suspense>
           </>
         }

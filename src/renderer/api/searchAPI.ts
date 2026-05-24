@@ -5,9 +5,10 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
+import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
-import type { SearchResults, IpcResponse } from '@shared/types';
+import type { SearchResults, IpcResponse, RelatedNoteMatch } from '@shared/types';
 import { validateResponse } from './validation';
 import { SearchResultsSchema } from './schemas';
 
@@ -67,4 +68,32 @@ export const searchAPI = {
     const response = await invokeIpc(SEARCH_CHANNELS.BY_DATE_RANGE, params);
     return validateResponse(response, SearchResultsSchema);
   },
+
+  /**
+   * Get notes semantically related to the given note (for editor sidecar).
+   */
+  getRelated: async (params: {
+    noteId: string;
+    limit?: number;
+    workspaceId?: string;
+  }): Promise<IpcResponse<{ results: RelatedNoteMatch[] }>> => {
+    const response = await invokeIpc(SEARCH_CHANNELS.GET_RELATED, params);
+    return validateResponse(response, RelatedNotesResponseSchema);
+  },
 };
+
+const RelatedNotesResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      noteId: z.string(),
+      title: z.string(),
+      similarity: z.number(),
+      matchedChunks: z.number(),
+      bestChunk: z.object({
+        chunkId: z.string(),
+        headingPath: z.array(z.string()),
+        excerpt: z.string(),
+      }),
+    }),
+  ),
+});

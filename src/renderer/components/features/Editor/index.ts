@@ -5,5 +5,6 @@ export { NoteEditorContent, type NoteEditorContentProps } from './NoteEditorCont
 export { RawMarkdownEditor, type RawMarkdownEditorProps } from './RawMarkdownEditor';
 export { EditorStats, type EditorStatsProps } from './EditorStats';
 export { BacklinksPanel, type BacklinksPanelProps } from './BacklinksPanel';
+export { RelatedNotesPanel, type RelatedNotesPanelProps } from './RelatedNotesPanel';
 export { GraphView } from './GraphView';
 export { NoteEditor, type NoteEditorHandle } from './NoteEditor';

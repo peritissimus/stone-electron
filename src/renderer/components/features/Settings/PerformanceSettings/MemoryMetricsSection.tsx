@@ -1,7 +1,6 @@
 import { HardDrive } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Body } from '@renderer/components/base/ui/text';
 import { cn } from '@renderer/lib/utils';
 import { MetricCard } from './MetricCard';
 
@@ -11,8 +10,11 @@ export function MemoryMetricsSection({ memory }: { memory: Memory }) {
   const heapUsagePercent = Math.round((memory.heapUsed / memory.heapTotal) * 100);
 
   return (
-    <SettingsSection title="Memory Usage">
-      <Body className="text-muted-foreground text-sm mb-2">Main process memory consumption</Body>
+    <SettingsSection
+      title="Memory Usage"
+      description="Main process memory consumption"
+      variant="sub"
+    >
       <div className="grid grid-cols-2 gap-2">
         <MetricCard
           icon={<HardDrive size={18} />}
@@ -33,7 +35,7 @@ export function MemoryMetricsSection({ memory }: { memory: Memory }) {
       <div className="mt-2 h-2 bg-secondary rounded-full overflow-hidden">
         <div
           className={cn(
-            'h-full transition-all duration-300',
+            'h-full transition-[width,background-color] duration-300 ease-out',
             heapUsagePercent < 70
               ? 'bg-green-500'
               : heapUsagePercent < 90
@@ -43,7 +45,7 @@ export function MemoryMetricsSection({ memory }: { memory: Memory }) {
           style={{ width: `${heapUsagePercent}%` }}
         />
       </div>
-      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+      <div className="flex justify-between text-xs text-muted-foreground mt-1 tabular-nums">
         <span>0 MB</span>
         <span>{Math.round(memory.heapTotal / 1024 / 1024)} MB</span>
       </div>

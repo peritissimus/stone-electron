@@ -167,6 +167,39 @@ export const ShortcutsConfigSchema = z.object({
   editor: z.record(ChordOrChordsSchema),
 });
 
+// ----- AI settings -----
+
+export const AIConfigSchema = z.object({
+  indexing: z.object({
+    enabled: z.boolean(),
+    providerMode: z.enum(['local', 'cloud', 'disabled']),
+    chunkMaxCharacters: z.number().int().positive(),
+    chunkOverlapCharacters: z.number().int().nonnegative(),
+    batchSize: z.number().int().positive(),
+    autoIndexOnSave: z.boolean(),
+  }),
+  models: z.object({
+    textModel: z.string(),
+    embeddingModel: z.string(),
+    rerankModel: z.string(),
+  }),
+  privacy: z.object({
+    allowCloudInference: z.boolean(),
+    allowSendingNoteContent: z.boolean(),
+    allowSendingMetadata: z.boolean(),
+  }),
+});
+
+export const AIProviderKeyStatusSchema = z.object({
+  provider: z.enum(['openai', 'cohere', 'anthropic', 'google', 'mistral']),
+  label: z.string(),
+  envVar: z.string(),
+  hasEnvKey: z.boolean(),
+  hasStoredKey: z.boolean(),
+  available: z.boolean(),
+  activeSource: z.enum(['env', 'stored']).nullable(),
+});
+
 // ============================================================================
 // Search Schemas
 // ============================================================================

@@ -23,6 +23,7 @@ import { NoteEditorContent } from './NoteEditorContent';
 import { RawMarkdownEditor } from './RawMarkdownEditor';
 import { EditorStats } from './EditorStats';
 import { BacklinksPanel } from './BacklinksPanel';
+import { RelatedNotesPanel } from './RelatedNotesPanel';
 import { Copy, Check } from 'phosphor-react';
 import { logger } from '@renderer/lib/logger';
 
@@ -378,7 +379,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
         <NoteEditorContent ref={richEditorScrollRef} editor={editor} isLoading={false} />
       )}
 
-      {activeNoteId && editorMode === 'rich' && <BacklinksPanel noteId={activeNoteId} />}
+      {activeNoteId && editorMode === 'rich' && (
+        <>
+          <BacklinksPanel noteId={activeNoteId} />
+          <RelatedNotesPanel noteId={activeNoteId} />
+        </>
+      )}
 
       <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
         {editorMode === 'raw' ? (

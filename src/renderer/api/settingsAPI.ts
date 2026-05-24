@@ -26,6 +26,9 @@ import type {
   IpcResponse,
 } from '@shared/types';
 import type {
+  AIConfig,
+  AIProviderId,
+  AIProviderKeyStatus,
   AppearanceSettings,
   AppAccentColor,
   AppTheme,
@@ -38,6 +41,8 @@ import { validateResponse } from './validation';
 import {
   SettingsSchema,
   AppearanceSettingsSchema,
+  AIConfigSchema,
+  AIProviderKeyStatusSchema,
   EditorSettingsSchema,
   ShortcutsConfigSchema,
 } from './schemas';
@@ -138,6 +143,46 @@ export const settingsAPI = {
   resetAllShortcuts: async (): Promise<IpcResponse<ShortcutsConfig>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS, {});
     return validateResponse(response, ShortcutsConfigSchema);
+  },
+
+  // ----- AI settings -----
+
+  getAI: async (): Promise<IpcResponse<AIConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_AI, {});
+    return validateResponse(response, AIConfigSchema);
+  },
+
+  updateAI: async (ai: Partial<AIConfig>): Promise<IpcResponse<AIConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_AI, { ai });
+    return validateResponse(response, AIConfigSchema);
+  },
+
+  resetAI: async (): Promise<IpcResponse<AIConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_AI, {});
+    return validateResponse(response, AIConfigSchema);
+  },
+
+  getAIProviderKeys: async (): Promise<IpcResponse<AIProviderKeyStatus[]>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_AI_PROVIDER_KEYS, {});
+    return validateResponse(response, z.array(AIProviderKeyStatusSchema));
+  },
+
+  setAIProviderKey: async (
+    provider: AIProviderId,
+    apiKey: string,
+  ): Promise<IpcResponse<AIProviderKeyStatus[]>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET_AI_PROVIDER_KEY, {
+      provider,
+      apiKey,
+    });
+    return validateResponse(response, z.array(AIProviderKeyStatusSchema));
+  },
+
+  deleteAIProviderKey: async (
+    provider: AIProviderId,
+  ): Promise<IpcResponse<AIProviderKeyStatus[]>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.DELETE_AI_PROVIDER_KEY, { provider });
+    return validateResponse(response, z.array(AIProviderKeyStatusSchema));
   },
 };
 

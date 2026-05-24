@@ -1,7 +1,7 @@
 import { Activity, Clock, Database, Timer } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Label, Body } from '@renderer/components/base/ui/text';
+import { Label } from '@renderer/components/base/ui/text';
 import { MetricCard } from './MetricCard';
 
 type DatabaseMetrics = NonNullable<ReturnType<typeof usePerformance>['database']>;
@@ -15,8 +15,11 @@ export function DatabaseMetricsSection({ database }: { database: DatabaseMetrics
     .slice(0, 5);
 
   return (
-    <SettingsSection title="Database Performance">
-      <Body className="text-muted-foreground text-sm mb-2">Query execution statistics</Body>
+    <SettingsSection
+      title="Database Performance"
+      description="Query execution statistics"
+      variant="sub"
+    >
       <div className="grid grid-cols-2 gap-2">
         <MetricCard
           icon={<Database size={18} />}
@@ -69,7 +72,7 @@ export function DatabaseMetricsSection({ database }: { database: DatabaseMetrics
                 className="flex justify-between items-center p-2 rounded bg-secondary/20 text-xs"
               >
                 <span className="font-mono truncate max-w-[200px]">{op}</span>
-                <span className="text-muted-foreground">
+                <span className="text-muted-foreground tabular-nums">
                   {stats.avgDurationMs.toFixed(1)}ms ({stats.count} queries)
                 </span>
               </div>

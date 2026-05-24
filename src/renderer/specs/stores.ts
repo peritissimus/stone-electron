@@ -188,7 +188,6 @@ export interface UIStoreState {
   showOutline: boolean;
 
   // Modals
-  settingsOpen: boolean;
   commandCenterOpen: boolean;
 
   // Theme
@@ -208,8 +207,6 @@ export interface UIStoreState {
   toggleShowArchived(): void;
   toggleEditorMode(): void;
   setEditorMode(mode: EditorMode): void;
-  openSettings(): void;
-  closeSettings(): void;
   toggleCommandCenter(): void;
   setTheme(theme: Theme): void;
   setAccentColor(color: AccentColor): void;

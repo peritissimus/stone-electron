@@ -66,14 +66,21 @@ export function GitSettings() {
     : [];
 
   return (
-    <SettingsSection title="Git Sync">
+    <SettingsSection
+      title="Git Sync"
+      description="Commit, push, and pull this workspace's notes. Git is the sanctioned way to sync across devices."
+    >
       <ContainerStack gap="lg">
-        <ContainerStack gap="xs">
-          <Body weight="medium">{activeWorkspace.name}</Body>
-          <Body size="sm" variant="muted">
-            {activeWorkspace.folderPath}
-          </Body>
-        </ContainerStack>
+        <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <Body size="sm" weight="medium" className="truncate">
+              {activeWorkspace.name}
+            </Body>
+            <Body size="xs" variant="muted" className="truncate font-mono tabular-nums">
+              {activeWorkspace.folderPath}
+            </Body>
+          </div>
+        </div>
 
         {status && <StatusCard items={statusItems} />}
 

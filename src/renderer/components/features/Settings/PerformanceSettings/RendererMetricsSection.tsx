@@ -1,7 +1,7 @@
 import { Clock, Gauge, HardDrive, Timer } from 'phosphor-react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
-import { Label, Body } from '@renderer/components/base/ui/text';
+import { Label } from '@renderer/components/base/ui/text';
 import { MetricCard } from './MetricCard';
 
 type Renderer = NonNullable<ReturnType<typeof usePerformance>['renderer']>;
@@ -14,8 +14,11 @@ export function RendererMetricsSection({ renderer }: { renderer: Renderer }) {
   const heapPercent = heapLimitMB > 0 ? Math.round((heapUsageMB / heapLimitMB) * 100) : 0;
 
   return (
-    <SettingsSection title="Renderer Performance">
-      <Body className="text-muted-foreground text-sm mb-2">Frontend JavaScript performance</Body>
+    <SettingsSection
+      title="Renderer Performance"
+      description="Frontend JavaScript performance"
+      variant="sub"
+    >
       <div className="grid grid-cols-2 gap-2">
         <MetricCard
           icon={<Gauge size={18} />}
@@ -79,7 +82,7 @@ export function RendererMetricsSection({ renderer }: { renderer: Renderer }) {
                 className="flex justify-between items-center p-2 rounded bg-secondary/20 text-xs"
               >
                 <span className="truncate max-w-[200px]">{task.name || 'anonymous'}</span>
-                <span className="text-yellow-500">{task.duration.toFixed(0)}ms</span>
+                <span className="text-yellow-500 tabular-nums">{task.duration.toFixed(0)}ms</span>
               </div>
             ))}
           </div>

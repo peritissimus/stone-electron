@@ -7,7 +7,7 @@ import type { CommandDefinition } from '@renderer/stores/commandStore';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useQuickNoteActions } from '@renderer/hooks/useQuickNoteActions';
-import { toJournals, useActiveNoteId, useNavigateHome } from '@renderer/navigation';
+import { toJournals, toSettings, useActiveNoteId, useNavigateHome } from '@renderer/navigation';
 import { useNavigate } from 'react-router-dom';
 import {
   Gear,
@@ -20,6 +20,7 @@ import {
   Briefcase,
   FilePdf,
   Moon,
+  Sparkle,
 } from 'phosphor-react';
 import type { CommandItem } from './types';
 
@@ -119,8 +120,8 @@ export function useCommandDefinitions(query: string) {
         icon: <Gear size={18} />,
         shortcut: '⌘,',
         run: () => {
+          navigate(toSettings());
           handleClose();
-          useUIStore.getState().openSettings();
         },
       },
       {
@@ -167,6 +168,17 @@ export function useCommandDefinitions(query: string) {
         icon: <Moon size={18} />,
         shortcut: '⌘⇧T',
         run: handleToggleTheme,
+      },
+      {
+        id: 'ask-notes',
+        title: 'Ask Notes',
+        subtitle: 'Ask a question across your workspace with AI',
+        icon: <Sparkle size={18} weight="fill" />,
+        shortcut: '⌘⇧A',
+        run: () => {
+          useUIStore.getState().openAskNotes();
+          handleClose();
+        },
       },
     ],
     [

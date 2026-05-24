@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { House, BookOpen, CheckSquare, Graph, Tag } from 'phosphor-react';
+import { House, BookOpen, CheckSquare, Graph, Brain } from 'phosphor-react';
 import type { NavDescriptor } from './types';
 import { toHome, toJournals, toTasks, toGraph, toTopics } from './routes';
 
@@ -42,8 +42,8 @@ export const PRIMARY_DESTINATIONS: readonly NavDescriptor[] = Object.freeze([
   {
     id: 'topics',
     path: toTopics(),
-    label: 'Topics',
-    icon: createElement(Tag, { size: 14 }),
+    label: 'Knowledge',
+    icon: createElement(Brain, { size: 14 }),
     isActive: exactMatch(toTopics()),
     section: 'primary',
   },
