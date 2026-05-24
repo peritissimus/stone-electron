@@ -17,6 +17,7 @@ import type { INoteRepository } from '../../../../src/main/domain/ports/out/INot
 import type { ISearchEngine } from '../../../../src/main/domain/ports/out/ISearchEngine';
 import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
 import type { IIndexRepository } from '../../../../src/main/domain/ports/out/IIndexRepository';
+import type { IReranker } from '../../../../src/main/domain/ports/out/IReranker';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 
 // Mock factories
@@ -78,6 +79,14 @@ function createMockIndexRepository(): IIndexRepository {
     getNoteVector: vi.fn(),
     findSimilarNotesByVector: vi.fn(),
   } as unknown as IIndexRepository;
+}
+
+function createMockReranker(): IReranker {
+  return {
+    initialize: vi.fn(),
+    isReady: vi.fn().mockReturnValue(true),
+    rerank: vi.fn(),
+  };
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -271,6 +280,64 @@ describe('SearchUseCases', () => {
       expect(result.results[0].searchType).toBe('hybrid');
       expect(result.results[0].chunks).toHaveLength(1);
       expect(result.results[0].chunks?.[0].headingPath).toEqual(['Auth Work', 'Sessions']);
+    });
+
+    it('uses reranker scores when a reranker is provided', async () => {
+      const reranker = createMockReranker();
+      useCase = new HybridSearchUseCase(noteRepo, embedder, indexRepository, reranker);
+      const noteA = createNoteProps({ id: 'note-a', title: 'Alpha' });
+      const noteB = createNoteProps({ id: 'note-b', title: 'Beta' });
+      const chunkA = {
+        id: 'note-a:0',
+        noteId: 'note-a',
+        workspaceId: 'ws-1',
+        chunkIndex: 0,
+        headingPath: ['Alpha'],
+        text: 'First chunk',
+        contentHash: 'hash-a',
+        tokenCount: 2,
+        embedding: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const chunkB = {
+        id: 'note-b:0',
+        noteId: 'note-b',
+        workspaceId: 'ws-1',
+        chunkIndex: 0,
+        headingPath: ['Beta'],
+        text: 'Second chunk',
+        contentHash: 'hash-b',
+        tokenCount: 2,
+        embedding: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      vi.mocked(indexRepository.searchFullText).mockResolvedValue([
+        { chunk: chunkA, ftsScore: -1, combinedScore: 0.9 },
+        { chunk: chunkB, ftsScore: -2, combinedScore: 0.8 },
+      ]);
+      vi.mocked(indexRepository.searchVector).mockResolvedValue([]);
+      vi.mocked(embedder.isReady).mockReturnValue(false);
+      vi.mocked(reranker.rerank).mockResolvedValue([
+        { id: chunkB.id, score: 4 },
+        { id: chunkA.id, score: -4 },
+      ]);
+      vi.mocked(noteRepo.findById).mockImplementation(async (id) =>
+        id === noteA.id ? noteA : id === noteB.id ? noteB : null,
+      );
+
+      const result = await useCase.execute({ query: 'beta' });
+
+      expect(reranker.rerank).toHaveBeenCalledWith({
+        query: 'beta',
+        documents: [
+          { id: chunkA.id, text: chunkA.text },
+          { id: chunkB.id, text: chunkB.text },
+        ],
+      });
+      expect(result.results.map((row) => row.note.id)).toEqual(['note-b', 'note-a']);
     });
 
     it('returns empty for empty query', async () => {

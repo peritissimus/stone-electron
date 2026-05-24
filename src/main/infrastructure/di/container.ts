@@ -30,6 +30,7 @@ import type {
   ISearchEngine,
   IEmbedder,
   IIndexRepository,
+  IReranker,
   IExporter,
   ISystemBridge,
   IGitClient,
@@ -154,6 +155,7 @@ import {
   NodePathService,
   FileWatcher,
   AISDKTextGenerator,
+  LocalReranker,
   getPerformanceMonitor,
   // Outbound (Secondary) - Events
   EventPublisher,
@@ -199,6 +201,7 @@ export interface Container {
   eventPublisher: IEventPublisher;
   searchEngine: ISearchEngine;
   embedder: IEmbedder;
+  reranker: IReranker;
   exporter: IExporter;
   systemBridge: ISystemBridge;
   gitClient: IGitClient;
@@ -338,6 +341,10 @@ export function createContainer(deps: ContainerDeps): Container {
     workerService: embeddingWorker,
   });
 
+  const reranker: IReranker = new LocalReranker({
+    workerService: embeddingWorker,
+  });
+
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
     noteRepository,
@@ -410,6 +417,7 @@ export function createContainer(deps: ContainerDeps): Container {
     searchEngine,
     embedder,
     indexRepository,
+    reranker,
   });
 
   // Task use cases
@@ -583,6 +591,7 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
     searchEngine,
     embedder,
+    reranker,
     indexRepository,
     exporter,
     systemBridge,

@@ -20,6 +20,7 @@ import type {
   IIndexRepository,
   ChunkSearchResult,
 } from '../../../domain/ports/out/IIndexRepository';
+import type { IReranker } from '../../../domain/ports/out/IReranker';
 import type {
   IHybridSearchUseCase,
   HybridSearchRequest,
@@ -32,6 +33,9 @@ const RRF_K = 60;
 const CHUNK_CANDIDATES = 40;
 const NOTE_TOP_CHUNKS = 3;
 const SNIPPET_CHARS = 240;
+// Cross-encoder is slow per pair — bound the rescoring work to the top of
+// the RRF list. 30 chunks is well under a second on the local MiniLM model.
+const RERANK_POOL = 30;
 
 interface MergedChunk {
   chunkId: string;
@@ -48,6 +52,7 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
     private readonly noteRepository: INoteRepository,
     private readonly embedder: IEmbedder,
     private readonly indexRepository: IIndexRepository,
+    private readonly reranker?: IReranker,
   ) {}
 
   async execute(request: HybridSearchRequest): Promise<HybridSearchResponse> {
@@ -73,6 +78,11 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
     if (merged.length === 0) {
       return { results: [], total: 0, queryTimeMs: Date.now() - startTime };
     }
+
+    // Cross-encoder rerank of the RRF top-N. Replaces the RRF score for the
+    // pool with a normalized cross-encoder score; chunks below the pool keep
+    // their RRF score (still useful as a fallback if the pool dries up).
+    await this.applyRerank(query, merged);
 
     const noteScores = aggregateByNote(merged);
 
@@ -134,6 +144,29 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
       });
     } catch {
       return [];
+    }
+  }
+
+  private async applyRerank(query: string, merged: MergedChunk[]): Promise<void> {
+    if (!this.reranker) return;
+    const pool = merged.slice(0, RERANK_POOL);
+    if (pool.length === 0) return;
+
+    try {
+      const scored = await this.reranker.rerank({
+        query,
+        documents: pool.map((c) => ({ id: c.chunkId, text: c.text })),
+      });
+      const byId = new Map(scored.map((s) => [s.id, s.score]));
+      for (const chunk of pool) {
+        const s = byId.get(chunk.chunkId);
+        if (s === undefined) continue;
+        // Sigmoid maps logits to [0, 1] so reranked chunks dominate the tail.
+        chunk.rrfScore = sigmoid(s);
+      }
+      merged.sort((a, b) => b.rrfScore - a.rrfScore);
+    } catch {
+      // Reranker failure shouldn't break search — fall through with RRF order.
     }
   }
 }
@@ -222,4 +255,8 @@ function trimForSnippet(text: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (normalized.length <= SNIPPET_CHARS) return normalized;
   return `${normalized.slice(0, SNIPPET_CHARS).trim()}…`;
+}
+
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
 }

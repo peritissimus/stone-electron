@@ -18,6 +18,7 @@
 
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
+import type { IReranker } from '../../../domain/ports/out/IReranker';
 import type {
   IGetRelatedNotesUseCase,
   GetRelatedNotesRequest,
@@ -27,12 +28,14 @@ import type {
 
 const DEFAULT_LIMIT = 5;
 const POOL_MULTIPLIER = 12; // pull ~5×12 = 60 candidate chunks
+const RERANK_POOL = 30;
 const SNIPPET_CHARS = 240;
 
 export class GetRelatedNotesUseCase implements IGetRelatedNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
     private readonly indexRepository: IIndexRepository,
+    private readonly reranker?: IReranker,
   ) {}
 
   async execute(request: GetRelatedNotesRequest): Promise<GetRelatedNotesResponse> {
@@ -48,12 +51,19 @@ export class GetRelatedNotesUseCase implements IGetRelatedNotesUseCase {
     if (!sourceVec) return { results: [] };
 
     const poolSize = Math.max(POOL_MULTIPLIER * limit, 30);
-    const candidates = await this.indexRepository.searchVector(sourceVec, {
+    const candidatesAll = await this.indexRepository.searchVector(sourceVec, {
       limit: poolSize,
       workspaceId,
     });
+    const candidates = candidatesAll.filter((c) => c.chunk.noteId !== request.noteId);
 
-    // Group by noteId, keep the best (highest semanticScore) chunk per note.
+    // Cross-encoder rerank uses the source note's title as the "query" —
+    // titles are concise and high-signal, and fit comfortably in the
+    // cross-encoder's joint context window.
+    const scoreById = await this.rerankScores(note.title, candidates);
+
+    // Group by noteId, keep the best chunk per note. Use the rerank score
+    // when available, fall back to the embedding similarity otherwise.
     interface Bucket {
       noteId: string;
       bestChunk: (typeof candidates)[number]['chunk'];
@@ -62,8 +72,7 @@ export class GetRelatedNotesUseCase implements IGetRelatedNotesUseCase {
     }
     const buckets = new Map<string, Bucket>();
     for (const c of candidates) {
-      if (c.chunk.noteId === request.noteId) continue;
-      const score = c.semanticScore ?? c.combinedScore;
+      const score = scoreById?.get(c.chunk.id) ?? c.semanticScore ?? c.combinedScore;
       const existing = buckets.get(c.chunk.noteId);
       if (!existing) {
         buckets.set(c.chunk.noteId, {
@@ -103,10 +112,35 @@ export class GetRelatedNotesUseCase implements IGetRelatedNotesUseCase {
 
     return { results };
   }
+
+  private async rerankScores(
+    query: string,
+    candidates: Array<{ chunk: { id: string; text: string } }>,
+  ): Promise<Map<string, number> | null> {
+    if (!this.reranker || candidates.length === 0 || !query.trim()) return null;
+    const pool = candidates.slice(0, RERANK_POOL);
+    try {
+      const scored = await this.reranker.rerank({
+        query,
+        documents: pool.map((c) => ({ id: c.chunk.id, text: c.chunk.text })),
+      });
+      // Sigmoid keeps reranker scores in [0, 1] so they're comparable when
+      // mixed with the cosine-similarity fallback for chunks outside the pool.
+      const map = new Map<string, number>();
+      for (const s of scored) map.set(s.id, sigmoid(s.score));
+      return map;
+    } catch {
+      return null;
+    }
+  }
 }
 
 function trimForSnippet(text: string): string {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (normalized.length <= SNIPPET_CHARS) return normalized;
   return `${normalized.slice(0, SNIPPET_CHARS).trim()}…`;
+}
+
+function sigmoid(x: number): number {
+  return 1 / (1 + Math.exp(-x));
 }

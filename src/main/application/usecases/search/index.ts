@@ -2,6 +2,7 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { ISearchEngine } from '../../../domain/ports/out/ISearchEngine';
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
+import type { IReranker } from '../../../domain/ports/out/IReranker';
 import type { ISearchUseCases } from '../../../domain/ports/in/ISearchUseCases';
 import { FullTextSearchUseCase } from './FullTextSearchUseCase';
 import { SemanticSearchUseCase } from './SemanticSearchUseCase';
@@ -24,18 +25,19 @@ export interface SearchUseCasesDeps {
   searchEngine: ISearchEngine;
   embedder: IEmbedder;
   indexRepository: IIndexRepository;
+  reranker?: IReranker;
 }
 
 export function createSearchUseCases(deps: SearchUseCasesDeps): ISearchUseCases {
-  const { noteRepository, searchEngine, embedder, indexRepository } = deps;
+  const { noteRepository, searchEngine, embedder, indexRepository, reranker } = deps;
 
   return {
     fullTextSearch: new FullTextSearchUseCase(noteRepository, searchEngine),
     semanticSearch: new SemanticSearchUseCase(embedder, indexRepository),
     findSimilarNotes: new FindSimilarNotesUseCase(noteRepository, indexRepository),
-    hybridSearch: new HybridSearchUseCase(noteRepository, embedder, indexRepository),
+    hybridSearch: new HybridSearchUseCase(noteRepository, embedder, indexRepository, reranker),
     searchByTags: new SearchByTagsUseCase(noteRepository),
     searchByDateRange: new SearchByDateRangeUseCase(noteRepository),
-    getRelatedNotes: new GetRelatedNotesUseCase(noteRepository, indexRepository),
+    getRelatedNotes: new GetRelatedNotesUseCase(noteRepository, indexRepository, reranker),
   };
 }
