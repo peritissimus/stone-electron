@@ -1,0 +1,185 @@
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { AskNotesUseCase } from '../../../../src/main/application/usecases/ai/AskNotesUseCase';
+import type { NoteProps } from '../../../../src/main/domain/entities/Note';
+import type { INoteRepository, ITextGenerator } from '../../../../src/main/domain';
+import type {
+  IHybridSearchUseCase,
+  HybridSearchResultRow,
+} from '../../../../src/main/domain/ports/in/ISearchUseCases';
+
+function createMockNoteRepository(): INoteRepository {
+  return {
+    findById: vi.fn(),
+    findAll: vi.fn(),
+    findByNotebookId: vi.fn(),
+    findByWorkspaceId: vi.fn(),
+    findByFilePath: vi.fn(),
+    save: vi.fn(),
+    delete: vi.fn(),
+    searchByTitle: vi.fn(),
+    count: vi.fn(),
+    exists: vi.fn(),
+    findRecentlyUpdated: vi.fn(),
+    findFavorites: vi.fn(),
+    findPinned: vi.fn(),
+    findArchived: vi.fn(),
+    findDeleted: vi.fn(),
+    getContentById: vi.fn(),
+    getEmbedding: vi.fn(),
+    updateEmbedding: vi.fn(),
+    findBySimilarity: vi.fn(),
+  } as unknown as INoteRepository;
+}
+
+function createMockHybridSearch(): IHybridSearchUseCase {
+  return { execute: vi.fn() } as unknown as IHybridSearchUseCase;
+}
+
+function createMockTextGenerator(): ITextGenerator {
+  return { generateAnswer: vi.fn() } as unknown as ITextGenerator;
+}
+
+function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
+  return {
+    id: 'note-1',
+    title: 'AI Roadmap',
+    filePath: 'ai-roadmap.md',
+    notebookId: null,
+    workspaceId: 'ws-1',
+    isFavorite: false,
+    isPinned: false,
+    isArchived: false,
+    isDeleted: false,
+    deletedAt: null,
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-02'),
+    ...overrides,
+  };
+}
+
+describe('AIUseCases', () => {
+  describe('AskNotesUseCase', () => {
+    let noteRepository: INoteRepository;
+    let hybridSearch: IHybridSearchUseCase;
+    let textGenerator: ITextGenerator;
+    let useCase: AskNotesUseCase;
+
+    beforeEach(() => {
+      noteRepository = createMockNoteRepository();
+      hybridSearch = createMockHybridSearch();
+      textGenerator = createMockTextGenerator();
+      useCase = new AskNotesUseCase(hybridSearch, noteRepository, textGenerator);
+    });
+
+    it('builds chunk-level citations from hybrid search results', async () => {
+      const note = createNoteProps({ id: 'note-1', title: 'AI Roadmap' });
+      const results: HybridSearchResultRow[] = [
+        {
+          note,
+          score: 0.05,
+          searchType: 'hybrid',
+          chunks: [
+            {
+              chunkId: 'note-1:2',
+              noteId: 'note-1',
+              headingPath: ['AI Roadmap', 'Constraints'],
+              excerpt: 'LLM answers must cite notes and avoid unsupported claims.',
+              score: 0.05,
+              sources: ['fts', 'semantic'],
+            },
+          ],
+        },
+      ];
+      vi.mocked(hybridSearch.execute).mockResolvedValue({
+        results,
+        total: 1,
+        queryTimeMs: 12,
+      });
+      vi.mocked(textGenerator.generateAnswer).mockImplementation(async (req) => ({
+        text: 'Cite notes and avoid unsupported claims [1].',
+        usedSources: req.sources,
+      }));
+
+      const result = await useCase.execute({
+        query: 'How should the LLM answer questions?',
+        workspaceId: 'ws-1',
+        limit: 3,
+      });
+
+      expect(hybridSearch.execute).toHaveBeenCalledWith({
+        query: 'How should the LLM answer questions?',
+        workspaceId: 'ws-1',
+        limit: 3,
+      });
+      expect(textGenerator.generateAnswer).toHaveBeenCalledWith({
+        query: 'How should the LLM answer questions?',
+        sources: [
+          {
+            chunkId: 'note-1:2',
+            noteId: 'note-1',
+            title: 'AI Roadmap',
+            headingPath: ['AI Roadmap', 'Constraints'],
+            excerpt: 'LLM answers must cite notes and avoid unsupported claims.',
+          },
+        ],
+      });
+      expect(result.answer).toContain('Cite notes');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].chunkId).toBe('note-1:2');
+    });
+
+    it('falls back to whole-note content when a result has no chunks yet', async () => {
+      const note = createNoteProps({ id: 'note-1', title: 'Legacy Note' });
+      const results: HybridSearchResultRow[] = [
+        {
+          note,
+          score: 0.03,
+          searchType: 'fts',
+          // no chunks (note hasn't been chunked yet)
+        },
+      ];
+      vi.mocked(hybridSearch.execute).mockResolvedValue({
+        results,
+        total: 1,
+        queryTimeMs: 5,
+      });
+      vi.mocked(noteRepository.getContentById).mockResolvedValue(
+        'Plain markdown body of the legacy note.',
+      );
+      vi.mocked(textGenerator.generateAnswer).mockImplementation(async (req) => ({
+        text: 'ok',
+        usedSources: req.sources,
+      }));
+
+      const result = await useCase.execute({ query: 'legacy?' });
+
+      expect(noteRepository.getContentById).toHaveBeenCalledWith('note-1');
+      expect(result.sources).toHaveLength(1);
+      expect(result.sources[0].chunkId).toBe('note-1');
+      expect(result.sources[0].excerpt).toBe('Plain markdown body of the legacy note.');
+    });
+
+    it('returns the canned message when no usable sources exist', async () => {
+      vi.mocked(hybridSearch.execute).mockResolvedValue({
+        results: [],
+        total: 0,
+        queryTimeMs: 2,
+      });
+      vi.mocked(textGenerator.generateAnswer).mockResolvedValue({
+        text: 'I could not find relevant notes to answer that.',
+        usedSources: [],
+      });
+
+      const result = await useCase.execute({ query: 'anything?' });
+
+      expect(textGenerator.generateAnswer).toHaveBeenCalledWith({
+        query: 'anything?',
+        sources: [],
+      });
+      expect(result).toEqual({
+        answer: 'I could not find relevant notes to answer that.',
+        sources: [],
+      });
+    });
+  });
+});

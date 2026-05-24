@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 import {
   normalizeConfig,
   mergeAppearance,
+  mergeAI,
   mergeEditor,
   mergeNotes,
   mergeShortcuts,
@@ -375,5 +376,89 @@ describe('mergeNotes', () => {
     expect(result.notes.locationPolicy.quickNoteSlotFolders.work).toBe(
       DEFAULT_APP_CONFIG.notes.locationPolicy.quickNoteSlotFolders.work,
     );
+  });
+});
+
+describe('mergeAI', () => {
+  it('returns defaults for non-object input', () => {
+    expect(mergeAI(undefined)).toEqual(DEFAULT_APP_CONFIG.ai);
+    expect(mergeAI(null)).toEqual(DEFAULT_APP_CONFIG.ai);
+    expect(mergeAI(42)).toEqual(DEFAULT_APP_CONFIG.ai);
+    expect(mergeAI([])).toEqual(DEFAULT_APP_CONFIG.ai);
+  });
+
+  it('preserves valid custom AI settings', () => {
+    const result = mergeAI({
+      indexing: {
+        enabled: false,
+        providerMode: 'cloud',
+        chunkMaxCharacters: 2400,
+        chunkOverlapCharacters: 240,
+        batchSize: 8,
+        autoIndexOnSave: false,
+      },
+      models: {
+        textModel: 'openai/gpt-4.1',
+        embeddingModel: 'openai/text-embedding-3-large',
+        rerankModel: 'cohere/rerank-v3.5',
+      },
+      privacy: {
+        allowCloudInference: true,
+        allowSendingNoteContent: true,
+        allowSendingMetadata: true,
+      },
+    });
+
+    expect(result.indexing.providerMode).toBe('cloud');
+    expect(result.indexing.chunkMaxCharacters).toBe(2400);
+    expect(result.models.embeddingModel).toBe('openai/text-embedding-3-large');
+    expect(result.privacy.allowSendingNoteContent).toBe(true);
+  });
+
+  it('forces cloud content sharing off when cloud inference is disabled', () => {
+    const result = mergeAI({
+      privacy: {
+        allowCloudInference: false,
+        allowSendingNoteContent: true,
+        allowSendingMetadata: true,
+      },
+    });
+
+    expect(result.privacy.allowCloudInference).toBe(false);
+    expect(result.privacy.allowSendingNoteContent).toBe(false);
+    expect(result.privacy.allowSendingMetadata).toBe(false);
+  });
+
+  it('falls back on invalid indexing values', () => {
+    const result = mergeAI({
+      indexing: {
+        providerMode: 'remote',
+        chunkMaxCharacters: -1,
+        chunkOverlapCharacters: -1,
+        batchSize: 0,
+      },
+    });
+
+    expect(result.indexing.providerMode).toBe(DEFAULT_APP_CONFIG.ai.indexing.providerMode);
+    expect(result.indexing.chunkMaxCharacters).toBe(
+      DEFAULT_APP_CONFIG.ai.indexing.chunkMaxCharacters,
+    );
+    expect(result.indexing.chunkOverlapCharacters).toBe(
+      DEFAULT_APP_CONFIG.ai.indexing.chunkOverlapCharacters,
+    );
+    expect(result.indexing.batchSize).toBe(DEFAULT_APP_CONFIG.ai.indexing.batchSize);
+  });
+
+  it('normalizes AI settings as part of full AppConfig', () => {
+    const result = normalizeConfig({
+      ai: {
+        indexing: { providerMode: 'disabled' },
+        models: { textModel: 'anthropic/claude-sonnet-4.5' },
+      },
+    });
+
+    expect(result.ai.indexing.providerMode).toBe('disabled');
+    expect(result.ai.models.textModel).toBe('anthropic/claude-sonnet-4.5');
+    expect(result.ai.models.embeddingModel).toBe(DEFAULT_APP_CONFIG.ai.models.embeddingModel);
   });
 });

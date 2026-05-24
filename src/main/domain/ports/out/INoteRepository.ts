@@ -113,27 +113,4 @@ export interface INoteRepository {
    * Get note content by ID (from file)
    */
   getContentById(id: string): Promise<string | null>;
-
-  // ============================================================================
-  // Embedding Operations (TODO: Consider moving to IEmbeddingStore)
-  // ============================================================================
-
-  /**
-   * Get embedding for a note
-   */
-  getEmbedding(noteId: string): Promise<number[] | null>;
-
-  /**
-   * Update embedding for a note
-   */
-  updateEmbedding(noteId: string, embedding: number[] | null): Promise<void>;
-
-  /**
-   * Find notes by similarity to an embedding vector
-   */
-  findBySimilarity(
-    embedding: number[],
-    limit: number,
-    workspaceId?: string,
-  ): Promise<Array<{ noteId: string; title: string; distance: number }>>;
 }

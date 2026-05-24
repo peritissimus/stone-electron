@@ -11,6 +11,12 @@ export { WorkspaceIPC, type WorkspaceIPCDeps } from './WorkspaceIPC';
 export { TagIPC, type TagIPCDeps } from './TagIPC';
 export { SearchIPC, type SearchIPCDeps } from './SearchIPC';
 
+// AI-assisted PKM
+export { registerAIHandlers, unregisterAIHandlers, type AIIPCDeps } from './AIIPC';
+
+// Chunk-level index
+export { registerIndexHandlers, unregisterIndexHandlers, type IndexIPCDeps } from './IndexIPC';
+
 // Task management
 export { registerTaskHandlers, unregisterTaskHandlers, type TaskIPCDeps } from './TaskIPC';
 

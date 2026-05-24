@@ -39,6 +39,10 @@ export class EmbeddingWorker {
   private initialized = false;
   private initializing: Promise<void> | null = null;
   private workerReady = false;
+  // Reranker is lazy — load on first rerank() call so users who never trigger
+  // the AI surface don't pay the model memory cost.
+  private rerankerReady = false;
+  private rerankerInitializing: Promise<void> | null = null;
 
   /**
    * Get the worker script path (handles both dev and packaged app)
@@ -202,6 +206,7 @@ export class EmbeddingWorker {
     this.worker = null;
     this.initialized = false;
     this.workerReady = false;
+    this.rerankerReady = false;
     this.pendingRequests.clear();
 
     getMLStatusTracker().setServiceStatus('idle');
@@ -238,6 +243,51 @@ export class EmbeddingWorker {
     }
 
     return this.sendMessage<number[][]>('batchEmbed', { texts });
+  }
+
+  /**
+   * Lazy-load the reranker model. Called automatically by rerank() the
+   * first time; can be called explicitly to warm the model.
+   */
+  async initializeReranker(): Promise<void> {
+    if (this.rerankerReady) return;
+    if (this.rerankerInitializing) {
+      await this.rerankerInitializing;
+      return;
+    }
+
+    this.rerankerInitializing = (async () => {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+      logger.info('[Embedder] Loading reranker model…');
+      const result = await this.sendMessage<{ model: string }>('initReranker', {});
+      logger.info(`[Embedder] Reranker ready: ${result.model}`);
+      this.rerankerReady = true;
+    })();
+
+    try {
+      await this.rerankerInitializing;
+    } finally {
+      this.rerankerInitializing = null;
+    }
+  }
+
+  /**
+   * Score (query, text) pairs with the cross-encoder. Returns raw scores in
+   * the order of `texts`; caller sorts/truncates. Lazy-initializes the
+   * reranker model on first call.
+   */
+  async rerank(query: string, texts: string[]): Promise<number[]> {
+    if (!this.rerankerReady) {
+      await this.initializeReranker();
+    }
+    return this.sendMessage<number[]>('rerank', { query, texts });
+  }
+
+  /** Whether the reranker model has been loaded. */
+  isRerankerReady(): boolean {
+    return this.rerankerReady && this.worker !== null;
   }
 
   /**

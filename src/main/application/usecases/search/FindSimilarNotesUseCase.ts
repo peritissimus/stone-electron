@@ -1,5 +1,5 @@
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
-import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
+import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
 import type {
   IFindSimilarNotesUseCase,
   FindSimilarNotesRequest,
@@ -9,34 +9,28 @@ import type {
 export class FindSimilarNotesUseCase implements IFindSimilarNotesUseCase {
   constructor(
     private readonly noteRepository: INoteRepository,
-    private readonly embedder: IEmbedder,
+    private readonly indexRepository: IIndexRepository,
   ) {}
 
   async execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse> {
-    // Get note's embedding
-    const embedding = await this.noteRepository.getEmbedding(request.noteId);
+    const noteVec = await this.indexRepository.getNoteVector(request.noteId);
+    if (!noteVec) return { results: [] };
 
-    if (!embedding) {
-      return { results: [] };
-    }
-
-    // Get note to find its workspace
     const note = await this.noteRepository.findById(request.noteId);
-    if (!note) {
-      return { results: [] };
-    }
+    if (!note) return { results: [] };
 
-    // Find similar notes (excluding the source note)
-    const allResults = await this.noteRepository.findBySimilarity(
-      embedding,
-      (request.limit || 5) + 1,
-      note.workspaceId || undefined,
-    );
+    const similar = await this.indexRepository.findSimilarNotesByVector(noteVec, {
+      limit: request.limit || 5,
+      workspaceId: note.workspaceId || undefined,
+      excludeNoteId: request.noteId,
+    });
 
-    const results = allResults
-      .filter((r) => r.noteId !== request.noteId)
-      .slice(0, request.limit || 5);
-
-    return { results };
+    return {
+      results: similar.map((s) => ({
+        noteId: s.noteId,
+        title: s.title,
+        distance: s.similarity,
+      })),
+    };
   }
 }

@@ -130,6 +130,51 @@ export interface IGetTopicsForNoteUseCase {
   execute(noteId: string): Promise<TopicForNote[]>;
 }
 
+// --- Suggestion use cases ---
+
+export interface SuggestedTopicRepresentative {
+  chunkId: string;
+  noteId: string;
+  noteTitle: string;
+  headingPath: string[];
+  excerpt: string;
+}
+
+export interface SuggestedTopic {
+  id: string;
+  label: string;
+  altLabels: string[];
+  noteIds: string[];
+  chunkIds: string[];
+  noteCount: number;
+  chunkCount: number;
+  cohesion: number;
+  representatives: SuggestedTopicRepresentative[];
+}
+
+export interface SuggestTopicsRequest {
+  workspaceId?: string;
+}
+
+export interface ISuggestTopicsUseCase {
+  execute(request?: SuggestTopicsRequest): Promise<SuggestedTopic[]>;
+}
+
+export interface AdoptSuggestedTopicRequest {
+  name: string;
+  color?: string;
+  noteIds: string[];
+}
+
+export interface AdoptSuggestedTopicResponse {
+  topicId: string;
+  assignedNoteCount: number;
+}
+
+export interface IAdoptSuggestedTopicUseCase {
+  execute(request: AdoptSuggestedTopicRequest): Promise<AdoptSuggestedTopicResponse>;
+}
+
 /**
  * Aggregated topic use cases interface for DI container.
  */
@@ -150,4 +195,6 @@ export interface ITopicUseCases {
   getEmbeddingStatus: IGetEmbeddingStatusUseCase;
   getNotesForTopic: IGetNotesForTopicUseCase;
   getTopicsForNote: IGetTopicsForNoteUseCase;
+  suggestTopics: ISuggestTopicsUseCase;
+  adoptSuggestedTopic: IAdoptSuggestedTopicUseCase;
 }

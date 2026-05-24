@@ -12,3 +12,8 @@ export { FileWatcher } from './FileWatcher';
 export { PerformanceMonitor, getPerformanceMonitor } from './PerformanceMonitor';
 export { CryptoIdGenerator } from './CryptoIdGenerator';
 export { NodePathService } from './NodePathService';
+export {
+  AISDKTextGenerator,
+  type AISDKTextGeneratorDeps,
+} from './AISDKTextGenerator';
+export { LocalReranker, type LocalRerankerDeps, type RerankerWorkerClient } from './LocalReranker';

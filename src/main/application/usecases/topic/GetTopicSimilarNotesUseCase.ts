@@ -1,39 +1,33 @@
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
+import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
 import type {
   IGetTopicSimilarNotesUseCase,
   TopicSimilarNote,
 } from '../../../domain/ports/in/ITopicUseCases';
 
 export class GetTopicSimilarNotesUseCase implements IGetTopicSimilarNotesUseCase {
-  constructor(private readonly noteRepository: INoteRepository) {}
+  constructor(
+    private readonly noteRepository: INoteRepository,
+    private readonly indexRepository: IIndexRepository,
+  ) {}
 
   async execute(noteId: string, limit: number = 10): Promise<TopicSimilarNote[]> {
     const note = await this.noteRepository.findById(noteId);
     if (!note) return [];
 
-    const embedding = await this.noteRepository.getEmbedding(noteId);
+    const embedding = await this.indexRepository.getNoteVector(noteId);
     if (!embedding) return [];
 
-    const similarNotes = await this.noteRepository.findBySimilarity(
-      embedding,
-      limit + 1,
-      note.workspaceId || undefined,
-    );
+    const similar = await this.indexRepository.findSimilarNotesByVector(embedding, {
+      limit,
+      workspaceId: note.workspaceId || undefined,
+      excludeNoteId: noteId,
+    });
 
-    const results: TopicSimilarNote[] = [];
-    for (const result of similarNotes) {
-      if (result.noteId !== noteId) {
-        const other = await this.noteRepository.findById(result.noteId);
-        if (other) {
-          results.push({
-            noteId: result.noteId,
-            title: other.title || 'Untitled',
-            distance: result.distance,
-          });
-        }
-      }
-    }
-
-    return results.slice(0, limit);
+    return similar.map((s) => ({
+      noteId: s.noteId,
+      title: s.title,
+      distance: s.similarity, // legacy field name carries cosine similarity
+    }));
   }
 }

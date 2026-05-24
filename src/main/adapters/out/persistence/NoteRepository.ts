@@ -438,105 +438,6 @@ export class NoteRepository implements INoteRepository {
   }
 
   // ============================================================================
-  // Embedding Operations
-  // ============================================================================
-
-  async getEmbedding(noteId: string): Promise<number[] | null> {
-    return this.handle(
-      'getEmbedding',
-      async () => {
-        try {
-          const result = await this.deps.db
-            .select({ embedding: notes.embedding })
-            .from(notes)
-            .where(eq(notes.id, noteId))
-            .limit(1);
-
-          if (!result[0]?.embedding || !(result[0].embedding instanceof Buffer)) {
-            return null;
-          }
-
-          // Embedding is stored as blob - convert to number array
-          const buffer = result[0].embedding;
-          const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
-          return Array.from(floats);
-        } catch {
-          return null;
-        }
-      },
-      { noteId },
-    );
-  }
-
-  async updateEmbedding(noteId: string, embedding: number[] | null): Promise<void> {
-    return this.handle(
-      'updateEmbedding',
-      async () => {
-        let embeddingBlob: Buffer | null = null;
-
-        if (embedding) {
-          const floats = new Float32Array(embedding);
-          embeddingBlob = Buffer.from(floats.buffer);
-        }
-
-        await this.deps.db
-          .update(notes)
-          .set({ embedding: embeddingBlob })
-          .where(eq(notes.id, noteId));
-      },
-      { noteId, hasEmbedding: embedding !== null },
-    );
-  }
-
-  async findBySimilarity(
-    embedding: number[],
-    limit: number,
-    workspaceId?: string,
-  ): Promise<Array<{ noteId: string; title: string; distance: number }>> {
-    return this.handle(
-      'findBySimilarity',
-      async () => {
-        // Build query conditions
-        const conditions: any[] = [eq(notes.isDeleted, false)];
-        if (workspaceId) {
-          conditions.push(eq(notes.workspaceId, workspaceId));
-        }
-
-        // Get notes with embeddings matching conditions
-        const allNotes = await this.deps.db
-          .select({
-            id: notes.id,
-            title: notes.title,
-            embedding: notes.embedding,
-          })
-          .from(notes)
-          .where(and(...conditions));
-
-        const results: Array<{ noteId: string; title: string; distance: number }> = [];
-
-        for (const row of allNotes) {
-          if (!row.embedding) continue;
-
-          try {
-            const buffer = row.embedding as Buffer;
-            const floats = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
-            const stored = Array.from(floats);
-            const distance = this.cosineSimilarity(embedding, stored);
-            results.push({ noteId: row.id, title: row.title ?? 'Untitled', distance });
-          } catch {
-            continue;
-          }
-        }
-
-        // Sort by similarity (higher is better) and take top N
-        results.sort((a, b) => b.distance - a.distance);
-        return results.slice(0, limit);
-      },
-      { limit, workspaceId },
-    );
-  }
-
-  // ============================================================================
   // Private Helpers
   // ============================================================================
 
@@ -567,22 +468,5 @@ export class NoteRepository implements INoteRepository {
       default:
         return notes.updatedAt;
     }
-  }
-
-  private cosineSimilarity(a: number[], b: number[]): number {
-    if (a.length !== b.length) return 0;
-
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-
-    for (let i = 0; i < a.length; i++) {
-      dotProduct += a[i] * b[i];
-      normA += a[i] * a[i];
-      normB += b[i] * b[i];
-    }
-
-    const denominator = Math.sqrt(normA) * Math.sqrt(normB);
-    return denominator === 0 ? 0 : dotProduct / denominator;
   }
 }

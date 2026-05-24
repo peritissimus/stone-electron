@@ -86,6 +86,8 @@ export const TOPIC_CHANNELS = {
   RECOMPUTE_CENTROIDS: 'topics:recomputeCentroids',
   GET_EMBEDDING_STATUS: 'topics:getEmbeddingStatus',
   INITIALIZE: 'topics:initialize',
+  GET_SUGGESTIONS: 'topics:getSuggestions',
+  ADOPT_SUGGESTION: 'topics:adoptSuggestion',
 } as const;
 
 // Search Operations
@@ -95,6 +97,21 @@ export const SEARCH_CHANNELS = {
   HYBRID: 'search:hybrid',
   BY_TAG: 'search:byTag',
   BY_DATE_RANGE: 'search:byDateRange',
+  GET_RELATED: 'search:getRelated',
+} as const;
+
+// AI Operations
+export const AI_CHANNELS = {
+  ASK_NOTES: 'ai:askNotes',
+  SUMMARIZE_NOTE: 'ai:summarizeNote',
+  SUGGEST_LINKS: 'ai:suggestLinks',
+} as const;
+
+// Chunk index operations
+export const INDEX_CHANNELS = {
+  GET_STATS: 'index:getStats',
+  INDEX_NOTE: 'index:indexNote',
+  REBUILD_ALL: 'index:rebuildAll',
 } as const;
 
 // Attachment Operations
@@ -137,6 +154,13 @@ export const SETTINGS_CHANNELS = {
   SET_SHORTCUT: 'settings:setShortcut',
   RESET_SHORTCUT: 'settings:resetShortcut',
   RESET_ALL_SHORTCUTS: 'settings:resetAllShortcuts',
+  // AI
+  GET_AI: 'settings:getAI',
+  UPDATE_AI: 'settings:updateAI',
+  RESET_AI: 'settings:resetAI',
+  GET_AI_PROVIDER_KEYS: 'settings:getAIProviderKeys',
+  SET_AI_PROVIDER_KEY: 'settings:setAIProviderKey',
+  DELETE_AI_PROVIDER_KEY: 'settings:deleteAIProviderKey',
 } as const;
 
 // System Operations
@@ -264,6 +288,8 @@ export const ALL_CHANNELS = [
   ...Object.values(TAG_CHANNELS),
   ...Object.values(TOPIC_CHANNELS),
   ...Object.values(SEARCH_CHANNELS),
+  ...Object.values(AI_CHANNELS),
+  ...Object.values(INDEX_CHANNELS),
   ...Object.values(ATTACHMENT_CHANNELS),
   ...Object.values(DATABASE_CHANNELS),
   ...Object.values(SETTINGS_CHANNELS),

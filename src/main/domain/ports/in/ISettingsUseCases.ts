@@ -5,6 +5,7 @@
  */
 
 import type {
+  AIConfig,
   AppearanceSettings,
   AppAccentColor,
   AppTheme,
@@ -13,6 +14,7 @@ import type {
   FontSettings,
   ShortcutsConfig,
 } from '../../value-objects/AppConfig';
+import type { AIProviderId, AIProviderKeyStatus } from '../out/IAIProviderKeyStore';
 
 export interface SettingDTO {
   key: string;
@@ -95,6 +97,39 @@ export interface IResetAllShortcutsUseCase {
   execute(): Promise<ShortcutsConfig>;
 }
 
+// ----- AI -----
+
+export interface IGetAISettingsUseCase {
+  execute(): Promise<AIConfig>;
+}
+
+export interface IUpdateAISettingsUseCase {
+  execute(request: {
+    ai: Partial<AIConfig>;
+  }): Promise<AIConfig>;
+}
+
+export interface IResetAISettingsUseCase {
+  execute(): Promise<AIConfig>;
+}
+
+export interface IGetAIProviderKeysUseCase {
+  execute(): Promise<AIProviderKeyStatus[]>;
+}
+
+export interface ISetAIProviderKeyUseCase {
+  execute(request: {
+    provider: AIProviderId;
+    apiKey: string;
+  }): Promise<AIProviderKeyStatus[]>;
+}
+
+export interface IDeleteAIProviderKeyUseCase {
+  execute(request: {
+    provider: AIProviderId;
+  }): Promise<AIProviderKeyStatus[]>;
+}
+
 /**
  * Aggregated settings use cases interface for DI container
  */
@@ -114,4 +149,10 @@ export interface ISettingsUseCases {
   setShortcut: ISetShortcutUseCase;
   resetShortcut: IResetShortcutUseCase;
   resetAllShortcuts: IResetAllShortcutsUseCase;
+  getAI: IGetAISettingsUseCase;
+  updateAI: IUpdateAISettingsUseCase;
+  resetAI: IResetAISettingsUseCase;
+  getAIProviderKeys: IGetAIProviderKeysUseCase;
+  setAIProviderKey: ISetAIProviderKeyUseCase;
+  deleteAIProviderKey: IDeleteAIProviderKeyUseCase;
 }

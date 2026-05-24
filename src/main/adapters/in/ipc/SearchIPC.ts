@@ -81,6 +81,14 @@ export class SearchIPC {
       );
     });
 
+    ipcMain.handle(SEARCH_CHANNELS.GET_RELATED, async (_event, request) => {
+      return handleRequest(async () => searchUseCases.getRelatedNotes.execute(request), {
+        channel: SEARCH_CHANNELS.GET_RELATED,
+        noteId: request?.noteId,
+        limit: request?.limit,
+      });
+    });
+
     logger.info('[SearchIPC] Handlers registered');
   }
 
@@ -90,5 +98,6 @@ export class SearchIPC {
     ipcMain.removeHandler(SEARCH_CHANNELS.HYBRID);
     ipcMain.removeHandler(SEARCH_CHANNELS.BY_TAG);
     ipcMain.removeHandler(SEARCH_CHANNELS.BY_DATE_RANGE);
+    ipcMain.removeHandler(SEARCH_CHANNELS.GET_RELATED);
   }
 }

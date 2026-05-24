@@ -35,7 +35,26 @@ interface ShutdownMessage {
   id: string;
 }
 
-type WorkerMessage = InitMessage | EmbedMessage | BatchEmbedMessage | PingMessage | ShutdownMessage;
+interface InitRerankerMessage {
+  type: 'initReranker';
+  id: string;
+}
+
+interface RerankMessage {
+  type: 'rerank';
+  id: string;
+  query: string;
+  texts: string[];
+}
+
+type WorkerMessage =
+  | InitMessage
+  | EmbedMessage
+  | BatchEmbedMessage
+  | PingMessage
+  | ShutdownMessage
+  | InitRerankerMessage
+  | RerankMessage;
 
 interface WorkerResponse {
   id: string;
@@ -47,11 +66,16 @@ interface WorkerResponse {
 // Model configuration
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 const EMBEDDING_DIMS = 384;
+const RERANKER_MODEL_NAME = 'Xenova/ms-marco-MiniLM-L-6-v2';
 
-// Pipeline instance
+// Pipeline instances. Two models share the worker — the embedder is loaded
+// eagerly on first request, the reranker lazy-loads on first rerank call so
+// users who never hit the AI surface don't pay the memory cost.
 type Pipeline = Awaited<ReturnType<(typeof import('@xenova/transformers'))['pipeline']>>;
 let pipeline: Pipeline | null = null;
+let rerankerPipeline: Pipeline | null = null;
 let initialized = false;
+let rerankerInitialized = false;
 
 /**
  * Initialize the embedding model
@@ -155,6 +179,61 @@ async function batchEmbed(texts: string[]): Promise<number[][]> {
 }
 
 /**
+ * Initialize the reranker model (lazy — only when the first rerank request
+ * arrives, to avoid loading ~30MB of weights for users who never trigger
+ * the AI surface).
+ */
+async function initializeReranker(): Promise<{ model: string }> {
+  if (rerankerInitialized && rerankerPipeline) {
+    return { model: RERANKER_MODEL_NAME };
+  }
+
+  const { pipeline: createPipeline, env } = await import('@xenova/transformers');
+
+  env.allowLocalModels = true;
+  env.useBrowserCache = false;
+  const cacheDir = (workerData as { cacheDir?: string } | null)?.cacheDir;
+  if (cacheDir) {
+    env.cacheDir = cacheDir;
+  }
+
+  rerankerPipeline = await createPipeline('text-classification', RERANKER_MODEL_NAME, {
+    quantized: true,
+  });
+
+  rerankerInitialized = true;
+  return { model: RERANKER_MODEL_NAME };
+}
+
+/**
+ * Score (query, text) pairs with the cross-encoder. Higher score = more
+ * relevant. ms-marco-MiniLM emits a single-class logit per pair.
+ */
+async function rerank(query: string, texts: string[]): Promise<number[]> {
+  if (!rerankerInitialized || !rerankerPipeline) {
+    await initializeReranker();
+  }
+
+  if (texts.length === 0) return [];
+
+  // Feed the pair as "query [SEP] text" — transformers.js's text-classification
+  // pipeline accepts a `text_pair` option for cross-encoder usage.
+  const scores: number[] = [];
+  for (const text of texts) {
+    const result = (await rerankerPipeline!(query, {
+      text_pair: text,
+    } as any)) as Array<{ label: string; score: number }> | { label: string; score: number };
+
+    // Pipeline can return either a single object or an array depending on
+    // model config; normalize to the highest-scoring entry's raw score.
+    const top = Array.isArray(result) ? result[0] : result;
+    scores.push(top?.score ?? 0);
+  }
+
+  return scores;
+}
+
+/**
  * Send response back to main thread
  */
 function respond(response: WorkerResponse): void {
@@ -196,7 +275,22 @@ parentPort?.on('message', async (message: WorkerMessage) => {
       case 'shutdown': {
         pipeline = null;
         initialized = false;
+        rerankerPipeline = null;
+        rerankerInitialized = false;
         respond({ id, success: true });
+        break;
+      }
+
+      case 'initReranker': {
+        const result = await initializeReranker();
+        respond({ id, success: true, data: result });
+        break;
+      }
+
+      case 'rerank': {
+        const msg = message as RerankMessage;
+        const scores = await rerank(msg.query, msg.texts);
+        respond({ id, success: true, data: scores });
         break;
       }
 

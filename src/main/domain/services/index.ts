@@ -34,6 +34,18 @@ export type {
 
 export { VersionDiffer } from './VersionDiffer';
 
+export { NoteChunker } from './NoteChunker';
+export type { Chunk, ChunkOptions } from './NoteChunker';
+
+export { hashText } from './hashText';
+
+export { TopicSuggester } from './TopicSuggester';
+export type {
+  SuggesterChunk,
+  SuggesterOptions,
+  SuggestedCluster,
+} from './TopicSuggester';
+
 export { NoteGraphBuilder } from './NoteGraphBuilder';
 export { stripFirstHeading } from './MarkdownTitle';
 export {

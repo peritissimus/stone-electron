@@ -22,17 +22,20 @@ import type {
   INoteLinkRepository,
   ISettingsRepository,
   IAppConfigRepository,
+  IAIProviderKeyStore,
   // Outbound Ports (Services)
   IFileStorage,
   IMarkdownProcessor,
   IEventPublisher,
   ISearchEngine,
   IEmbedder,
+  IIndexRepository,
   IExporter,
   ISystemBridge,
   IGitClient,
   IIdGenerator,
   IPathService,
+  ITextGenerator,
   // Inbound Ports (Use Cases)
   INoteUseCases,
   INotebookUseCases,
@@ -53,6 +56,8 @@ import type {
   IJournalUseCases,
   IQuickNoteUseCases,
   IScratchUseCases,
+  IAIUseCases,
+  IIndexUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -76,6 +81,8 @@ import {
   createJournalUseCases,
   createQuickNoteUseCases,
   createScratchUseCases,
+  createAIUseCases,
+  createIndexUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -116,8 +123,13 @@ import {
   unregisterSettingsHandlers,
   registerPerformanceHandlers,
   unregisterPerformanceHandlers,
+  registerAIHandlers,
+  unregisterAIHandlers,
+  registerIndexHandlers,
+  unregisterIndexHandlers,
   // Outbound (Secondary) - Persistence
   NoteRepository,
+  IndexRepository,
   NotebookRepository,
   WorkspaceRepository,
   TagRepository,
@@ -127,6 +139,7 @@ import {
   NoteLinkRepository,
   SettingsRepository,
   AppConfigRepository,
+  SecureAIProviderKeyStore,
   JournalReader,
   // Outbound (Secondary) - Storage
   FileSystemStorage,
@@ -140,6 +153,7 @@ import {
   CryptoIdGenerator,
   NodePathService,
   FileWatcher,
+  AISDKTextGenerator,
   getPerformanceMonitor,
   // Outbound (Secondary) - Events
   EventPublisher,
@@ -177,6 +191,7 @@ export interface Container {
   noteLinkRepository: INoteLinkRepository;
   settingsRepository: ISettingsRepository;
   appConfigRepository: IAppConfigRepository;
+  aiProviderKeyStore: IAIProviderKeyStore;
 
   // Ports - Services
   fileStorage: IFileStorage;
@@ -189,6 +204,7 @@ export interface Container {
   gitClient: IGitClient;
   idGenerator: IIdGenerator;
   pathService: IPathService;
+  textGenerator: ITextGenerator;
   fileWatcher: FileWatcher;
 
   // Use Cases - Core
@@ -213,6 +229,9 @@ export interface Container {
   journalUseCases: IJournalUseCases;
   quickNoteUseCases: IQuickNoteUseCases;
   scratchUseCases: IScratchUseCases;
+  aiUseCases: IAIUseCases;
+  indexUseCases: IIndexUseCases;
+  indexRepository: IIndexRepository;
 
   // IPC Adapters (class-based)
   noteIPC: NoteIPC;
@@ -300,6 +319,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const noteLinkRepository: INoteLinkRepository = new NoteLinkRepository({ db });
   const settingsRepository: ISettingsRepository = new SettingsRepository({ db });
   const appConfigRepository: IAppConfigRepository = new AppConfigRepository();
+  const aiProviderKeyStore: IAIProviderKeyStore = new SecureAIProviderKeyStore();
 
   const noteRepository: INoteRepository = new NoteRepository({
     db,
@@ -307,33 +327,39 @@ export function createContainer(deps: ContainerDeps): Container {
     getWorkspacePath,
   });
 
-  const journalReader = new JournalReader({ db, fileStorage });
+  const indexRepository: IIndexRepository = new IndexRepository({ db });
 
-  const fileWatcher = new FileWatcher({
-    workspaceRepository,
-    noteRepository,
-    notebookRepository,
-    eventPublisher,
-  });
+  const journalReader = new JournalReader({ db, fileStorage });
 
   // ---------------------------------------------------------------------------
   // Layer 3: Domain Services (depend on repositories)
   // ---------------------------------------------------------------------------
   const embedder: IEmbedder = new Embedder({
-    noteRepository,
-    markdownProcessor,
     workerService: embeddingWorker,
   });
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
     noteRepository,
-    embedder,
+  });
+
+  const textGenerator: ITextGenerator = new AISDKTextGenerator({
+    appConfigRepository,
+    aiProviderKeyStore,
   });
 
   // ---------------------------------------------------------------------------
   // Layer 4: Use Cases (depend on repositories and services)
   // ---------------------------------------------------------------------------
+  const indexUseCases = createIndexUseCases({
+    noteRepository,
+    workspaceRepository,
+    fileStorage,
+    embedder,
+    indexRepository,
+    pathService,
+  });
+
   const noteUseCases = createNoteUseCases({
     noteRepository,
     workspaceRepository,
@@ -360,7 +386,17 @@ export function createContainer(deps: ContainerDeps): Container {
     appConfigRepository,
     idGenerator,
     pathService,
+    indexNote: indexUseCases.indexNote,
     eventPublisher,
+  });
+
+  // File watcher needs syncWorkspace from the use cases — construct after.
+  const fileWatcher = new FileWatcher({
+    workspaceRepository,
+    eventPublisher,
+    syncWorkspace: async (workspaceId) => {
+      await workspaceUseCases.syncWorkspace.execute({ workspaceId });
+    },
   });
 
   const tagUseCases = createTagUseCases({
@@ -373,6 +409,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteRepository,
     searchEngine,
     embedder,
+    indexRepository,
   });
 
   // Task use cases
@@ -412,6 +449,8 @@ export function createContainer(deps: ContainerDeps): Container {
     markdownProcessor,
     idGenerator,
     pathService,
+    indexRepository,
+    indexNote: indexUseCases.indexNote,
     eventPublisher,
   });
 
@@ -499,7 +538,17 @@ export function createContainer(deps: ContainerDeps): Container {
   const settingsUseCases = createSettingsUseCases({
     settingsRepository,
     appConfigRepository,
+    aiProviderKeyStore,
     eventPublisher,
+  });
+
+  // AI-assisted PKM use cases
+  const aiUseCases = createAIUseCases({
+    hybridSearch: searchUseCases.hybridSearch,
+    noteRepository,
+    markdownProcessor,
+    textGenerator,
+    indexRepository,
   });
 
   // ---------------------------------------------------------------------------
@@ -526,6 +575,7 @@ export function createContainer(deps: ContainerDeps): Container {
     noteLinkRepository,
     settingsRepository,
     appConfigRepository,
+    aiProviderKeyStore,
 
     // Ports - Services
     fileStorage,
@@ -533,11 +583,13 @@ export function createContainer(deps: ContainerDeps): Container {
     eventPublisher,
     searchEngine,
     embedder,
+    indexRepository,
     exporter,
     systemBridge,
     gitClient,
     idGenerator,
     pathService,
+    textGenerator,
     fileWatcher,
 
     // Use Cases - Core
@@ -562,6 +614,8 @@ export function createContainer(deps: ContainerDeps): Container {
     journalUseCases,
     quickNoteUseCases,
     scratchUseCases,
+    aiUseCases,
+    indexUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -673,6 +727,20 @@ export function registerIPCHandlers(): void {
     setShortcut: container.settingsUseCases.setShortcut,
     resetShortcut: container.settingsUseCases.resetShortcut,
     resetAllShortcuts: container.settingsUseCases.resetAllShortcuts,
+    getAI: container.settingsUseCases.getAI,
+    updateAI: container.settingsUseCases.updateAI,
+    resetAI: container.settingsUseCases.resetAI,
+    getAIProviderKeys: container.settingsUseCases.getAIProviderKeys,
+    setAIProviderKey: container.settingsUseCases.setAIProviderKey,
+    deleteAIProviderKey: container.settingsUseCases.deleteAIProviderKey,
+  });
+  registerAIHandlers({
+    aiUseCases: container.aiUseCases,
+  });
+  registerIndexHandlers({
+    indexUseCases: container.indexUseCases,
+    indexRepository: container.indexRepository,
+    workspaceRepository: container.workspaceRepository,
   });
 
   // Performance monitoring handlers
@@ -714,5 +782,7 @@ export function unregisterIPCHandlers(): void {
   unregisterScratchHandlers();
   unregisterSystemHandlers();
   unregisterSettingsHandlers();
+  unregisterAIHandlers();
+  unregisterIndexHandlers();
   unregisterPerformanceHandlers();
 }

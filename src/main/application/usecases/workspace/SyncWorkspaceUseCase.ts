@@ -14,6 +14,7 @@ import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
+import type { IIndexNoteUseCase } from '../../../domain/ports/in/IIndexUseCases';
 import {
   WorkspaceDiffer,
   type DbEntry,
@@ -28,6 +29,7 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
     private readonly markdownProcessor: IMarkdownProcessor,
     private readonly idGenerator: IIdGenerator,
     private readonly pathService: IPathService,
+    private readonly indexNote?: IIndexNoteUseCase,
     private readonly eventPublisher?: IEventPublisher,
   ) {}
 
@@ -71,9 +73,13 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
     let created = 0;
     let updated = 0;
     let deleted = 0;
+    let embedded = 0;
     const errors: string[] = [];
 
-    // Act on `added` — create new note rows.
+    // Act on `added` — create new note rows and delegate chunk-level indexing
+    // to IndexNoteUseCase so they become searchable immediately (instead of
+    // waiting for a manual reindex). Indexing errors are collected but don't
+    // abort the sync — a later Reindex can fill any gaps.
     for (const entry of plan.added) {
       const absolutePath = this.pathService.join(workspace.folderPath, entry.relativePath);
       const fileContent = await this.fileStorage.read(absolutePath);
@@ -99,6 +105,23 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       });
 
       created++;
+
+      if (this.indexNote) {
+        try {
+          const result = await this.indexNote.execute({ noteId: note.id });
+          if (result.status === 'indexed' && result.chunkCount > 0) {
+            embedded++;
+          } else if (result.status === 'failed') {
+            errors.push(
+              `Index failed for ${entry.relativePath}: ${result.error ?? 'unknown error'}`,
+            );
+          }
+        } catch (e) {
+          errors.push(
+            `Index failed for ${entry.relativePath}: ${e instanceof Error ? e.message : 'unknown error'}`,
+          );
+        }
+      }
     }
 
     // Act on `modified` — refresh title and bump timestamp.
@@ -131,6 +154,19 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
       });
 
       updated++;
+
+      // Re-index modified notes too. IndexNoteUseCase checks the content hash
+      // and skips if the markdown body didn't actually change (e.g. mtime
+      // changed but bytes didn't), so this is cheap on no-op edits.
+      if (this.indexNote) {
+        try {
+          await this.indexNote.execute({ noteId: existingNote.id });
+        } catch (e) {
+          errors.push(
+            `Reindex failed for ${entry.relativePath}: ${e instanceof Error ? e.message : 'unknown error'}`,
+          );
+        }
+      }
     }
 
     // Act on `removed` — soft-delete notes whose files are gone.
@@ -158,7 +194,7 @@ export class SyncWorkspaceUseCase implements ISyncWorkspaceUseCase {
         updated: 0,
         errors: [],
       },
-      notes: { created, updated, deleted, errors },
+      notes: { created, updated, deleted, embedded, errors },
     };
   }
 }

@@ -146,6 +146,13 @@ export interface SyncWorkspaceResponse {
     created: number;
     updated: number;
     deleted: number;
+    /**
+     * Number of newly imported notes that were also embedded inline during
+     * this sync (so they're immediately searchable without a follow-up
+     * reclassify). Always <= created. Zero if the embedding worker isn't
+     * ready yet at sync time.
+     */
+    embedded: number;
     errors: string[];
   };
 }

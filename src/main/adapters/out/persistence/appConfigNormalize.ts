@@ -18,6 +18,11 @@ import {
   DEFAULT_APP_CONFIG,
   type AppConfig,
   type AppAccentColor,
+  type AIConfig,
+  type AIIndexingConfig,
+  type AIModelConfig,
+  type AIPrivacyConfig,
+  type AIProviderMode,
   type AppearanceSettings,
   type AppShortcutAction,
   type AppTheme,
@@ -306,6 +311,107 @@ export function mergeNotes(value: unknown): NotesConfig {
   };
 }
 
+// ---------- ai ----------
+
+function isProviderMode(value: unknown): value is AIProviderMode {
+  return value === 'local' || value === 'cloud' || value === 'disabled';
+}
+
+function sanitizePositiveInt(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function sanitizeNonNegativeInt(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback;
+}
+
+function mergeAIIndexing(value: unknown): AIIndexingConfig {
+  const defaults = DEFAULT_APP_CONFIG.ai.indexing;
+  if (!isRecord(value)) {
+    return { ...defaults };
+  }
+
+  return {
+    enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
+    providerMode: isProviderMode(value.providerMode) ? value.providerMode : defaults.providerMode,
+    chunkMaxCharacters: sanitizePositiveInt(
+      value.chunkMaxCharacters,
+      defaults.chunkMaxCharacters,
+    ),
+    chunkOverlapCharacters: sanitizeNonNegativeInt(
+      value.chunkOverlapCharacters,
+      defaults.chunkOverlapCharacters,
+    ),
+    batchSize: sanitizePositiveInt(value.batchSize, defaults.batchSize),
+    autoIndexOnSave:
+      typeof value.autoIndexOnSave === 'boolean'
+        ? value.autoIndexOnSave
+        : defaults.autoIndexOnSave,
+  };
+}
+
+function mergeAIModels(value: unknown): AIModelConfig {
+  const defaults = DEFAULT_APP_CONFIG.ai.models;
+  if (!isRecord(value)) {
+    return { ...defaults };
+  }
+
+  return {
+    textModel:
+      typeof value.textModel === 'string' && value.textModel.trim().length > 0
+        ? value.textModel
+        : defaults.textModel,
+    embeddingModel:
+      typeof value.embeddingModel === 'string' && value.embeddingModel.trim().length > 0
+        ? value.embeddingModel
+        : defaults.embeddingModel,
+    rerankModel:
+      typeof value.rerankModel === 'string' && value.rerankModel.trim().length > 0
+        ? value.rerankModel
+        : defaults.rerankModel,
+  };
+}
+
+function mergeAIPrivacy(value: unknown): AIPrivacyConfig {
+  const defaults = DEFAULT_APP_CONFIG.ai.privacy;
+  if (!isRecord(value)) {
+    return { ...defaults };
+  }
+
+  const allowCloudInference =
+    typeof value.allowCloudInference === 'boolean'
+      ? value.allowCloudInference
+      : defaults.allowCloudInference;
+
+  return {
+    allowCloudInference,
+    allowSendingNoteContent:
+      allowCloudInference && typeof value.allowSendingNoteContent === 'boolean'
+        ? value.allowSendingNoteContent
+        : false,
+    allowSendingMetadata:
+      allowCloudInference && typeof value.allowSendingMetadata === 'boolean'
+        ? value.allowSendingMetadata
+        : false,
+  };
+}
+
+export function mergeAI(value: unknown): AIConfig {
+  if (!isRecord(value)) {
+    return {
+      indexing: mergeAIIndexing(undefined),
+      models: mergeAIModels(undefined),
+      privacy: mergeAIPrivacy(undefined),
+    };
+  }
+
+  return {
+    indexing: mergeAIIndexing(value.indexing),
+    models: mergeAIModels(value.models),
+    privacy: mergeAIPrivacy(value.privacy),
+  };
+}
+
 // ---------- root ----------
 
 export function normalizeConfig(value: unknown): AppConfig {
@@ -327,5 +433,6 @@ export function normalizeConfig(value: unknown): AppConfig {
     editor: mergeEditor(value.editor),
     shortcuts: mergeShortcuts(value.shortcuts),
     notes: mergeNotes(value.notes),
+    ai: mergeAI(value.ai),
   };
 }

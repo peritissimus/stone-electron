@@ -1,4 +1,8 @@
-import type { IAppConfigRepository, ISettingsRepository } from '../../../domain/ports/out';
+import type {
+  IAIProviderKeyStore,
+  IAppConfigRepository,
+  ISettingsRepository,
+} from '../../../domain/ports/out';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { ISettingsUseCases } from '../../../domain/ports/in/ISettingsUseCases';
 import { GetSettingUseCase } from './GetSettingUseCase';
@@ -22,6 +26,14 @@ import {
   ResetShortcutUseCase,
   ResetAllShortcutsUseCase,
 } from './shortcuts';
+import {
+  DeleteAIProviderKeyUseCase,
+  GetAIProviderKeysUseCase,
+  GetAISettingsUseCase,
+  ResetAISettingsUseCase,
+  SetAIProviderKeyUseCase,
+  UpdateAISettingsUseCase,
+} from './ai';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
@@ -44,15 +56,24 @@ export {
   ResetShortcutUseCase,
   ResetAllShortcutsUseCase,
 } from './shortcuts';
+export {
+  DeleteAIProviderKeyUseCase,
+  GetAIProviderKeysUseCase,
+  GetAISettingsUseCase,
+  ResetAISettingsUseCase,
+  SetAIProviderKeyUseCase,
+  UpdateAISettingsUseCase,
+} from './ai';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;
   appConfigRepository: IAppConfigRepository;
+  aiProviderKeyStore: IAIProviderKeyStore;
   eventPublisher?: IEventPublisher;
 }
 
 export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUseCases {
-  const { settingsRepository, appConfigRepository, eventPublisher } = deps;
+  const { settingsRepository, appConfigRepository, aiProviderKeyStore, eventPublisher } = deps;
 
   return {
     get: new GetSettingUseCase(settingsRepository),
@@ -70,5 +91,11 @@ export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUse
     setShortcut: new SetShortcutUseCase(appConfigRepository, eventPublisher),
     resetShortcut: new ResetShortcutUseCase(appConfigRepository, eventPublisher),
     resetAllShortcuts: new ResetAllShortcutsUseCase(appConfigRepository, eventPublisher),
+    getAI: new GetAISettingsUseCase(appConfigRepository),
+    updateAI: new UpdateAISettingsUseCase(appConfigRepository, eventPublisher),
+    resetAI: new ResetAISettingsUseCase(appConfigRepository, eventPublisher),
+    getAIProviderKeys: new GetAIProviderKeysUseCase(aiProviderKeyStore),
+    setAIProviderKey: new SetAIProviderKeyUseCase(aiProviderKeyStore, eventPublisher),
+    deleteAIProviderKey: new DeleteAIProviderKeyUseCase(aiProviderKeyStore, eventPublisher),
   };
 }

@@ -1,6 +1,6 @@
-import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
+import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
 import type {
   IGetEmbeddingStatusUseCase,
   EmbeddingStatus,
@@ -8,9 +8,9 @@ import type {
 
 export class GetEmbeddingStatusUseCase implements IGetEmbeddingStatusUseCase {
   constructor(
-    private readonly noteRepository: INoteRepository,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly embedder: IEmbedder,
+    private readonly indexRepository: IIndexRepository,
   ) {}
 
   async execute(): Promise<EmbeddingStatus> {
@@ -24,22 +24,15 @@ export class GetEmbeddingStatusUseCase implements IGetEmbeddingStatusUseCase {
       };
     }
 
-    const notes = await this.noteRepository.findAll({
-      workspaceId: activeWorkspace.id,
-      isDeleted: false,
-    });
-    let embeddedNotes = 0;
-
-    for (const note of notes) {
-      const embedding = await this.noteRepository.getEmbedding(note.id);
-      if (embedding) embeddedNotes++;
-    }
-
+    // "Embedded" now means "has at least one indexed chunk". The chunk index
+    // is the canonical source of retrieval truth; legacy note.embedding is
+    // gone.
+    const stats = await this.indexRepository.getWorkspaceStats(activeWorkspace.id);
     return {
       ready: await this.embedder.isReady(),
-      totalNotes: notes.length,
-      embeddedNotes,
-      pendingNotes: notes.length - embeddedNotes,
+      totalNotes: stats.totalNotes,
+      embeddedNotes: stats.indexedNotes,
+      pendingNotes: stats.pendingNotes,
     };
   }
 }

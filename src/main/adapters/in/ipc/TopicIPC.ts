@@ -181,6 +181,23 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     });
   });
 
+  ipcMain.handle(TOPIC_CHANNELS.GET_SUGGESTIONS, async (_event, request) => {
+    return handleRequest(
+      async () => {
+        const suggestions = await topicUseCases.suggestTopics.execute(request ?? undefined);
+        return { suggestions };
+      },
+      { channel: TOPIC_CHANNELS.GET_SUGGESTIONS, workspaceId: request?.workspaceId },
+    );
+  });
+
+  ipcMain.handle(TOPIC_CHANNELS.ADOPT_SUGGESTION, async (_event, request) => {
+    return handleRequest(async () => topicUseCases.adoptSuggestedTopic.execute(request), {
+      channel: TOPIC_CHANNELS.ADOPT_SUGGESTION,
+      noteCount: request?.noteIds?.length ?? 0,
+    });
+  });
+
   ipcMain.handle(
     TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
     async (

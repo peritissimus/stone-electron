@@ -16,13 +16,6 @@ export interface SearchResult {
   };
 }
 
-export interface SemanticSearchResult {
-  noteId: string;
-  title: string;
-  similarity: number;
-  distance: number;
-}
-
 export interface SearchOptions {
   limit?: number;
   offset?: number;
@@ -42,22 +35,10 @@ export interface DateRangeOptions {
 
 export interface ISearchEngine {
   /**
-   * Full-text search across notes
+   * Title-prefix search across notes (cheap LIKE). For body search use the
+   * chunk-level IIndexRepository.searchFullText instead.
    */
   searchFullText(query: string, options?: SearchOptions): Promise<SearchResult[]>;
-
-  /**
-   * Semantic search using embeddings
-   */
-  searchSemantic(query: string, options?: SearchOptions): Promise<SemanticSearchResult[]>;
-
-  /**
-   * Hybrid search (FTS + semantic)
-   */
-  searchHybrid(
-    query: string,
-    options?: SearchOptions & { weights?: { fts: number; semantic: number } },
-  ): Promise<SearchResult[]>;
 
   /**
    * Search by tags
@@ -71,19 +52,4 @@ export interface ISearchEngine {
    * Search by date range
    */
   searchByDateRange(options: DateRangeOptions): Promise<NoteProps[]>;
-
-  /**
-   * Update search index for a note
-   */
-  indexNote(noteId: string, title: string, content: string): Promise<void>;
-
-  /**
-   * Remove note from search index
-   */
-  removeFromIndex(noteId: string): Promise<void>;
-
-  /**
-   * Rebuild search index
-   */
-  rebuildIndex(): Promise<void>;
 }

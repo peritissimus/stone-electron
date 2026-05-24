@@ -10,6 +10,7 @@ import type { INoteRepository } from '../../../domain/ports/out/INoteRepository'
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IMarkdownProcessor } from '../../../domain/ports/out/IMarkdownProcessor';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
+import type { IIndexNoteUseCase } from '../../../domain/ports/in/IIndexUseCases';
 import { CreateWorkspaceUseCase } from './CreateWorkspaceUseCase';
 import { GetWorkspaceUseCase } from './GetWorkspaceUseCase';
 import { ListWorkspacesUseCase } from './ListWorkspacesUseCase';
@@ -51,6 +52,7 @@ export interface WorkspaceUseCasesDeps {
   appConfigRepository: IAppConfigRepository;
   idGenerator: IIdGenerator;
   pathService: IPathService;
+  indexNote?: IIndexNoteUseCase;
   eventPublisher?: IEventPublisher;
 }
 
@@ -64,6 +66,7 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     appConfigRepository,
     idGenerator,
     pathService,
+    indexNote,
     eventPublisher,
   } = deps;
 
@@ -89,6 +92,7 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
       markdownProcessor,
       idGenerator,
       pathService,
+      indexNote,
       eventPublisher,
     ),
   };

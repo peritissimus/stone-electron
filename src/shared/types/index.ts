@@ -281,3 +281,12 @@ export interface AppError {
 
 // Export settings types
 export * from './settings';
+
+// Export AI wire types
+export * from './ai';
+
+// Export topic suggestion wire types
+export * from './topicSuggestion';
+
+// Export related-notes wire types
+export * from './related';

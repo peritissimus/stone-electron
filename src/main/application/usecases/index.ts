@@ -75,9 +75,25 @@ export {
   FullTextSearchUseCase,
   SemanticSearchUseCase,
   FindSimilarNotesUseCase,
-  RebuildSearchIndexUseCase,
   createSearchUseCases,
 } from './search';
+
+// AI Use Cases
+export {
+  AskNotesUseCase,
+  SummarizeNoteUseCase,
+  SuggestLinksUseCase,
+  createAIUseCases,
+  type AIUseCasesDeps,
+} from './ai';
+
+// Index Use Cases (chunk + embed)
+export {
+  IndexNoteUseCase,
+  RebuildAllNotesIndexUseCase,
+  createIndexUseCases,
+  type IndexUseCasesDeps,
+} from './indexing';
 
 // Task Use Cases
 export { createTaskUseCases, type TaskUseCasesDeps } from './task';

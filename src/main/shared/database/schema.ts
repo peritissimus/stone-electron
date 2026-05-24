@@ -53,7 +53,6 @@ export const notes = sqliteTable(
     isArchived: integer('is_archived', { mode: 'boolean' }).default(false),
     isDeleted: integer('is_deleted', { mode: 'boolean' }).default(false),
     deletedAt: integer('deleted_at', { mode: 'timestamp' }),
-    embedding: blob('embedding'), // F32_BLOB(384) - 384-dim float vector for semantic search
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
   },
@@ -70,6 +69,65 @@ export const notes = sqliteTable(
     index('idx_notes_updated_at').on(table.updatedAt),
     index('idx_notes_created_at').on(table.createdAt),
     index('idx_notes_deleted').on(table.isDeleted),
+  ],
+);
+
+// Note Chunks table — chunk-level retrieval index.
+// One row per markdown chunk of a note. Embedding is stored as a packed
+// Float32Array BLOB (same convention as notes.embedding). Heading path is
+// JSON-encoded string array. Content hash lets the indexer skip chunks
+// whose text hasn't changed.
+export const noteChunks = sqliteTable(
+  'note_chunks',
+  {
+    id: text('id').primaryKey(),
+    noteId: text('note_id')
+      .notNull()
+      .references(() => notes.id, { onDelete: 'cascade' }),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    chunkIndex: integer('chunk_index').notNull(),
+    headingPath: text('heading_path').notNull().default('[]'),
+    text: text('text').notNull(),
+    contentHash: text('content_hash').notNull(),
+    tokenCount: integer('token_count').notNull().default(0),
+    embedding: blob('embedding'), // F32_BLOB(384)
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  },
+  (table) => [
+    index('idx_note_chunks_note_id').on(table.noteId),
+    index('idx_note_chunks_workspace_id').on(table.workspaceId),
+    index('idx_note_chunks_content_hash').on(table.contentHash),
+  ],
+);
+
+// Per-note index status — bookkeeping for what's been indexed and when.
+// Distinct from the chunk rows so we can show "5/96 notes pending" without
+// counting chunks, and so a failed index leaves a useful error trail.
+export const noteIndexRecords = sqliteTable(
+  'note_index_records',
+  {
+    noteId: text('note_id')
+      .primaryKey()
+      .references(() => notes.id, { onDelete: 'cascade' }),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    contentHash: text('content_hash').notNull(),
+    chunkCount: integer('chunk_count').notNull().default(0),
+    indexedAt: integer('indexed_at', { mode: 'timestamp' }),
+    model: text('model'),
+    dimensions: integer('dimensions'),
+    status: text('status', { enum: ['pending', 'indexed', 'failed'] })
+      .notNull()
+      .default('pending'),
+    error: text('error'),
+  },
+  (table) => [
+    index('idx_note_index_records_workspace_id').on(table.workspaceId),
+    index('idx_note_index_records_status').on(table.status),
   ],
 );
 

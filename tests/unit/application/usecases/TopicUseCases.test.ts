@@ -165,7 +165,29 @@ describe('TopicUseCases', () => {
   let embedder: IEmbedder;
   let markdownProcessor: IMarkdownProcessor;
   let eventPublisher: IEventPublisher;
+  let indexRepository: ReturnType<typeof createMockIndexRepository>;
+  let indexNote: { execute: ReturnType<typeof vi.fn> };
   let useCases: ITopicUseCases;
+
+  function createMockIndexRepository() {
+    return {
+      getStatus: vi.fn().mockResolvedValue(null),
+      upsertStatus: vi.fn(),
+      getWorkspaceStats: vi.fn().mockResolvedValue({
+        totalNotes: 0,
+        indexedNotes: 0,
+        pendingNotes: 0,
+        failedNotes: 0,
+        chunkCount: 0,
+      }),
+      replaceChunks: vi.fn(),
+      deleteByNoteId: vi.fn(),
+      searchFullText: vi.fn().mockResolvedValue([]),
+      searchVector: vi.fn().mockResolvedValue([]),
+      getNoteVector: vi.fn().mockResolvedValue(null),
+      findSimilarNotesByVector: vi.fn().mockResolvedValue([]),
+    };
+  }
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
@@ -176,6 +198,14 @@ describe('TopicUseCases', () => {
     embedder = createMockEmbedder();
     markdownProcessor = createMockMarkdownProcessor();
     eventPublisher = createMockEventPublisher();
+    indexRepository = createMockIndexRepository();
+    indexNote = {
+      execute: vi.fn().mockResolvedValue({
+        noteId: '',
+        status: 'indexed' as const,
+        chunkCount: 1,
+      }),
+    };
     useCases = createTopicUseCases({
       noteRepository: noteRepo,
       topicRepository: topicRepo,
@@ -186,6 +216,8 @@ describe('TopicUseCases', () => {
       markdownProcessor,
       idGenerator: createMockIdGenerator(),
       pathService: createMockPathService(),
+      indexRepository: indexRepository as never,
+      indexNote: indexNote as never,
       eventPublisher,
     });
   });
@@ -309,39 +341,42 @@ describe('TopicUseCases', () => {
   });
 
   describe('classifyNote', () => {
-    it('classifies note and assigns topic', async () => {
+    it('triggers chunk indexing and assigns the matched topic', async () => {
       const note = createNoteProps();
-      const workspace = createWorkspaceProps();
       const topic = createTopicProps({
         centroid: new Uint8Array(new Float32Array([0.1, 0.2, 0.3]).buffer),
       });
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue(null);
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
-      vi.mocked(markdownProcessor.extractPlainText).mockResolvedValue('Test Content');
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
-        new Float32Array([0.1, 0.2, 0.3]),
-      );
-      vi.mocked(noteRepo.updateEmbedding).mockResolvedValue(undefined);
+      indexNote.execute.mockResolvedValue({
+        noteId: 'note-1',
+        status: 'indexed' as const,
+        chunkCount: 4,
+      });
+      indexRepository.getNoteVector.mockResolvedValue([0.1, 0.2, 0.3]);
       vi.mocked(topicRepo.findAll).mockResolvedValue([topic]);
       vi.mocked(topicRepo.assignToNote).mockResolvedValue(undefined);
 
       const result = await useCases.classifyNote.execute('note-1');
 
       expect(result.noteId).toBe('note-1');
-      expect(noteRepo.updateEmbedding).toHaveBeenCalled();
+      expect(indexNote.execute).toHaveBeenCalledWith({ noteId: 'note-1', force: false });
+      expect(indexRepository.getNoteVector).toHaveBeenCalledWith('note-1');
     });
 
-    it('skips classification when embedding exists and force is false', async () => {
+    it('bails out when indexing fails', async () => {
       const note = createNoteProps();
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue([0.1, 0.2, 0.3]);
+      indexNote.execute.mockResolvedValue({
+        noteId: 'note-1',
+        status: 'failed' as const,
+        chunkCount: 0,
+        error: 'boom',
+      });
 
       const result = await useCases.classifyNote.execute('note-1', false);
 
       expect(result.topics).toHaveLength(0);
-      expect(noteRepo.updateEmbedding).not.toHaveBeenCalled();
+      expect(indexRepository.getNoteVector).not.toHaveBeenCalled();
     });
 
     it('throws error when note not found', async () => {
@@ -379,18 +414,19 @@ describe('TopicUseCases', () => {
   });
 
   describe('getSimilarNotes', () => {
-    it('returns similar notes', async () => {
+    it('returns similar notes via chunk-aggregated similarity', async () => {
       const note = createNoteProps();
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue([0.1, 0.2, 0.3]);
-      vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
-        { noteId: 'note-2', title: 'Similar Note', distance: 0.2 },
+      indexRepository.getNoteVector.mockResolvedValue([0.1, 0.2, 0.3]);
+      indexRepository.findSimilarNotesByVector.mockResolvedValue([
+        { noteId: 'note-2', title: 'Similar Note', similarity: 0.82, matchedChunks: 3 },
       ]);
 
       const result = await useCases.getSimilarNotes.execute('note-1');
 
       expect(result).toHaveLength(1);
       expect(result[0].noteId).toBe('note-2');
+      expect(result[0].distance).toBe(0.82);
     });
 
     it('returns empty array when note not found', async () => {
@@ -401,10 +437,10 @@ describe('TopicUseCases', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('returns empty array when note has no embedding', async () => {
+    it('returns empty array when note has no chunks yet', async () => {
       const note = createNoteProps();
       vi.mocked(noteRepo.findById).mockResolvedValue(note);
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue(null);
+      indexRepository.getNoteVector.mockResolvedValue(null);
 
       const result = await useCases.getSimilarNotes.execute('note-1');
 
@@ -413,21 +449,20 @@ describe('TopicUseCases', () => {
   });
 
   describe('semanticSearch', () => {
-    it('performs semantic search', async () => {
+    it('embeds the query and ranks via chunk-aggregated similarity', async () => {
       const workspace = createWorkspaceProps();
-      const note = createNoteProps();
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
       vi.mocked(embedder.generateEmbedding).mockResolvedValue(
         new Float32Array([0.1, 0.2, 0.3]),
       );
-      vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
-        { noteId: 'note-1', title: 'Match', distance: 0.1 },
+      indexRepository.findSimilarNotesByVector.mockResolvedValue([
+        { noteId: 'note-1', title: 'Match', similarity: 0.91, matchedChunks: 5 },
       ]);
-      vi.mocked(noteRepo.findById).mockResolvedValue(note);
 
       const result = await useCases.semanticSearch.execute('search query');
 
       expect(result).toHaveLength(1);
+      expect(result[0].distance).toBe(0.91);
       expect(embedder.generateEmbedding).toHaveBeenCalledWith('search query');
     });
 
@@ -441,7 +476,7 @@ describe('TopicUseCases', () => {
   });
 
   describe('recomputeCentroids', () => {
-    it('recomputes centroids for all topics', async () => {
+    it('averages chunk-derived note vectors per topic and writes the centroid', async () => {
       const topic = createTopicProps();
       const notesForTopic = [
         { noteId: 'note-1', confidence: 1.0, isManual: false },
@@ -450,7 +485,7 @@ describe('TopicUseCases', () => {
 
       vi.mocked(topicRepo.findAll).mockResolvedValue([topic]);
       vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue(notesForTopic as any);
-      vi.mocked(noteRepo.getEmbedding)
+      indexRepository.getNoteVector
         .mockResolvedValueOnce([0.1, 0.2, 0.3])
         .mockResolvedValueOnce([0.4, 0.5, 0.6]);
       vi.mocked(topicRepo.updateCentroid).mockResolvedValue(undefined);
@@ -459,7 +494,7 @@ describe('TopicUseCases', () => {
 
       expect(topicRepo.findAll).toHaveBeenCalled();
       expect(topicRepo.getNotesForTopic).toHaveBeenCalledWith('topic-1');
-      expect(noteRepo.getEmbedding).toHaveBeenCalledTimes(2);
+      expect(indexRepository.getNoteVector).toHaveBeenCalledTimes(2);
       expect(topicRepo.updateCentroid).toHaveBeenCalled();
     });
   });
@@ -472,15 +507,14 @@ describe('TopicUseCases', () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
       vi.mocked(noteRepo.findAll).mockResolvedValue(notes);
 
-      // Mock classifyNote internal call implicitly by mocking dependencies
+      // Mock classifyNote internal call implicitly by stubbing the index path
       vi.mocked(noteRepo.findById).mockResolvedValue(notes[0]);
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue(null);
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-      vi.mocked(fileStorage.read).mockResolvedValue('content');
-      vi.mocked(markdownProcessor.extractPlainText).mockResolvedValue('content');
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
-        new Float32Array([0.1, 0.2, 0.3]),
-      );
+      indexNote.execute.mockResolvedValue({
+        noteId: 'note-1',
+        status: 'indexed' as const,
+        chunkCount: 1,
+      });
+      indexRepository.getNoteVector.mockResolvedValue([0.1, 0.2, 0.3]);
       vi.mocked(topicRepo.findAll).mockResolvedValue([]);
 
       const result = await useCases.classifyAllNotes.execute();
@@ -510,14 +544,16 @@ describe('TopicUseCases', () => {
   });
 
   describe('getEmbeddingStatus', () => {
-    it('returns embedding status', async () => {
+    it('returns chunk-index status for the active workspace', async () => {
       const workspace = createWorkspaceProps();
-      const notes = [createNoteProps({ id: 'note-1' }), createNoteProps({ id: 'note-2' })];
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
-      vi.mocked(noteRepo.findAll).mockResolvedValue(notes);
-      vi.mocked(noteRepo.getEmbedding)
-        .mockResolvedValueOnce([0.1, 0.2])
-        .mockResolvedValueOnce(null);
+      indexRepository.getWorkspaceStats.mockResolvedValue({
+        totalNotes: 2,
+        indexedNotes: 1,
+        pendingNotes: 1,
+        failedNotes: 0,
+        chunkCount: 7,
+      });
       vi.mocked(embedder.isReady).mockResolvedValue(true);
 
       const result = await useCases.getEmbeddingStatus.execute();

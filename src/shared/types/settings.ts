@@ -269,7 +269,8 @@ export type AppShortcutAction =
   | 'findReplace'
   | 'toggleEditorMode'
   | 'focusSidebar'
-  | 'openFile';
+  | 'openFile'
+  | 'askNotes';
 
 export type EditorShortcutAction =
   | 'indent'
@@ -328,12 +329,84 @@ export const DEFAULT_NOTES_CONFIG: NotesConfig = {
   locationPolicy: DEFAULT_NOTE_LOCATION_POLICY,
 };
 
+/**
+ * AI settings for local-first indexing and optional cloud inference.
+ *
+ * Lives in config.json (typed AppConfig), never in the DB settings table.
+ * Cloud inference is disabled by default so note content cannot leave the
+ * device unless the user explicitly opts in.
+ */
+export type AIProviderMode = 'local' | 'cloud' | 'disabled';
+
+export interface AIModelConfig {
+  textModel: string;
+  embeddingModel: string;
+  rerankModel: string;
+}
+
+export interface AIPrivacyConfig {
+  allowCloudInference: boolean;
+  allowSendingNoteContent: boolean;
+  allowSendingMetadata: boolean;
+}
+
+export interface AIIndexingConfig {
+  enabled: boolean;
+  providerMode: AIProviderMode;
+  chunkMaxCharacters: number;
+  chunkOverlapCharacters: number;
+  batchSize: number;
+  autoIndexOnSave: boolean;
+}
+
+export interface AIConfig {
+  indexing: AIIndexingConfig;
+  models: AIModelConfig;
+  privacy: AIPrivacyConfig;
+}
+
+export type AIProviderId = 'openai' | 'cohere' | 'anthropic' | 'google' | 'mistral';
+
+export type AIProviderKeySource = 'env' | 'stored';
+
+export interface AIProviderKeyStatus {
+  provider: AIProviderId;
+  label: string;
+  envVar: string;
+  hasEnvKey: boolean;
+  hasStoredKey: boolean;
+  available: boolean;
+  activeSource: AIProviderKeySource | null;
+}
+
+export const DEFAULT_AI_CONFIG: AIConfig = {
+  indexing: {
+    enabled: true,
+    providerMode: 'local',
+    chunkMaxCharacters: 1800,
+    chunkOverlapCharacters: 180,
+    batchSize: 16,
+    autoIndexOnSave: true,
+  },
+  models: {
+    textModel: 'openai/gpt-4.1-mini',
+    embeddingModel: 'openai/text-embedding-3-small',
+    rerankModel: 'cohere/rerank-v3.5',
+  },
+  privacy: {
+    allowCloudInference: false,
+    allowSendingNoteContent: false,
+    allowSendingMetadata: false,
+  },
+};
+
 export interface AppConfig {
   appearance: AppearanceSettings;
   workspace: WorkspaceConfig;
   editor: EditorSettings;
   shortcuts: ShortcutsConfig;
   notes: NotesConfig;
+  ai: AIConfig;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -344,6 +417,7 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   editor: DEFAULT_EDITOR_SETTINGS,
   shortcuts: DEFAULT_SHORTCUTS_CONFIG,
   notes: DEFAULT_NOTES_CONFIG,
+  ai: DEFAULT_AI_CONFIG,
 };
 
 /**

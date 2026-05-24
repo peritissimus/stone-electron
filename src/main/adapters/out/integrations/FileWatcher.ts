@@ -9,8 +9,6 @@ import { logger } from '../../../shared';
 import type {
   WorkspaceProps,
   IWorkspaceRepository,
-  INoteRepository,
-  INotebookRepository,
   IEventPublisher,
   IFileWatcher,
 } from '../../../domain';
@@ -22,13 +20,19 @@ type WatchEntry = {
 };
 
 /**
+ * Triggers a disk → DB sync for a single workspace. Wired in the DI container
+ * to `SyncWorkspaceUseCase.execute({ workspaceId })` — kept as a callback so
+ * the adapter doesn't import application-layer code.
+ */
+export type WorkspaceSyncTrigger = (workspaceId: string) => Promise<void>;
+
+/**
  * Dependencies for FileWatcher
  */
 export interface FileWatcherDeps {
   workspaceRepository: IWorkspaceRepository;
-  noteRepository: INoteRepository;
-  notebookRepository: INotebookRepository;
   eventPublisher: IEventPublisher;
+  syncWorkspace: WorkspaceSyncTrigger;
 }
 
 export class FileWatcher implements IFileWatcher {
@@ -195,13 +199,7 @@ export class FileWatcher implements IFileWatcher {
 
       logger.info(`[Watcher] Debounced sync start for workspace ${ws.name}`);
       try {
-        // These methods might need migration if they don't exist on hex interfaces yet
-        if ((this.deps.notebookRepository as any).syncWithWorkspaceFolders) {
-          await (this.deps.notebookRepository as any).syncWithWorkspaceFolders(workspaceId);
-        }
-        if ((this.deps.noteRepository as any).syncWithFileSystem) {
-          await (this.deps.noteRepository as any).syncWithFileSystem(workspaceId);
-        }
+        await this.deps.syncWorkspace(workspaceId);
 
         // Notify renderer that workspace has updated; UI can refresh trees/counts
         this.deps.eventPublisher.publish({

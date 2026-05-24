@@ -100,6 +100,7 @@ export const SyncWorkspaceResponseSchema = z.object({
     created: z.number(),
     updated: z.number(),
     deleted: z.number(),
+    embedded: z.number(),
     errors: z.array(z.string()),
   }),
 });

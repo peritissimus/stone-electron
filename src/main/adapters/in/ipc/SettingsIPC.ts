@@ -20,9 +20,17 @@ import type {
   ISetShortcutUseCase,
   IResetShortcutUseCase,
   IResetAllShortcutsUseCase,
+  IGetAISettingsUseCase,
+  IUpdateAISettingsUseCase,
+  IResetAISettingsUseCase,
+  IGetAIProviderKeysUseCase,
+  ISetAIProviderKeyUseCase,
+  IDeleteAIProviderKeyUseCase,
   ShortcutsScope,
 } from '../../../domain';
 import type {
+  AIConfig,
+  AIProviderId,
   AppAccentColor,
   AppTheme,
   ChordBinding,
@@ -48,6 +56,12 @@ export interface SettingsIPCDeps {
   setShortcut: ISetShortcutUseCase;
   resetShortcut: IResetShortcutUseCase;
   resetAllShortcuts: IResetAllShortcutsUseCase;
+  getAI: IGetAISettingsUseCase;
+  updateAI: IUpdateAISettingsUseCase;
+  resetAI: IResetAISettingsUseCase;
+  getAIProviderKeys: IGetAIProviderKeysUseCase;
+  setAIProviderKey: ISetAIProviderKeyUseCase;
+  deleteAIProviderKey: IDeleteAIProviderKeyUseCase;
 }
 
 const SHORTCUT_ERROR_MAP: Record<string, string> = {
@@ -71,6 +85,12 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     setShortcut,
     resetShortcut,
     resetAllShortcuts,
+    getAI,
+    updateAI,
+    resetAI,
+    getAIProviderKeys,
+    setAIProviderKey,
+    deleteAIProviderKey,
   } = deps;
   const handleRequest = <T>(
     fn: () => Promise<T>,
@@ -226,6 +246,53 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       { channel: SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS },
     );
   });
+
+  // ----- AI settings -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_AI, async () => {
+    return handleRequest(async () => getAI.execute(), { channel: SETTINGS_CHANNELS.GET_AI });
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.UPDATE_AI,
+    async (_event, params: { ai: Partial<AIConfig> }) => {
+      return handleRequest(
+        async () => updateAI.execute({ ai: params.ai }),
+        { channel: SETTINGS_CHANNELS.UPDATE_AI },
+      );
+    },
+  );
+
+  ipcMain.handle(SETTINGS_CHANNELS.RESET_AI, async () => {
+    return handleRequest(async () => resetAI.execute(), { channel: SETTINGS_CHANNELS.RESET_AI });
+  });
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_AI_PROVIDER_KEYS, async () => {
+    return handleRequest(
+      async () => getAIProviderKeys.execute(),
+      { channel: SETTINGS_CHANNELS.GET_AI_PROVIDER_KEYS },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.SET_AI_PROVIDER_KEY,
+    async (_event, params: { provider: AIProviderId; apiKey: string }) => {
+      return handleRequest(
+        async () => setAIProviderKey.execute(params),
+        { channel: SETTINGS_CHANNELS.SET_AI_PROVIDER_KEY, provider: params.provider },
+      );
+    },
+  );
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.DELETE_AI_PROVIDER_KEY,
+    async (_event, params: { provider: AIProviderId }) => {
+      return handleRequest(
+        async () => deleteAIProviderKey.execute(params),
+        { channel: SETTINGS_CHANNELS.DELETE_AI_PROVIDER_KEY, provider: params.provider },
+      );
+    },
+  );
 
   logger.info('[IPC] Settings handlers registered');
 }

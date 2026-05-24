@@ -14,4 +14,9 @@ export { VersionRepository } from './VersionRepository';
 export { NoteLinkRepository } from './NoteLinkRepository';
 export { SettingsRepository, type SettingsRepositoryDeps } from './SettingsRepository';
 export { AppConfigRepository, type AppConfigRepositoryDeps } from './AppConfigRepository';
+export {
+  SecureAIProviderKeyStore,
+  type SecureAIProviderKeyStoreDeps,
+} from './SecureAIProviderKeyStore';
 export { JournalReader, type JournalReaderDeps } from './JournalReader';
+export { IndexRepository, type IndexRepositoryDeps } from './IndexRepository';

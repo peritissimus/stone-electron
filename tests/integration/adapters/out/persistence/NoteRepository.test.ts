@@ -729,105 +729,8 @@ describe('NoteRepository Integration', () => {
     });
   });
 
-  describe('embedding operations', () => {
-    it('updates and retrieves embedding', async () => {
-      const note = createNote({
-        title: 'Embedded',
-        workspaceId: testWorkspaceId,
-        filePath: 'embed.md',
-      });
-      await repository.save(note);
-
-      const embedding = [0.1, 0.2, 0.3, 0.4, 0.5];
-      await repository.updateEmbedding(note.id, embedding);
-
-      const retrieved = await repository.getEmbedding(note.id);
-      expect(retrieved).not.toBeNull();
-      expect(retrieved!.length).toBe(5);
-      // Float32 precision
-      expect(retrieved![0]).toBeCloseTo(0.1, 5);
-    });
-
-    it('returns null when no embedding', async () => {
-      const note = createNote({
-        title: 'No Embed',
-        workspaceId: testWorkspaceId,
-        filePath: 'noembed.md',
-      });
-      await repository.save(note);
-
-      const embedding = await repository.getEmbedding(note.id);
-      expect(embedding).toBeNull();
-    });
-
-    it('removes embedding when set to null', async () => {
-      const note = createNote({
-        title: 'Clear Embed',
-        workspaceId: testWorkspaceId,
-        filePath: 'clearembed.md',
-      });
-      await repository.save(note);
-
-      await repository.updateEmbedding(note.id, [0.1, 0.2, 0.3, 0.4]);
-      await repository.updateEmbedding(note.id, null);
-
-      const embedding = await repository.getEmbedding(note.id);
-      expect(embedding).toBeNull();
-    });
-
-    it('handles malformed embedding buffer gracefully', async () => {
-      const note = createNote({
-        title: 'Bad Embed',
-        workspaceId: testWorkspaceId,
-        filePath: 'bad.md',
-      });
-      await repository.save(note);
-      await (db as any).update(notes).set({ embedding: 5 as any }).where(eq(notes.id, note.id));
-
-      const embedding = await repository.getEmbedding(note.id);
-      expect(embedding).toBeNull();
-    });
-  });
-
-  describe('findBySimilarity', () => {
-    it('returns similar notes and skips malformed embeddings', async () => {
-      const note = createNote({
-        title: 'Vector Note',
-        workspaceId: testWorkspaceId,
-        filePath: 'vector.md',
-      });
-      await repository.save(note);
-      await repository.updateEmbedding(note.id, [0.1, 0.2, 0.3, 0.4]);
-
-      const malformed = createNote({
-        title: 'Malformed',
-        workspaceId: testWorkspaceId,
-        filePath: 'malformed.md',
-      });
-      await repository.save(malformed);
-      await (db as any).update(notes).set({ embedding: Buffer.from([1]) as any }).where(eq(notes.id, malformed.id));
-
-      // Force cosineSimilarity to throw to cover catch path
-      const originalCosine = (repository as any).cosineSimilarity;
-      (repository as any).cosineSimilarity = () => {
-        throw new Error('cosine failure');
-      };
-
-      const results = await repository.findBySimilarity([0.1, 0.2, 0.3, 0.4], 5, testWorkspaceId);
-      expect(results.length).toBeGreaterThanOrEqual(0);
-      (repository as any).cosineSimilarity = originalCosine;
-    });
-
-    it('handles length mismatch and zero vectors in cosine similarity', () => {
-      const cosine = (repository as any).cosineSimilarity.bind(repository) as (
-        a: number[],
-        b: number[],
-      ) => number;
-
-      expect(cosine([1, 2], [1])).toBe(0);
-      expect(cosine([0, 0], [0, 0])).toBe(0);
-    });
-  });
+  // Embedding storage + cosine similarity moved to IndexRepository / chunk
+  // index. NoteRepository no longer owns those operations.
 
   describe('findRecentlyUpdated', () => {
     it('returns most recently updated notes', async () => {
@@ -957,38 +860,6 @@ describe('NoteRepository Integration', () => {
       expect(noteProps.deletedAt).toBeNull();
     });
 
-    it('handles similarity calculation branches', async () => {
-      const rows = [
-        { id: 'no-embed', title: null, embedding: null },
-        {
-          id: 'with-embed',
-          title: 'With Embed',
-          embedding: Buffer.from(new Float32Array([1, 1]).buffer),
-        },
-        {
-          id: 'untitled',
-          title: undefined,
-          embedding: Buffer.from(new Float32Array([1, 1]).buffer),
-        },
-      ];
-
-      const stubRepo = new NoteRepository({
-        db: {
-          select: () => ({
-            from: () => ({
-              where: () => rows,
-            }),
-          }),
-        } as any,
-        fileStorage,
-        getWorkspacePath: () => '/stub',
-      });
-
-      const results = await stubRepo.findBySimilarity([1, 1], 2);
-      expect(results.length).toBeGreaterThanOrEqual(2);
-
-      const cosineZero = (repository as any).cosineSimilarity([0, 0], [0, 0]);
-      expect(cosineZero).toBe(0);
-    });
+    // findBySimilarity / cosineSimilarity branches now live on IndexRepository.
   });
 });

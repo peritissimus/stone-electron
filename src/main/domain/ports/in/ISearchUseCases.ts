@@ -57,8 +57,34 @@ export interface HybridSearchRequest {
   tagIds?: string[];
 }
 
+export interface HybridSearchChunkHit {
+  chunkId: string;
+  noteId: string;
+  /** Hierarchical heading context for the matched chunk. */
+  headingPath: string[];
+  /** Snippet of the chunk's text — already trimmed for display. */
+  excerpt: string;
+  /** Combined RRF score, higher = better. */
+  score: number;
+  /** Which retrieval halves contributed to this chunk. */
+  sources: Array<'fts' | 'semantic'>;
+}
+
+export interface HybridSearchResultRow {
+  note: NoteProps;
+  /** Aggregated note-level score from this note's best chunks. */
+  score: number;
+  searchType: 'fts' | 'semantic' | 'hybrid';
+  /**
+   * Chunks from this note that contributed, best-first. Available when the
+   * retrieval pipeline has chunk-level data (i.e. notes that have been
+   * indexed through IndexNoteUseCase). Empty for legacy note-level results.
+   */
+  chunks?: HybridSearchChunkHit[];
+}
+
 export interface HybridSearchResponse {
-  results: Array<{ note: NoteProps; score: number; searchType: 'fts' | 'semantic' | 'hybrid' }>;
+  results: HybridSearchResultRow[];
   total: number;
   queryTimeMs: number;
 }
@@ -88,6 +114,32 @@ export interface SearchByDateRangeResponse {
   total: number;
 }
 
+// --- Related Notes (per-note discovery in the editor sidecar) ---
+
+export interface GetRelatedNotesRequest {
+  noteId: string;
+  limit?: number;
+  workspaceId?: string;
+}
+
+export interface RelatedNoteMatch {
+  noteId: string;
+  title: string;
+  /** Best chunk-to-source cosine in [-1, 1]. */
+  similarity: number;
+  /** How many of this note's chunks scored above the discovery threshold. */
+  matchedChunks: number;
+  bestChunk: {
+    chunkId: string;
+    headingPath: string[];
+    excerpt: string;
+  };
+}
+
+export interface GetRelatedNotesResponse {
+  results: RelatedNoteMatch[];
+}
+
 // =============================================================================
 // Use Case Interfaces
 // =============================================================================
@@ -104,10 +156,6 @@ export interface IFindSimilarNotesUseCase {
   execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse>;
 }
 
-export interface IRebuildSearchIndexUseCase {
-  execute(): Promise<void>;
-}
-
 export interface IHybridSearchUseCase {
   execute(request: HybridSearchRequest): Promise<HybridSearchResponse>;
 }
@@ -120,6 +168,10 @@ export interface ISearchByDateRangeUseCase {
   execute(request: SearchByDateRangeRequest): Promise<SearchByDateRangeResponse>;
 }
 
+export interface IGetRelatedNotesUseCase {
+  execute(request: GetRelatedNotesRequest): Promise<GetRelatedNotesResponse>;
+}
+
 /**
  * Aggregated Search Use Cases (for DI container)
  */
@@ -127,9 +179,9 @@ export interface ISearchUseCases {
   fullTextSearch: IFullTextSearchUseCase;
   semanticSearch: ISemanticSearchUseCase;
   findSimilarNotes: IFindSimilarNotesUseCase;
-  rebuildIndex: IRebuildSearchIndexUseCase;
   hybridSearch: IHybridSearchUseCase;
   searchByTags: ISearchByTagsUseCase;
   searchByDateRange: ISearchByDateRangeUseCase;
+  getRelatedNotes: IGetRelatedNotesUseCase;
 }
 

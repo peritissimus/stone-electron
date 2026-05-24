@@ -9,7 +9,6 @@ import {
   FullTextSearchUseCase,
   SemanticSearchUseCase,
   FindSimilarNotesUseCase,
-  RebuildSearchIndexUseCase,
   HybridSearchUseCase,
   SearchByTagsUseCase,
   SearchByDateRangeUseCase,
@@ -17,6 +16,7 @@ import {
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ISearchEngine } from '../../../../src/main/domain/ports/out/ISearchEngine';
 import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
+import type { IIndexRepository } from '../../../../src/main/domain/ports/out/IIndexRepository';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 
 // Mock factories
@@ -38,9 +38,6 @@ function createMockNoteRepository(): INoteRepository {
     findArchived: vi.fn(),
     findDeleted: vi.fn(),
     getContentById: vi.fn(),
-    getEmbedding: vi.fn(),
-    updateEmbedding: vi.fn(),
-    findBySimilarity: vi.fn(),
   } as unknown as INoteRepository;
 }
 
@@ -51,17 +48,36 @@ function createMockSearchEngine(): ISearchEngine {
     searchHybrid: vi.fn(),
     searchByTags: vi.fn(),
     searchByDateRange: vi.fn(),
-    indexNote: vi.fn(),
-    removeFromIndex: vi.fn(),
-    rebuildIndex: vi.fn(),
   } as unknown as ISearchEngine;
 }
 
 function createMockEmbedder(): IEmbedder {
   return {
+    initialize: vi.fn(),
+    isReady: vi.fn().mockReturnValue(true),
     generateEmbedding: vi.fn(),
-    isAvailable: vi.fn(),
+    generateEmbeddings: vi.fn(),
+    findSimilarNotes: vi.fn(),
+    semanticSearch: vi.fn(),
+    storeEmbedding: vi.fn(),
+    getEmbedding: vi.fn(),
+    deleteEmbedding: vi.fn(),
+    getStatus: vi.fn(),
   } as unknown as IEmbedder;
+}
+
+function createMockIndexRepository(): IIndexRepository {
+  return {
+    getStatus: vi.fn(),
+    upsertStatus: vi.fn(),
+    getWorkspaceStats: vi.fn(),
+    replaceChunks: vi.fn(),
+    deleteByNoteId: vi.fn(),
+    searchFullText: vi.fn(),
+    searchVector: vi.fn(),
+    getNoteVector: vi.fn(),
+    findSimilarNotesByVector: vi.fn(),
+  } as unknown as IIndexRepository;
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -136,19 +152,20 @@ describe('SearchUseCases', () => {
   describe('SemanticSearchUseCase', () => {
     let noteRepo: INoteRepository;
     let embedder: IEmbedder;
+    let indexRepository: IIndexRepository;
     let useCase: SemanticSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
       embedder = createMockEmbedder();
-      useCase = new SemanticSearchUseCase(noteRepo, embedder);
+      indexRepository = createMockIndexRepository();
+      useCase = new SemanticSearchUseCase(embedder, indexRepository);
     });
 
-    it('performs semantic search', async () => {
-      const embedding = new Float32Array([0.1, 0.2, 0.3]);
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(embedding);
-      vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
-        { noteId: 'note-1', title: 'Test', distance: 0.9 },
+    it('embeds the query and routes through the chunk index', async () => {
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(new Float32Array([0.1, 0.2, 0.3]));
+      vi.mocked(indexRepository.findSimilarNotesByVector).mockResolvedValue([
+        { noteId: 'note-1', title: 'Test', similarity: 0.9, matchedChunks: 2 },
       ]);
 
       const result = await useCase.execute({ query: 'test query' });
@@ -158,9 +175,7 @@ describe('SearchUseCases', () => {
     });
 
     it('returns empty results when no embedding generated', async () => {
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(
-        null as unknown as Float32Array,
-      );
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(null as unknown as Float32Array);
 
       const result = await useCase.execute({ query: 'test' });
 
@@ -170,33 +185,30 @@ describe('SearchUseCases', () => {
 
   describe('FindSimilarNotesUseCase', () => {
     let noteRepo: INoteRepository;
-    let embedder: IEmbedder;
+    let indexRepository: IIndexRepository;
     let useCase: FindSimilarNotesUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      embedder = createMockEmbedder();
-      useCase = new FindSimilarNotesUseCase(noteRepo, embedder);
+      indexRepository = createMockIndexRepository();
+      useCase = new FindSimilarNotesUseCase(noteRepo, indexRepository);
     });
 
-    it('finds similar notes', async () => {
-      const embedding = [0.1, 0.2, 0.3];
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue(embedding);
+    it('finds similar notes via chunk-aggregated vectors', async () => {
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValue([0.1, 0.2, 0.3]);
       vi.mocked(noteRepo.findById).mockResolvedValue(createNoteProps({ id: 'note-1' }));
-      vi.mocked(noteRepo.findBySimilarity).mockResolvedValue([
-        { noteId: 'note-1', title: 'Source', distance: 1.0 },
-        { noteId: 'note-2', title: 'Similar', distance: 0.9 },
+      vi.mocked(indexRepository.findSimilarNotesByVector).mockResolvedValue([
+        { noteId: 'note-2', title: 'Similar', similarity: 0.9, matchedChunks: 4 },
       ]);
 
       const result = await useCase.execute({ noteId: 'note-1' });
 
-      // Should exclude source note
       expect(result.results).toHaveLength(1);
       expect(result.results[0].noteId).toBe('note-2');
     });
 
-    it('returns empty when note has no embedding', async () => {
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue(null);
+    it('returns empty when note has no chunks yet', async () => {
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValue(null);
 
       const result = await useCase.execute({ noteId: 'note-1' });
 
@@ -204,7 +216,7 @@ describe('SearchUseCases', () => {
     });
 
     it('returns empty when note not found', async () => {
-      vi.mocked(noteRepo.getEmbedding).mockResolvedValue([0.1, 0.2]);
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValue([0.1, 0.2]);
       vi.mocked(noteRepo.findById).mockResolvedValue(null);
 
       const result = await useCase.execute({ noteId: 'nonexistent' });
@@ -213,48 +225,58 @@ describe('SearchUseCases', () => {
     });
   });
 
-  describe('RebuildSearchIndexUseCase', () => {
-    let searchEngine: ISearchEngine;
-    let useCase: RebuildSearchIndexUseCase;
-
-    beforeEach(() => {
-      searchEngine = createMockSearchEngine();
-      useCase = new RebuildSearchIndexUseCase(searchEngine);
-    });
-
-    it('rebuilds search index', async () => {
-      vi.mocked(searchEngine.rebuildIndex).mockResolvedValue(undefined);
-
-      await useCase.execute();
-
-      expect(searchEngine.rebuildIndex).toHaveBeenCalled();
-    });
-  });
-
   describe('HybridSearchUseCase', () => {
     let noteRepo: INoteRepository;
-    let searchEngine: ISearchEngine;
     let embedder: IEmbedder;
+    let indexRepository: IIndexRepository;
     let useCase: HybridSearchUseCase;
 
     beforeEach(() => {
       noteRepo = createMockNoteRepository();
-      searchEngine = createMockSearchEngine();
       embedder = createMockEmbedder();
-      useCase = new HybridSearchUseCase(noteRepo, searchEngine, embedder);
+      indexRepository = createMockIndexRepository();
+      useCase = new HybridSearchUseCase(noteRepo, embedder, indexRepository);
     });
 
-    it('performs hybrid search', async () => {
-      const searchResults = [
-        { note: createNoteProps(), relevance: 1, matchType: 'content' as const },
-      ];
-      vi.mocked(searchEngine.searchFullText).mockResolvedValue(searchResults);
+    it('merges chunk-level FTS and semantic hits into note-level rows', async () => {
+      const note = createNoteProps({ id: 'note-1', title: 'Auth Work' });
+      const chunk = {
+        id: 'note-1:0',
+        noteId: 'note-1',
+        workspaceId: 'ws-1',
+        chunkIndex: 0,
+        headingPath: ['Auth Work', 'Sessions'],
+        text: 'Session management refresh tokens explained here.',
+        contentHash: 'abc',
+        tokenCount: 12,
+        embedding: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      const result = await useCase.execute({ query: 'test' });
+      vi.mocked(indexRepository.searchFullText).mockResolvedValue([
+        { chunk, ftsScore: -5, combinedScore: 0.8 },
+      ]);
+      vi.mocked(indexRepository.searchVector).mockResolvedValue([
+        { chunk, semanticScore: 0.71, combinedScore: 0.85 },
+      ]);
+      vi.mocked(embedder.isReady).mockReturnValue(true);
+      vi.mocked(embedder.generateEmbedding).mockResolvedValue(new Float32Array(384));
+      vi.mocked(noteRepo.findById).mockResolvedValue(note);
+
+      const result = await useCase.execute({ query: 'sessions' });
 
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].searchType).toBe('fts');
-      expect(result.queryTimeMs).toBeGreaterThanOrEqual(0);
+      expect(result.results[0].note.id).toBe('note-1');
+      expect(result.results[0].searchType).toBe('hybrid');
+      expect(result.results[0].chunks).toHaveLength(1);
+      expect(result.results[0].chunks?.[0].headingPath).toEqual(['Auth Work', 'Sessions']);
+    });
+
+    it('returns empty for empty query', async () => {
+      const result = await useCase.execute({ query: '   ' });
+      expect(result.results).toEqual([]);
+      expect(result.total).toBe(0);
     });
   });
 

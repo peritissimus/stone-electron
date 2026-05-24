@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createSettingsUseCases } from '../../../../src/main/application/usecases/settings';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { ISettingsRepository } from '../../../../src/main/domain/ports/out/ISettingsRepository';
+import type { IAIProviderKeyStore } from '../../../../src/main/domain/ports/out/IAIProviderKeyStore';
 import type { ISettingsUseCases } from '../../../../src/main/domain/ports/in/ISettingsUseCases';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { ShortcutConflictError } from '../../../../src/main/domain/errors';
@@ -50,17 +51,33 @@ function createMockEventPublisher(): IEventPublisher {
   } as unknown as IEventPublisher;
 }
 
+function createMockAIProviderKeyStore(): IAIProviderKeyStore {
+  return {
+    listStatuses: vi.fn(async () => []),
+    getKey: vi.fn(async () => null),
+    setKey: vi.fn(async () => undefined),
+    deleteKey: vi.fn(async () => undefined),
+  };
+}
+
 describe('SettingsUseCases', () => {
   let settingsRepository: ISettingsRepository;
   let appConfigRepository: IAppConfigRepository;
+  let aiProviderKeyStore: IAIProviderKeyStore;
   let eventPublisher: IEventPublisher;
   let useCases: ISettingsUseCases;
 
   beforeEach(() => {
     settingsRepository = createMockSettingsRepository();
     appConfigRepository = createMockAppConfigRepository();
+    aiProviderKeyStore = createMockAIProviderKeyStore();
     eventPublisher = createMockEventPublisher();
-    useCases = createSettingsUseCases({ settingsRepository, appConfigRepository, eventPublisher });
+    useCases = createSettingsUseCases({
+      settingsRepository,
+      appConfigRepository,
+      aiProviderKeyStore,
+      eventPublisher,
+    });
   });
 
   describe('get', () => {

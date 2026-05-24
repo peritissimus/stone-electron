@@ -30,6 +30,7 @@ export const DEFAULT_APP_SHORTCUTS: Record<AppShortcutAction, ChordBinding> = {
   toggleEditorMode: 'Mod-Shift-m',
   focusSidebar: 'Mod-e',
   openFile: 'Mod-o',
+  askNotes: 'Mod-Shift-a',
 };
 
 /**
