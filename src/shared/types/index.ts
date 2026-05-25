@@ -290,3 +290,6 @@ export * from './topicSuggestion';
 
 // Export related-notes wire types
 export * from './related';
+
+// Export graph wire types
+export * from './graph';

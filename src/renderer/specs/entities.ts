@@ -186,27 +186,21 @@ export interface SearchResult {
 // GRAPH
 // =============================================================================
 
-export interface GraphNode {
-  id: string;
-  label: string;
-  type: 'note' | 'notebook' | 'tag' | 'topic';
-  metadata?: Record<string, unknown>;
-}
+export type {
+  GraphNode,
+  GraphLink,
+  GraphData,
+  GraphNodeKind,
+  GraphLinkKind,
+  NoteGraphNode,
+  NotebookGraphNode,
+  TagGraphNode,
+  TopicGraphNode,
+} from '@shared/types/graph';
 
-export interface GraphLink {
-  source: string;
-  target: string;
-  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
-  weight?: number;
-}
-
-export interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
-}
-
-// Legacy alias for backwards compatibility
-export type GraphEdge = GraphLink;
+import type { GraphLink as _SharedGraphLink } from '@shared/types/graph';
+/** @deprecated Use GraphLink */
+export type GraphEdge = _SharedGraphLink;
 
 // =============================================================================
 // FILE TREE

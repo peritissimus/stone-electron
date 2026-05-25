@@ -31,7 +31,7 @@ export interface GraphNodeOutput {
   id: string;
   label: string;
   type: 'note';
-  metadata?: {
+  metadata: {
     degree: number;
   };
 }

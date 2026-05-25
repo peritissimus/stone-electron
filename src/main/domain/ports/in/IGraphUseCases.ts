@@ -14,14 +14,40 @@ export interface NoteLink {
 }
 
 /**
- * Node in the graph visualization
+ * Node in the graph visualization. Discriminated on `type` so each kind
+ * carries its own typed metadata. Structurally mirrors the wire shape in
+ * `@shared/types/graph` (domain may not import shared, so the two are
+ * kept in sync by hand).
  */
-export interface GraphNode {
+export type GraphNodeKind = 'note' | 'notebook' | 'tag' | 'topic';
+export type GraphLinkKind = 'link' | 'reference' | 'tag' | 'topic' | 'parent';
+
+interface GraphNodeBase {
   id: string;
   label: string;
-  type: 'note' | 'notebook' | 'tag' | 'topic';
-  metadata?: Record<string, unknown>;
 }
+
+export interface NoteGraphNode extends GraphNodeBase {
+  type: 'note';
+  metadata: { degree: number };
+}
+
+export interface NotebookGraphNode extends GraphNodeBase {
+  type: 'notebook';
+  metadata?: Record<string, never>;
+}
+
+export interface TagGraphNode extends GraphNodeBase {
+  type: 'tag';
+  metadata?: Record<string, never>;
+}
+
+export interface TopicGraphNode extends GraphNodeBase {
+  type: 'topic';
+  metadata?: Record<string, never>;
+}
+
+export type GraphNode = NoteGraphNode | NotebookGraphNode | TagGraphNode | TopicGraphNode;
 
 /**
  * Link in the graph visualization
@@ -29,7 +55,7 @@ export interface GraphNode {
 export interface GraphLink {
   source: string;
   target: string;
-  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
+  type: GraphLinkKind;
   weight?: number;
 }
 

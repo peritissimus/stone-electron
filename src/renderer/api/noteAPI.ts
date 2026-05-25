@@ -8,7 +8,9 @@
 import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { Note, IpcResponse, TodoItem } from '@shared/types';
+import type { Note, IpcResponse, TodoItem, GraphData } from '@shared/types';
+
+export type { GraphData };
 import {
   ExportHtmlResponseSchema,
   ExportMarkdownResponseSchema,
@@ -36,21 +38,6 @@ export interface GetAllNotesParams {
 export interface NoteWithMeta extends Note {
   tags?: Array<{ id: string; name: string; color: string | null }>;
   topics?: Array<{ id: string; name: string; color: string | null; confidence: number }>;
-}
-
-export interface GraphData {
-  nodes: Array<{
-    id: string;
-    label: string;
-    type: 'note' | 'notebook' | 'tag' | 'topic';
-    metadata?: Record<string, unknown>;
-  }>;
-  links: Array<{
-    source: string;
-    target: string;
-    type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
-    weight?: number;
-  }>;
 }
 
 export const noteAPI = {
