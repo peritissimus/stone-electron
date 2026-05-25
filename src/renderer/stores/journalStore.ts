@@ -1,9 +1,15 @@
 import { create } from 'zustand';
-import { journalAPI } from '@renderer/api';
+import { journalAPI, noteAPI } from '@renderer/api';
 import { logger } from '@renderer/lib/logger';
 import type { JournalEntry } from '@shared/schemas';
+import type { Note } from '@shared/types';
 
 export const JOURNAL_FEED_WINDOW_DAYS = 7;
+
+interface NoteEventPayload {
+  id?: string;
+  note?: Note;
+}
 
 interface JournalState {
   entries: JournalEntry[];
@@ -12,7 +18,18 @@ interface JournalState {
   error: string | null;
   load: () => Promise<void>;
   materialize: (date: string) => Promise<string | null>;
+  refreshForNoteEvent: (payload: unknown) => Promise<void>;
   reset: () => void;
+}
+
+function fileName(filePath: string | null): string | null {
+  if (!filePath) return null;
+  return filePath.split(/[\\/]/).pop() ?? null;
+}
+
+function matchesVisibleJournalEntry(note: Note, entries: JournalEntry[]): boolean {
+  const name = fileName(note.filePath);
+  return entries.some((entry) => entry.noteId === note.id || name === `${entry.date}.md`);
 }
 
 export const useJournalStore = create<JournalState>()((set, get) => ({
@@ -70,6 +87,40 @@ export const useJournalStore = create<JournalState>()((set, get) => ({
     }));
 
     return noteId;
+  },
+
+  refreshForNoteEvent: async (payload: unknown) => {
+    const state = get();
+    if (!state.loadedOnce) return;
+
+    const data = (payload ?? {}) as NoteEventPayload;
+    if (data.note && matchesVisibleJournalEntry(data.note, state.entries)) {
+      await state.load();
+      return;
+    }
+
+    if (!data.id) return;
+
+    if (state.entries.some((entry) => entry.noteId === data.id)) {
+      await state.load();
+      return;
+    }
+
+    try {
+      const response = await noteAPI.getById(data.id);
+      if (
+        response.success &&
+        response.data &&
+        matchesVisibleJournalEntry(response.data, get().entries)
+      ) {
+        await get().load();
+      }
+    } catch (error) {
+      logger.debug('[journalStore] Ignoring note event that cannot be resolved', {
+        id: data.id,
+        error,
+      });
+    }
   },
 
   reset: () =>

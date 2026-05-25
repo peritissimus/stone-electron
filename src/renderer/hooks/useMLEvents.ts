@@ -97,43 +97,56 @@ export function useMLEventsSync(): void {
   // Import store lazily to avoid circular dependencies
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
+    let disposed = false;
 
     // Dynamically import to get store actions
     import('@renderer/stores/mlStatusStore').then(({ useMLStatusStore }) => {
-      const store = useMLStatusStore.getState();
+      if (disposed) return;
 
-      unsubscribers.push(
+      const store = useMLStatusStore.getState();
+      const addSubscription = (unsubscribe: () => void) => {
+        if (disposed) {
+          unsubscribe();
+          return;
+        }
+        unsubscribers.push(unsubscribe);
+      };
+
+      addSubscription(
         subscribe(EVENTS.ML_STATUS_CHANGED, (payload) => {
           store.setServiceStatus(payload as MLStatusChangedPayload);
         }),
       );
 
-      unsubscribers.push(
+      addSubscription(
         subscribe(EVENTS.ML_OPERATION_STARTED, (payload) => {
           store.startOperation(payload as MLOperationStartedPayload);
         }),
       );
 
-      unsubscribers.push(
+      addSubscription(
         subscribe(EVENTS.ML_OPERATION_PROGRESS, (payload) => {
           store.updateProgress(payload as MLOperationProgressPayload);
         }),
       );
 
-      unsubscribers.push(
+      addSubscription(
         subscribe(EVENTS.ML_OPERATION_COMPLETED, (payload) => {
           store.completeOperation(payload as MLOperationCompletedPayload);
         }),
       );
 
-      unsubscribers.push(
+      addSubscription(
         subscribe(EVENTS.ML_OPERATION_ERROR, (payload) => {
           store.failOperation(payload as MLOperationErrorPayload);
         }),
       );
+
+      void useMLStatusStore.getState().hydrateEmbeddingStatus();
     });
 
     return () => {
+      disposed = true;
       unsubscribers.forEach((unsub) => unsub());
     };
   }, []);

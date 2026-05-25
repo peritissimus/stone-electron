@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useTopicStore } from '@renderer/stores/topicStore';
+import { useMLStatusStore } from '@renderer/stores/mlStatusStore';
 import { topicAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
 
@@ -9,6 +10,7 @@ interface Options {
 
 export function useTopicEmbedding({ reloadTopics }: Options) {
   const { setEmbeddingStatus, setLoading, setClassifying, setError } = useTopicStore();
+  const syncEmbeddingStatus = useMLStatusStore((s) => s.syncEmbeddingStatus);
 
   const initialize = useCallback(async () => {
     console.log('[TopicAPI] Initializing embedding service...');
@@ -20,6 +22,12 @@ export function useTopicEmbedding({ reloadTopics }: Options) {
       const result = handleIpcResponse(response, 'Failed to initialize embedding service');
       if (result.success) {
         console.log('[TopicAPI] Initialize result:', { success: true, ready: result.data.ready });
+        syncEmbeddingStatus({
+          ready: result.data.ready,
+          totalNotes: 0,
+          embeddedNotes: 0,
+          pendingNotes: 0,
+        });
         return result.data.ready;
       }
       console.log('[TopicAPI] Initialize failed:', result.error);
@@ -31,7 +39,7 @@ export function useTopicEmbedding({ reloadTopics }: Options) {
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError]);
+  }, [setLoading, setError, syncEmbeddingStatus]);
 
   const classifyNote = useCallback(
     async (noteId: string) => {
@@ -125,6 +133,7 @@ export function useTopicEmbedding({ reloadTopics }: Options) {
       if (result.success) {
         console.log('[TopicAPI] Embedding status:', result.data);
         setEmbeddingStatus(result.data);
+        syncEmbeddingStatus(result.data);
         return result.data;
       }
       console.error('[TopicAPI] Embedding status error:', result.error);
@@ -135,7 +144,7 @@ export function useTopicEmbedding({ reloadTopics }: Options) {
       setError(error instanceof Error ? error.message : 'Failed to get embedding status');
       return null;
     }
-  }, [setEmbeddingStatus, setError]);
+  }, [setEmbeddingStatus, setError, syncEmbeddingStatus]);
 
   const recomputeCentroids = useCallback(async () => {
     setLoading(true);

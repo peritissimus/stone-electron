@@ -13,9 +13,9 @@ import { logger } from '@renderer/lib/logger';
 
 interface GraphNode {
   id: string;
-  name: string;
-  val: number;
-  color?: string;
+  label: string;
+  type: 'note' | 'notebook' | 'tag' | 'topic';
+  metadata?: Record<string, unknown>;
   // Properties added dynamically by the force graph library
   x?: number;
   y?: number;
@@ -24,6 +24,8 @@ interface GraphNode {
 interface GraphLink {
   source: string;
   target: string;
+  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
+  weight?: number;
 }
 
 interface GraphData {
@@ -106,15 +108,20 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
   // Custom node rendering
   const nodeCanvasObject = useCallback(
     (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const label = node.name || 'Untitled';
+      const label = node.label || 'Untitled';
       const fontSize = 12 / globalScale;
       const isActive = node.id === activeNoteId;
-      const nodeRadius = Math.sqrt(node.val || 1) * 4;
+      const degree = Number(node.metadata?.degree ?? 0);
+      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
 
       // Node circle
       ctx.beginPath();
       ctx.arc(node.x || 0, node.y || 0, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = isActive ? 'hsl(211, 100%, 50%)' : node.color || 'hsl(211, 80%, 60%)';
+      ctx.fillStyle = isActive
+        ? 'hsl(211, 100%, 50%)'
+        : degree > 0
+          ? 'hsl(168, 72%, 38%)'
+          : 'hsl(225, 12%, 68%)';
       ctx.fill();
 
       // Active node ring
@@ -137,7 +144,8 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
   // Pointer area for node clicks
   const nodePointerAreaPaint = useCallback(
     (node: GraphNode, color: string, ctx: CanvasRenderingContext2D) => {
-      const nodeRadius = Math.sqrt(node.val || 1) * 4;
+      const degree = Number(node.metadata?.degree ?? 0);
+      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(node.x || 0, node.y || 0, nodeRadius + 5, 0, 2 * Math.PI);
@@ -169,8 +177,8 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
             nodeCanvasObject={nodeCanvasObject}
             nodePointerAreaPaint={nodePointerAreaPaint}
             onNodeClick={handleNodeClick}
-            linkColor={() => 'hsl(0, 0%, 80%)'}
-            linkWidth={1}
+            linkColor={() => 'hsl(168, 40%, 58%)'}
+            linkWidth={(link: GraphLink) => Math.max(link.weight ?? 1, 1)}
             linkDirectionalArrowLength={4}
             linkDirectionalArrowRelPos={1}
             cooldownTicks={100}

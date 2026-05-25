@@ -18,9 +18,9 @@ export interface NoteLink {
  */
 export interface GraphNode {
   id: string;
-  name: string;
-  val: number;
-  color?: string;
+  label: string;
+  type: 'note' | 'notebook' | 'tag' | 'topic';
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -29,6 +29,8 @@ export interface GraphNode {
 export interface GraphLink {
   source: string;
   target: string;
+  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
+  weight?: number;
 }
 
 /**

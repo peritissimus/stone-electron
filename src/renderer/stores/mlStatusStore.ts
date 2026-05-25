@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { topicAPI } from '@renderer/api';
 import type {
   MLServiceState,
   MLOperation,
@@ -15,6 +16,7 @@ import type {
   MLOperationCompletedPayload,
   MLOperationErrorPayload,
 } from '@shared/types/mlStatus';
+import type { EmbeddingStatus } from '@shared/types';
 
 const MAX_RECENT_OPERATIONS = 10;
 
@@ -26,6 +28,8 @@ interface MLStatusState {
 
   // Actions
   setServiceStatus: (payload: MLStatusChangedPayload) => void;
+  syncEmbeddingStatus: (status: EmbeddingStatus) => void;
+  hydrateEmbeddingStatus: () => Promise<void>;
   startOperation: (payload: MLOperationStartedPayload) => void;
   updateProgress: (payload: MLOperationProgressPayload) => void;
   completeOperation: (payload: MLOperationCompletedPayload) => void;
@@ -57,6 +61,36 @@ export const useMLStatusStore = create<MLStatusState>((set, get) => ({
         model: payload.model,
       },
     }),
+
+  syncEmbeddingStatus: (status) =>
+    set((state) => {
+      if (status.ready) {
+        if (state.serviceState.status === 'ready') return state;
+        return { serviceState: { status: 'ready' } };
+      }
+
+      if (
+        state.serviceState.status === 'initializing' ||
+        state.serviceState.status === 'error' ||
+        state.currentOperation?.status === 'running'
+      ) {
+        return state;
+      }
+
+      if (state.serviceState.status === 'idle') return state;
+      return { serviceState: { status: 'idle' } };
+    }),
+
+  hydrateEmbeddingStatus: async () => {
+    try {
+      const response = await topicAPI.getEmbeddingStatus();
+      if (response.success && response.data) {
+        get().syncEmbeddingStatus(response.data);
+      }
+    } catch {
+      // Best-effort startup hydration; live ml:* events remain authoritative.
+    }
+  },
 
   startOperation: (payload) =>
     set({

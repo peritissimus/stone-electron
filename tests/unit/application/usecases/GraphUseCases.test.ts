@@ -183,6 +183,18 @@ describe('GraphUseCases', () => {
 
       expect(result.nodes).toHaveLength(2);
       expect(result.links).toHaveLength(1);
+      expect(result.nodes[0]).toMatchObject({
+        id: 'note-1',
+        label: 'Note 1',
+        type: 'note',
+        metadata: { degree: 1 },
+      });
+      expect(result.links[0]).toMatchObject({
+        source: 'note-1',
+        target: 'note-2',
+        type: 'link',
+        weight: 1,
+      });
     });
 
     it('returns empty data when no active workspace', async () => {

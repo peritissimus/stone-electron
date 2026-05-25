@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useJournalActions } from '@renderer/hooks/useJournalActions';
+import { useNoteEvents } from '@renderer/hooks/useNoteEvents';
 import { useJournalStore } from '@renderer/stores/journalStore';
 import { useDocumentBufferStore } from '@renderer/stores/documentBufferStore';
 import type { JournalEntry } from '@shared/schemas';
@@ -33,6 +34,7 @@ export function useJournalTimeline() {
   const error = useJournalStore((state) => state.error);
   const load = useJournalStore((state) => state.load);
   const materialize = useJournalStore((state) => state.materialize);
+  const refreshForNoteEvent = useJournalStore((state) => state.refreshForNoteEvent);
   const reset = useJournalStore((state) => state.reset);
   const { navigateToNote } = useJournalActions();
 
@@ -44,6 +46,12 @@ export function useJournalTimeline() {
   useEffect(() => {
     preloadDocumentBuffers(entries);
   }, [entries]);
+
+  useNoteEvents({
+    onCreated: refreshForNoteEvent,
+    onUpdated: refreshForNoteEvent,
+    onDeleted: refreshForNoteEvent,
+  });
 
   // Open a day in the dedicated single-note editor (separate from the inline
   // timeline editor). Used by the date-heading button + the corner action icon.

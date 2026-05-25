@@ -41,13 +41,15 @@ export interface NoteWithMeta extends Note {
 export interface GraphData {
   nodes: Array<{
     id: string;
-    name: string;
-    val: number;
-    color?: string;
+    label: string;
+    type: 'note' | 'notebook' | 'tag' | 'topic';
+    metadata?: Record<string, unknown>;
   }>;
   links: Array<{
     source: string;
     target: string;
+    type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
+    weight?: number;
   }>;
 }
 

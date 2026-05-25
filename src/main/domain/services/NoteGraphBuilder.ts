@@ -29,14 +29,18 @@ export interface GraphNoteInput {
 
 export interface GraphNodeOutput {
   id: string;
-  name: string;
-  val: number;
-  color?: string;
+  label: string;
+  type: 'note';
+  metadata?: {
+    degree: number;
+  };
 }
 
 export interface GraphLinkOutput {
   source: string;
   target: string;
+  type: 'link';
+  weight: number;
 }
 
 export interface GraphDataOutput {
@@ -154,8 +158,8 @@ export const NoteGraphBuilder = {
 
   /**
    * Build full GraphData (nodes + links) from loaded notes and links.
-   * Node `val` is the total degree of the note; notes with no links get 1
-   * so they are still visible in force-directed layouts.
+   * Node metadata stores degree so renderers can size connected notes while
+   * still showing isolated notes.
    */
   buildGraphData(
     notes: GraphNoteInput[],
@@ -168,10 +172,14 @@ export const NoteGraphBuilder = {
     const nodes: GraphNodeOutput[] = [];
     for (const note of notes) {
       if (includedNotes.has(note.id)) {
+        const degree = linkCounts.get(note.id) || 0;
         nodes.push({
           id: note.id,
-          name: note.title || 'Untitled',
-          val: linkCounts.get(note.id) || 1,
+          label: note.title || 'Untitled',
+          type: 'note',
+          metadata: {
+            degree,
+          },
         });
       }
     }
@@ -182,6 +190,8 @@ export const NoteGraphBuilder = {
         outLinks.push({
           source: link.sourceNoteId,
           target: link.targetNoteId,
+          type: 'link',
+          weight: 1,
         });
       }
     }
