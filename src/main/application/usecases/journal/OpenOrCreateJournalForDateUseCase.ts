@@ -65,10 +65,12 @@ export class OpenOrCreateJournalForDateUseCase {
     // immediately — without this the file-watcher round-trip is the only
     // signal, which leaves a window where the newly-opened journal can't
     // be highlighted in the sidebar because it isn't in notesByPath yet.
+    // journalDate is included so the timeline can refresh without having
+    // to regex the file path.
     this.eventPublisher?.publish({
       type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
       timestamp: new Date(),
-      payload: { id: note.id },
+      payload: { id: note.id, journalDate: dateStr },
     });
     return { noteId: note.id, created: !fileExists };
   }

@@ -45,6 +45,8 @@ export interface NoteCreatedEvent extends DomainEvent {
   payload:
     | {
         id: string;
+        /** ISO date string when the created note is a journal entry for that day. */
+        journalDate?: string;
       }
     | {
         id: string;
@@ -52,6 +54,7 @@ export interface NoteCreatedEvent extends DomainEvent {
         workspaceId: string | null;
         notebookId: string | null;
         filePath: string | null;
+        journalDate?: string;
       };
 }
 
@@ -60,11 +63,13 @@ export interface NoteUpdatedEvent extends DomainEvent {
   payload:
     | {
         id: string;
+        journalDate?: string;
       }
     | {
         id: string;
         title: string;
         changes: string[];
+        journalDate?: string;
       };
 }
 

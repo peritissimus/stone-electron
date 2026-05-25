@@ -65,7 +65,7 @@ export class AppendToJournalUseCase {
       const noteEntity = NoteEntity.fromPersistence(journalNote);
       await this.noteRepository.save(noteEntity);
 
-      this.publishUpdated(journalNote.id);
+      this.publishUpdated(journalNote.id, dateStr);
       return { noteId: journalNote.id, appended: true };
     } else {
       // Check if file exists on disk (may not be in DB yet)
@@ -85,7 +85,7 @@ export class AppendToJournalUseCase {
         note.updateFilePath(journalFilePath);
         await this.noteRepository.save(note);
 
-        this.publishUpdated(note.id);
+        this.publishUpdated(note.id, dateStr);
         return { noteId: note.id, appended: true };
       }
 
@@ -106,6 +106,14 @@ export class AppendToJournalUseCase {
       // Set the file path on the entity and save
       note.updateFilePath(journalFilePath);
       await this.noteRepository.save(note);
+
+      // First write for this date — surface as a creation so the timeline
+      // can slot in a new entry without a path-based fallback.
+      this.eventPublisher?.publish({
+        type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
+        timestamp: new Date(),
+        payload: { id: note.id, journalDate: dateStr },
+      });
       return { noteId: note.id, appended: false };
     }
   }
@@ -113,12 +121,13 @@ export class AppendToJournalUseCase {
   // Notify the renderer that the journal's content changed on disk so any
   // open editor buffer for this note re-reads. Without this, QuickCapture
   // silently writes to the file but the already-open journal shows stale
-  // content until the user switches notes and back.
-  private publishUpdated(noteId: string): void {
+  // content until the user switches notes and back. `journalDate` lets the
+  // timeline match without regex-ing the file path.
+  private publishUpdated(noteId: string, journalDate: string): void {
     this.eventPublisher?.publish({
       type: DOMAIN_EVENT_TYPES.NOTE_UPDATED,
       timestamp: new Date(),
-      payload: { id: noteId },
+      payload: { id: noteId, journalDate },
     });
   }
 }
