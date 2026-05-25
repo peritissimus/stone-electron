@@ -1,37 +1,18 @@
 /**
- * GraphView Component - Visual note graph with force-directed layout
+ * GraphView Component - Visual note graph in a modal sheet.
+ *
+ * Thin wrapper around <NoteForceGraph> with modal chrome + close-on-click.
  */
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import { useCallback, useEffect, useState } from 'react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
 import { useNavigateToNote } from '@renderer/navigation';
 import { ModalLayout } from '@renderer/components/composites/layout/ModalLayout';
 import { CircleNotch } from 'phosphor-react';
 import { logger } from '@renderer/lib/logger';
-
-interface GraphNode {
-  id: string;
-  label: string;
-  type: 'note' | 'notebook' | 'tag' | 'topic';
-  metadata?: Record<string, unknown>;
-  // Properties added dynamically by the force graph library
-  x?: number;
-  y?: number;
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
-  weight?: number;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
-}
+import { NoteForceGraph } from '@renderer/components/features/Graph/NoteForceGraph';
+import type { GraphData, GraphNode } from '@shared/types';
 
 interface GraphViewProps {
   isOpen: boolean;
@@ -44,59 +25,26 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
   const navigateToNote = useNavigateToNote();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 550 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const graphRef = useRef<any>();
 
-  // Load graph data
   useEffect(() => {
     if (!isOpen) return;
-
-    const loadData = async () => {
-      setLoading(true);
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
       try {
         const data = await getGraphData();
-        setGraphData(data);
+        if (!cancelled) setGraphData(data);
       } catch (error) {
         logger.error('Failed to load graph data:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    loadData();
   }, [isOpen, getGraphData]);
 
-  // Handle container resize
-  useEffect(() => {
-    if (!containerRef.current || !isOpen) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, [isOpen]);
-
-  // Center graph after data loads
-  useEffect(() => {
-    if (graphRef.current && graphData.nodes.length > 0 && !loading) {
-      const timeoutId = setTimeout(() => {
-        graphRef.current?.zoomToFit(400, 50);
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [graphData, loading]);
-
-  // Handle node click - navigate to note
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
       navigateToNote(node.id);
@@ -105,60 +53,11 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
     [navigateToNote, onClose],
   );
 
-  // Custom node rendering
-  const nodeCanvasObject = useCallback(
-    (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const label = node.label || 'Untitled';
-      const fontSize = 12 / globalScale;
-      const isActive = node.id === activeNoteId;
-      const degree = Number(node.metadata?.degree ?? 0);
-      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
-
-      // Node circle
-      ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = isActive
-        ? 'hsl(211, 100%, 50%)'
-        : degree > 0
-          ? 'hsl(168, 72%, 38%)'
-          : 'hsl(225, 12%, 68%)';
-      ctx.fill();
-
-      // Active node ring
-      if (isActive) {
-        ctx.strokeStyle = 'hsl(211, 100%, 70%)';
-        ctx.lineWidth = 2 / globalScale;
-        ctx.stroke();
-      }
-
-      // Label
-      ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = isActive ? 'hsl(211, 100%, 50%)' : 'hsl(0, 0%, 40%)';
-      ctx.fillText(label, node.x || 0, (node.y || 0) + nodeRadius + 2);
-    },
-    [activeNoteId],
-  );
-
-  // Pointer area for node clicks
-  const nodePointerAreaPaint = useCallback(
-    (node: GraphNode, color: string, ctx: CanvasRenderingContext2D) => {
-      const degree = Number(node.metadata?.degree ?? 0);
-      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, nodeRadius + 5, 0, 2 * Math.PI);
-      ctx.fill();
-    },
-    [],
-  );
-
   if (!isOpen) return null;
 
   return (
     <ModalLayout title="Note Graph" onClose={onClose} maxWidth="max-w-5xl">
-      <div ref={containerRef} className="w-full h-[550px] bg-background rounded-lg overflow-hidden">
+      <div className="w-full h-[550px] bg-background rounded-lg overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <CircleNotch size={32} className="animate-spin text-primary" />
@@ -169,23 +68,10 @@ export function GraphView({ isOpen, onClose }: GraphViewProps) {
             <p className="text-sm mt-1">Create some notes and link them with [[note name]]</p>
           </div>
         ) : (
-          <ForceGraph2D
-            ref={graphRef}
-            graphData={graphData}
-            width={dimensions.width}
-            height={dimensions.height}
-            nodeCanvasObject={nodeCanvasObject}
-            nodePointerAreaPaint={nodePointerAreaPaint}
+          <NoteForceGraph
+            data={graphData}
+            activeNoteId={activeNoteId}
             onNodeClick={handleNodeClick}
-            linkColor={() => 'hsl(168, 40%, 58%)'}
-            linkWidth={(link: GraphLink) => Math.max(link.weight ?? 1, 1)}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={1}
-            cooldownTicks={100}
-            onEngineStop={() => graphRef.current?.zoomToFit(400, 50)}
-            enableNodeDrag={true}
-            enableZoomInteraction={true}
-            enablePanInteraction={true}
           />
         )}
       </div>

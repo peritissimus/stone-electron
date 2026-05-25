@@ -2,8 +2,7 @@
  * GraphPage - Full page view for the note graph visualization
  */
 
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GitFork, CaretRight, CirclesThree, RadioButton } from 'phosphor-react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
@@ -13,26 +12,11 @@ import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
+import { NoteForceGraph } from '@renderer/components/features/Graph/NoteForceGraph';
+import type { GraphData, GraphNode } from '@shared/types';
 
-interface GraphNode {
-  id: string;
-  label: string;
-  type: 'note' | 'notebook' | 'tag' | 'topic';
-  metadata?: Record<string, unknown>;
-  x?: number;
-  y?: number;
-}
-
-interface GraphLink {
-  source: string;
-  target: string;
-  type: 'link' | 'reference' | 'tag' | 'topic' | 'parent';
-  weight?: number;
-}
-
-interface GraphData {
-  nodes: GraphNode[];
-  links: GraphLink[];
+function isLinked(node: GraphNode): boolean {
+  return node.type === 'note' && node.metadata.degree > 0;
 }
 
 export function GraphPage() {
@@ -43,68 +27,36 @@ export function GraphPage() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [showOrphans, setShowOrphans] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const graphRef = useRef<any>();
 
-  // Load graph data
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
       try {
         const data = await getGraphData();
-        setGraphData(data);
+        if (!cancelled) setGraphData(data);
       } catch (error) {
         logger.error('Failed to load graph data:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    loadData();
   }, [getGraphData]);
 
-  const visibleGraphData = useMemo(
+  const visibleGraphData = useMemo<GraphData>(
     () =>
       showOrphans
         ? graphData
         : {
-            nodes: graphData.nodes.filter((node) => Number(node.metadata?.degree ?? 0) > 0),
+            nodes: graphData.nodes.filter(isLinked),
             links: graphData.links,
           },
     [graphData, showOrphans],
   );
 
-  // Handle container resize
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-
-    resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Center graph after data loads
-  useEffect(() => {
-    if (graphRef.current && visibleGraphData.nodes.length > 0 && !loading) {
-      const timeoutId = setTimeout(() => {
-        graphRef.current?.zoomToFit(400, 50);
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [visibleGraphData, loading]);
-
-  // Handle node click - navigate to note
   const handleNodeClick = useCallback(
     (node: GraphNode) => {
       navigateToNote(node.id);
@@ -112,59 +64,9 @@ export function GraphPage() {
     [navigateToNote],
   );
 
-  // Custom node rendering
-  const nodeCanvasObject = useCallback(
-    (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const label = node.label || 'Untitled';
-      const fontSize = 12 / globalScale;
-      const isActive = node.id === activeNoteId;
-      const degree = Number(node.metadata?.degree ?? 0);
-      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
-
-      // Node circle
-      ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, nodeRadius, 0, 2 * Math.PI);
-      ctx.fillStyle = isActive
-        ? 'hsl(211, 100%, 50%)'
-        : degree > 0
-          ? 'hsl(168, 72%, 38%)'
-          : 'hsl(225, 12%, 68%)';
-      ctx.fill();
-
-      // Active node ring
-      if (isActive) {
-        ctx.strokeStyle = 'hsl(211, 100%, 70%)';
-        ctx.lineWidth = 2 / globalScale;
-        ctx.stroke();
-      }
-
-      // Label
-      ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = isActive ? 'hsl(211, 100%, 50%)' : 'hsl(0, 0%, 40%)';
-      ctx.fillText(label, node.x || 0, (node.y || 0) + nodeRadius + 2);
-    },
-    [activeNoteId],
-  );
-
-  // Pointer area for node clicks
-  const nodePointerAreaPaint = useCallback(
-    (node: GraphNode, color: string, ctx: CanvasRenderingContext2D) => {
-      const degree = Number(node.metadata?.degree ?? 0);
-      const nodeRadius = Math.sqrt(Math.max(degree, 1)) * 4;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, nodeRadius + 5, 0, 2 * Math.PI);
-      ctx.fill();
-    },
-    [],
-  );
-
   if (loading) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Header */}
         <div
           className={cn(
             'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
@@ -193,7 +95,6 @@ export function GraphPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
       <div
         className={cn(
           'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
@@ -236,8 +137,7 @@ export function GraphPage() {
         </div>
       </div>
 
-      {/* Graph Canvas */}
-      <div ref={containerRef} className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden">
         {visibleGraphData.nodes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <GitFork size={48} className="text-muted-foreground/30 mb-4" />
@@ -252,23 +152,10 @@ export function GraphPage() {
                 Notes are shown as a constellation until links are added.
               </div>
             )}
-            <ForceGraph2D
-              ref={graphRef}
-              graphData={visibleGraphData}
-              width={dimensions.width}
-              height={dimensions.height}
-              nodeCanvasObject={nodeCanvasObject}
-              nodePointerAreaPaint={nodePointerAreaPaint}
+            <NoteForceGraph
+              data={visibleGraphData}
+              activeNoteId={activeNoteId}
               onNodeClick={handleNodeClick}
-              linkColor={() => 'hsl(168, 40%, 58%)'}
-              linkWidth={(link: GraphLink) => Math.max(link.weight ?? 1, 1)}
-              linkDirectionalArrowLength={4}
-              linkDirectionalArrowRelPos={1}
-              cooldownTicks={100}
-              onEngineStop={() => graphRef.current?.zoomToFit(400, 50)}
-              enableNodeDrag={true}
-              enableZoomInteraction={true}
-              enablePanInteraction={true}
             />
           </div>
         )}
