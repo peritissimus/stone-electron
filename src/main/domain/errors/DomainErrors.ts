@@ -70,6 +70,12 @@ export class NoteLinkValidationError extends ValidationError {
   }
 }
 
+export class MeetingRecordingValidationError extends ValidationError {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
 /**
  * Thrown when a user-supplied shortcut chord collides with another shortcut
  * or with a reserved built-in (StarterKit) binding.
@@ -141,5 +147,11 @@ export class WorkspaceNotFoundError extends NotFoundError {
 export class TagNotFoundError extends NotFoundError {
   constructor(id: string) {
     super(`Tag not found: ${id}`);
+  }
+}
+
+export class MeetingRecordingNotFoundError extends NotFoundError {
+  constructor(id: string) {
+    super(`Meeting recording not found: ${id}`);
   }
 }

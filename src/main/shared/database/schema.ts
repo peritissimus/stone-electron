@@ -246,3 +246,34 @@ export const settings = sqliteTable('settings', {
   value: text('value').notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
+
+// Meeting recordings table - persistent transcripts + summaries for
+// captured meetings. Audio itself is ephemeral and lives in
+// <workspace>/.stone/recordings/ until the pipeline cleans it up; only
+// the relative path is stored here so we can purge orphans on app start.
+export const meetingRecordings = sqliteTable(
+  'meeting_recordings',
+  {
+    id: text('id').primaryKey(),
+    workspaceId: text('workspace_id')
+      .notNull()
+      .references(() => workspaces.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    status: text('status').notNull().default('recording'),
+    audioPath: text('audio_path'),
+    durationMs: integer('duration_ms').notNull().default(0),
+    transcriptText: text('transcript_text'),
+    transcriptSegments: text('transcript_segments').notNull().default('[]'),
+    summary: text('summary'),
+    promptUsed: text('prompt_used'),
+    journalDate: text('journal_date'),
+    error: text('error'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  },
+  (table) => [
+    index('idx_meeting_recordings_workspace_id').on(table.workspaceId),
+    index('idx_meeting_recordings_status').on(table.status),
+    index('idx_meeting_recordings_created_at').on(table.createdAt),
+  ],
+);

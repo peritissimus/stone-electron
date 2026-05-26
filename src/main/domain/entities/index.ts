@@ -30,3 +30,11 @@ export {
   type CreateNoteLinkInput,
   type LinkCount,
 } from './NoteLink';
+
+export {
+  MeetingRecordingEntity,
+  type MeetingRecordingProps,
+  type CreateMeetingRecordingInput,
+  type MeetingRecordingStatus,
+  type TranscriptSegment,
+} from './MeetingRecording';

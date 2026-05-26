@@ -26,3 +26,4 @@ export * from './IQuickNoteUseCases';
 export * from './IScratchUseCases';
 export * from './IAIUseCases';
 export * from './IIndexUseCases';
+export * from './IMeetingUseCases';

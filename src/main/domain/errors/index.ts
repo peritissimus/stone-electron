@@ -17,6 +17,7 @@ export {
   AttachmentValidationError,
   VersionValidationError,
   NoteLinkValidationError,
+  MeetingRecordingValidationError,
   // Operation errors
   NoteOperationError,
   NotebookOperationError,
@@ -26,6 +27,7 @@ export {
   NotebookNotFoundError,
   WorkspaceNotFoundError,
   TagNotFoundError,
+  MeetingRecordingNotFoundError,
   // Shortcut configuration
   ShortcutConflictError,
 } from './DomainErrors';

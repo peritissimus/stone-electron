@@ -293,3 +293,6 @@ export * from './related';
 
 // Export graph wire types
 export * from './graph';
+
+// Export meeting recording wire types
+export * from './meeting';

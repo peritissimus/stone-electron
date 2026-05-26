@@ -57,6 +57,13 @@
       "when": 1779650000000,
       "tag": "0007_drop_notes_embedding",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1779850000000,
+      "tag": "0008_meeting_recordings",
+      "breakpoints": true
     }
   ]
 }

@@ -32,3 +32,6 @@ export * from './IPathService';
 export * from './ITextGenerator';
 export * from './IIndexRepository';
 export * from './IReranker';
+export * from './IMeetingRecordingRepository';
+export * from './ITranscriber';
+export * from './ISummarizationStrategy';
