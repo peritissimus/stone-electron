@@ -1,16 +1,13 @@
 /**
  * MeetingsPage — management surface for past meeting recordings.
  *
- * Two-column layout: a list on the left (newest first) and a detail
- * panel on the right showing the transcript + current summary, with
- * Re-summarize (preview only) and Send-to-journal (always appends fresh)
- * actions. Delete drops the DB row and any orphan audio.
- *
- * Per the agreed UX, Re-summarize does NOT touch the journal — only
- * Send-to-journal does.
+ * Two-pane layout with a list of recordings on the left and a detail
+ * panel on the right. Re-summarize updates the row only; Send-to-journal
+ * is the explicit publish action; delete is a confirm-on-second-click
+ * inline action to avoid the native window.confirm popup.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Microphone,
   CaretRight,
@@ -20,6 +17,7 @@ import {
   Warning,
   Check,
   CircleNotch,
+  ArrowSquareOut,
 } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
@@ -56,27 +54,16 @@ export function MeetingsPage() {
   const handleSendToJournal = useCallback(
     async (id: string) => {
       const result = await sendToJournal(id);
-      if (result?.journalNoteId) {
-        navigate(toNote(result.journalNoteId));
-      }
+      if (result?.journalNoteId) navigate(toNote(result.journalNoteId));
     },
     [navigate, sendToJournal],
   );
-  const handleDelete = useCallback(
-    (id: string) => {
-      if (!window.confirm('Delete this recording? The transcript and summary will be lost.')) {
-        return;
-      }
-      void remove(id);
-    },
-    [remove],
-  );
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       <header
         className={cn(
-          'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
+          'flex shrink-0 items-center gap-3 border-b border-border bg-card px-4',
           sizeHeightClasses['spacious'],
         )}
       >
@@ -89,50 +76,68 @@ export function MeetingsPage() {
           />
         )}
         <Microphone size={16} className="text-muted-foreground" />
-        <span className="text-sm font-medium">Meetings</span>
+        <h1 className="text-sm font-semibold">Meetings</h1>
+        {recordings.length > 0 && (
+          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+            {recordings.length}
+          </span>
+        )}
         <div className="flex-1" />
         <button
           type="button"
           onClick={openDock}
-          className="inline-flex h-8 items-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 active:scale-[0.96]"
+          className={cn(
+            'inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3',
+            'text-xs font-medium text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]',
+            'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
+          )}
         >
-          <Microphone size={14} weight="fill" />
+          <Microphone size={12} weight="fill" />
           New recording
         </button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-80 border-r border-border overflow-y-auto">
+        <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-border bg-background">
           {!loadedOnce && loading && <ListSkeleton />}
-          {loadedOnce && recordings.length === 0 && (
-            <EmptyState onStart={openDock} />
-          )}
+          {loadedOnce && recordings.length === 0 && <EmptyState onStart={openDock} />}
           {recordings.length > 0 && (
-            <ul className="divide-y divide-border">
+            <ul className="p-2">
               {recordings.map((r) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     onClick={() => select(r.id)}
                     className={cn(
-                      'w-full px-3 py-3 text-left transition-colors',
+                      'group w-full rounded-lg px-2.5 py-2 text-left',
+                      'transition-[background-color,transform] duration-150 active:scale-[0.99]',
                       selected?.id === r.id
                         ? 'bg-primary/10'
                         : 'hover:bg-muted',
                     )}
                   >
                     <div className="flex items-center gap-2">
-                      <StatusDot status={r.status} />
-                      <span className="text-sm font-medium truncate flex-1">{r.title}</span>
+                      <StatusBadge status={r.status} />
+                      <span
+                        className={cn(
+                          'flex-1 truncate text-sm font-medium',
+                          selected?.id === r.id ? 'text-foreground' : 'text-foreground/90',
+                        )}
+                      >
+                        {r.title}
+                      </span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatDate(r.createdAt)}</span>
-                      <span>·</span>
-                      <span>{formatDuration(r.durationMs)}</span>
+                    <div className="mt-1 flex items-center gap-1.5 pl-[22px] text-[11px] text-muted-foreground">
+                      <span className="tabular-nums">{formatRelative(r.createdAt)}</span>
+                      <span aria-hidden>·</span>
+                      <span className="tabular-nums">{formatDuration(r.durationMs)}</span>
                       {r.journalDate && (
                         <>
-                          <span>·</span>
-                          <span className="text-emerald-600">in journal</span>
+                          <span aria-hidden>·</span>
+                          <span className="inline-flex items-center gap-0.5 text-emerald-600">
+                            <Check size={9} weight="bold" />
+                            <span>journal</span>
+                          </span>
                         </>
                       )}
                     </div>
@@ -142,13 +147,13 @@ export function MeetingsPage() {
             </ul>
           )}
           {error && (
-            <div className="m-3 rounded border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
+            <div className="m-3 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-xs text-destructive">
               {error}
             </div>
           )}
         </aside>
 
-        <section className="flex-1 overflow-y-auto">
+        <section className="flex-1 overflow-y-auto bg-background">
           {!selected ? (
             <DetailPlaceholder hasAny={recordings.length > 0} />
           ) : (
@@ -157,7 +162,7 @@ export function MeetingsPage() {
               busy={isBusy(selected.id)}
               onResummarize={() => handleResummarize(selected.id)}
               onSendToJournal={() => handleSendToJournal(selected.id)}
-              onDelete={() => handleDelete(selected.id)}
+              onDelete={() => void remove(selected.id)}
             />
           )}
         </section>
@@ -165,6 +170,10 @@ export function MeetingsPage() {
     </div>
   );
 }
+
+// =============================================================================
+// Detail panel
+// =============================================================================
 
 function DetailPanel({
   recording,
@@ -180,110 +189,269 @@ function DetailPanel({
   onDelete: () => void;
 }) {
   return (
-    <div className="px-6 py-5 max-w-3xl mx-auto">
+    <div className="mx-auto max-w-3xl px-8 py-7">
       <div className="flex items-start gap-3">
-        <div className="flex-1">
-          <h1 className="text-xl font-semibold text-balance">{recording.title}</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatDate(recording.createdAt)} · {formatDuration(recording.durationMs)} ·{' '}
-            <StatusText status={recording.status} />
-            {recording.journalDate && <> · sent to journal {recording.journalDate}</>}
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={onResummarize}
-            disabled={busy || !recording.transcriptText}
-            title="Regenerate the summary (preview — does not touch the journal)"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs transition-colors hover:bg-muted disabled:opacity-50"
-          >
-            <ArrowsClockwise size={12} />
-            Re-summarize
-          </button>
-          <button
-            type="button"
-            onClick={onSendToJournal}
-            disabled={busy || !recording.summary}
-            title="Append this summary to today's journal as a new entry"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-2.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            <PaperPlaneTilt size={12} />
-            Send to journal
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={busy}
-            title="Delete this recording permanently"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-          >
-            <Trash size={12} />
-            Delete
-          </button>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-balance text-xl font-semibold leading-tight">{recording.title}</h2>
+          <div className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
+            <span className="tabular-nums">{formatAbsolute(recording.createdAt)}</span>
+            <Dot />
+            <span className="tabular-nums">{formatDuration(recording.durationMs)}</span>
+            <Dot />
+            <StatusInline status={recording.status} />
+            {recording.journalDate && (
+              <>
+                <Dot />
+                <span className="inline-flex items-center gap-1 text-emerald-600">
+                  <Check size={10} weight="bold" />
+                  in journal {recording.journalDate}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
+      <div className="mt-5 flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={onSendToJournal}
+          disabled={busy || !recording.summary}
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3',
+            'text-xs font-medium text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]',
+            'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          <PaperPlaneTilt size={12} weight="fill" />
+          Send to journal
+        </button>
+        <button
+          type="button"
+          onClick={onResummarize}
+          disabled={busy || !recording.transcriptText}
+          title="Regenerate the summary (preview — does not touch the journal)"
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3',
+            'text-xs font-medium text-foreground transition-[transform,background-color] duration-150',
+            'hover:bg-muted active:scale-[0.96]',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          <ArrowsClockwise size={12} weight={busy ? 'fill' : 'regular'} className={cn(busy && 'animate-spin')} />
+          Re-summarize
+        </button>
+        <div className="flex-1" />
+        <DeleteButton onConfirm={onDelete} disabled={busy} />
+      </div>
+
       {recording.status === 'failed' && recording.error && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
-          <Warning size={14} className="mt-0.5 text-destructive" />
-          <div>
-            <div className="font-medium text-destructive">Pipeline failed</div>
-            <div className="text-xs text-destructive/80">{recording.error}</div>
+        <div className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+          <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-destructive">Pipeline failed</div>
+            <div className="mt-0.5 text-[12px] leading-relaxed text-destructive/80">
+              {recording.error}
+            </div>
           </div>
         </div>
       )}
 
-      <section className="mt-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Summary</h2>
-        {recording.summary ? (
-          <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-relaxed">
-            {recording.summary}
-          </pre>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">No summary yet.</p>
-        )}
-      </section>
-
-      <section className="mt-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transcript</h2>
-        {recording.transcriptText ? (
-          <pre className="mt-2 max-h-[480px] overflow-auto whitespace-pre-wrap rounded border border-border bg-muted/30 p-3 font-mono text-xs leading-relaxed">
-            {recording.transcriptText}
-          </pre>
-        ) : (
-          <p className="mt-2 text-sm text-muted-foreground">No transcript captured.</p>
-        )}
-      </section>
+      <SummarySection recording={recording} />
+      <TranscriptSection recording={recording} />
     </div>
   );
 }
 
+function SummarySection({ recording }: { recording: MeetingRecording }) {
+  return (
+    <section className="mt-7">
+      <SectionLabel>Summary</SectionLabel>
+      {recording.summary ? (
+        <article className="prose prose-sm mt-2 max-w-none rounded-xl border border-border bg-card px-5 py-4 text-[14px] leading-relaxed text-foreground">
+          <pre className="m-0 whitespace-pre-wrap font-sans text-[14px] leading-relaxed">
+            {recording.summary}
+          </pre>
+        </article>
+      ) : (
+        <EmptyLine>No summary yet.</EmptyLine>
+      )}
+    </section>
+  );
+}
+
+function TranscriptSection({ recording }: { recording: MeetingRecording }) {
+  const [open, setOpen] = useState(false);
+  if (!recording.transcriptText) {
+    return (
+      <section className="mt-6">
+        <SectionLabel>Transcript</SectionLabel>
+        <EmptyLine>No transcript captured.</EmptyLine>
+      </section>
+    );
+  }
+  return (
+    <section className="mt-6">
+      <div className="flex items-center justify-between">
+        <SectionLabel>Transcript</SectionLabel>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {open ? 'Hide' : 'Show'}
+          <ArrowSquareOut size={10} />
+        </button>
+      </div>
+      {open && (
+        <pre
+          className={cn(
+            'mt-2 max-h-[480px] overflow-auto whitespace-pre-wrap rounded-xl',
+            'border border-border bg-muted/30 p-4 font-mono text-[12px] leading-relaxed text-foreground/80',
+          )}
+        >
+          {recording.transcriptText}
+        </pre>
+      )}
+    </section>
+  );
+}
+
+// =============================================================================
+// Inline delete with confirm-on-second-click
+// =============================================================================
+
+function DeleteButton({ onConfirm, disabled }: { onConfirm: () => void; disabled: boolean }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (armed) {
+          onConfirm();
+          setArmed(false);
+        } else {
+          setArmed(true);
+          window.setTimeout(() => setArmed(false), 3000);
+        }
+      }}
+      disabled={disabled}
+      className={cn(
+        'inline-flex h-8 items-center gap-1.5 rounded-lg border px-3',
+        'text-xs font-medium transition-[transform,background-color,border-color,color] duration-150',
+        'active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50',
+        armed
+          ? 'border-destructive bg-destructive text-destructive-foreground hover:opacity-90'
+          : 'border-border bg-background text-destructive hover:bg-destructive/10',
+      )}
+    >
+      <Trash size={12} weight={armed ? 'fill' : 'regular'} />
+      {armed ? 'Confirm delete' : 'Delete'}
+    </button>
+  );
+}
+
+// =============================================================================
+// Status badge — small filled pill for the list, inline text for detail
+// =============================================================================
+
+function StatusBadge({ status }: { status: MeetingRecordingStatus }) {
+  if (status === 'ready') {
+    return (
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+        <Check size={8} weight="bold" />
+      </span>
+    );
+  }
+  if (status === 'failed') {
+    return (
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+        <Warning size={8} weight="fill" />
+      </span>
+    );
+  }
+  if (status === 'recording' || status === 'transcribing' || status === 'summarizing') {
+    return (
+      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-primary">
+        <CircleNotch size={10} className="animate-spin" />
+      </span>
+    );
+  }
+  return <span className="h-4 w-4 rounded-full bg-muted" />;
+}
+
+function StatusInline({ status }: { status: MeetingRecordingStatus }) {
+  const tone: Record<MeetingRecordingStatus, string> = {
+    recording: 'text-primary',
+    transcribing: 'text-primary',
+    summarizing: 'text-primary',
+    ready: 'text-emerald-600',
+    failed: 'text-destructive',
+  };
+  const label: Record<MeetingRecordingStatus, string> = {
+    recording: 'recording',
+    transcribing: 'transcribing',
+    summarizing: 'summarising',
+    ready: 'ready',
+    failed: 'failed',
+  };
+  return <span className={tone[status]}>{label[status]}</span>;
+}
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function Dot() {
+  return <span className="text-muted-foreground/40">·</span>;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
+    </h3>
+  );
+}
+
+function EmptyLine({ children }: { children: React.ReactNode }) {
+  return <p className="mt-2 text-[13px] italic text-muted-foreground/70">{children}</p>;
+}
+
 function DetailPlaceholder({ hasAny }: { hasAny: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-      <Microphone size={48} className="text-muted-foreground/30 mb-4" />
-      {hasAny ? (
-        <p className="text-sm">Select a recording to view its transcript and summary.</p>
-      ) : (
-        <p className="text-sm">Recordings you make will appear here.</p>
-      )}
+    <div className="flex h-full flex-col items-center justify-center px-8 text-center text-muted-foreground">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground/60">
+        <Microphone size={24} />
+      </div>
+      <p className="mt-4 text-balance text-sm">
+        {hasAny
+          ? 'Select a recording to view its transcript and summary.'
+          : 'Recordings you make will appear here.'}
+      </p>
     </div>
   );
 }
 
 function EmptyState({ onStart }: { onStart: () => void }) {
   return (
-    <div className="p-6 text-center">
-      <Microphone size={32} className="mx-auto mb-3 text-muted-foreground/50" />
-      <p className="text-sm font-medium">No meetings yet</p>
-      <p className="mt-1 text-xs text-muted-foreground">
+    <div className="px-6 py-10 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <Microphone size={20} weight="fill" />
+      </div>
+      <p className="mt-4 text-sm font-medium">No meetings yet</p>
+      <p className="mt-1 text-pretty text-[12px] leading-relaxed text-muted-foreground">
         Record a session — Stone transcribes locally and summarises into your journal.
       </p>
       <button
         type="button"
         onClick={onStart}
-        className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        className={cn(
+          'mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2',
+          'text-xs font-medium text-primary-foreground',
+          'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
+        )}
       >
         <Microphone size={12} weight="fill" />
         Start recording
@@ -294,44 +462,38 @@ function EmptyState({ onStart }: { onStart: () => void }) {
 
 function ListSkeleton() {
   return (
-    <ul className="divide-y divide-border">
+    <ul className="p-2">
       {[0, 1, 2].map((i) => (
-        <li key={i} className="px-3 py-3">
+        <li key={i} className="rounded-lg px-2.5 py-2.5">
           <div className="h-3 w-32 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-2 w-20 animate-pulse rounded bg-muted/70" />
+          <div className="mt-2 h-2 w-20 animate-pulse rounded bg-muted/60" />
         </li>
       ))}
     </ul>
   );
 }
 
-function StatusDot({ status }: { status: MeetingRecordingStatus }) {
-  if (status === 'ready') {
-    return <Check size={12} className="text-emerald-500" />;
-  }
-  if (status === 'failed') {
-    return <Warning size={12} className="text-destructive" />;
-  }
-  if (status === 'recording' || status === 'transcribing' || status === 'summarizing') {
-    return <CircleNotch size={12} className="animate-spin text-primary" />;
-  }
-  return <span className="inline-block h-2 w-2 rounded-full bg-muted-foreground/40" />;
+// =============================================================================
+// Date / duration formatting
+// =============================================================================
+
+function formatRelative(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function StatusText({ status }: { status: MeetingRecordingStatus }) {
-  const label: Record<MeetingRecordingStatus, string> = {
-    recording: 'recording',
-    transcribing: 'transcribing',
-    summarizing: 'summarising',
-    ready: 'ready',
-    failed: 'failed',
-  };
-  return <span>{label[status]}</span>;
-}
-
-function formatDate(value: Date | string): string {
+function formatAbsolute(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
   return date.toLocaleString(undefined, {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',

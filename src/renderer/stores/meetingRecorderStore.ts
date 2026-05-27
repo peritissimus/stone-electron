@@ -32,6 +32,8 @@ interface MeetingRecorderState {
   audioPath: string | null;
   startedAt: number | null;
   elapsedMs: number;
+  /** Smoothed peak level in [0, 1], updated by the hook from an AnalyserNode. */
+  audioLevel: number;
   error: string | null;
   lastRecording: MeetingRecording | null;
 
@@ -43,6 +45,7 @@ interface MeetingRecorderState {
   reserveSlot: () => Promise<{ recordingId: string; audioPath: string } | null>;
   markRecordingStarted: (slot: { recordingId: string; audioPath: string }) => void;
   tickElapsed: (ms: number) => void;
+  setAudioLevel: (level: number) => void;
   uploadAndFinalize: (wav: ArrayBuffer, durationMs: number) => Promise<void>;
   cancelActive: () => Promise<void>;
   markError: (message: string) => void;
@@ -56,6 +59,7 @@ const initial = {
   audioPath: null,
   startedAt: null,
   elapsedMs: 0,
+  audioLevel: 0,
   error: null,
   lastRecording: null,
 };
@@ -99,6 +103,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
     }),
 
   tickElapsed: (ms) => set({ elapsedMs: ms }),
+  setAudioLevel: (level) => set({ audioLevel: level }),
 
   uploadAndFinalize: async (wav, durationMs) => {
     const recordingId = get().recordingId;

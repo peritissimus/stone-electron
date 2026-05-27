@@ -19,6 +19,7 @@ export function useMeetingRecorder() {
   const phase = useMeetingRecorderStore((s) => s.phase);
   const dock = useMeetingRecorderStore((s) => s.dock);
   const elapsedMs = useMeetingRecorderStore((s) => s.elapsedMs);
+  const audioLevel = useMeetingRecorderStore((s) => s.audioLevel);
   const error = useMeetingRecorderStore((s) => s.error);
   const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
 
@@ -31,6 +32,8 @@ export function useMeetingRecorder() {
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
   const stopResolveRef = useRef<(() => void) | null>(null);
+  const analyserCtxRef = useRef<AudioContext | null>(null);
+  const analyserFrameRef = useRef<number | null>(null);
 
   // Tick the elapsed timer while recording.
   useEffect(() => {
@@ -73,8 +76,51 @@ export function useMeetingRecorder() {
       for (const track of streamRef.current.getTracks()) track.stop();
       streamRef.current = null;
     }
+    stopLevelMeter();
     recorderRef.current = null;
     chunksRef.current = [];
+  }
+
+  function startLevelMeter(stream: MediaStream) {
+    const AudioCtx =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AudioCtx();
+    const source = ctx.createMediaStreamSource(stream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
+    source.connect(analyser);
+    analyserCtxRef.current = ctx;
+
+    const buffer = new Uint8Array(analyser.frequencyBinCount);
+    let smoothed = 0;
+    const tick = () => {
+      analyser.getByteTimeDomainData(buffer);
+      // RMS-style peak — read deviation from 128 (silence midpoint).
+      let peak = 0;
+      for (let i = 0; i < buffer.length; i += 1) {
+        const v = Math.abs(buffer[i] - 128) / 128;
+        if (v > peak) peak = v;
+      }
+      // Smooth so the bar doesn't twitch at small volumes.
+      smoothed = smoothed * 0.7 + peak * 0.3;
+      useMeetingRecorderStore.getState().setAudioLevel(Math.min(1, smoothed));
+      analyserFrameRef.current = requestAnimationFrame(tick);
+    };
+    analyserFrameRef.current = requestAnimationFrame(tick);
+  }
+
+  function stopLevelMeter() {
+    if (analyserFrameRef.current !== null) {
+      cancelAnimationFrame(analyserFrameRef.current);
+      analyserFrameRef.current = null;
+    }
+    if (analyserCtxRef.current) {
+      void analyserCtxRef.current.close();
+      analyserCtxRef.current = null;
+    }
+    useMeetingRecorderStore.getState().setAudioLevel(0);
   }
 
   const start = useCallback(async () => {
@@ -101,6 +147,7 @@ export function useMeetingRecorder() {
       };
 
       recorder.start(1000);
+      startLevelMeter(stream);
       store.markRecordingStarted(slot);
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
@@ -131,6 +178,7 @@ export function useMeetingRecorder() {
       for (const track of stream.getTracks()) track.stop();
       streamRef.current = null;
     }
+    stopLevelMeter();
 
     try {
       const blob = new Blob(chunksRef.current, {
@@ -157,6 +205,7 @@ export function useMeetingRecorder() {
     phase,
     dock,
     elapsedMs,
+    audioLevel,
     error,
     lastRecording,
     start,
