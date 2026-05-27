@@ -312,6 +312,7 @@ export const ALL_CHANNELS = [
   ...Object.values(QUICK_NOTE_CHANNELS),
   ...Object.values(SCRATCH_CHANNELS),
   ...Object.values(PERFORMANCE_CHANNELS),
+  ...Object.values(MEETING_CHANNELS),
 ];
 
 // Get all events as an array
