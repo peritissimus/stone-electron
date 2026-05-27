@@ -98,3 +98,10 @@ export {
   setMainWindow,
   type PerformanceIPCDeps,
 } from './PerformanceIPC';
+
+// Meeting recorder
+export {
+  registerMeetingHandlers,
+  unregisterMeetingHandlers,
+  type MeetingIPCDeps,
+} from './MeetingIPC';

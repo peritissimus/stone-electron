@@ -114,6 +114,18 @@ export const INDEX_CHANNELS = {
   REBUILD_ALL: 'index:rebuildAll',
 } as const;
 
+// Meeting recording operations
+export const MEETING_CHANNELS = {
+  RESERVE_SLOT: 'meetings:reserveSlot',
+  APPEND_AUDIO: 'meetings:appendAudio',
+  FINALIZE: 'meetings:finalize',
+  LIST: 'meetings:list',
+  GET: 'meetings:get',
+  DELETE: 'meetings:delete',
+  RESUMMARIZE: 'meetings:resummarize',
+  SEND_TO_JOURNAL: 'meetings:sendToJournal',
+} as const;
+
 // Attachment Operations
 export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',

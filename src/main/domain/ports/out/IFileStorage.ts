@@ -27,6 +27,12 @@ export interface IFileStorage {
   write(filePath: string, content: string): Promise<void>;
 
   /**
+   * Write or append binary bytes to a file. Used for audio capture and
+   * other non-text payloads. `append` defaults to false.
+   */
+  writeBytes(filePath: string, bytes: Uint8Array, opts?: { append?: boolean }): Promise<void>;
+
+  /**
    * Delete a file
    */
   delete(filePath: string): Promise<void>;

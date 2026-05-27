@@ -206,3 +206,18 @@ export {
   createSettingsUseCases,
   type SettingsUseCasesDeps,
 } from './settings';
+
+// Meeting Use Cases
+export {
+  ReserveRecordingSlotUseCase,
+  AppendRecordingAudioUseCase,
+  FinalizeRecordingUseCase,
+  ListMeetingRecordingsUseCase,
+  GetMeetingRecordingUseCase,
+  DeleteMeetingRecordingUseCase,
+  ResummarizeMeetingUseCase,
+  SendToJournalUseCase,
+  createMeetingUseCases,
+  type MeetingUseCasesDeps,
+  RECORDINGS_DIR,
+} from './meeting';

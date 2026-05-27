@@ -21,6 +21,16 @@ export class FileSystemStorage implements IFileStorage {
     await fs.writeFile(filePath, content, 'utf-8');
   }
 
+  async writeBytes(
+    filePath: string,
+    bytes: Uint8Array,
+    opts?: { append?: boolean },
+  ): Promise<void> {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, bytes, { flag: opts?.append ? 'a' : 'w' });
+  }
+
   async delete(filePath: string): Promise<void> {
     await fs.unlink(filePath);
   }

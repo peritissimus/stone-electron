@@ -14,22 +14,9 @@ import type {
   SummarizeResult,
 } from '../../../domain';
 
-export const DEFAULT_MEETING_SUMMARY_PROMPT = [
-  'You are summarizing a meeting transcript for a personal knowledge base.',
-  'Produce a markdown response with exactly these sections:',
-  '',
-  '## Summary',
-  'Two or three sentences capturing the meeting in plain language.',
-  '',
-  '## Key points',
-  'Bulleted list of the most important decisions, observations, or context.',
-  '',
-  '## Action items',
-  'Each as a markdown checkbox: `- [ ] action — owner if mentioned`. Omit the section if there are none.',
-  '',
-  'Transcript:',
-  '{{transcript}}',
-].join('\n');
+// Default prompt lives in domain/services/meetingSummaryPrompts.ts — re-exported
+// here for callers that previously imported it from this module path.
+export { DEFAULT_MEETING_SUMMARY_PROMPT } from '../../../domain';
 
 export interface SingleShotSummarizerDeps {
   textGenerator: ITextGenerator;

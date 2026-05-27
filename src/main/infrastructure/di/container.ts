@@ -31,6 +31,9 @@ import type {
   IEmbedder,
   IIndexRepository,
   IReranker,
+  ITranscriber,
+  ISummarizationStrategy,
+  IMeetingRecordingRepository,
   IExporter,
   ISystemBridge,
   IGitClient,
@@ -59,6 +62,7 @@ import type {
   IScratchUseCases,
   IAIUseCases,
   IIndexUseCases,
+  IMeetingUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -84,6 +88,7 @@ import {
   createScratchUseCases,
   createAIUseCases,
   createIndexUseCases,
+  createMeetingUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -128,6 +133,8 @@ import {
   unregisterAIHandlers,
   registerIndexHandlers,
   unregisterIndexHandlers,
+  registerMeetingHandlers,
+  unregisterMeetingHandlers,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   IndexRepository,
@@ -142,6 +149,7 @@ import {
   AppConfigRepository,
   SecureAIProviderKeyStore,
   JournalReader,
+  MeetingRecordingRepository,
   // Outbound (Secondary) - Storage
   FileSystemStorage,
   // Outbound (Secondary) - Services
@@ -156,6 +164,8 @@ import {
   FileWatcher,
   AISDKTextGenerator,
   LocalReranker,
+  WhisperTranscriber,
+  SingleShotSummarizer,
   getPerformanceMonitor,
   // Outbound (Secondary) - Events
   EventPublisher,
@@ -202,6 +212,9 @@ export interface Container {
   searchEngine: ISearchEngine;
   embedder: IEmbedder;
   reranker: IReranker;
+  transcriber: ITranscriber;
+  summarizer: ISummarizationStrategy;
+  meetingRepository: IMeetingRecordingRepository;
   exporter: IExporter;
   systemBridge: ISystemBridge;
   gitClient: IGitClient;
@@ -234,6 +247,7 @@ export interface Container {
   scratchUseCases: IScratchUseCases;
   aiUseCases: IAIUseCases;
   indexUseCases: IIndexUseCases;
+  meetingUseCases: IMeetingUseCases;
   indexRepository: IIndexRepository;
 
   // IPC Adapters (class-based)
@@ -332,6 +346,8 @@ export function createContainer(deps: ContainerDeps): Container {
 
   const indexRepository: IIndexRepository = new IndexRepository({ db });
 
+  const meetingRepository: IMeetingRecordingRepository = new MeetingRecordingRepository({ db });
+
   const journalReader = new JournalReader({ db, fileStorage });
 
   // ---------------------------------------------------------------------------
@@ -345,6 +361,10 @@ export function createContainer(deps: ContainerDeps): Container {
     workerService: embeddingWorker,
   });
 
+  const transcriber: ITranscriber = new WhisperTranscriber({
+    workerService: embeddingWorker,
+  });
+
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
     noteRepository,
@@ -354,6 +374,8 @@ export function createContainer(deps: ContainerDeps): Container {
     appConfigRepository,
     aiProviderKeyStore,
   });
+
+  const summarizer: ISummarizationStrategy = new SingleShotSummarizer({ textGenerator });
 
   // ---------------------------------------------------------------------------
   // Layer 4: Use Cases (depend on repositories and services)
@@ -559,6 +581,19 @@ export function createContainer(deps: ContainerDeps): Container {
     indexRepository,
   });
 
+  // Meeting recorder use cases
+  const meetingUseCases = createMeetingUseCases({
+    meetingRepository,
+    workspaceRepository,
+    fileStorage,
+    idGenerator,
+    pathService,
+    transcriber,
+    summarizer,
+    appendToJournal: (content, workspaceId) =>
+      quickCaptureUseCases.appendToJournal(content, workspaceId),
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
   // ---------------------------------------------------------------------------
@@ -592,6 +627,9 @@ export function createContainer(deps: ContainerDeps): Container {
     searchEngine,
     embedder,
     reranker,
+    transcriber,
+    summarizer,
+    meetingRepository,
     indexRepository,
     exporter,
     systemBridge,
@@ -625,6 +663,7 @@ export function createContainer(deps: ContainerDeps): Container {
     scratchUseCases,
     aiUseCases,
     indexUseCases,
+    meetingUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -751,6 +790,7 @@ export function registerIPCHandlers(): void {
     indexRepository: container.indexRepository,
     workspaceRepository: container.workspaceRepository,
   });
+  registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
 
   // Performance monitoring handlers
   const perfMonitor = getPerformanceMonitor();
@@ -793,5 +833,6 @@ export function unregisterIPCHandlers(): void {
   unregisterSettingsHandlers();
   unregisterAIHandlers();
   unregisterIndexHandlers();
+  unregisterMeetingHandlers();
   unregisterPerformanceHandlers();
 }

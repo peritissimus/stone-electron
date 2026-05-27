@@ -96,6 +96,7 @@ function createMockFileStorage(): IFileStorage {
   return {
     read: vi.fn().mockResolvedValue('# Test Content'),
     write: vi.fn().mockResolvedValue(undefined),
+    writeBytes: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockResolvedValue(undefined),
     exists: vi.fn().mockResolvedValue(true),
     rename: vi.fn().mockResolvedValue(undefined),
