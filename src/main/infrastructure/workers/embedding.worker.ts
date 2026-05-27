@@ -6,6 +6,7 @@
  */
 
 import { parentPort, workerData } from 'worker_threads';
+import { promises as fs } from 'node:fs';
 
 // Types for messages
 interface InitMessage {
@@ -47,6 +48,18 @@ interface RerankMessage {
   texts: string[];
 }
 
+interface InitTranscriberMessage {
+  type: 'initTranscriber';
+  id: string;
+}
+
+interface TranscribeMessage {
+  type: 'transcribe';
+  id: string;
+  /** Absolute path to a 16kHz mono 16-bit PCM WAV file. */
+  audioPath: string;
+}
+
 type WorkerMessage =
   | InitMessage
   | EmbedMessage
@@ -54,7 +67,9 @@ type WorkerMessage =
   | PingMessage
   | ShutdownMessage
   | InitRerankerMessage
-  | RerankMessage;
+  | RerankMessage
+  | InitTranscriberMessage
+  | TranscribeMessage;
 
 interface WorkerResponse {
   id: string;
@@ -67,15 +82,20 @@ interface WorkerResponse {
 const MODEL_NAME = 'Xenova/bge-small-en-v1.5';
 const EMBEDDING_DIMS = 384;
 const RERANKER_MODEL_NAME = 'Xenova/ms-marco-MiniLM-L-6-v2';
+const TRANSCRIBER_MODEL_NAME = 'Xenova/whisper-base.en';
+// Whisper expects 16kHz mono Float32 PCM in [-1, 1].
+const WHISPER_SAMPLE_RATE = 16_000;
 
-// Pipeline instances. Two models share the worker — the embedder is loaded
-// eagerly on first request, the reranker lazy-loads on first rerank call so
-// users who never hit the AI surface don't pay the memory cost.
+// Pipeline instances. Three models share the worker — the embedder is loaded
+// eagerly on first request, the reranker + transcriber lazy-load on first
+// call so users who never hit the AI surface don't pay the memory cost.
 type Pipeline = Awaited<ReturnType<(typeof import('@xenova/transformers'))['pipeline']>>;
 let pipeline: Pipeline | null = null;
 let rerankerPipeline: Pipeline | null = null;
+let transcriberPipeline: Pipeline | null = null;
 let initialized = false;
 let rerankerInitialized = false;
+let transcriberInitialized = false;
 
 /**
  * Initialize the embedding model
@@ -234,6 +254,137 @@ async function rerank(query: string, texts: string[]): Promise<number[]> {
 }
 
 /**
+ * Initialize the transcriber model (Whisper). Lazy-loaded for the same
+ * reason as the reranker — first transcribe request pays the ~80MB
+ * weight download (cached after).
+ */
+async function initializeTranscriber(): Promise<{ model: string }> {
+  if (transcriberInitialized && transcriberPipeline) {
+    return { model: TRANSCRIBER_MODEL_NAME };
+  }
+
+  const { pipeline: createPipeline, env } = await import('@xenova/transformers');
+
+  env.allowLocalModels = true;
+  env.useBrowserCache = false;
+  const cacheDir = (workerData as { cacheDir?: string } | null)?.cacheDir;
+  if (cacheDir) {
+    env.cacheDir = cacheDir;
+  }
+
+  transcriberPipeline = await createPipeline(
+    'automatic-speech-recognition',
+    TRANSCRIBER_MODEL_NAME,
+    { quantized: true },
+  );
+
+  transcriberInitialized = true;
+  return { model: TRANSCRIBER_MODEL_NAME };
+}
+
+interface WhisperChunk {
+  text: string;
+  timestamp: [number, number | null];
+}
+
+interface TranscribeResultData {
+  text: string;
+  segments: Array<{ text: string; startMs: number; endMs: number }>;
+  durationMs: number;
+}
+
+/**
+ * Read a 16-bit PCM WAV file and decode to Float32Array samples in [-1, 1].
+ * Renderer is responsible for producing the right format (16kHz mono),
+ * so this parser is intentionally strict — anything else throws.
+ */
+async function loadPcmFromWav(audioPath: string): Promise<Float32Array> {
+  const buf = await fs.readFile(audioPath);
+  if (buf.length < 44 || buf.toString('ascii', 0, 4) !== 'RIFF' ||
+      buf.toString('ascii', 8, 12) !== 'WAVE') {
+    throw new Error('audio file is not a RIFF/WAVE container');
+  }
+  // Walk the chunks; we only care about 'fmt ' and 'data'.
+  let offset = 12;
+  let fmt: { channels: number; sampleRate: number; bitsPerSample: number } | null = null;
+  let dataOffset = -1;
+  let dataLen = 0;
+  while (offset + 8 <= buf.length) {
+    const id = buf.toString('ascii', offset, offset + 4);
+    const size = buf.readUInt32LE(offset + 4);
+    if (id === 'fmt ') {
+      const audioFormat = buf.readUInt16LE(offset + 8);
+      if (audioFormat !== 1) throw new Error(`expected PCM (1), got format ${audioFormat}`);
+      fmt = {
+        channels: buf.readUInt16LE(offset + 10),
+        sampleRate: buf.readUInt32LE(offset + 12),
+        bitsPerSample: buf.readUInt16LE(offset + 22),
+      };
+    } else if (id === 'data') {
+      dataOffset = offset + 8;
+      dataLen = size;
+      break;
+    }
+    offset += 8 + size + (size % 2); // chunks are word-aligned
+  }
+  if (!fmt || dataOffset < 0) throw new Error('WAV missing fmt or data chunk');
+  if (fmt.channels !== 1) throw new Error(`expected mono, got ${fmt.channels} channels`);
+  if (fmt.sampleRate !== WHISPER_SAMPLE_RATE) {
+    throw new Error(`expected ${WHISPER_SAMPLE_RATE}Hz, got ${fmt.sampleRate}Hz`);
+  }
+  if (fmt.bitsPerSample !== 16) {
+    throw new Error(`expected 16-bit PCM, got ${fmt.bitsPerSample}-bit`);
+  }
+
+  const sampleCount = Math.floor(dataLen / 2);
+  const out = new Float32Array(sampleCount);
+  for (let i = 0; i < sampleCount; i += 1) {
+    out[i] = buf.readInt16LE(dataOffset + i * 2) / 32768;
+  }
+  return out;
+}
+
+/**
+ * Run Whisper over the audio file. Whisper's chunking + timestamps live
+ * in the pipeline options; we just remap the output to our wire shape.
+ */
+async function transcribe(audioPath: string): Promise<TranscribeResultData> {
+  if (!transcriberInitialized || !transcriberPipeline) {
+    await initializeTranscriber();
+  }
+
+  const samples = await loadPcmFromWav(audioPath);
+  const durationMs = Math.round((samples.length / WHISPER_SAMPLE_RATE) * 1000);
+
+  // The Pipeline union doesn't narrow on call-site shape; cast through any.
+  const call = transcriberPipeline! as unknown as (
+    input: Float32Array,
+    options: Record<string, unknown>,
+  ) => Promise<{ text: string; chunks?: WhisperChunk[] }>;
+  const output = await call(samples, {
+    chunk_length_s: 30,
+    stride_length_s: 5,
+    return_timestamps: true,
+  });
+
+  const segments = (output.chunks ?? []).map((c) => {
+    const start = c.timestamp[0] ?? 0;
+    const end = c.timestamp[1] ?? start;
+    return {
+      text: c.text,
+      startMs: Math.round(start * 1000),
+      endMs: Math.round(end * 1000),
+    };
+  });
+
+  return {
+    text: output.text ?? '',
+    segments,
+    durationMs,
+  };
+}
+
+/**
  * Send response back to main thread
  */
 function respond(response: WorkerResponse): void {
@@ -277,6 +428,8 @@ parentPort?.on('message', async (message: WorkerMessage) => {
         initialized = false;
         rerankerPipeline = null;
         rerankerInitialized = false;
+        transcriberPipeline = null;
+        transcriberInitialized = false;
         respond({ id, success: true });
         break;
       }
@@ -291,6 +444,19 @@ parentPort?.on('message', async (message: WorkerMessage) => {
         const msg = message as RerankMessage;
         const scores = await rerank(msg.query, msg.texts);
         respond({ id, success: true, data: scores });
+        break;
+      }
+
+      case 'initTranscriber': {
+        const result = await initializeTranscriber();
+        respond({ id, success: true, data: result });
+        break;
+      }
+
+      case 'transcribe': {
+        const msg = message as TranscribeMessage;
+        const result = await transcribe(msg.audioPath);
+        respond({ id, success: true, data: result });
         break;
       }
 

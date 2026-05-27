@@ -43,6 +43,10 @@ export class EmbeddingWorker {
   // the AI surface don't pay the model memory cost.
   private rerankerReady = false;
   private rerankerInitializing: Promise<void> | null = null;
+  // Transcriber (Whisper) is lazy for the same reason — first transcribe()
+  // call triggers the ~80MB model download/load.
+  private transcriberReady = false;
+  private transcriberInitializing: Promise<void> | null = null;
 
   /**
    * Get the worker script path (handles both dev and packaged app)
@@ -207,6 +211,7 @@ export class EmbeddingWorker {
     this.initialized = false;
     this.workerReady = false;
     this.rerankerReady = false;
+    this.transcriberReady = false;
     this.pendingRequests.clear();
 
     getMLStatusTracker().setServiceStatus('idle');
@@ -288,6 +293,53 @@ export class EmbeddingWorker {
   /** Whether the reranker model has been loaded. */
   isRerankerReady(): boolean {
     return this.rerankerReady && this.worker !== null;
+  }
+
+  /**
+   * Lazy-load the Whisper transcriber. Same pattern as initializeReranker.
+   */
+  async initializeTranscriber(): Promise<void> {
+    if (this.transcriberReady) return;
+    if (this.transcriberInitializing) {
+      await this.transcriberInitializing;
+      return;
+    }
+
+    this.transcriberInitializing = (async () => {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+      logger.info('[Embedder] Loading transcriber model…');
+      const result = await this.sendMessage<{ model: string }>('initTranscriber', {});
+      logger.info(`[Embedder] Transcriber ready: ${result.model}`);
+      this.transcriberReady = true;
+    })();
+
+    try {
+      await this.transcriberInitializing;
+    } finally {
+      this.transcriberInitializing = null;
+    }
+  }
+
+  /**
+   * Transcribe a 16kHz mono 16-bit WAV file via Whisper. Lazy-initializes
+   * the transcriber model on first call. Caller owns the file lifecycle.
+   */
+  async transcribe(audioPath: string): Promise<{
+    text: string;
+    segments: Array<{ text: string; startMs: number; endMs: number }>;
+    durationMs: number;
+  }> {
+    if (!this.transcriberReady) {
+      await this.initializeTranscriber();
+    }
+    return this.sendMessage('transcribe', { audioPath });
+  }
+
+  /** Whether the transcriber model has been loaded. */
+  isTranscriberReady(): boolean {
+    return this.transcriberReady && this.worker !== null;
   }
 
   /**
