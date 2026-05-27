@@ -99,7 +99,7 @@ describe('AISDKTextGenerator', () => {
     });
 
     const request = generateTextFn.mock.calls[0][0];
-    expect(modelFactory).toHaveBeenCalledWith('openai/gpt-4.1-mini');
+    expect(modelFactory).toHaveBeenCalledWith('openai/gpt-5.4-mini');
     expect(request.system).toContain('using only the provided note excerpts');
     expect(request.system).toContain('Cite sources inline');
     expect(request.prompt).toContain('Question: What should the LLM feature do?');

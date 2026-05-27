@@ -279,7 +279,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
     autoIndexOnSave: true,
   },
   models: {
-    textModel: 'openai/gpt-4.1-mini',
+    textModel: 'openai/gpt-5.4-mini',
     embeddingModel: 'openai/text-embedding-3-small',
     rerankModel: 'cohere/rerank-v3.5',
   },

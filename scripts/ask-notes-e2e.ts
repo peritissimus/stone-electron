@@ -149,7 +149,7 @@ async function callOpenAI(query: string, sources: Source[]): Promise<string | nu
 
   try {
     const result = await generateText({
-      model: openai('gpt-4.1-mini'),
+      model: openai('gpt-5.4-mini'),
       system,
       prompt,
       temperature: 0.2,
@@ -261,7 +261,7 @@ async function main() {
 
   const answer = await callOpenAI(query, sources);
   if (answer) {
-    console.log('---------- LLM answer (gpt-4.1-mini) ----------');
+    console.log('---------- LLM answer (gpt-5.4-mini) ----------');
     console.log(answer);
     console.log('-----------------------------------------------');
   } else {
