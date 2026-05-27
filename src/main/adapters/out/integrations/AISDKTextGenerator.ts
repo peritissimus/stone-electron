@@ -8,6 +8,8 @@ import type {
   CitationSource,
   GenerateAnswerRequest,
   GenerateAnswerResponse,
+  GenerateMarkdownRequest,
+  GenerateMarkdownResponse,
   IAIProviderKeyStore,
   IAppConfigRepository,
   ITextGenerator,
@@ -74,6 +76,20 @@ export class AISDKTextGenerator implements ITextGenerator {
       usedSources: request.sources,
       usage: result.usage,
     };
+  }
+
+  async generateMarkdown(request: GenerateMarkdownRequest): Promise<GenerateMarkdownResponse> {
+    const config = await this.deps.appConfigRepository.get();
+    assertCloudNoteContentAllowed(config.ai);
+
+    const result = await this.generateTextFn({
+      model: await this.createLanguageModel(request.model ?? config.ai.models.textModel),
+      system: request.system ?? 'You produce concise markdown. Use bullet lists and headings where useful.',
+      prompt: request.prompt,
+      temperature: request.temperature ?? 0.3,
+    });
+
+    return { text: result.text, usage: result.usage };
   }
 
   private systemPrompt(): string {

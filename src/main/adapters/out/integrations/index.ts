@@ -17,3 +17,13 @@ export {
   type AISDKTextGeneratorDeps,
 } from './AISDKTextGenerator';
 export { LocalReranker, type LocalRerankerDeps, type RerankerWorkerClient } from './LocalReranker';
+export {
+  WhisperTranscriber,
+  type WhisperTranscriberDeps,
+  type TranscriberWorkerClient,
+} from './WhisperTranscriber';
+export {
+  SingleShotSummarizer,
+  type SingleShotSummarizerDeps,
+  DEFAULT_MEETING_SUMMARY_PROMPT,
+} from './SingleShotSummarizer';
