@@ -86,7 +86,9 @@ export class AISDKTextGenerator implements ITextGenerator {
       model: await this.createLanguageModel(request.model ?? config.ai.models.textModel),
       system: request.system ?? 'You produce concise markdown. Use bullet lists and headings where useful.',
       prompt: request.prompt,
-      temperature: request.temperature ?? 0.3,
+      // Only pass temperature when explicitly requested — reasoning
+      // models (o-series, gpt-5+) reject it with a warning otherwise.
+      ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
     });
 
     return { text: result.text, usage: result.usage };

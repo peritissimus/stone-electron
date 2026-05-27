@@ -29,7 +29,13 @@ export class SingleShotSummarizer implements ISummarizationStrategy {
     request.onProgress?.({ step: 'finalizing', current: 0, total: 1 });
 
     const prompt = renderPrompt(request.promptTemplate, request.transcript);
-    const response = await this.deps.textGenerator.generateMarkdown({ prompt });
+    const response = await this.deps.textGenerator.generateMarkdown({
+      prompt,
+      // Override the generic markdown system prompt — which suggests
+      // "headings where useful" — so it doesn't fight the user prompt.
+      system:
+        'You produce only the markdown the user asks for. Output the result directly with no preamble or closing remarks.',
+    });
 
     request.onProgress?.({ step: 'finalizing', current: 1, total: 1 });
 
