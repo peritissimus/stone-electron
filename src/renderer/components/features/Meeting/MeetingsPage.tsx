@@ -87,7 +87,7 @@ export function MeetingsPage() {
           type="button"
           onClick={openDock}
           className={cn(
-            'inline-flex h-8 items-center gap-2 rounded-lg bg-primary px-3',
+            'inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3',
             'text-xs font-medium text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]',
             'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
           )}
@@ -269,7 +269,7 @@ function SummarySection({ recording }: { recording: MeetingRecording }) {
     <section className="mt-7">
       <SectionLabel>Summary</SectionLabel>
       {recording.summary ? (
-        <article className="prose prose-sm mt-2 max-w-none rounded-xl border border-border bg-card px-5 py-4 text-[14px] leading-relaxed text-foreground">
+        <article className="prose prose-sm mt-2 max-w-none rounded-xl border border-border bg-card px-5 py-4 text-[14px] leading-relaxed text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
           <pre className="m-0 whitespace-pre-wrap font-sans text-[14px] leading-relaxed">
             {recording.summary}
           </pre>

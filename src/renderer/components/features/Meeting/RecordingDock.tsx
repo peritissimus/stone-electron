@@ -1,7 +1,7 @@
 /**
  * RecordingDock — floating dock for the active recording session.
  *
- * Concentric radii (rounded-2xl outer with p-3 → rounded-xl inner),
+ * Concentric radii (rounded-3xl outer with p-3 → rounded-xl inner,
  * theme tokens throughout, scale-on-press, smooth phase crossfade,
  * and a live audio level meter so the recording state feels alive.
  */
@@ -41,7 +41,7 @@ export function RecordingDock() {
   return (
     <div
       className={cn(
-        'fixed bottom-6 right-6 z-50 w-[340px] overflow-hidden rounded-2xl',
+        'fixed bottom-6 right-6 z-50 w-[340px] overflow-hidden rounded-3xl',
         'border border-border bg-card/95 p-3 backdrop-blur-md',
         'shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.12)]',
         'transition-[transform,opacity] duration-200 ease-out',
@@ -60,9 +60,11 @@ export function RecordingDock() {
           type="button"
           onClick={() => (phase === 'recording' ? void cancel() : closeDock())}
           className={cn(
-            'flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground',
-            'transition-colors hover:bg-muted hover:text-foreground active:scale-[0.96]',
+            'relative flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground',
+            'hover:bg-muted hover:text-foreground active:scale-[0.96]',
             'transition-[transform,background-color,color] duration-150',
+            // Extend hit area to 40×40 without changing visible size.
+            "before:absolute before:inset-[-6px] before:content-['']",
           )}
           aria-label="Close recorder"
         >
@@ -94,7 +96,7 @@ export function RecordingDock() {
             type="button"
             onClick={() => void stop()}
             className={cn(
-              'inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-xl',
+              'inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl',
               'bg-destructive text-sm font-medium text-destructive-foreground',
               'shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-[transform,opacity] duration-150',
               'hover:opacity-90 active:scale-[0.96]',
@@ -306,7 +308,7 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-xl',
+        'inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl',
         'bg-primary text-sm font-medium text-primary-foreground',
         'shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-[transform,opacity] duration-150',
         'hover:opacity-90 active:scale-[0.96]',
