@@ -11,17 +11,13 @@
  */
 
 export const DEFAULT_MEETING_SUMMARY_PROMPT = [
-  'You are summarizing a meeting transcript for a personal knowledge base.',
-  'Produce a markdown response with exactly these sections:',
+  'Summarize the meeting transcript below as a flat markdown bullet list.',
   '',
-  '## Summary',
-  'Two or three sentences capturing the meeting in plain language.',
-  '',
-  '## Key points',
-  'Bulleted list of the most important decisions, observations, or context.',
-  '',
-  '## Action items',
-  'Each as a markdown checkbox: `- [ ] action — owner if mentioned`. Omit the section if there are none.',
+  'Rules:',
+  '- Every line starts with `- ` — no headings, no prose, no blank lines between bullets.',
+  '- One idea per bullet. Keep them short and concrete.',
+  '- For anything actionable, use a task checkbox: `- [ ] action — owner if mentioned`.',
+  '- Skip pleasantries, transitions, and filler.',
   '',
   'Transcript:',
   '{{transcript}}',
