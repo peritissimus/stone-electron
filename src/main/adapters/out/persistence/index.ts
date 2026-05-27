@@ -20,3 +20,7 @@ export {
 } from './SecureAIProviderKeyStore';
 export { JournalReader, type JournalReaderDeps } from './JournalReader';
 export { IndexRepository, type IndexRepositoryDeps } from './IndexRepository';
+export {
+  MeetingRecordingRepository,
+  type MeetingRecordingRepositoryDeps,
+} from './MeetingRecordingRepository';
