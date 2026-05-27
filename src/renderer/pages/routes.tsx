@@ -21,6 +21,11 @@ const TopicsPage = lazy(() =>
     default: m.TopicsPage,
   })),
 );
+const MeetingsPage = lazy(() =>
+  import('@renderer/components/features/Meeting').then((m) => ({
+    default: m.MeetingsPage,
+  })),
+);
 const NoteEditor = lazy(() =>
   import('@renderer/components/features/Editor/NoteEditor').then((m) => ({
     default: m.NoteEditor,
@@ -95,6 +100,14 @@ export const routes = [
     element: (
       <Suspense fallback={<PageSkeleton />}>
         <TopicsPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/meetings',
+    element: (
+      <Suspense fallback={<PageSkeleton />}>
+        <MeetingsPage />
       </Suspense>
     ),
   },
