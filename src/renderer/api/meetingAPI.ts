@@ -1,0 +1,147 @@
+/**
+ * Meeting API — IPC wrappers for the meeting recorder pipeline.
+ *
+ * Audio bytes go over the wire as ArrayBuffer (structured-clone handles
+ * Transferables transparently). For v1 we send one chunk per recording;
+ * future streaming variants call APPEND_AUDIO multiple times.
+ */
+
+import { z } from 'zod';
+import { invokeIpc } from '@renderer/lib/ipc';
+import { MEETING_CHANNELS } from '@shared/constants/ipcChannels';
+import type {
+  IpcResponse,
+  MeetingRecording,
+  MeetingRecordingStatus,
+  RecordingSlot,
+} from '@shared/types';
+import { validateResponse } from './validation';
+
+const StatusSchema: z.ZodType<MeetingRecordingStatus> = z.enum([
+  'recording',
+  'transcribing',
+  'summarizing',
+  'ready',
+  'failed',
+]);
+
+const TranscriptSegmentSchema = z.object({
+  text: z.string(),
+  startMs: z.number(),
+  endMs: z.number(),
+});
+
+// Drizzle gives Date instances for createdAt/updatedAt; the IPC bridge
+// passes them through structured-clone so they arrive as Dates on this side.
+const DateLike = z.union([z.date(), z.string(), z.number()]).transform((v) => new Date(v));
+
+const MeetingRecordingSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  title: z.string(),
+  status: StatusSchema,
+  audioPath: z.string().nullable(),
+  durationMs: z.number(),
+  transcriptText: z.string().nullable(),
+  transcriptSegments: z.array(TranscriptSegmentSchema),
+  summary: z.string().nullable(),
+  promptUsed: z.string().nullable(),
+  journalDate: z.string().nullable(),
+  error: z.string().nullable(),
+  createdAt: DateLike,
+  updatedAt: DateLike,
+});
+
+const RecordingSlotSchema: z.ZodType<RecordingSlot> = z.object({
+  recordingId: z.string(),
+  audioAbsolutePath: z.string(),
+});
+
+const ListResponseSchema = z.object({
+  recordings: z.array(MeetingRecordingSchema),
+  nextCursor: z.number().nullable(),
+});
+
+const FinalizeResponseSchema = z.object({
+  recording: MeetingRecordingSchema,
+});
+
+const GetResponseSchema = z.object({
+  recording: MeetingRecordingSchema.nullable(),
+});
+
+const ResummarizeResponseSchema = z.object({
+  recording: MeetingRecordingSchema,
+});
+
+const SendToJournalResponseSchema = z.object({
+  recording: MeetingRecordingSchema,
+  journalNoteId: z.string(),
+});
+
+export const meetingAPI = {
+  reserveSlot: async (input?: {
+    workspaceId?: string;
+    title?: string;
+  }): Promise<IpcResponse<RecordingSlot>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.RESERVE_SLOT, input ?? {});
+    return validateResponse(response, RecordingSlotSchema);
+  },
+
+  appendAudio: async (
+    recordingId: string,
+    chunk: ArrayBuffer,
+  ): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.APPEND_AUDIO, { recordingId, chunk });
+  },
+
+  finalize: async (
+    recordingId: string,
+    durationMs: number,
+  ): Promise<IpcResponse<{ recording: MeetingRecording }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.FINALIZE, { recordingId, durationMs });
+    return validateResponse(response, FinalizeResponseSchema);
+  },
+
+  list: async (input?: {
+    workspaceId?: string;
+    limit?: number;
+    cursor?: number;
+  }): Promise<IpcResponse<{ recordings: MeetingRecording[]; nextCursor: number | null }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.LIST, input ?? {});
+    return validateResponse(response, ListResponseSchema);
+  },
+
+  get: async (
+    recordingId: string,
+  ): Promise<IpcResponse<{ recording: MeetingRecording | null }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.GET, { recordingId });
+    return validateResponse(response, GetResponseSchema);
+  },
+
+  delete: async (recordingId: string): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.DELETE, { recordingId });
+  },
+
+  resummarize: async (
+    recordingId: string,
+    promptTemplate?: string,
+  ): Promise<IpcResponse<{ recording: MeetingRecording }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.RESUMMARIZE, {
+      recordingId,
+      promptTemplate,
+    });
+    return validateResponse(response, ResummarizeResponseSchema);
+  },
+
+  sendToJournal: async (
+    recordingId: string,
+    journalDate?: string,
+  ): Promise<IpcResponse<{ recording: MeetingRecording; journalNoteId: string }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.SEND_TO_JOURNAL, {
+      recordingId,
+      journalDate,
+    });
+    return validateResponse(response, SendToJournalResponseSchema);
+  },
+};

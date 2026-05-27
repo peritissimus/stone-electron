@@ -84,6 +84,11 @@ const AskNotesPanel = lazy(() =>
     default: m.AskNotesPanel,
   })),
 );
+const RecordingDock = lazy(() =>
+  import('@renderer/components/features/Meeting').then((m) => ({
+    default: m.RecordingDock,
+  })),
+);
 
 // Loading skeletons
 const EditorSkeleton = () => (
@@ -454,6 +459,9 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <AskNotesPanel />
+            </Suspense>
+            <Suspense fallback={null}>
+              <RecordingDock />
             </Suspense>
           </>
         }

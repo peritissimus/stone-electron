@@ -85,6 +85,9 @@ export type { QuickNoteSlot, CreateQuickNoteResponse } from './quickNoteAPI';
 export { scratchAPI } from './scratchAPI';
 export type { ScratchPickResponse, ScratchReadResponse, ScratchWriteResponse } from './scratchAPI';
 
+// Meeting recorder API
+export { meetingAPI } from './meetingAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

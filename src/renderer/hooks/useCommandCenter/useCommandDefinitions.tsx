@@ -21,7 +21,9 @@ import {
   FilePdf,
   Moon,
   Sparkle,
+  Microphone,
 } from 'phosphor-react';
+import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import type { CommandItem } from './types';
 
 export function useCommandDefinitions(query: string) {
@@ -177,6 +179,16 @@ export function useCommandDefinitions(query: string) {
         shortcut: '⌘⇧A',
         run: () => {
           useUIStore.getState().openAskNotes();
+          handleClose();
+        },
+      },
+      {
+        id: 'record-meeting',
+        title: 'Record meeting',
+        subtitle: 'Transcribe + summarise locally; review on the Meetings page',
+        icon: <Microphone size={18} weight="fill" />,
+        run: () => {
+          useMeetingRecorderStore.getState().openDock();
           handleClose();
         },
       },
