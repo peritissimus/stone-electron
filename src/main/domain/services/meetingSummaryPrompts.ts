@@ -11,12 +11,13 @@
  */
 
 export const DEFAULT_MEETING_SUMMARY_PROMPT = [
-  'Summarize the meeting transcript below as a flat markdown bullet list.',
+  'Summarize what happened in the meeting as a flat markdown bullet list.',
   '',
   'Rules:',
-  '- Every line starts with `- ` — no headings, no prose, no blank lines between bullets.',
+  '- Every line starts with `- ` (a plain bullet — never `- [ ]` or any checkbox).',
+  '- No headings, no prose, no blank lines between bullets.',
   '- One idea per bullet. Keep them short and concrete.',
-  '- For anything actionable, use a task checkbox: `- [ ] action — owner if mentioned`.',
+  '- Describe what was discussed or decided in the past tense.',
   '- Skip pleasantries, transitions, and filler.',
   '',
   'Transcript:',
