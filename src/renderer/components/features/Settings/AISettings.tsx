@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ArrowClockwise, Check, Cloud, Cpu, FloppyDisk, Key, Trash } from 'phosphor-react';
+import { Check, Cloud, Cpu, FloppyDisk, Key, Trash } from 'phosphor-react';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 import { Badge } from '@renderer/components/base/ui/badge';
 import { Button } from '@renderer/components/base/ui/button';
@@ -90,7 +90,6 @@ export function AISettings() {
     updatePrivacy,
     setProviderKey,
     deleteProviderKey,
-    resetAI,
   } = useAISettings();
   const [message, setMessage] = useState<MessageState>(null);
   const [modelDraft, setModelDraft] = useState<AIModelConfig>(ai.models);
@@ -128,9 +127,6 @@ export function AISettings() {
       setKeyDrafts((drafts) => ({ ...drafts, [provider]: '' }));
     }, `${label} stored key removed`);
 
-  const reset = () => run(resetAI, 'AI settings reset');
-  const [resetArmed, setResetArmed] = useState(false);
-
   const cloudEnabled = ai.privacy.allowCloudInference;
   const indexDisabled = saving || !loaded;
 
@@ -138,26 +134,6 @@ export function AISettings() {
     <SettingsSection
       title="AI"
       description="Configure local and cloud models for indexing, ranking, and answering questions about your notes."
-      action={
-        <Button
-          variant={resetArmed ? 'destructive' : 'ghost'}
-          size="sm"
-          onClick={() => {
-            if (resetArmed) {
-              setResetArmed(false);
-              reset();
-            } else {
-              setResetArmed(true);
-              window.setTimeout(() => setResetArmed(false), 3000);
-            }
-          }}
-          disabled={saving}
-          title="Reset wipes all AI settings — model, indexing, and privacy flags — back to defaults"
-        >
-          <ArrowClockwise size={14} />
-          {resetArmed ? 'Confirm reset' : 'Reset'}
-        </Button>
-      }
     >
       <ContainerStack gap="lg">
         {!loaded && <Body variant="muted">Loading AI settings...</Body>}

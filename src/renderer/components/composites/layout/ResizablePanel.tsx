@@ -66,7 +66,7 @@ export function ResizablePanel({
       {/* Resizer */}
       <div
         className={cn(
-          'w-1 cursor-col-resize bg-border hover:bg-primary transition-colors',
+          'w-1 cursor-col-resize bg-transparent hover:bg-primary transition-colors',
           resizerClassName,
         )}
         onMouseDown={handleMouseDown}

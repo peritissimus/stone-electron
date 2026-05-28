@@ -89,19 +89,33 @@ export class AppConfigRepository implements IAppConfigRepository {
           ? (error as { code?: string }).code
           : undefined;
       if (code === 'ENOENT') {
+        // No file is the legitimate first-run case — silent.
         return null;
       }
 
-      logger.warn('Failed to read app config file, falling back to defaults', {
-        configPath: this.configPath,
-        error,
-      });
+      // Anything else (parse error, EACCES, partial write left by a
+      // force-quit) silently used to fall back to DEFAULT_APP_CONFIG
+      // — which wipes user privacy + model picks. Log loudly so the
+      // next regression is visible in the logs instead of mysterious.
+      logger.warn(
+        '[AppConfigRepository] Config read failed — defaults will be written and current state may be lost. Inspect the file before next launch if this is unexpected.',
+        { configPath: this.configPath, error },
+      );
       return null;
     }
   }
 
   private async writeConfig(config: AppConfig): Promise<void> {
     await fs.mkdir(path.dirname(this.configPath), { recursive: true });
-    await fs.writeFile(this.configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf-8');
+    // Atomic write: write to a sibling temp file then rename. POSIX rename
+    // is atomic, so a crash or force-quit mid-write cannot leave the
+    // canonical config.json in a half-written state. Without this, a
+    // truncated file is unparseable → next read returns null →
+    // DEFAULT_APP_CONFIG silently overwrites the user's settings (we
+    // chased exactly that ghost once).
+    const tmpPath = `${this.configPath}.tmp`;
+    const body = `${JSON.stringify(config, null, 2)}\n`;
+    await fs.writeFile(tmpPath, body, 'utf-8');
+    await fs.rename(tmpPath, this.configPath);
   }
 }
