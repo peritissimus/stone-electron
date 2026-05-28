@@ -20,7 +20,7 @@ import {
   unregisterIPCHandlers,
   getContainer,
 } from '@main/infrastructure/di/container';
-import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
+import { PerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
 import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   createTray,
@@ -29,8 +29,10 @@ import {
   type TrayRecorderPhase,
 } from '@main/infrastructure/electron/tray';
 
-// Initialize performance monitoring immediately
-const perfMonitor = getPerformanceMonitor();
+// Create at module load so the constructor's performance.now() reading
+// captures the earliest possible app start time. Passed into the DI
+// container as a regular dep — no singleton accessor.
+const perfMonitor = new PerformanceMonitor();
 
 // Log startup
 logger.info('='.repeat(60));
@@ -330,6 +332,7 @@ app.on('ready', async () => {
     const container = initializeContainer({
       db: dbManager.getDrizzle(),
       dbManager: dbManager,
+      perfMonitor,
     });
     perfMonitor.markStartupPhase('containerInitTime');
     logger.info('✓ Hex DI container initialized');

@@ -9,7 +9,7 @@ export { Exporter } from './Exporter';
 export { SystemBridge } from './SystemBridge';
 export { GitClient } from './GitClient';
 export { FileWatcher } from './FileWatcher';
-export { PerformanceMonitor, getPerformanceMonitor } from './PerformanceMonitor';
+export { PerformanceMonitor } from './PerformanceMonitor';
 export { CryptoIdGenerator } from './CryptoIdGenerator';
 export { NodePathService } from './NodePathService';
 export {

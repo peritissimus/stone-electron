@@ -390,12 +390,3 @@ export class PerformanceMonitor implements IPerformanceMonitor {
   }
 }
 
-// Export singleton
-let instance: PerformanceMonitor | null = null;
-
-export function getPerformanceMonitor(): PerformanceMonitor {
-  if (!instance) {
-    instance = new PerformanceMonitor();
-  }
-  return instance;
-}

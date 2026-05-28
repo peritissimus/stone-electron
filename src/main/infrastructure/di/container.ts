@@ -39,6 +39,7 @@ import type {
   IGitClient,
   IIdGenerator,
   IPathService,
+  IPerformanceMonitor,
   ITextGenerator,
   // Inbound Ports (Use Cases)
   INoteUseCases,
@@ -166,7 +167,6 @@ import {
   LocalReranker,
   WhisperTranscriber,
   SingleShotSummarizer,
-  getPerformanceMonitor,
   // Outbound (Secondary) - Events
   EventPublisher,
 } from '@adapters';
@@ -189,6 +189,10 @@ export interface DatabaseManagerInterface {
 export interface ContainerDeps {
   db: Database;
   dbManager?: DatabaseManagerInterface;
+  /** Created at app boot before the container so startup-phase timing
+   *  is captured from the earliest possible point. Passed in instead of
+   *  constructed here. */
+  perfMonitor: IPerformanceMonitor;
 }
 
 export interface Container {
@@ -206,6 +210,7 @@ export interface Container {
   aiProviderKeyStore: IAIProviderKeyStore;
 
   // Ports - Services
+  perfMonitor: IPerformanceMonitor;
   fileStorage: IFileStorage;
   markdownProcessor: IMarkdownProcessor;
   eventPublisher: IEventPublisher;
@@ -285,7 +290,7 @@ export function getActiveWorkspacePath(): string | null {
 // ============================================================================
 
 export function createContainer(deps: ContainerDeps): Container {
-  const { db, dbManager } = deps;
+  const { db, dbManager, perfMonitor } = deps;
 
   // Helper function for workspace path
   const getWorkspacePath = () => activeWorkspacePath;
@@ -621,6 +626,7 @@ export function createContainer(deps: ContainerDeps): Container {
     aiProviderKeyStore,
 
     // Ports - Services
+    perfMonitor,
     fileStorage,
     markdownProcessor,
     eventPublisher,
@@ -789,7 +795,7 @@ export function registerIPCHandlers(): void {
   registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
 
   // Performance monitoring handlers
-  const perfMonitor = getPerformanceMonitor();
+  const { perfMonitor } = container;
   registerPerformanceHandlers({
     getSnapshot: (sinceMs?: number) => perfMonitor.getSnapshot(sinceMs),
     getMemoryMetrics: () => perfMonitor.getMemoryMetrics(),
