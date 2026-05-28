@@ -10,6 +10,8 @@ import { useEffect } from 'react';
 import { Microphone, Stop, X, CircleNotch, Check, Warning } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 import { useMeetingRecorder, type RecorderPhase } from '@renderer/hooks/useMeetingRecorder';
+import { subscribe } from '@renderer/lib/events';
+import { EVENTS } from '@shared/constants/ipcChannels';
 
 export function RecordingDock() {
   const {
@@ -22,6 +24,7 @@ export function RecordingDock() {
     start,
     stop,
     cancel,
+    openDock,
     closeDock,
     reset,
   } = useMeetingRecorder();
@@ -32,6 +35,12 @@ export function RecordingDock() {
     const id = window.setTimeout(reset, 6000);
     return () => window.clearTimeout(id);
   }, [phase, reset]);
+
+  // Cross-window trigger: Quick Capture (and other surfaces later) can
+  // ask the main window to open the dock via this event.
+  useEffect(() => {
+    return subscribe(EVENTS.MEETING_OPEN_DOCK_REQUESTED, () => openDock());
+  }, [openDock]);
 
   if (!dock) return null;
 

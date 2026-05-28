@@ -124,6 +124,9 @@ export const MEETING_CHANNELS = {
   DELETE: 'meetings:delete',
   RESUMMARIZE: 'meetings:resummarize',
   SEND_TO_JOURNAL: 'meetings:sendToJournal',
+  // Cross-window: Quick Capture sends this so the main window opens
+  // the recording dock and focuses itself.
+  REQUEST_RECORDING: 'meetings:requestRecording',
 } as const;
 
 // Attachment Operations
@@ -247,6 +250,10 @@ export const EVENTS = {
 
   // Scratch editor events (main → renderer push)
   SCRATCH_OPEN_PATH: 'scratch:openPath',
+
+  // Meeting recorder cross-window: Quick Capture → main window asks the
+  // recording dock to open (and main window comes to the foreground).
+  MEETING_OPEN_DOCK_REQUESTED: 'meetings:openDockRequested',
 
   // Notebook events
   NOTEBOOK_CREATED: 'notebooks:created',

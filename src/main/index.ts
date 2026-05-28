@@ -5,7 +5,7 @@
  */
 
 import 'dotenv/config';
-import { app, BrowserWindow, globalShortcut } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron';
 import path from 'node:path';
 import net from 'node:net';
 import { lookup as dnsLookup } from 'node:dns';
@@ -21,7 +21,7 @@ import {
   getContainer,
 } from '@main/infrastructure/di/container';
 import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();
@@ -333,6 +333,16 @@ app.on('ready', async () => {
     registerIPCHandlers();
     perfMonitor.markStartupPhase('ipcRegistrationTime');
     logger.info('✓ Hex IPC handlers registered');
+
+    // Cross-window bridge: Quick Capture asks main window to open the
+    // recording dock. Main window subscribes to MEETING_OPEN_DOCK_REQUESTED.
+    ipcMain.handle(MEETING_CHANNELS.REQUEST_RECORDING, () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send(EVENTS.MEETING_OPEN_DOCK_REQUESTED);
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    });
 
     // Create window
     await createWindow();
