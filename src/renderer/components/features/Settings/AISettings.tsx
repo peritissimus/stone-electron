@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Check, Cloud, Cpu, FloppyDisk, Key, Trash } from 'phosphor-react';
+import { Cloud, Cpu, FloppyDisk, Key, Trash } from 'phosphor-react';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 import { Badge } from '@renderer/components/base/ui/badge';
 import { Button } from '@renderer/components/base/ui/button';
@@ -77,6 +77,39 @@ function NumberInput({
   );
 }
 
+/**
+ * Model identifier input — commits on blur or Enter (not per-keystroke),
+ * so typing a model id like `openai/gpt-5.4-mini` doesn't spam a write
+ * to disk on every character.
+ */
+function ModelInput({
+  defaultValue,
+  disabled,
+  onCommit,
+}: {
+  defaultValue: string;
+  disabled?: boolean;
+  onCommit: (value: string) => void;
+}) {
+  const [draft, setDraft] = useState(defaultValue);
+  return (
+    <Input
+      value={draft}
+      disabled={disabled}
+      placeholder="provider/model"
+      spellCheck={false}
+      className="w-72 font-mono text-xs"
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => onCommit(draft)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
+}
+
 export function AISettings() {
   const {
     ai,
@@ -92,12 +125,7 @@ export function AISettings() {
     deleteProviderKey,
   } = useAISettings();
   const [message, setMessage] = useState<MessageState>(null);
-  const [modelDraft, setModelDraft] = useState<AIModelConfig>(ai.models);
   const [keyDrafts, setKeyDrafts] = useState<Partial<Record<AIProviderId, string>>>({});
-
-  useEffect(() => {
-    setModelDraft(ai.models);
-  }, [ai.models]);
 
   const run = async (action: () => Promise<void>, success: string) => {
     setMessage(null);
@@ -112,8 +140,11 @@ export function AISettings() {
     }
   };
 
-  const saveModels = () =>
-    run(async () => updateModels(modelDraft), 'AI model settings saved');
+  const commitModel = (field: keyof AIModelConfig, nextValue: string, label: string) => {
+    const trimmed = nextValue.trim();
+    if (!trimmed || trimmed === ai.models[field]) return;
+    void run(async () => updateModels({ [field]: trimmed } as Partial<AIModelConfig>), label);
+  };
 
   const saveProviderKey = (provider: AIProviderId, label: string) =>
     run(async () => {
@@ -312,50 +343,42 @@ export function AISettings() {
         <Separator />
 
         <ContainerStack gap="sm">
-          <Label>Models</Label>
-          <ContainerStack gap="sm">
-            <div className="grid grid-cols-[140px_1fr] items-center gap-3">
-              <Body size="sm" variant="muted">
-                Text
-              </Body>
-              <Input
-                value={modelDraft.textModel}
-                disabled={saving}
-                onChange={(event) =>
-                  setModelDraft((draft) => ({ ...draft, textModel: event.target.value }))
-                }
-              />
-            </div>
-            <div className="grid grid-cols-[140px_1fr] items-center gap-3">
-              <Body size="sm" variant="muted">
-                Embeddings
-              </Body>
-              <Input
-                value={modelDraft.embeddingModel}
-                disabled={saving}
-                onChange={(event) =>
-                  setModelDraft((draft) => ({ ...draft, embeddingModel: event.target.value }))
-                }
-              />
-            </div>
-          </ContainerStack>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setModelDraft(ai.models)}
-              disabled={saving || JSON.stringify(modelDraft) === JSON.stringify(ai.models)}
-            >
-              <Check size={14} />
-              Revert
-            </Button>
-            <Button
-              onClick={saveModels}
-              disabled={saving || JSON.stringify(modelDraft) === JSON.stringify(ai.models)}
-            >
-              <FloppyDisk size={14} />
-              Save Models
-            </Button>
-          </div>
+          <Label className="flex items-center gap-2">
+            <Cpu size={14} />
+            Models
+          </Label>
+          <SettingRow
+            title="Text generation"
+            description="Used by AskNotes, meeting summaries, link suggestions. Format: provider/model — e.g. openai/gpt-5.4-mini, anthropic/claude-sonnet-4.5"
+          >
+            <ModelInput
+              key={`text-${ai.models.textModel}`}
+              defaultValue={ai.models.textModel}
+              disabled={saving}
+              onCommit={(value) => commitModel('textModel', value, 'Text model updated')}
+            />
+          </SettingRow>
+          <SettingRow
+            title="Embeddings"
+            description="Used to chunk + index notes for semantic search. Local default: bge-small-en-v1.5 runs in-process — changing this requires cloud inference"
+          >
+            <ModelInput
+              key={`embed-${ai.models.embeddingModel}`}
+              defaultValue={ai.models.embeddingModel}
+              disabled={saving}
+              onCommit={(value) =>
+                commitModel('embeddingModel', value, 'Embedding model updated')
+              }
+            />
+          </SettingRow>
+          <SettingRow
+            title="Reranker"
+            description="Local cross-encoder (Xenova/ms-marco-MiniLM-L-6-v2), no configuration"
+          >
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              Local
+            </Badge>
+          </SettingRow>
         </ContainerStack>
       </ContainerStack>
     </SettingsSection>
