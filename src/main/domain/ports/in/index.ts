@@ -27,3 +27,4 @@ export * from './IScratchUseCases';
 export * from './IAIUseCases';
 export * from './IIndexUseCases';
 export * from './IMeetingUseCases';
+export * from './ITemplateUseCases';

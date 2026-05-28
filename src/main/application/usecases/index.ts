@@ -222,3 +222,11 @@ export {
   type MeetingUseCasesDeps,
   RECORDINGS_DIR,
 } from './meeting';
+
+// Template Use Cases
+export {
+  ListTemplatesUseCase,
+  CreateNoteFromTemplateUseCase,
+  createTemplateUseCases,
+  type TemplateUseCasesDeps,
+} from './template';

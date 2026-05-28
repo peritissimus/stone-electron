@@ -105,3 +105,10 @@ export {
   unregisterMeetingHandlers,
   type MeetingIPCDeps,
 } from './MeetingIPC';
+
+// Templates
+export {
+  registerTemplateHandlers,
+  unregisterTemplateHandlers,
+  type TemplateIPCDeps,
+} from './TemplateIPC';

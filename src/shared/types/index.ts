@@ -296,3 +296,6 @@ export * from './graph';
 
 // Export meeting recording wire types
 export * from './meeting';
+
+// Export template wire types
+export * from './template';

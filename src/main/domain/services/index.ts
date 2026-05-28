@@ -41,6 +41,8 @@ export { hashText } from './hashText';
 
 export { DEFAULT_MEETING_SUMMARY_PROMPT } from './meetingSummaryPrompts';
 
+export { TemplateRenderer, type TemplateRenderContext } from './TemplateRenderer';
+
 export { TopicSuggester } from './TopicSuggester';
 export type {
   SuggesterChunk,

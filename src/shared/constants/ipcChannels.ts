@@ -132,6 +132,12 @@ export const MEETING_CHANNELS = {
   TRAY_SET_STATE: 'meetings:traySetState',
 } as const;
 
+// Template operations
+export const TEMPLATE_CHANNELS = {
+  LIST: 'templates:list',
+  CREATE_NOTE_FROM_TEMPLATE: 'templates:createNote',
+} as const;
+
 // Attachment Operations
 export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',
@@ -328,6 +334,7 @@ export const ALL_CHANNELS = [
   ...Object.values(SCRATCH_CHANNELS),
   ...Object.values(PERFORMANCE_CHANNELS),
   ...Object.values(MEETING_CHANNELS),
+  ...Object.values(TEMPLATE_CHANNELS),
 ];
 
 // Get all events as an array

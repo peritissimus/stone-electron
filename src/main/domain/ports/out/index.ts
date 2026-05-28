@@ -35,3 +35,4 @@ export * from './IReranker';
 export * from './IMeetingRecordingRepository';
 export * from './ITranscriber';
 export * from './ISummarizationStrategy';
+export * from './ITemplateRepository';
