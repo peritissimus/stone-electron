@@ -60,7 +60,7 @@ export class FileSystemTemplateRepository implements ITemplateRepository {
 
   async seedDefaultsIfEmpty(
     workspaceId: string,
-    defaults: Array<Pick<TemplateRecord, 'id' | 'body'>>,
+    defaults: ReadonlyArray<Pick<TemplateRecord, 'id' | 'body'>>,
   ): Promise<number> {
     const dir = await this.resolveDir(workspaceId);
     if (!dir) return 0;

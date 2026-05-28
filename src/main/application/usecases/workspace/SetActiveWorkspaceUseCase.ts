@@ -13,6 +13,10 @@ export class SetActiveWorkspaceUseCase implements ISetActiveWorkspaceUseCase {
   constructor(
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly eventPublisher?: IEventPublisher,
+    /** Best-effort hook fired AFTER successful activation + event
+     *  publish. Used by the container to seed default templates etc.
+     *  Failures here are swallowed — they shouldn't fail activation. */
+    private readonly onActivated?: (workspaceId: string) => Promise<void>,
   ) {}
 
   async execute(request: SetActiveWorkspaceRequest): Promise<SetActiveWorkspaceResponse> {
@@ -41,6 +45,14 @@ export class SetActiveWorkspaceUseCase implements ISetActiveWorkspaceUseCase {
       timestamp: new Date(),
       payload: { workspace: workspace.toPersistence() },
     });
+
+    if (this.onActivated) {
+      try {
+        await this.onActivated(workspace.id);
+      } catch {
+        // Best-effort — never fail activation on a post-hook error.
+      }
+    }
 
     return { workspace: workspace.toPersistence() };
   }

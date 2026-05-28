@@ -8,6 +8,7 @@
 // Shared Layer
 import type { Database } from '@main/shared';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
+import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 
 // Domain Layer - Ports
 import type {
@@ -437,6 +438,11 @@ export function createContainer(deps: ContainerDeps): Container {
     pathService,
     indexNote: indexUseCases.indexNote,
     eventPublisher,
+    // Seed the IC starter-pack templates the first time a workspace
+    // is activated. Idempotent — never overwrites user templates.
+    onWorkspaceActivated: async (workspaceId) => {
+      await templateRepository.seedDefaultsIfEmpty(workspaceId, TEMPLATE_STARTER_PACK);
+    },
   });
 
   // File watcher needs syncWorkspace from the use cases — construct after.

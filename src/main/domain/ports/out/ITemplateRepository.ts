@@ -23,6 +23,6 @@ export interface ITemplateRepository {
    */
   seedDefaultsIfEmpty(
     workspaceId: string,
-    defaults: Array<Pick<TemplateRecord, 'id' | 'body'>>,
+    defaults: ReadonlyArray<Pick<TemplateRecord, 'id' | 'body'>>,
   ): Promise<number>;
 }

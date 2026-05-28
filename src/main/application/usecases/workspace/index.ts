@@ -54,6 +54,10 @@ export interface WorkspaceUseCasesDeps {
   pathService: IPathService;
   indexNote?: IIndexNoteUseCase;
   eventPublisher?: IEventPublisher;
+  /** Best-effort hook fired after a workspace is activated. Used to
+   *  seed default templates etc. without coupling the use case to
+   *  template plumbing. */
+  onWorkspaceActivated?: (workspaceId: string) => Promise<void>;
 }
 
 export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspaceUseCases {
@@ -68,13 +72,18 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     pathService,
     indexNote,
     eventPublisher,
+    onWorkspaceActivated,
   } = deps;
 
   return {
     createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, idGenerator, eventPublisher),
     getWorkspace: new GetWorkspaceUseCase(workspaceRepository),
     listWorkspaces: new ListWorkspacesUseCase(workspaceRepository),
-    setActiveWorkspace: new SetActiveWorkspaceUseCase(workspaceRepository, eventPublisher),
+    setActiveWorkspace: new SetActiveWorkspaceUseCase(
+      workspaceRepository,
+      eventPublisher,
+      onWorkspaceActivated,
+    ),
     getActiveWorkspace: new GetActiveWorkspaceUseCase(workspaceRepository),
     deleteWorkspace: new DeleteWorkspaceUseCase(workspaceRepository, eventPublisher),
     updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository, eventPublisher),
