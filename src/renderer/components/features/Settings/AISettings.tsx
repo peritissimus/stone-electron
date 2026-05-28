@@ -129,6 +129,7 @@ export function AISettings() {
     }, `${label} stored key removed`);
 
   const reset = () => run(resetAI, 'AI settings reset');
+  const [resetArmed, setResetArmed] = useState(false);
 
   const cloudEnabled = ai.privacy.allowCloudInference;
   const indexDisabled = saving || !loaded;
@@ -138,9 +139,23 @@ export function AISettings() {
       title="AI"
       description="Configure local and cloud models for indexing, ranking, and answering questions about your notes."
       action={
-        <Button variant="ghost" size="sm" onClick={reset} disabled={saving}>
+        <Button
+          variant={resetArmed ? 'destructive' : 'ghost'}
+          size="sm"
+          onClick={() => {
+            if (resetArmed) {
+              setResetArmed(false);
+              reset();
+            } else {
+              setResetArmed(true);
+              window.setTimeout(() => setResetArmed(false), 3000);
+            }
+          }}
+          disabled={saving}
+          title="Reset wipes all AI settings — model, indexing, and privacy flags — back to defaults"
+        >
           <ArrowClockwise size={14} />
-          Reset
+          {resetArmed ? 'Confirm reset' : 'Reset'}
         </Button>
       }
     >
