@@ -22,7 +22,12 @@ import {
 } from '@main/infrastructure/di/container';
 import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
 import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
-import { createTray, destroyTray } from '@main/infrastructure/electron/tray';
+import {
+  createTray,
+  destroyTray,
+  updateTrayState,
+  type TrayRecorderPhase,
+} from '@main/infrastructure/electron/tray';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();
@@ -344,6 +349,14 @@ app.on('ready', async () => {
       mainWindow.show();
       mainWindow.focus();
     });
+
+    // Renderer push: recorder phase changes → tray reflects them.
+    ipcMain.handle(
+      MEETING_CHANNELS.TRAY_SET_STATE,
+      (_event, payload: { phase: TrayRecorderPhase }) => {
+        updateTrayState({ phase: payload.phase });
+      },
+    );
 
     // Create window
     await createWindow();

@@ -159,3 +159,15 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   markError: (message) => set({ phase: 'error', error: message }),
   reset: () => set({ ...initial, dock: false }),
 }));
+
+// Mirror phase changes to the menu-bar tray so it can update title /
+// menu / icon. Subscribe once at module init; the comparison ensures
+// we only push on actual transitions, not every set() (which fires on
+// audio level updates ~60Hz).
+let lastTrayPhase: RecorderPhase | null = null;
+useMeetingRecorderStore.subscribe((state) => {
+  if (state.phase !== lastTrayPhase) {
+    lastTrayPhase = state.phase;
+    void meetingAPI.setTrayState(state.phase);
+  }
+});

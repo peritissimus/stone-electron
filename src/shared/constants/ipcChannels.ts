@@ -127,6 +127,9 @@ export const MEETING_CHANNELS = {
   // Cross-window: Quick Capture sends this so the main window opens
   // the recording dock and focuses itself.
   REQUEST_RECORDING: 'meetings:requestRecording',
+  // Renderer → main: notify the tray of recorder phase changes so it
+  // can update its title, icon, and menu items.
+  TRAY_SET_STATE: 'meetings:traySetState',
 } as const;
 
 // Attachment Operations

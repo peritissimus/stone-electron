@@ -144,4 +144,20 @@ export const meetingAPI = {
     });
     return validateResponse(response, SendToJournalResponseSchema);
   },
+
+  /**
+   * Push recorder phase to main so the menu bar tray can reflect it.
+   * Fire-and-forget — failure here shouldn't break anything user-facing.
+   * The accepted phases mirror the renderer's RecorderPhase, not the
+   * persisted DB status (those are separate state machines).
+   */
+  setTrayState: async (
+    phase: 'idle' | 'preparing' | 'recording' | 'uploading' | 'finalizing' | 'done' | 'error',
+  ): Promise<void> => {
+    try {
+      await invokeIpc(MEETING_CHANNELS.TRAY_SET_STATE, { phase });
+    } catch {
+      // best-effort — tray state isn't worth surfacing failures for.
+    }
+  },
 };
