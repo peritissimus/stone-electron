@@ -107,15 +107,23 @@ export class AppConfigRepository implements IAppConfigRepository {
 
   private async writeConfig(config: AppConfig): Promise<void> {
     await fs.mkdir(path.dirname(this.configPath), { recursive: true });
-    // Atomic write: write to a sibling temp file then rename. POSIX rename
-    // is atomic, so a crash or force-quit mid-write cannot leave the
-    // canonical config.json in a half-written state. Without this, a
-    // truncated file is unparseable → next read returns null →
-    // DEFAULT_APP_CONFIG silently overwrites the user's settings (we
-    // chased exactly that ghost once).
-    const tmpPath = `${this.configPath}.tmp`;
+    // Atomic write: write to a unique sibling temp file then rename.
+    // POSIX rename is atomic, so a crash or force-quit mid-write cannot
+    // leave the canonical config.json in a half-written state. The tmp
+    // name is unique per call (pid + monotonic + random) so concurrent
+    // writes don't race on the same temp path — without this, two
+    // overlapping writes could both target config.json.tmp; the first
+    // one renames it away, the second one rename-fails with ENOENT.
+    const unique = `${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+    const tmpPath = `${this.configPath}.${unique}.tmp`;
     const body = `${JSON.stringify(config, null, 2)}\n`;
-    await fs.writeFile(tmpPath, body, 'utf-8');
-    await fs.rename(tmpPath, this.configPath);
+    try {
+      await fs.writeFile(tmpPath, body, 'utf-8');
+      await fs.rename(tmpPath, this.configPath);
+    } catch (error) {
+      // Best-effort cleanup if rename failed and the tmp is still around.
+      await fs.unlink(tmpPath).catch(() => undefined);
+      throw error;
+    }
   }
 }
