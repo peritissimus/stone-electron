@@ -254,6 +254,11 @@ export const EVENTS = {
   // Meeting recorder cross-window: Quick Capture → main window asks the
   // recording dock to open (and main window comes to the foreground).
   MEETING_OPEN_DOCK_REQUESTED: 'meetings:openDockRequested',
+  // Tray menu / global shortcuts ask the renderer to open the dock AND
+  // auto-start a recording in one step.
+  MEETING_START_REQUESTED: 'meetings:startRequested',
+  // Tray menu while recording asks the renderer to stop.
+  MEETING_STOP_REQUESTED: 'meetings:stopRequested',
 
   // Notebook events
   NOTEBOOK_CREATED: 'notebooks:created',

@@ -42,6 +42,25 @@ export function RecordingDock() {
     return subscribe(EVENTS.MEETING_OPEN_DOCK_REQUESTED, () => openDock());
   }, [openDock]);
 
+  // Tray menu / global shortcut: open dock AND auto-start a recording
+  // in one step. We don't auto-start if a session is already in flight
+  // — let the user finish or cancel first.
+  useEffect(() => {
+    return subscribe(EVENTS.MEETING_START_REQUESTED, () => {
+      openDock();
+      if (phase === 'idle' || phase === 'done' || phase === 'error') {
+        void start();
+      }
+    });
+  }, [openDock, start, phase]);
+
+  // Tray "Stop and process" while a recording is active.
+  useEffect(() => {
+    return subscribe(EVENTS.MEETING_STOP_REQUESTED, () => {
+      if (phase === 'recording') void stop();
+    });
+  }, [stop, phase]);
+
   if (!dock) return null;
 
   const isActive = phase === 'recording';

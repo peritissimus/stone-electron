@@ -22,6 +22,7 @@ import {
 } from '@main/infrastructure/di/container';
 import { getPerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
 import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
+import { createTray, destroyTray } from '@main/infrastructure/electron/tray';
 
 // Initialize performance monitoring immediately
 const perfMonitor = getPerformanceMonitor();
@@ -378,6 +379,10 @@ app.on('ready', async () => {
       logger.warn(`✗ Failed to register global shortcut: ${quickCaptureShortcut}`);
     }
 
+    // System tray (menu bar on macOS). One-click path to start a
+    // recording from anywhere on the system.
+    createTray({ getMainWindow: () => mainWindow });
+
     // Start file watcher for all workspaces
     try {
       await container.fileWatcher.start();
@@ -411,6 +416,9 @@ app.on('before-quit', () => {
 
   // Stop performance monitoring
   perfMonitor.stopMonitoring();
+
+  // Tear down the tray so it stops listening + frees the menu bar slot
+  destroyTray();
 
   // Unregister all global shortcuts
   globalShortcut.unregisterAll();
