@@ -338,18 +338,6 @@ export function AISettings() {
                 }
               />
             </div>
-            <div className="grid grid-cols-[140px_1fr] items-center gap-3">
-              <Body size="sm" variant="muted">
-                Rerank
-              </Body>
-              <Input
-                value={modelDraft.rerankModel}
-                disabled={saving}
-                onChange={(event) =>
-                  setModelDraft((draft) => ({ ...draft, rerankModel: event.target.value }))
-                }
-              />
-            </div>
           </ContainerStack>
           <div className="flex justify-end gap-2">
             <Button

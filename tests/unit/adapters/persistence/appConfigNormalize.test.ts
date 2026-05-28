@@ -400,7 +400,6 @@ describe('mergeAI', () => {
       models: {
         textModel: 'openai/gpt-4.1',
         embeddingModel: 'openai/text-embedding-3-large',
-        rerankModel: 'cohere/rerank-v3.5',
       },
       privacy: {
         allowCloudInference: true,

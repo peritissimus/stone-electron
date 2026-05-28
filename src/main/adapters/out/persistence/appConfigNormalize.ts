@@ -365,10 +365,6 @@ function mergeAIModels(value: unknown): AIModelConfig {
       typeof value.embeddingModel === 'string' && value.embeddingModel.trim().length > 0
         ? value.embeddingModel
         : defaults.embeddingModel,
-    rerankModel:
-      typeof value.rerankModel === 'string' && value.rerankModel.trim().length > 0
-        ? value.rerankModel
-        : defaults.rerankModel,
   };
 }
 

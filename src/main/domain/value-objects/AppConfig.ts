@@ -245,7 +245,6 @@ export type AIProviderMode = 'local' | 'cloud' | 'disabled';
 export interface AIModelConfig {
   textModel: string;
   embeddingModel: string;
-  rerankModel: string;
 }
 
 export interface AIPrivacyConfig {
@@ -281,7 +280,6 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   models: {
     textModel: 'openai/gpt-5.4-mini',
     embeddingModel: 'openai/text-embedding-3-small',
-    rerankModel: 'cohere/rerank-v3.5',
   },
   privacy: {
     allowCloudInference: false,
