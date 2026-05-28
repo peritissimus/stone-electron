@@ -305,7 +305,8 @@ domain/services/     domain/ports/out/ (interface)
 | Entity file          | PascalCase noun (no suffix)             | `Note.ts`, `Notebook.ts`           |
 | Value Object         | PascalCase noun                         | `NoteId`, `FilePath`               |
 | Port Interface       | `I` + PascalCase                        | `INoteRepository`                  |
-| Use Case             | PascalCase + `UseCases` (plural)        | `NoteUseCases`                     |
+| Use Case (per-action) | PascalCase verb + `UseCase`            | `UpdateNoteUseCase`, `IndexNoteUseCase` |
+| Use Case facade       | PascalCase noun + `UseCases` (plural)  | `INoteUseCases`, `IIndexUseCases`  |
 | Domain Service       | PascalCase                              | `TaskExtractor`                    |
 | Persistence Adapter  | PascalCase noun + `Repository`          | `NoteRepository`                   |
 | IPC Adapter          | PascalCase noun + `IPC`                 | `NoteIPC`                          |
@@ -318,6 +319,7 @@ domain/services/     domain/ports/out/ (interface)
 - Entity classes use the `Entity` suffix to disambiguate from wire-type DTOs in `@shared/types` that share the bare noun (e.g. domain `NoteEntity` vs shared `Note` DTO). Files keep the bare noun.
 - Persistence adapters omit the tech prefix (e.g. `NoteRepository`, not `DrizzleNoteRepository`) since there is one persistence implementation per repo and no plan to swap. Add a tech prefix only when introducing a parallel implementation (e.g. `InMemoryNoteRepository` for tests).
 - Do NOT use generic suffixes like `Service` for adapters — name by the role they play (`Embedder`, `Exporter`, `GitClient`, `SystemBridge`, `FileWatcher`).
+- **Use cases**: one class per action (`UpdateNoteUseCase`, `IndexNoteUseCase`, `FinalizeRecordingUseCase`) is the pattern, NOT one mega-class per entity. The grouped IN port (`INoteUseCases`, `IIndexUseCases`) is a facade exposed to IPC adapters — it composes the per-action classes via a `create{Domain}UseCases(deps)` factory in `application/usecases/{domain}/index.ts`. Per-action classes don't need an individual matching `IX` port interface; the facade is the contract. IN adapters depend only on the facade, never on the per-action class or on OUT ports.
 
 ---
 
