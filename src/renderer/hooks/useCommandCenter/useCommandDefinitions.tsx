@@ -22,8 +22,10 @@ import {
   Moon,
   Sparkle,
   Microphone,
+  FileText,
 } from 'phosphor-react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
+import { useTemplatesStore } from '@renderer/stores/templatesStore';
 import type { CommandItem } from './types';
 
 export function useCommandDefinitions(query: string) {
@@ -189,6 +191,17 @@ export function useCommandDefinitions(query: string) {
         icon: <Microphone size={18} weight="fill" />,
         run: () => {
           useMeetingRecorderStore.getState().openDock();
+          handleClose();
+        },
+      },
+      {
+        id: 'new-from-template',
+        title: 'New from template…',
+        subtitle: '1:1, design review, RFC, weekly status, postmortem',
+        icon: <FileText size={18} />,
+        shortcut: '⌘⇧N',
+        run: () => {
+          useTemplatesStore.getState().openPicker();
           handleClose();
         },
       },

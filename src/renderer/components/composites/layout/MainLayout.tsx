@@ -94,6 +94,11 @@ const RecordingDock = lazy(() =>
     default: m.RecordingDock,
   })),
 );
+const TemplatePickerDialog = lazy(() =>
+  import('@renderer/components/features/Templates').then((m) => ({
+    default: m.TemplatePickerDialog,
+  })),
+);
 
 // Loading skeletons
 const EditorSkeleton = () => (
@@ -475,6 +480,9 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <RecordingDock />
+            </Suspense>
+            <Suspense fallback={null}>
+              <TemplatePickerDialog />
             </Suspense>
           </>
         }

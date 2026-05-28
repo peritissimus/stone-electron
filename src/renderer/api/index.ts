@@ -88,6 +88,9 @@ export type { ScratchPickResponse, ScratchReadResponse, ScratchWriteResponse } f
 // Meeting recorder API
 export { meetingAPI } from './meetingAPI';
 
+// Templates API
+export { templateAPI } from './templateAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {
