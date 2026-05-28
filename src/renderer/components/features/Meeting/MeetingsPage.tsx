@@ -282,7 +282,10 @@ function SummarySection({ recording }: { recording: MeetingRecording }) {
 }
 
 function TranscriptSection({ recording }: { recording: MeetingRecording }) {
-  const [open, setOpen] = useState(false);
+  // Auto-expand when failed so users can see the transcript that did save
+  // even though summarisation didn't — otherwise it looks like nothing
+  // was captured.
+  const [open, setOpen] = useState(recording.status === 'failed');
   if (!recording.transcriptText) {
     return (
       <section className="mt-6">
