@@ -34,6 +34,7 @@ import type {
   ITranscriber,
   ISummarizationStrategy,
   IMeetingRecordingRepository,
+  ITemplateRepository,
   IExporter,
   ISystemBridge,
   IGitClient,
@@ -64,6 +65,7 @@ import type {
   IAIUseCases,
   IIndexUseCases,
   IMeetingUseCases,
+  ITemplateUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -90,6 +92,7 @@ import {
   createAIUseCases,
   createIndexUseCases,
   createMeetingUseCases,
+  createTemplateUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -136,6 +139,8 @@ import {
   unregisterIndexHandlers,
   registerMeetingHandlers,
   unregisterMeetingHandlers,
+  registerTemplateHandlers,
+  unregisterTemplateHandlers,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   IndexRepository,
@@ -151,6 +156,7 @@ import {
   SecureAIProviderKeyStore,
   JournalReader,
   MeetingRecordingRepository,
+  FileSystemTemplateRepository,
   // Outbound (Secondary) - Storage
   FileSystemStorage,
   // Outbound (Secondary) - Services
@@ -220,6 +226,7 @@ export interface Container {
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
   meetingRepository: IMeetingRecordingRepository;
+  templateRepository: ITemplateRepository;
   exporter: IExporter;
   systemBridge: ISystemBridge;
   gitClient: IGitClient;
@@ -253,6 +260,7 @@ export interface Container {
   aiUseCases: IAIUseCases;
   indexUseCases: IIndexUseCases;
   meetingUseCases: IMeetingUseCases;
+  templateUseCases: ITemplateUseCases;
   indexRepository: IIndexRepository;
 
   // IPC Adapters (class-based)
@@ -352,6 +360,13 @@ export function createContainer(deps: ContainerDeps): Container {
   const indexRepository: IIndexRepository = new IndexRepository({ db });
 
   const meetingRepository: IMeetingRecordingRepository = new MeetingRecordingRepository({ db });
+
+  const templateRepository: ITemplateRepository = new FileSystemTemplateRepository({
+    fileStorage,
+    workspaceRepository,
+    markdownProcessor,
+    pathService,
+  });
 
   const journalReader = new JournalReader({ db, fileStorage });
 
@@ -599,6 +614,15 @@ export function createContainer(deps: ContainerDeps): Container {
       quickCaptureUseCases.appendToJournal(content, workspaceId),
   });
 
+  // Template use cases — composes the existing CreateNote use case
+  // for the actual note creation, so templated notes go through the
+  // same write/index/event pipeline as any other.
+  const templateUseCases = createTemplateUseCases({
+    templateRepository,
+    workspaceRepository,
+    createNote: noteUseCases.createNote,
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
   // ---------------------------------------------------------------------------
@@ -636,6 +660,7 @@ export function createContainer(deps: ContainerDeps): Container {
     transcriber,
     summarizer,
     meetingRepository,
+    templateRepository,
     indexRepository,
     exporter,
     systemBridge,
@@ -670,6 +695,7 @@ export function createContainer(deps: ContainerDeps): Container {
     aiUseCases,
     indexUseCases,
     meetingUseCases,
+    templateUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -793,6 +819,7 @@ export function registerIPCHandlers(): void {
   });
   registerIndexHandlers({ indexUseCases: container.indexUseCases });
   registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
+  registerTemplateHandlers({ templateUseCases: container.templateUseCases });
 
   // Performance monitoring handlers
   const { perfMonitor } = container;
@@ -836,5 +863,6 @@ export function unregisterIPCHandlers(): void {
   unregisterAIHandlers();
   unregisterIndexHandlers();
   unregisterMeetingHandlers();
+  unregisterTemplateHandlers();
   unregisterPerformanceHandlers();
 }

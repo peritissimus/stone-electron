@@ -24,3 +24,7 @@ export {
   MeetingRecordingRepository,
   type MeetingRecordingRepositoryDeps,
 } from './MeetingRecordingRepository';
+export {
+  FileSystemTemplateRepository,
+  type FileSystemTemplateRepositoryDeps,
+} from './FileSystemTemplateRepository';
