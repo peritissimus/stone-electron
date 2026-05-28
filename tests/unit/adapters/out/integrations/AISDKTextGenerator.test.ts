@@ -166,4 +166,26 @@ describe('AISDKTextGenerator', () => {
     });
     expect(generateTextFn).not.toHaveBeenCalled();
   });
+
+  // Egress-contract regression test. AISDKTextGenerator must call each
+  // provider factory with `{ apiKey }` only — never with a baseURL, a
+  // custom fetch, or anything else that could redirect note content to
+  // an unintended endpoint. A simple source-text scan catches the
+  // typical regression: someone adding `baseURL: ...` to one of the
+  // provider factory calls.
+  it('does not override the provider baseURL (egress is locked to defaults)', async () => {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const source = await fs.readFile(
+      path.join(
+        process.cwd(),
+        'src/main/adapters/out/integrations/AISDKTextGenerator.ts',
+      ),
+      'utf-8',
+    );
+    expect(source).not.toMatch(/baseURL\s*:/);
+    expect(source).not.toMatch(/baseUrl\s*:/);
+    // Custom fetch could also redirect; ensure no opt-in there either.
+    expect(source).not.toMatch(/fetch\s*:\s*\w/);
+  });
 });

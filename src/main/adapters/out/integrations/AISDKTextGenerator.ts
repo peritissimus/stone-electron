@@ -120,6 +120,19 @@ export class AISDKTextGenerator implements ITextGenerator {
     return `[${index}]\nTitle: ${source.title}${heading}\nExcerpt:\n${source.excerpt}`;
   }
 
+  /**
+   * Build a LanguageModel pointing at the provider's official API.
+   *
+   * **Egress contract (security-relevant):** every provider factory
+   * below is called with `{ apiKey }` only — no `baseURL`, no custom
+   * `fetch`, no proxy override. That means a note's body can reach
+   * exactly the configured provider's URL (api.openai.com,
+   * api.anthropic.com, etc.) and nowhere else, even under
+   * prompt-injection from a malicious note. If you ever add a
+   * `baseURL` to one of these factories, you must also justify it in
+   * a comment + update the egress contract test in
+   * tests/unit/adapters/out/integrations/AISDKTextGenerator.test.ts.
+   */
   private async createLanguageModel(model: string): Promise<LanguageModel> {
     if (this.deps.modelFactory) {
       return this.deps.modelFactory(model);
