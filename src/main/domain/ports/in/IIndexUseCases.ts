@@ -38,7 +38,26 @@ export interface IRebuildAllNotesIndexUseCase {
   execute(request?: RebuildAllNotesIndexRequest): Promise<RebuildAllNotesIndexResponse>;
 }
 
+export interface IndexStatsRequest {
+  /** Defaults to the active workspace. */
+  workspaceId?: string;
+}
+
+export interface IndexStatsResponse {
+  workspaceId: string;
+  totalNotes: number;
+  indexedNotes: number;
+  pendingNotes: number;
+  failedNotes: number;
+  chunkCount: number;
+}
+
+export interface IGetIndexStatsUseCase {
+  execute(request?: IndexStatsRequest): Promise<IndexStatsResponse>;
+}
+
 export interface IIndexUseCases {
   indexNote: IIndexNoteUseCase;
   rebuildAll: IRebuildAllNotesIndexUseCase;
+  getStats: IGetIndexStatsUseCase;
 }

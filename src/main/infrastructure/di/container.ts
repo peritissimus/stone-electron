@@ -785,11 +785,7 @@ export function registerIPCHandlers(): void {
   registerAIHandlers({
     aiUseCases: container.aiUseCases,
   });
-  registerIndexHandlers({
-    indexUseCases: container.indexUseCases,
-    indexRepository: container.indexRepository,
-    workspaceRepository: container.workspaceRepository,
-  });
+  registerIndexHandlers({ indexUseCases: container.indexUseCases });
   registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
 
   // Performance monitoring handlers

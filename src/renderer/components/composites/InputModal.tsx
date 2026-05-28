@@ -75,13 +75,13 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-      if (isOpen) {
-        setValue(defaultValue);
-        // Focus input when modal opens
-        setTimeout(() => {
-          inputRef.current?.focus();
-        }, 100);
-      }
+      if (!isOpen) return;
+      setValue(defaultValue);
+      // Focus input when modal opens
+      const focusTimer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(focusTimer);
     }, [isOpen, defaultValue]);
 
     const handleSubmit = (e: React.FormEvent) => {

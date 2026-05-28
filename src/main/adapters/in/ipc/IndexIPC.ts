@@ -1,43 +1,29 @@
 /**
  * Index IPC Adapter — exposes chunk-level indexing operations to the renderer.
+ *
+ * Strict IN-adapter shape: depends only on the IIndexUseCases facade.
+ * The previous GET_STATS handler used to pull IIndexRepository and
+ * IWorkspaceRepository directly and orchestrate them inline — that
+ * logic now lives in GetIndexStatsUseCase.
  */
 
 import { ipcMain } from 'electron';
 import { INDEX_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IIndexUseCases } from '../../../domain';
-import type { IIndexRepository, IWorkspaceRepository } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 
 export interface IndexIPCDeps {
   indexUseCases: IIndexUseCases;
-  indexRepository: IIndexRepository;
-  workspaceRepository: IWorkspaceRepository;
 }
 
 export function registerIndexHandlers(deps: IndexIPCDeps): void {
-  const { indexUseCases, indexRepository, workspaceRepository } = deps;
+  const { indexUseCases } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'IndexIPC', defaultCode: 'INDEX_ERROR', context });
 
   ipcMain.handle(INDEX_CHANNELS.GET_STATS, async (_event, request) =>
     handleRequest(
-      async () => {
-        const workspaceId =
-          request?.workspaceId ??
-          (await workspaceRepository.findActive())?.id;
-        if (!workspaceId) {
-          return {
-            workspaceId: '',
-            totalNotes: 0,
-            indexedNotes: 0,
-            pendingNotes: 0,
-            failedNotes: 0,
-            chunkCount: 0,
-          };
-        }
-        const stats = await indexRepository.getWorkspaceStats(workspaceId);
-        return { workspaceId, ...stats };
-      },
+      async () => indexUseCases.getStats.execute({ workspaceId: request?.workspaceId }),
       { channel: INDEX_CHANNELS.GET_STATS, workspaceId: request?.workspaceId },
     ),
   );

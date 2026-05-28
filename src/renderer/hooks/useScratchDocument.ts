@@ -48,6 +48,7 @@ export function useScratchDocument(
     if (loadedPathRef.current === absolutePath) return;
 
     let cancelled = false;
+    let suppressResetTimer: ReturnType<typeof setTimeout> | undefined;
     setStatus('loading');
     setError(null);
     setIsDirty(false);
@@ -68,7 +69,7 @@ export function useScratchDocument(
         try {
           setEditorMarkdown(editor, response.data.content);
         } finally {
-          setTimeout(() => {
+          suppressResetTimer = setTimeout(() => {
             suppressEditorUpdateRef.current = false;
           }, 0);
         }
@@ -85,6 +86,7 @@ export function useScratchDocument(
 
     return () => {
       cancelled = true;
+      if (suppressResetTimer) clearTimeout(suppressResetTimer);
     };
   }, [editor, absolutePath]);
 

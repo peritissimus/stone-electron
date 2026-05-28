@@ -9,9 +9,11 @@ import type {
 import type { IIndexUseCases } from '../../../domain/ports/in/IIndexUseCases';
 import { IndexNoteUseCase } from './IndexNoteUseCase';
 import { RebuildAllNotesIndexUseCase } from './RebuildAllNotesIndexUseCase';
+import { GetIndexStatsUseCase } from './GetIndexStatsUseCase';
 
 export { IndexNoteUseCase } from './IndexNoteUseCase';
 export { RebuildAllNotesIndexUseCase } from './RebuildAllNotesIndexUseCase';
+export { GetIndexStatsUseCase } from './GetIndexStatsUseCase';
 
 export interface IndexUseCasesDeps {
   noteRepository: INoteRepository;
@@ -39,5 +41,6 @@ export function createIndexUseCases(deps: IndexUseCasesDeps): IIndexUseCases {
       deps.workspaceRepository,
       indexNote,
     ),
+    getStats: new GetIndexStatsUseCase(deps.indexRepository, deps.workspaceRepository),
   };
 }

@@ -91,6 +91,7 @@ export {
 export {
   IndexNoteUseCase,
   RebuildAllNotesIndexUseCase,
+  GetIndexStatsUseCase,
   createIndexUseCases,
   type IndexUseCasesDeps,
 } from './indexing';

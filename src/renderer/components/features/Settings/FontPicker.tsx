@@ -52,6 +52,7 @@ export function FontPicker({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-controls="font-picker-list"
           className="w-full justify-between font-normal h-10 px-3"
         >
           <span className="truncate text-sm" style={{ fontFamily: value }}>
@@ -63,7 +64,7 @@ export function FontPicker({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command className="max-h-[400px]">
           <CommandInput placeholder="Search fonts..." className="h-10" />
-          <CommandList>
+          <CommandList id="font-picker-list">
             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
               {loading ? 'Loading fonts...' : 'No font found.'}
             </CommandEmpty>
