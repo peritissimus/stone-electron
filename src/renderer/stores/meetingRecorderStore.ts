@@ -25,6 +25,8 @@ export type RecorderPhase =
   | 'done'
   | 'error';
 
+export type CaptureMode = 'mic-only' | 'mic+system';
+
 interface MeetingRecorderState {
   dock: boolean;
   phase: RecorderPhase;
@@ -34,6 +36,8 @@ interface MeetingRecorderState {
   elapsedMs: number;
   /** Smoothed peak level in [0, 1], updated by the hook from an AnalyserNode. */
   audioLevel: number;
+  /** Which sources we're capturing for the current session. */
+  captureMode: CaptureMode;
   error: string | null;
   lastRecording: MeetingRecording | null;
 
@@ -43,7 +47,11 @@ interface MeetingRecorderState {
 
   // Lifecycle (called by the hook in response to MediaRecorder events)
   reserveSlot: () => Promise<{ recordingId: string; audioPath: string } | null>;
-  markRecordingStarted: (slot: { recordingId: string; audioPath: string }) => void;
+  markRecordingStarted: (slot: {
+    recordingId: string;
+    audioPath: string;
+    captureMode: CaptureMode;
+  }) => void;
   tickElapsed: (ms: number) => void;
   setAudioLevel: (level: number) => void;
   uploadAndFinalize: (wav: ArrayBuffer, durationMs: number) => Promise<void>;
@@ -60,6 +68,7 @@ const initial = {
   startedAt: null,
   elapsedMs: 0,
   audioLevel: 0,
+  captureMode: 'mic-only' as CaptureMode,
   error: null,
   lastRecording: null,
 };
@@ -96,6 +105,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
       phase: 'recording',
       recordingId: slot.recordingId,
       audioPath: slot.audioPath,
+      captureMode: slot.captureMode,
       startedAt: Date.now(),
       elapsedMs: 0,
       error: null,

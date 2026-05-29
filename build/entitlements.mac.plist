@@ -15,5 +15,10 @@
     <!-- Network access (for future sync features) -->
     <key>com.apple.security.network.client</key>
     <true/>
+    <!-- Microphone access — required by the meeting recorder. macOS
+         prompts on first record regardless; this entitlement is needed
+         for packaged builds running under hardened runtime. -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
 </dict>
 </plist>

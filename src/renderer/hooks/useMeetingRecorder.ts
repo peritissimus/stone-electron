@@ -20,6 +20,7 @@ export function useMeetingRecorder() {
   const dock = useMeetingRecorderStore((s) => s.dock);
   const elapsedMs = useMeetingRecorderStore((s) => s.elapsedMs);
   const audioLevel = useMeetingRecorderStore((s) => s.audioLevel);
+  const captureMode = useMeetingRecorderStore((s) => s.captureMode);
   const error = useMeetingRecorderStore((s) => s.error);
   const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
 
@@ -29,7 +30,12 @@ export function useMeetingRecorder() {
 
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+  /** Mic stream (always present when recording). */
+  const micStreamRef = useRef<MediaStream | null>(null);
+  /** System / loopback stream (optional; null when only mic was granted). */
+  const systemStreamRef = useRef<MediaStream | null>(null);
+  /** AudioContext that mixes mic + system into one stream for MediaRecorder. */
+  const mixerCtxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<number | null>(null);
   const stopResolveRef = useRef<(() => void) | null>(null);
   const analyserCtxRef = useRef<AudioContext | null>(null);
@@ -72,9 +78,17 @@ export function useMeetingRecorder() {
         // already stopping
       }
     }
-    if (streamRef.current) {
-      for (const track of streamRef.current.getTracks()) track.stop();
-      streamRef.current = null;
+    if (micStreamRef.current) {
+      for (const track of micStreamRef.current.getTracks()) track.stop();
+      micStreamRef.current = null;
+    }
+    if (systemStreamRef.current) {
+      for (const track of systemStreamRef.current.getTracks()) track.stop();
+      systemStreamRef.current = null;
+    }
+    if (mixerCtxRef.current) {
+      void mixerCtxRef.current.close();
+      mixerCtxRef.current = null;
     }
     stopLevelMeter();
     recorderRef.current = null;
@@ -131,10 +145,23 @@ export function useMeetingRecorder() {
     if (!slot) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      // Mic is required — fail the whole start if it's denied.
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = micStream;
 
-      const recorder = new MediaRecorder(stream, pickMimeType());
+      // System audio is optional — request it, but fall back to
+      // mic-only if the user denies the macOS Screen Recording prompt
+      // or the platform doesn't support it (Linux, older macOS).
+      const systemStream = await tryCaptureSystemAudio();
+      systemStreamRef.current = systemStream;
+
+      const { recordedStream, mixerCtx, captureMode } = buildRecordedStream(
+        micStream,
+        systemStream,
+      );
+      if (mixerCtx) mixerCtxRef.current = mixerCtx;
+
+      const recorder = new MediaRecorder(recordedStream, pickMimeType());
       recorderRef.current = recorder;
       chunksRef.current = [];
 
@@ -147,8 +174,11 @@ export function useMeetingRecorder() {
       };
 
       recorder.start(1000);
-      startLevelMeter(stream);
-      store.markRecordingStarted(slot);
+      // Level meter watches the mic only — system audio levels would
+      // distract from the "is my voice being picked up" question that
+      // the dock's meter is really answering.
+      startLevelMeter(micStream);
+      store.markRecordingStarted({ ...slot, captureMode });
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
       releaseHardware();
@@ -173,10 +203,18 @@ export function useMeetingRecorder() {
       });
     }
 
-    const stream = streamRef.current;
-    if (stream) {
-      for (const track of stream.getTracks()) track.stop();
-      streamRef.current = null;
+    // Stop both source streams + the mixer if it was used.
+    if (micStreamRef.current) {
+      for (const track of micStreamRef.current.getTracks()) track.stop();
+      micStreamRef.current = null;
+    }
+    if (systemStreamRef.current) {
+      for (const track of systemStreamRef.current.getTracks()) track.stop();
+      systemStreamRef.current = null;
+    }
+    if (mixerCtxRef.current) {
+      void mixerCtxRef.current.close();
+      mixerCtxRef.current = null;
     }
     stopLevelMeter();
 
@@ -206,6 +244,7 @@ export function useMeetingRecorder() {
     dock,
     elapsedMs,
     audioLevel,
+    captureMode,
     error,
     lastRecording,
     start,
@@ -214,5 +253,73 @@ export function useMeetingRecorder() {
     openDock,
     closeDock,
     reset,
+  };
+}
+
+// ============================================================================
+// System audio capture + mixing
+// ============================================================================
+
+/**
+ * Try to grab the system-audio stream via getDisplayMedia. We request
+ * video too because Electron / browsers require at least one of the
+ * two — but we immediately stop the video tracks once we have the
+ * stream, since we only want audio. Returns null on any failure
+ * (user denied, platform doesn't support, etc.).
+ */
+async function tryCaptureSystemAudio(): Promise<MediaStream | null> {
+  if (!navigator.mediaDevices?.getDisplayMedia) return null;
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: true,
+    });
+    // We only want audio. Drop the video tracks immediately so the
+    // composite engine isn't capturing pixels.
+    for (const track of stream.getVideoTracks()) {
+      track.stop();
+      stream.removeTrack(track);
+    }
+    // If the platform handed us a stream with no audio at all, treat
+    // as a fallback case rather than a partial success.
+    if (stream.getAudioTracks().length === 0) {
+      for (const track of stream.getTracks()) track.stop();
+      return null;
+    }
+    return stream;
+  } catch (err) {
+    logger.warn('[useMeetingRecorder] system audio unavailable; falling back to mic-only', err);
+    return null;
+  }
+}
+
+/**
+ * Builds the MediaStream MediaRecorder will record from. When only mic
+ * is present we just hand the mic stream straight through (no extra
+ * AudioContext, no overhead). When system audio is also present we mix
+ * both via Web Audio's createMediaStreamSource + a shared destination.
+ */
+function buildRecordedStream(
+  micStream: MediaStream,
+  systemStream: MediaStream | null,
+): {
+  recordedStream: MediaStream;
+  mixerCtx: AudioContext | null;
+  captureMode: 'mic-only' | 'mic+system';
+} {
+  if (!systemStream) {
+    return { recordedStream: micStream, mixerCtx: null, captureMode: 'mic-only' };
+  }
+  const AudioCtx =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const destination = ctx.createMediaStreamDestination();
+  ctx.createMediaStreamSource(micStream).connect(destination);
+  ctx.createMediaStreamSource(systemStream).connect(destination);
+  return {
+    recordedStream: destination.stream,
+    mixerCtx: ctx,
+    captureMode: 'mic+system',
   };
 }

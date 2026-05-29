@@ -5,7 +5,7 @@
  */
 
 import 'dotenv/config';
-import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron';
+import { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, session } from 'electron';
 import path from 'node:path';
 import net from 'node:net';
 import { lookup as dnsLookup } from 'node:dns';
@@ -360,6 +360,28 @@ app.on('ready', async () => {
         updateTrayState({ phase: payload.phase });
       },
     );
+
+    // Auto-grant the renderer's getDisplayMedia() requests so the
+    // meeting recorder can capture system audio without forcing the
+    // user through Electron's source-picker every time. We grant the
+    // primary screen + loopback audio. macOS still gates this behind
+    // its own Screen Recording permission prompt the first time; once
+    // granted, subsequent calls just work.
+    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+      desktopCapturer
+        .getSources({ types: ['screen'] })
+        .then((sources) => {
+          if (sources.length === 0) {
+            callback({});
+            return;
+          }
+          callback({ video: sources[0], audio: 'loopback' });
+        })
+        .catch((error) => {
+          logger.error('[DisplayMedia] failed to enumerate sources', error);
+          callback({});
+        });
+    });
 
     // Create window
     await createWindow();

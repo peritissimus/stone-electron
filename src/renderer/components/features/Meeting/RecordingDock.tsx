@@ -19,6 +19,7 @@ export function RecordingDock() {
     dock,
     elapsedMs,
     audioLevel,
+    captureMode,
     error,
     lastRecording,
     start,
@@ -77,7 +78,7 @@ export function RecordingDock() {
       )}
     >
       <header className="flex items-center gap-2 px-1">
-        <div className="flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary">
+        <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
           <Microphone size={12} weight="fill" />
         </div>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -104,6 +105,7 @@ export function RecordingDock() {
         phase={phase}
         elapsedMs={elapsedMs}
         audioLevel={audioLevel}
+        captureMode={captureMode}
         error={error}
         lastTitle={lastRecording?.title ?? null}
       />
@@ -158,20 +160,27 @@ function PhaseBody({
   phase,
   elapsedMs,
   audioLevel,
+  captureMode,
   error,
   lastTitle,
 }: {
   phase: RecorderPhase;
   elapsedMs: number;
   audioLevel: number;
+  captureMode: 'mic-only' | 'mic+system';
   error: string | null;
   lastTitle: string | null;
 }) {
   return (
-    <div className="relative mt-3 min-h-[68px] rounded-xl bg-muted/40 px-3 py-3">
+    <div className="relative mt-3 min-h-[68px] rounded-xl bg-muted/40 p-3">
       <Idle visible={phase === 'idle'} />
       <Preparing visible={phase === 'preparing'} />
-      <Recording visible={phase === 'recording'} elapsedMs={elapsedMs} audioLevel={audioLevel} />
+      <Recording
+        visible={phase === 'recording'}
+        elapsedMs={elapsedMs}
+        audioLevel={audioLevel}
+        captureMode={captureMode}
+      />
       <Processing
         visible={phase === 'uploading' || phase === 'finalizing'}
         label={phase === 'uploading' ? 'Saving audio locally' : 'Transcribing and summarising'}
@@ -192,7 +201,9 @@ function Idle({ visible }: { visible: boolean }) {
   return (
     <div className={layerCn(visible)}>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Captures from your default mic. Audio stays under{' '}
+        Captures your microphone plus system audio (remote meeting voices). macOS will ask
+        for Screen Recording permission the first time so it can read the loopback stream.
+        Audio stays under{' '}
         <code className="rounded bg-background px-1 py-px font-mono text-[10px]">
           .stone/recordings
         </code>{' '}
@@ -217,23 +228,40 @@ function Recording({
   visible,
   elapsedMs,
   audioLevel,
+  captureMode,
 }: {
   visible: boolean;
   elapsedMs: number;
   audioLevel: number;
+  captureMode: 'mic-only' | 'mic+system';
 }) {
   return (
     <div className={layerCn(visible)}>
       <div className="flex items-center gap-3">
-        <span className="relative flex h-2.5 w-2.5 shrink-0">
+        <span className="relative flex size-2.5 shrink-0">
           <span className="absolute inset-0 animate-ping rounded-full bg-destructive opacity-60" />
-          <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-destructive" />
+          <span className="relative inline-block size-2.5 rounded-full bg-destructive" />
         </span>
         <span className="font-mono text-[22px] font-medium tabular-nums leading-none text-foreground">
           {formatElapsed(elapsedMs)}
         </span>
         <span className="text-[10px] font-medium uppercase tracking-wider text-destructive">
           Recording
+        </span>
+        <span
+          className={cn(
+            'ml-auto rounded-md px-1.5 py-px text-[10px] font-medium',
+            captureMode === 'mic+system'
+              ? 'bg-emerald-500/15 text-emerald-600'
+              : 'bg-muted text-muted-foreground',
+          )}
+          title={
+            captureMode === 'mic+system'
+              ? 'Capturing your microphone plus system audio (other meeting participants).'
+              : 'Capturing your microphone only. System audio was unavailable or denied.'
+          }
+        >
+          {captureMode === 'mic+system' ? 'mic + system' : 'mic only'}
         </span>
       </div>
       <LevelMeter level={audioLevel} />
@@ -259,7 +287,7 @@ function Done({ visible, title }: { visible: boolean; title: string | null }) {
   return (
     <div className={layerCn(visible)}>
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+        <div className="mt-0.5 flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
           <Check size={12} weight="bold" />
         </div>
         <div className="flex-1 min-w-0">
@@ -279,7 +307,7 @@ function Errored({ visible, message }: { visible: boolean; message: string | nul
   return (
     <div className={layerCn(visible)}>
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+        <div className="mt-0.5 flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive">
           <Warning size={12} weight="fill" />
         </div>
         <div className="flex-1 text-[12px] leading-relaxed text-destructive">
