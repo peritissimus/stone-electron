@@ -24,7 +24,7 @@ const RecentNote = memo<RecentNoteProps>(function RecentNote({ note, onClick }) 
       size="normal"
       onClick={() => onClick(note.id)}
       className="rounded-lg border-none"
-      left={<FileText className="w-4 h-4" />}
+      left={<FileText className="size-4" />}
       title={note.title || 'Untitled'}
       subtitle={folderPath}
       right={<span className="text-xs text-muted-foreground">{formatRelativeDate(note.updatedAt)}</span>}
@@ -86,10 +86,11 @@ export function HomePage() {
             {/* Continue Writing - only show if there's a recent note */}
             {continueNote && (
               <button
+                type="button"
                 onClick={() => handleNoteClick(continueNote.id)}
                 className="w-full flex items-center gap-3 p-4 rounded-lg bg-accent/20 hover:bg-accent/30 transition-colors group text-left"
               >
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <PencilSimple size={20} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -109,10 +110,11 @@ export function HomePage() {
 
             {/* Today's Journal */}
             <button
+              type="button"
               onClick={handleJournalClick}
               className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group text-left"
             >
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center">
                 <BookOpen size={20} className="text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
@@ -130,10 +132,11 @@ export function HomePage() {
 
             {/* Quick Note */}
             <button
+              type="button"
               onClick={handleWorkNoteClick}
               className="w-full flex items-center gap-3 p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group text-left"
             >
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <div className="size-10 rounded-full bg-muted flex items-center justify-center">
                 <Plus size={20} className="text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
@@ -179,8 +182,8 @@ export function HomePage() {
           {/* Empty State */}
           {notes.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                <FileText className="w-6 h-6 text-muted-foreground" />
+              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
+                <FileText className="size-6 text-muted-foreground" />
               </div>
               <h3 className="font-medium mb-1">No notes yet</h3>
               <p className="text-sm text-muted-foreground">Create your first note to get started</p>

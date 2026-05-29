@@ -22,8 +22,8 @@ function EditorSkeleton() {
 
       {/* TODO items skeleton - matches task list layout */}
       <div className="space-y-2 pt-2">
-        {SKELETON_WIDTHS.map((width, i) => (
-          <div key={i} className="flex items-center gap-3">
+        {SKELETON_WIDTHS.map((width) => (
+          <div key={width} className="flex items-center gap-3">
             <Skeleton className="h-5 w-14 rounded-full" />
             <Skeleton className="h-5" style={{ width }} />
           </div>
@@ -40,6 +40,7 @@ function StaleConfigBanner({ onDismiss }: { onDismiss: () => void }) {
         Editor settings changed. Close and reopen this note to apply the new configuration.
       </span>
       <button
+        type="button"
         onClick={onDismiss}
         className="text-amber-900/70 hover:text-amber-900 dark:text-amber-100/70 dark:hover:text-amber-100 underline-offset-2 hover:underline"
       >

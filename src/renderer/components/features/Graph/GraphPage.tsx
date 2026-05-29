@@ -87,7 +87,7 @@ export function GraphPage() {
           <Skeleton className="w-24 h-4 rounded" />
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -127,7 +127,7 @@ export function GraphPage() {
         </button>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-primary"></span>
+            <span className="size-2 rounded-full bg-primary"></span>
             {visibleGraphData.nodes.length} notes
           </span>
           <span className="flex items-center gap-2">

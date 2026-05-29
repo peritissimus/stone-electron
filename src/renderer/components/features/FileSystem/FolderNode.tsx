@@ -141,7 +141,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
       }
     };
 
-    const handleClick = (event: React.MouseEvent) => {
+    const handleClick = (event: React.MouseEvent | React.KeyboardEvent) => {
       event.stopPropagation();
       setCursor(normalizedPath);
       toggleExpanded(normalizedPath);
@@ -170,7 +170,15 @@ export const FolderNode = React.memo<FolderNodeProps>(
               'hover:bg-accent/20',
               isCursor && 'ring-2 ring-primary/50',
             )}
+            role="button"
+            tabIndex={-1}
             onClick={handleClick}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleClick(e);
+              }
+            }}
             style={{ paddingLeft: `${level * 20 + 8}px` }}
           >
             {isExpanded ? (
@@ -214,7 +222,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
                     size="compact"
                     icon={<DotsThreeVertical size={14} />}
                     label="Folder options"
-                    className="h-5 w-5 hover:bg-accent"
+                    className="size-5 hover:bg-accent"
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

@@ -24,7 +24,7 @@ export function TasksHeader({ sidebarOpen, toggleSidebar, counts }: TasksHeaderP
           onClick={toggleSidebar}
         />
       )}
-      <CheckSquare className="w-4 h-4 text-muted-foreground" />
+      <CheckSquare className="size-4 text-muted-foreground" />
       <span className="text-sm font-medium">Tasks</span>
       <div className="flex-1" />
       <span className="text-xs text-muted-foreground">

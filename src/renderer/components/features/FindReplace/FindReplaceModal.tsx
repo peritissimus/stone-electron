@@ -137,12 +137,24 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
       {/* Backdrop */}
       <div
+        role="button"
+        tabIndex={-1}
+        aria-label="Close find and replace"
         className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-md"
         onClick={handleClose}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClose();
+          }
+        }}
       />
 
       {/* Modal */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Find and replace"
         className={cn(
           'relative w-full max-w-md mx-4 flex flex-col gap-3 rounded-xl border border-border bg-popover p-4',
           'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
@@ -159,7 +171,7 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
             onClick={handleClose}
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="size-8"
             title="Close (Escape)"
           >
             <X size={16} />
@@ -197,7 +209,7 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
             disabled={matchCount === 0}
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-lg text-muted-foreground"
+            className="size-9 rounded-lg text-muted-foreground"
             title="Previous (Shift+Enter)"
           >
             <ArrowUp size={18} />
@@ -208,7 +220,7 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
             disabled={matchCount === 0}
             variant="ghost"
             size="icon"
-            className="h-9 w-9 rounded-lg text-muted-foreground"
+            className="size-9 rounded-lg text-muted-foreground"
             title="Next (Enter)"
           >
             <ArrowDown size={18} />

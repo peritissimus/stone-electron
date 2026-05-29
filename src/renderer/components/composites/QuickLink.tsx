@@ -35,6 +35,7 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
 
     return (
       <button
+        type="button"
         ref={ref}
         className={cn(
           'w-full',

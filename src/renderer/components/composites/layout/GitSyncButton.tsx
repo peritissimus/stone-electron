@@ -59,6 +59,7 @@ export function GitSyncButton() {
   return (
     <div className="px-2 py-1.5 border-t border-border">
       <button
+        type="button"
         onClick={handleSync}
         disabled={syncing || !status.hasRemote}
         className={cn(

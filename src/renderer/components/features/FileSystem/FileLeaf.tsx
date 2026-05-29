@@ -101,7 +101,15 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
           isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
           isCursor && 'ring-2 ring-primary/50',
         )}
+        role="button"
+        tabIndex={-1}
         onClick={handleOpen}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleOpen();
+          }
+        }}
         style={{ paddingLeft: `${level * 20 + 8}px` }}
       >
         <FileText
@@ -134,7 +142,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
                 size="compact"
                 icon={<DotsThreeVertical size={14} />}
                 label="File options"
-                className="h-5 w-5 hover:bg-accent"
+                className="size-5 hover:bg-accent"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">

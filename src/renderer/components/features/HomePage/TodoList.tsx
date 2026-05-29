@@ -143,7 +143,7 @@ export function TodoList({ onTodoClick }: TodoListProps) {
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
           <div key={i} className="flex items-start gap-3 p-3 rounded-lg">
-            <Skeleton className="w-4 h-4 rounded mt-0.5" />
+            <Skeleton className="size-4 rounded mt-0.5" />
             <div className="flex-1 space-y-2">
               <Skeleton className="h-4 w-3/4" />
               <Skeleton className="h-3 w-1/3" />

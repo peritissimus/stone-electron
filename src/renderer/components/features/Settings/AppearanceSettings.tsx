@@ -86,6 +86,7 @@ function AccentColorPicker({ value, onChange }: AccentColorPickerProps) {
     <div className="flex flex-wrap gap-2">
       {colors.map(([key, { name, hue }]) => (
         <button
+          type="button"
           key={key}
           onClick={() => onChange(key)}
           className={`w-8 h-8 rounded-full transition-[box-shadow,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-95 ${

@@ -7,7 +7,7 @@ export function SidebarNavList() {
   const location = useLocation();
 
   return (
-    <div className="px-2 py-2 border-b border-border space-y-0.5">
+    <div className="p-2 border-b border-border space-y-0.5">
       {PRIMARY_DESTINATIONS.map((destination) => (
         <QuickLink
           key={destination.id}

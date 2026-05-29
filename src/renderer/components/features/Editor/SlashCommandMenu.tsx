@@ -88,7 +88,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuRef, SlashCommandMenu
         <div className="p-1">
           {items.map((item, index) => (
             <CommandMenuItem
-              key={index}
+              key={item.title}
               icon={item.icon}
               title={item.title}
               description={item.description}

@@ -419,6 +419,7 @@ function CopyPathButton({ filePath, workspacePath }: { filePath: string; workspa
 
   return (
     <button
+      type="button"
       onClick={handleCopy}
       className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent/20 transition-colors"
       title={copied ? 'Copied!' : `Copy path: ${fullPath}`}

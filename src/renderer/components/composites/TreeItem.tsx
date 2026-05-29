@@ -108,8 +108,11 @@ export const TreeItem = React.memo(React.forwardRef<HTMLButtonElement, TreeItemP
             </Text>
           </Button>
           {right && (
+            // Presentational wrapper: it only stops propagation and forwards
+            // events to the interactive content rendered in the `right` slot.
             <div
               {...restRightSlotProps}
+              role="presentation"
               className={cn('ml-2 flex items-center gap-1 flex-shrink-0', rightClassName)}
               onClick={(event) => {
                 event.stopPropagation();

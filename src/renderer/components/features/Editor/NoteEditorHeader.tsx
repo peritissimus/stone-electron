@@ -85,10 +85,11 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
   const [editValue, setEditValue] = useState(title);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync editValue when title prop changes (e.g., switching notes)
+  // Sync editValue when the title prop changes (e.g., switching notes),
+  // but never while the user is mid-edit — that would clobber their input.
   useEffect(() => {
-    setEditValue(title);
-  }, [title]);
+    if (!isEditing) setEditValue(title);
+  }, [title, isEditing]);
 
   // Focus and select all when entering edit mode
   useEffect(() => {
@@ -151,6 +152,7 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
           <input
             ref={inputRef}
             type="text"
+            aria-label="Note title"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleSaveAndExit}
@@ -168,6 +170,7 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
           />
         ) : (
           <button
+            type="button"
             onClick={handleStartEditing}
             className={cn(
               'w-full text-left px-1.5 py-0.5 -mx-1.5',
@@ -193,7 +196,7 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
         <IconButton
           size="normal"
           icon={
-            <div className="relative w-4 h-4">
+            <div className="relative size-4">
               <div
                 className={cn(
                   "absolute inset-0 flex items-center justify-center",

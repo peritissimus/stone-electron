@@ -21,7 +21,7 @@ export function AboutSettings() {
       <ContainerStack gap="lg">
         <div className="flex items-center gap-4 rounded-lg border border-border/60 bg-card/40 px-4 py-3">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base font-semibold tracking-tight text-primary"
+            className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-base font-semibold tracking-tight text-primary"
             aria-hidden
           >
             St

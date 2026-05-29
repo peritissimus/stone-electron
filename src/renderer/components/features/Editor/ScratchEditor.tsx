@@ -55,6 +55,7 @@ export function ScratchEditor() {
         <div className="text-center space-y-3">
           <p>No file selected.</p>
           <button
+            type="button"
             className="px-3 py-1.5 rounded-md border border-border hover:bg-accent/20 transition-colors"
             onClick={() => navigate('/home')}
           >
@@ -84,6 +85,7 @@ export function ScratchEditor() {
             {path}
           </span>
           <button
+            type="button"
             className="px-2 py-1 rounded-md text-xs border border-border hover:bg-accent/20 transition-colors disabled:opacity-50"
             onClick={() => void save()}
             disabled={!isDirty || status !== 'ready'}

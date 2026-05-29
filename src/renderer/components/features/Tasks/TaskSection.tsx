@@ -49,6 +49,7 @@ export const TaskSection = memo(function TaskSection({
   return (
     <div className="mb-4">
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/10 transition-colors"
       >

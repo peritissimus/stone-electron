@@ -19,8 +19,8 @@ export function StatusCard({ title, items, className }: StatusCardProps) {
       <ContainerStack gap="md">
         {title && <Body weight="medium">{title}</Body>}
         <ContainerGrid cols={2} gap="md">
-          {items.map((item, index) => (
-            <ContainerFlex key={index} gap="xs" align="baseline">
+          {items.map((item) => (
+            <ContainerFlex key={item.label} gap="xs" align="baseline">
               <Text size="sm" variant="muted" as="span">
                 {item.label}:
               </Text>

@@ -42,6 +42,7 @@ function ShortcutRow({ shortcut, isCustomized, onEdit, onReset }: ShortcutRowPro
       </div>
       <div className="flex items-center gap-2">
         <button
+          type="button"
           onClick={onEdit}
           className={cn(
             'px-3 py-1.5 rounded-md text-xs font-mono tabular-nums',
@@ -54,6 +55,7 @@ function ShortcutRow({ shortcut, isCustomized, onEdit, onReset }: ShortcutRowPro
         </button>
         {isCustomized && (
           <button
+            type="button"
             onClick={onReset}
             className={cn(
               'p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50',
@@ -132,6 +134,7 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
 
         <div className="flex flex-col items-center gap-4 mb-6">
           <button
+            type="button"
             onClick={() => setRecording(true)}
             className={cn(
               'w-full py-6 rounded-lg border-2 border-dashed',
@@ -143,7 +146,7 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
           >
             {recording ? (
               <span className="text-sm text-primary animate-pulse">
-                Press your shortcut keys...
+                Press your shortcut keys…
               </span>
             ) : (
               <span className="text-2xl font-mono tabular-nums">

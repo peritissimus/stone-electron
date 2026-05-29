@@ -114,6 +114,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
     <div className="border-t border-border bg-muted/20">
       {/* Header */}
       <button
+        type="button"
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
           'w-full flex items-center justify-between',
@@ -123,7 +124,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="relative w-3.5 h-3.5">
+          <div className="relative size-3.5">
             <div
               className={cn(
                 "absolute inset-0 flex items-center justify-center",
@@ -155,7 +156,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
             <span className="text-xs bg-muted px-1.5 py-0.5 rounded-full tabular-nums">{totalLinks}</span>
           )}
         </div>
-        <div className="relative w-3.5 h-3.5">
+        <div className="relative size-3.5">
           <div
             className={cn(
               "absolute inset-0 flex items-center justify-center",
@@ -188,7 +189,7 @@ export function BacklinksPanel({ noteId }: BacklinksPanelProps) {
         <div className="px-2 pb-2 space-y-2">
           {isLoading ? (
             <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-              Loading links...
+              Loading links…
             </div>
           ) : (
             <>

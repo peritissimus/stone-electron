@@ -126,7 +126,7 @@ function TasksContent({
   if (counts.total === 0) {
     return (
       <div className="text-center py-16">
-        <CheckSquare className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+        <CheckSquare className="size-12 text-muted-foreground/30 mx-auto mb-4" />
         <h2 className="text-lg font-medium text-muted-foreground mb-2">No tasks yet</h2>
         <p className="text-sm text-muted-foreground/70">
           Create tasks in your notes using TODO, DOING, or other task states

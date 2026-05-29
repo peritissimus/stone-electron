@@ -31,7 +31,7 @@ function SettingRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md border border-border/70 px-3 py-3">
+    <div className="flex items-center justify-between gap-4 rounded-md border border-border/70 p-3">
       <div className="min-w-0">
         <Body size="sm" weight="medium">
           {title}
@@ -167,7 +167,7 @@ export function AISettings() {
       description="Configure local and cloud models for indexing, ranking, and answering questions about your notes."
     >
       <ContainerStack gap="lg">
-        {!loaded && <Body variant="muted">Loading AI settings...</Body>}
+        {!loaded && <Body variant="muted">Loading AI settings…</Body>}
         {error && <Message type="error" text={error} />}
         {message && <Message type={message.type} text={message.text} />}
 
@@ -230,7 +230,7 @@ export function AISettings() {
             <Key size={14} />
             Provider Keys
           </Label>
-          {!keysLoaded && <Body variant="muted">Detecting provider keys...</Body>}
+          {!keysLoaded && <Body variant="muted">Detecting provider keys…</Body>}
           {providerKeys.map((providerKey) => (
             <ProviderKeyRow
               key={providerKey.provider}
@@ -407,7 +407,7 @@ function ProviderKeyRow({
     : 'Missing';
 
   return (
-    <div className="rounded-md border border-border/70 px-3 py-3">
+    <div className="rounded-md border border-border/70 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">

@@ -35,6 +35,7 @@ export const CommandItemRow = memo(function CommandItemRow({
 }: CommandItemRowProps) {
   return (
     <button
+      type="button"
       data-index={index}
       onClick={onClick}
       onMouseEnter={onMouseEnter}

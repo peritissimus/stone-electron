@@ -73,7 +73,7 @@ export function TasksFilterBar({
       {folders.length > 0 && (
         <Select value={folderFilter} onValueChange={setFolderFilter}>
           <SelectTrigger className={cn('w-[140px] h-8')}>
-            <FolderOpen className="w-4 h-4 mr-2 text-muted-foreground" />
+            <FolderOpen className="size-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="All notebooks" />
           </SelectTrigger>
           <SelectContent>

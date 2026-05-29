@@ -182,7 +182,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   if (isRendering) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
-        <div className="text-sm text-muted-foreground">Rendering diagram...</div>
+        <div className="text-sm text-muted-foreground">Rendering diagram…</div>
       </div>
     );
   }
@@ -262,6 +262,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
           <input
             ref={editInputRef}
             type="text"
+            aria-label="Edit node label"
             defaultValue={editing.label}
             className={cn(
               'px-4 py-2.5 text-sm rounded-xl border-0',

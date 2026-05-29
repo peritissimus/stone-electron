@@ -96,6 +96,7 @@ export function AskNotesPanel() {
             <input
               ref={inputRef}
               type="text"
+              aria-label="Ask anything about your notes"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleKeyDown}
@@ -112,7 +113,7 @@ export function AskNotesPanel() {
             />
             {loading && (
               <div
-                className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-primary"
+                className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-primary"
                 aria-hidden
               />
             )}
@@ -122,7 +123,7 @@ export function AskNotesPanel() {
 
           {/* Body */}
           {hasContent && (
-            <div className="max-h-[55vh] overflow-y-auto px-4 py-4">
+            <div className="max-h-[55vh] overflow-y-auto p-4">
               {error && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {error}

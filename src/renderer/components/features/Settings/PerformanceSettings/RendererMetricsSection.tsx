@@ -76,9 +76,9 @@ export function RendererMetricsSection({ renderer }: { renderer: Renderer }) {
             Long Tasks ({renderer.longTasks.length})
           </Label>
           <div className="space-y-1 max-h-32 overflow-y-auto">
-            {renderer.longTasks.slice(-5).map((task, i) => (
+            {renderer.longTasks.slice(-5).map((task) => (
               <div
-                key={i}
+                key={task.startTime}
                 className="flex justify-between items-center p-2 rounded bg-secondary/20 text-xs"
               >
                 <span className="truncate max-w-[200px]">{task.name || 'anonymous'}</span>

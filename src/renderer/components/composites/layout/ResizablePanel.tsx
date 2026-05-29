@@ -65,6 +65,9 @@ export function ResizablePanel({
 
       {/* Resizer */}
       <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panel"
         className={cn(
           'w-1 cursor-col-resize bg-transparent hover:bg-primary transition-colors',
           resizerClassName,

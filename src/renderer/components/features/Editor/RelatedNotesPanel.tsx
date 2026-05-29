@@ -53,7 +53,7 @@ export function RelatedNotesPanel({ noteId }: RelatedNotesPanelProps) {
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="relative w-3.5 h-3.5">
+          <div className="relative size-3.5">
             <div
               className={cn(
                 'absolute inset-0 flex items-center justify-center',
@@ -87,7 +87,7 @@ export function RelatedNotesPanel({ noteId }: RelatedNotesPanelProps) {
             </span>
           )}
         </div>
-        <div className="relative w-3.5 h-3.5">
+        <div className="relative size-3.5">
           <div
             className={cn(
               'absolute inset-0 flex items-center justify-center',

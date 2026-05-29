@@ -39,6 +39,7 @@ export function TabbedModal({
     <div className="space-y-1">
       {tabs.map((tab) => (
         <button
+          type="button"
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors duration-150 active:scale-[0.98] ${

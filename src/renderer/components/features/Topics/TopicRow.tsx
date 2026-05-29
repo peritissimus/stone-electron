@@ -14,6 +14,7 @@ export const TopicRow = memo(function TopicRow({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         'w-full flex items-center gap-3 px-4 py-3 text-left',
@@ -23,7 +24,7 @@ export const TopicRow = memo(function TopicRow({
       )}
     >
       <div
-        className="w-2.5 h-2.5 rounded-full shrink-0"
+        className="size-2.5 rounded-full shrink-0"
         style={{ backgroundColor: topic.color || '#6366f1' }}
       />
       <span className="flex-1 text-sm font-medium truncate">{topic.name}</span>

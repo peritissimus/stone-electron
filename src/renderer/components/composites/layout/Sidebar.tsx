@@ -30,6 +30,8 @@ export function Sidebar() {
   return (
     <div
       ref={containerRef}
+      role="navigation"
+      aria-label="Sidebar"
       tabIndex={-1}
       data-sidebar-root="true"
       onKeyDown={handleKeyDown}

@@ -21,6 +21,7 @@ import {
 } from 'phosphor-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
+import { Button } from '@renderer/components/base/ui/button';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useMeetings } from '@renderer/hooks/useMeetings';
@@ -83,18 +84,10 @@ export function MeetingsPage() {
           </span>
         )}
         <div className="flex-1" />
-        <button
-          type="button"
-          onClick={openDock}
-          className={cn(
-            'inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3',
-            'text-xs font-medium text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.06)]',
-            'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
-          )}
-        >
-          <Microphone size={12} weight="fill" />
+        <Button variant="ghost" size="sm" onClick={openDock} className="text-xs">
+          <Microphone size={14} />
           New recording
-        </button>
+        </Button>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -362,26 +355,26 @@ function DeleteButton({ onConfirm, disabled }: { onConfirm: () => void; disabled
 function StatusBadge({ status }: { status: MeetingRecordingStatus }) {
   if (status === 'ready') {
     return (
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+      <span className="flex size-4 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
         <Check size={8} weight="bold" />
       </span>
     );
   }
   if (status === 'failed') {
     return (
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+      <span className="flex size-4 items-center justify-center rounded-full bg-destructive/15 text-destructive">
         <Warning size={8} weight="fill" />
       </span>
     );
   }
   if (status === 'recording' || status === 'transcribing' || status === 'summarizing') {
     return (
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary/15 text-primary">
+      <span className="flex size-4 items-center justify-center rounded-full bg-primary/15 text-primary">
         <CircleNotch size={10} className="animate-spin" />
       </span>
     );
   }
-  return <span className="h-4 w-4 rounded-full bg-muted" />;
+  return <span className="size-4 rounded-full bg-muted" />;
 }
 
 function StatusInline({ status }: { status: MeetingRecordingStatus }) {
@@ -425,7 +418,7 @@ function EmptyLine({ children }: { children: React.ReactNode }) {
 function DetailPlaceholder({ hasAny }: { hasAny: boolean }) {
   return (
     <div className="flex h-full flex-col items-center justify-center px-8 text-center text-muted-foreground">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground/60">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground/60">
         <Microphone size={24} />
       </div>
       <p className="mt-4 text-balance text-sm">
@@ -440,12 +433,12 @@ function DetailPlaceholder({ hasAny }: { hasAny: boolean }) {
 function EmptyState({ onStart }: { onStart: () => void }) {
   return (
     <div className="px-6 py-10 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
         <Microphone size={20} weight="fill" />
       </div>
       <p className="mt-4 text-sm font-medium">No meetings yet</p>
       <p className="mt-1 text-pretty text-[12px] leading-relaxed text-muted-foreground">
-        Record a session — Stone transcribes locally and summarises into your journal.
+        Record a session: Stone transcribes locally and summarises into your journal.
       </p>
       <button
         type="button"
@@ -467,7 +460,7 @@ function ListSkeleton() {
   return (
     <ul className="p-2">
       {[0, 1, 2].map((i) => (
-        <li key={i} className="rounded-lg px-2.5 py-2.5">
+        <li key={i} className="rounded-lg p-2.5">
           <div className="h-3 w-32 animate-pulse rounded bg-muted" />
           <div className="mt-2 h-2 w-20 animate-pulse rounded bg-muted/60" />
         </li>

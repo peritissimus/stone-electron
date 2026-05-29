@@ -67,6 +67,7 @@ export const RawMarkdownEditor = forwardRef<HTMLDivElement, RawMarkdownEditorPro
         <div className="max-w-[900px] mx-auto px-16 py-12">
           <textarea
             ref={textareaRef}
+            aria-label="Raw markdown editor"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}

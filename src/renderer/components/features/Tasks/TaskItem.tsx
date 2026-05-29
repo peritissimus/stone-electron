@@ -54,7 +54,15 @@ export const TaskItem = memo(function TaskItem({ todo, onClick, onToggle, isTogg
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className="w-full flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/10 cursor-pointer transition-colors group text-left"
     >
       <div className="flex-1 min-w-0">
@@ -62,6 +70,7 @@ export const TaskItem = memo(function TaskItem({ todo, onClick, onToggle, isTogg
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
+                type="button"
                 onClick={(e) => e.stopPropagation()}
                 className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badgeColor} hover:opacity-80 transition-opacity`}
               >

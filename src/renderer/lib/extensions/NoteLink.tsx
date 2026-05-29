@@ -30,7 +30,7 @@ function NoteLinkNodeView({ node, selected }: { node: any; selected: boolean }) 
   const title = node.attrs.title || 'Unknown';
   const noteId = node.attrs.noteId;
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -45,7 +45,12 @@ function NoteLinkNodeView({ node, selected }: { node: any; selected: boolean }) 
   return (
     <NodeViewWrapper as="span" className="inline">
       <span
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') handleClick(e);
+        }}
         className={`
           inline-flex items-center gap-1
           px-1.5 py-0.5

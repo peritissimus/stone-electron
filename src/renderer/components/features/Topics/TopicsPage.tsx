@@ -201,7 +201,7 @@ export function TopicsPage() {
           onReconcile={handleReconcile}
         />
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
+          <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
         </div>
       </div>
     );
@@ -226,7 +226,7 @@ export function TopicsPage() {
             selectedTopicId ? 'lg:max-w-[60%]' : '',
           )}
         >
-          <div className="mx-auto w-full max-w-3xl space-y-6 px-6 py-6">
+          <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
@@ -293,8 +293,12 @@ export function TopicsPage() {
                     </span>
                   )}
                 </div>
-                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
+                <label
+                  htmlFor="topics-exclude-journals"
+                  className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs text-muted-foreground"
+                >
                   <Checkbox
+                    id="topics-exclude-journals"
                     checked={excludeJournal}
                     onCheckedChange={(checked) => setExcludeJournal(checked === true)}
                   />

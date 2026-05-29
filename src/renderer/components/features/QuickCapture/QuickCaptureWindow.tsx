@@ -83,11 +83,11 @@ export function QuickCaptureWindow() {
     <div className="relative h-screen w-screen p-2">
       <textarea
         ref={textareaRef}
+        aria-label="Quick capture note"
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What's on your mind? (Cmd+Enter to save)"
-        autoFocus
         rows={3}
         className="w-full h-full px-4 py-3 pr-12 text-sm bg-background/80 backdrop-blur-xl rounded-xl border-none outline-none resize-none placeholder:text-xs placeholder:text-muted-foreground/30"
       />
@@ -96,7 +96,7 @@ export function QuickCaptureWindow() {
         onClick={() => void handleStartRecording()}
         title="Start a meeting recording"
         aria-label="Start a meeting recording"
-        className="absolute bottom-4 right-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground/70 transition-[transform,background-color,color] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.96]"
+        className="absolute bottom-4 right-4 flex size-8 items-center justify-center rounded-lg text-muted-foreground/70 transition-[transform,background-color,color] duration-150 hover:bg-muted hover:text-foreground active:scale-[0.96]"
       >
         <Microphone size={14} weight="fill" />
       </button>

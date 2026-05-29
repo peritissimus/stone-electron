@@ -21,7 +21,7 @@ export function TopicNotesPanel({
     <div className="w-1/2 flex flex-col overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border/50 flex items-center gap-2">
         <div
-          className="w-2 h-2 rounded-full"
+          className="size-2 rounded-full"
           style={{ backgroundColor: topic.color || '#6366f1' }}
         />
         <span className="text-sm font-medium flex-1">{topic.name}</span>

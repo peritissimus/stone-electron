@@ -14,7 +14,7 @@ export function NoteEditorEmptyState({ onCreateNote }: NoteEditorEmptyStateProps
       <div className="text-center max-w-md">
         {/* Icon Circle */}
         <div className="mb-8 flex justify-center">
-          <div className="w-20 h-20 rounded-full bg-linear-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
+          <div className="size-20 rounded-full bg-linear-to-br from-primary/10 to-primary/5 border border-primary/20 flex items-center justify-center">
             <Article size={36} className="text-primary" />
           </div>
         </div>

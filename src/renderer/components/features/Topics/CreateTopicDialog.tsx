@@ -47,7 +47,9 @@ export function CreateTopicDialog({
           <div className="flex gap-2">
             {COLORS.map((c) => (
               <button
+                type="button"
                 key={c}
+                aria-label={`Select color ${c}`}
                 onClick={() => setColor(c)}
                 className={cn(
                   'w-6 h-6 rounded-full transition-transform',

@@ -55,6 +55,7 @@ export const ToolbarButton = React.forwardRef<HTMLButtonElement, ToolbarButtonPr
 
     return (
       <button
+        type="button"
         ref={ref}
         disabled={disabled}
         className={cn(

@@ -127,7 +127,7 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
                   variant="ghost"
                   size="sm"
                   onClick={handleZoomOut}
-                  className="h-8 w-8 p-0"
+                  className="size-8 p-0"
                   title="Zoom out"
                 >
                   <MagnifyingGlassMinus size={16} />
@@ -139,7 +139,7 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
                   variant="ghost"
                   size="sm"
                   onClick={handleZoomIn}
-                  className="h-8 w-8 p-0"
+                  className="size-8 p-0"
                   title="Zoom in"
                 >
                   <MagnifyingGlassPlus size={16} />
@@ -148,7 +148,7 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
                   variant="ghost"
                   size="sm"
                   onClick={handleFitToView}
-                  className="h-8 w-8 p-0"
+                  className="size-8 p-0"
                   title="Fit to view"
                 >
                   <ArrowsIn size={16} />
@@ -157,7 +157,7 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
                   variant="ghost"
                   size="sm"
                   onClick={handleResetView}
-                  className="h-8 w-8 p-0"
+                  className="size-8 p-0"
                   title="Reset to 100%"
                 >
                   <ArrowsOut size={16} />
@@ -174,6 +174,8 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
           {/* Diagram container */}
           <div
             ref={containerRef}
+            role="application"
+            aria-label="Diagram viewer — scroll to zoom, drag to pan"
             className={cn(
               'flex-1 relative bg-card/50 cursor-grab',
               isDragging && 'cursor-grabbing',

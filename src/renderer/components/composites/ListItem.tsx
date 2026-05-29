@@ -59,6 +59,7 @@ export const ListItem = React.memo(React.forwardRef<HTMLButtonElement, ListItemP
 
     return (
       <button
+        type="button"
         ref={ref}
         className={cn(
           'w-full text-left',

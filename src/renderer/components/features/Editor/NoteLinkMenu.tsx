@@ -103,6 +103,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
           {query && (
             <div className="mt-2 pt-2 border-t border-border">
               <button
+                type="button"
                 onClick={() => command({ id: 'create-new', title: query, note: null as any })}
                 className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm text-left hover:bg-muted transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]"
               >
@@ -130,6 +131,7 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
 
             return (
               <button
+                type="button"
                 key={item.id}
                 ref={(el) => (itemRefs.current[index] = el)}
                 onClick={() => selectItem(index)}
