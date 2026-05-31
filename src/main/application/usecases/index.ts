@@ -230,3 +230,10 @@ export {
   createTemplateUseCases,
   type TemplateUseCasesDeps,
 } from './template';
+
+// Daily Review Use Cases
+export {
+  GetDailyReviewUseCase,
+  createDailyReviewUseCases,
+  type DailyReviewUseCasesDeps,
+} from './dailyReview';

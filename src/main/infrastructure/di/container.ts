@@ -67,6 +67,7 @@ import type {
   IIndexUseCases,
   IMeetingUseCases,
   ITemplateUseCases,
+  IDailyReviewUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -94,6 +95,7 @@ import {
   createIndexUseCases,
   createMeetingUseCases,
   createTemplateUseCases,
+  createDailyReviewUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -262,6 +264,7 @@ export interface Container {
   indexUseCases: IIndexUseCases;
   meetingUseCases: IMeetingUseCases;
   templateUseCases: ITemplateUseCases;
+  dailyReviewUseCases: IDailyReviewUseCases;
   indexRepository: IIndexRepository;
 
   // IPC Adapters (class-based)
@@ -629,6 +632,16 @@ export function createContainer(deps: ContainerDeps): Container {
     createNote: noteUseCases.createNote,
   });
 
+  // Daily Review use cases — pure read aggregation over journal +
+  // meetings + tasks + notes for the /today page.
+  const dailyReviewUseCases = createDailyReviewUseCases({
+    noteRepository,
+    workspaceRepository,
+    meetingRepository,
+    journalUseCases,
+    taskUseCases,
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
   // ---------------------------------------------------------------------------
@@ -702,6 +715,7 @@ export function createContainer(deps: ContainerDeps): Container {
     indexUseCases,
     meetingUseCases,
     templateUseCases,
+    dailyReviewUseCases,
 
     // IPC Adapters
     noteIPC,
