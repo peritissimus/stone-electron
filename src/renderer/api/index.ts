@@ -94,6 +94,9 @@ export { templateAPI } from './templateAPI';
 // Daily Review API
 export { dailyReviewAPI } from './dailyReviewAPI';
 
+// Status Report API
+export { statusReportAPI, type StatusReportResult } from './statusReportAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

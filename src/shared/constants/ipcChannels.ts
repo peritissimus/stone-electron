@@ -143,6 +143,11 @@ export const DAILY_REVIEW_CHANNELS = {
   GET: 'dailyReview:get',
 } as const;
 
+// Status Report operations
+export const STATUS_REPORT_CHANNELS = {
+  GENERATE: 'statusReport:generate',
+} as const;
+
 // Attachment Operations
 export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',
@@ -341,6 +346,7 @@ export const ALL_CHANNELS = [
   ...Object.values(MEETING_CHANNELS),
   ...Object.values(TEMPLATE_CHANNELS),
   ...Object.values(DAILY_REVIEW_CHANNELS),
+  ...Object.values(STATUS_REPORT_CHANNELS),
 ];
 
 // Get all events as an array

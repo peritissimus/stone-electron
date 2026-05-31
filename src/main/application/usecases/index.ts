@@ -237,3 +237,10 @@ export {
   createDailyReviewUseCases,
   type DailyReviewUseCasesDeps,
 } from './dailyReview';
+
+// Status Report Use Cases
+export {
+  GenerateStatusReportUseCase,
+  createStatusReportUseCases,
+  type StatusReportUseCasesDeps,
+} from './statusReport';

@@ -119,3 +119,10 @@ export {
   unregisterDailyReviewHandlers,
   type DailyReviewIPCDeps,
 } from './DailyReviewIPC';
+
+// Status Report
+export {
+  registerStatusReportHandlers,
+  unregisterStatusReportHandlers,
+  type StatusReportIPCDeps,
+} from './StatusReportIPC';

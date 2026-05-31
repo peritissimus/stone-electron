@@ -21,13 +21,16 @@ import {
   Clock,
   ArrowClockwise,
   Calendar,
+  Sparkle,
 } from 'phosphor-react';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useDailyReview } from '@renderer/hooks/useDailyReview';
+import { useStatusReport } from '@renderer/hooks/useStatusReport';
 import { toNote } from '@renderer/navigation';
+import { StatusReportDialog } from './StatusReportDialog';
 import type {
   DailyReviewMeetingSummary,
   DailyReviewOnThisDayEntry,
@@ -39,6 +42,7 @@ import type {
 export function DailyReviewPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { snapshot, loading, loadedOnce, refreshing, error, reload } = useDailyReview();
+  const { openAndGenerate: openStatusReport } = useStatusReport();
 
   const headerDate = useMemo(() => formatHeaderDate(snapshot?.date ?? todayIso()), [
     snapshot?.date,
@@ -78,6 +82,16 @@ export function DailyReviewPage() {
           <ArrowClockwise size={14} />
           Refresh
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => void openStatusReport()}
+          className="text-xs"
+          title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
+        >
+          <Sparkle size={14} weight="fill" />
+          Weekly status
+        </Button>
       </header>
 
       <div className="flex-1 overflow-y-auto bg-background">
@@ -87,6 +101,8 @@ export function DailyReviewPage() {
           {snapshot && <Sections snapshot={snapshot} />}
         </div>
       </div>
+
+      <StatusReportDialog />
     </div>
   );
 }

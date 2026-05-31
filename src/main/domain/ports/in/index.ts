@@ -29,3 +29,4 @@ export * from './IIndexUseCases';
 export * from './IMeetingUseCases';
 export * from './ITemplateUseCases';
 export * from './IDailyReviewUseCases';
+export * from './IStatusReportUseCases';

@@ -68,6 +68,7 @@ import type {
   IMeetingUseCases,
   ITemplateUseCases,
   IDailyReviewUseCases,
+  IStatusReportUseCases,
 } from '@domain';
 
 // Application Layer - Use Cases
@@ -96,6 +97,7 @@ import {
   createMeetingUseCases,
   createTemplateUseCases,
   createDailyReviewUseCases,
+  createStatusReportUseCases,
 } from '@application';
 
 // Adapters Layer
@@ -146,6 +148,8 @@ import {
   unregisterTemplateHandlers,
   registerDailyReviewHandlers,
   unregisterDailyReviewHandlers,
+  registerStatusReportHandlers,
+  unregisterStatusReportHandlers,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   IndexRepository,
@@ -267,6 +271,7 @@ export interface Container {
   meetingUseCases: IMeetingUseCases;
   templateUseCases: ITemplateUseCases;
   dailyReviewUseCases: IDailyReviewUseCases;
+  statusReportUseCases: IStatusReportUseCases;
   indexRepository: IIndexRepository;
 
   // IPC Adapters (class-based)
@@ -644,6 +649,18 @@ export function createContainer(deps: ContainerDeps): Container {
     taskUseCases,
   });
 
+  // Status Report use cases — aggregate the past week's evidence and
+  // hand to the text generator. Cloud privacy gates fire inside the
+  // generator already; we add no new egress here.
+  const statusReportUseCases = createStatusReportUseCases({
+    noteRepository,
+    workspaceRepository,
+    meetingRepository,
+    journalUseCases,
+    taskUseCases,
+    textGenerator,
+  });
+
   // ---------------------------------------------------------------------------
   // Layer 5: IPC Adapters (depend on use cases)
   // ---------------------------------------------------------------------------
@@ -718,6 +735,7 @@ export function createContainer(deps: ContainerDeps): Container {
     meetingUseCases,
     templateUseCases,
     dailyReviewUseCases,
+    statusReportUseCases,
 
     // IPC Adapters
     noteIPC,
@@ -843,6 +861,7 @@ export function registerIPCHandlers(): void {
   registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
   registerTemplateHandlers({ templateUseCases: container.templateUseCases });
   registerDailyReviewHandlers({ dailyReviewUseCases: container.dailyReviewUseCases });
+  registerStatusReportHandlers({ statusReportUseCases: container.statusReportUseCases });
 
   // Performance monitoring handlers
   const { perfMonitor } = container;
@@ -888,5 +907,6 @@ export function unregisterIPCHandlers(): void {
   unregisterMeetingHandlers();
   unregisterTemplateHandlers();
   unregisterDailyReviewHandlers();
+  unregisterStatusReportHandlers();
   unregisterPerformanceHandlers();
 }
