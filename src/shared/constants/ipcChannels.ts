@@ -138,6 +138,11 @@ export const TEMPLATE_CHANNELS = {
   CREATE_NOTE_FROM_TEMPLATE: 'templates:createNote',
 } as const;
 
+// Daily Review operations
+export const DAILY_REVIEW_CHANNELS = {
+  GET: 'dailyReview:get',
+} as const;
+
 // Attachment Operations
 export const ATTACHMENT_CHANNELS = {
   ADD: 'attachments:add',
@@ -335,6 +340,7 @@ export const ALL_CHANNELS = [
   ...Object.values(PERFORMANCE_CHANNELS),
   ...Object.values(MEETING_CHANNELS),
   ...Object.values(TEMPLATE_CHANNELS),
+  ...Object.values(DAILY_REVIEW_CHANNELS),
 ];
 
 // Get all events as an array

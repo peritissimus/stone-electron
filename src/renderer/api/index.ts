@@ -91,6 +91,9 @@ export { meetingAPI } from './meetingAPI';
 // Templates API
 export { templateAPI } from './templateAPI';
 
+// Daily Review API
+export { dailyReviewAPI } from './dailyReviewAPI';
+
 // Performance Monitoring API
 export { performanceAPI } from './performanceAPI';
 export type {

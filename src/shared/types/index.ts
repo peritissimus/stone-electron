@@ -299,3 +299,6 @@ export * from './meeting';
 
 // Export template wire types
 export * from './template';
+
+// Export daily-review wire types
+export * from './dailyReview';

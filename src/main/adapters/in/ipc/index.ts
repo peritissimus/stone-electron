@@ -112,3 +112,10 @@ export {
   unregisterTemplateHandlers,
   type TemplateIPCDeps,
 } from './TemplateIPC';
+
+// Daily Review
+export {
+  registerDailyReviewHandlers,
+  unregisterDailyReviewHandlers,
+  type DailyReviewIPCDeps,
+} from './DailyReviewIPC';

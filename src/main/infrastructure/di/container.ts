@@ -144,6 +144,8 @@ import {
   unregisterMeetingHandlers,
   registerTemplateHandlers,
   unregisterTemplateHandlers,
+  registerDailyReviewHandlers,
+  unregisterDailyReviewHandlers,
   // Outbound (Secondary) - Persistence
   NoteRepository,
   IndexRepository,
@@ -840,6 +842,7 @@ export function registerIPCHandlers(): void {
   registerIndexHandlers({ indexUseCases: container.indexUseCases });
   registerMeetingHandlers({ meetingUseCases: container.meetingUseCases });
   registerTemplateHandlers({ templateUseCases: container.templateUseCases });
+  registerDailyReviewHandlers({ dailyReviewUseCases: container.dailyReviewUseCases });
 
   // Performance monitoring handlers
   const { perfMonitor } = container;
@@ -884,5 +887,6 @@ export function unregisterIPCHandlers(): void {
   unregisterIndexHandlers();
   unregisterMeetingHandlers();
   unregisterTemplateHandlers();
+  unregisterDailyReviewHandlers();
   unregisterPerformanceHandlers();
 }
