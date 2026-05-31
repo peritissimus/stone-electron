@@ -13,6 +13,7 @@ export const toTasks = (): string => '/tasks';
 export const toGraph = (): string => '/graph';
 export const toTopics = (): string => '/topics';
 export const toMeetings = (): string => '/meetings';
+export const toToday = (): string => '/today';
 export const toNote = (noteId: string): string => `/note/${noteId}`;
 export const toSettings = (section?: string): string =>
   section ? `/settings/${section}` : '/settings';

@@ -49,6 +49,11 @@ const MeetingsPage = lazy(() =>
     default: m.MeetingsPage,
   })),
 );
+const DailyReviewPage = lazy(() =>
+  import('@renderer/components/features/DailyReview').then((m) => ({
+    default: m.DailyReviewPage,
+  })),
+);
 const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
 
 import { useUI } from '@renderer/hooks/useUI';
@@ -439,6 +444,14 @@ export function MainLayout() {
                 element={
                   <Suspense fallback={<PageSkeleton />}>
                     <MeetingsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/today"
+                element={
+                  <Suspense fallback={<PageSkeleton />}>
+                    <DailyReviewPage />
                   </Suspense>
                 }
               />

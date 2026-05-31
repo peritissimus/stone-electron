@@ -8,6 +8,7 @@ export {
   toGraph,
   toTopics,
   toMeetings,
+  toToday,
   toNote,
   toSettings,
 } from './routes';
