@@ -25,17 +25,39 @@ import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
 import type { SuggestedTopic } from '@shared/types';
 
+/** Collapse preference survives restarts — purely a UI choice. */
+const COLLAPSED_KEY = 'knowledge-suggested-collapsed';
+
 export function SuggestedTopicsSection() {
   const { suggestions, loading, adopting, hasLoadedOnce, refresh, dismiss, adopt } =
     useSuggestedTopics();
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(COLLAPSED_KEY) === 'true',
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem(COLLAPSED_KEY, String(next));
+      return next;
+    });
+  }, []);
 
   if (!hasLoadedOnce && loading) {
     return (
       <section className="space-y-2">
-        <SectionHeader count={null} loading onRefresh={refresh} />
-        <div className="rounded-md border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted-foreground">
-          Looking for topical clusters…
-        </div>
+        <SectionHeader
+          count={null}
+          loading
+          collapsed={collapsed}
+          onToggle={toggleCollapsed}
+          onRefresh={refresh}
+        />
+        {!collapsed && (
+          <div className="rounded-md border border-dashed border-border/60 px-3 py-6 text-center text-xs text-muted-foreground">
+            Looking for topical clusters…
+          </div>
+        )}
       </section>
     );
   }
@@ -46,18 +68,29 @@ export function SuggestedTopicsSection() {
 
   return (
     <section className="space-y-2">
-      <SectionHeader count={suggestions.length} loading={loading} onRefresh={refresh} />
-      <div className="space-y-2">
-        {suggestions.map((s) => (
-          <SuggestionCard
-            key={s.id}
-            suggestion={s}
-            adopting={adopting === s.id}
-            onAdopt={(name) => adopt(s.id, name)}
-            onDismiss={() => dismiss(s.id)}
-          />
-        ))}
-      </div>
+      <SectionHeader
+        count={suggestions.length}
+        loading={loading}
+        collapsed={collapsed}
+        onToggle={toggleCollapsed}
+        onRefresh={refresh}
+      />
+      {!collapsed && (
+        <div
+          className="animate-in fade-in slide-in-from-top-1 space-y-2"
+          style={{ animationDuration: '200ms' }}
+        >
+          {suggestions.map((s) => (
+            <SuggestionCard
+              key={s.id}
+              suggestion={s}
+              adopting={adopting === s.id}
+              onAdopt={(name) => adopt(s.id, name)}
+              onDismiss={() => dismiss(s.id)}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -65,21 +98,44 @@ export function SuggestedTopicsSection() {
 function SectionHeader({
   count,
   loading,
+  collapsed,
+  onToggle,
   onRefresh,
 }: {
   count: number | null;
   loading: boolean;
+  collapsed: boolean;
+  onToggle: () => void;
   onRefresh: () => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+        className={cn(
+          'group relative flex items-center gap-1.5 rounded-md py-1 pr-2 text-xs font-medium uppercase tracking-wider text-muted-foreground',
+          'transition-[color,transform] duration-150 ease-out hover:text-foreground active:scale-[0.98]',
+          // Extend the hit area without growing the visible row.
+          "before:absolute before:inset-[-6px] before:content-['']",
+        )}
+        title={collapsed ? 'Show suggestions' : 'Hide suggestions'}
+      >
+        <CaretRight
+          size={10}
+          weight="bold"
+          className={cn(
+            'transition-transform duration-150 ease-out',
+            !collapsed && 'rotate-90',
+          )}
+        />
         <Lightbulb size={12} weight="fill" className="text-primary" />
         Suggested
         {count !== null && (
           <span className="tabular-nums text-muted-foreground/70">({count})</span>
         )}
-      </div>
+      </button>
       <Button
         variant="ghost"
         size="sm"
