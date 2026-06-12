@@ -18,6 +18,13 @@ import {
 } from '@renderer/components/base/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@renderer/components/base/ui/popover';
 
+// Extract font family name from font stack
+function getDisplayName(fontStack: string): string {
+  // Try to extract the first font name from the stack
+  const match = fontStack.match(/^["']?([^,"']+)["']?/);
+  return match ? match[1] : fontStack;
+}
+
 interface FontPickerProps {
   value: string;
   onValueChange: (value: string) => void;
@@ -35,13 +42,6 @@ export function FontPicker({
   useEffect(() => {
     getFonts();
   }, [getFonts]);
-
-  // Extract font family name from font stack
-  const getDisplayName = (fontStack: string): string => {
-    // Try to extract the first font name from the stack
-    const match = fontStack.match(/^["']?([^,"']+)["']?/);
-    return match ? match[1] : fontStack;
-  };
 
   const selectedFont = getDisplayName(value);
 

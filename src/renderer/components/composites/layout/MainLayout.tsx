@@ -2,8 +2,7 @@
  * Main Layout Component - Clean composition using layout components
  */
 
-import React, { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react';
 import type { RichTextEditor } from '@renderer/editor';
 import type { NoteEditorHandle } from '@renderer/components/features/Editor/NoteEditor';
 import { useAutoExpandAncestors } from '@renderer/hooks/useAutoExpandAncestors';
@@ -17,44 +16,17 @@ import {
   MainContentArea,
   Sidebar,
 } from '@renderer/components/composites';
+import { MainLayoutRoutes, PageSkeleton } from './MainLayoutRoutes';
+import { MainLayoutOverlays } from './MainLayoutOverlays';
 
-// Lazy load heavy components
-const NoteEditor = lazy(() =>
-  import('@renderer/components/features/Editor/NoteEditor').then((m) => ({
-    default: m.NoteEditor,
-  })),
-);
-const ScratchEditor = lazy(() =>
-  import('@renderer/components/features/Editor/ScratchEditor').then((m) => ({
-    default: m.ScratchEditor,
-  })),
-);
-const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
-const TasksPage = lazy(() =>
-  import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
-);
-const GraphPage = lazy(() =>
-  import('@renderer/components/features/Graph/GraphPage').then((m) => ({ default: m.GraphPage })),
-);
-const TopicsPage = lazy(() =>
-  import('@renderer/components/features/Topics/TopicsPage').then((m) => ({
-    default: m.TopicsPage,
-  })),
-);
-const MeetingsPage = lazy(() =>
-  import('@renderer/components/features/Meeting').then((m) => ({
-    default: m.MeetingsPage,
-  })),
-);
-const DailyReviewPage = lazy(() =>
-  import('@renderer/components/features/DailyReview').then((m) => ({
-    default: m.DailyReviewPage,
-  })),
-);
-const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
 const OnboardingScreen = lazy(() =>
   import('@renderer/components/features/Onboarding').then((m) => ({
     default: m.OnboardingScreen,
+  })),
+);
+const DraftRecoveryDialog = lazy(() =>
+  import('@renderer/components/features/Recovery/DraftRecoveryDialog').then((m) => ({
+    default: m.DraftRecoveryDialog,
   })),
 );
 
@@ -75,84 +47,6 @@ import { useDocumentAutosave } from '@renderer/hooks/useDocumentBuffer';
 import { getAllDrafts } from '@renderer/lib/draftStorage';
 import { logger } from '@renderer/lib/logger';
 import { useLocation, useNavigate } from 'react-router-dom';
-
-// Lazy load overlay components
-const CommandCenter = lazy(() =>
-  import('@renderer/components/features/CommandCenter/CommandCenter').then((m) => ({
-    default: m.CommandCenter,
-  })),
-);
-const DraftRecoveryDialog = lazy(() =>
-  import('@renderer/components/features/Recovery/DraftRecoveryDialog').then((m) => ({
-    default: m.DraftRecoveryDialog,
-  })),
-);
-const FindReplaceModal = lazy(() =>
-  import('@renderer/components/features/FindReplace/FindReplaceModal').then((m) => ({
-    default: m.FindReplaceModal,
-  })),
-);
-const AskNotesPanel = lazy(() =>
-  import('@renderer/components/features/AI').then((m) => ({
-    default: m.AskNotesPanel,
-  })),
-);
-const RecordingDock = lazy(() =>
-  import('@renderer/components/features/Meeting').then((m) => ({
-    default: m.RecordingDock,
-  })),
-);
-const TemplatePickerDialog = lazy(() =>
-  import('@renderer/components/features/Templates').then((m) => ({
-    default: m.TemplatePickerDialog,
-  })),
-);
-const VoiceCaptureDock = lazy(() =>
-  import('@renderer/components/features/VoiceCapture').then((m) => ({
-    default: m.VoiceCaptureDock,
-  })),
-);
-
-// Loading skeletons
-const EditorSkeleton = () => (
-  <div className="flex flex-col h-full animate-pulse">
-    <div className="h-12 border-b border-border flex items-center px-4">
-      <div className="h-6 w-48 bg-muted rounded" />
-    </div>
-    <div className="flex-1 p-8">
-      <div className="max-w-3xl mx-auto space-y-4">
-        <div className="h-4 w-3/4 bg-muted rounded" />
-        <div className="h-4 w-full bg-muted rounded" />
-        <div className="h-4 w-5/6 bg-muted rounded" />
-      </div>
-    </div>
-  </div>
-);
-
-const PageSkeleton = () => (
-  <div className="flex items-center justify-center h-full animate-pulse">
-    <div className="text-center space-y-4">
-      <div className="h-8 w-32 bg-muted rounded mx-auto" />
-      <div className="h-4 w-48 bg-muted rounded mx-auto" />
-    </div>
-  </div>
-);
-
-// Note route wrapper — the route itself owns which note is active (via useParams).
-// Children read it with useActiveNoteId(); no store mirror is required.
-function NoteRoute({
-  editorRef,
-  onEditorChange,
-}: {
-  editorRef: React.RefObject<NoteEditorHandle>;
-  onEditorChange: (editor: RichTextEditor | null) => void;
-}) {
-  return (
-    <Suspense fallback={<EditorSkeleton />}>
-      <NoteEditor ref={editorRef} onEditorChange={onEditorChange} />
-    </Suspense>
-  );
-}
 
 export function MainLayout() {
   const location = useLocation();
@@ -211,6 +105,15 @@ export function MainLayout() {
   const { loadNotes } = useNoteAPI();
   const { loadWorkspaces } = useWorkspaceAPI();
   const syncWorkspace = useWorkspaceSync();
+
+  // syncWorkspace's identity tracks the active folder, but the bootstrap
+  // effect below must run exactly once — read the latest through a ref
+  // instead of adding it to the effect deps.
+  const syncWorkspaceRef = useRef(syncWorkspace);
+  useEffect(() => {
+    syncWorkspaceRef.current = syncWorkspace;
+  });
+
   const { openOrCreateTodayJournal } = useJournalActions();
   const { createPersonal, createWork } = useQuickNoteActions();
 
@@ -340,7 +243,7 @@ export function MainLayout() {
       const reconcileWhenIdle = () => {
         const trigger = () => {
           if (cancelled) return;
-          void syncWorkspace({ silent: true });
+          void syncWorkspaceRef.current({ silent: true });
         };
         if (typeof window.requestIdleCallback === 'function') {
           window.requestIdleCallback(trigger, { timeout: 5000 });
@@ -378,20 +281,23 @@ export function MainLayout() {
   // Handle draft recovery — open the note through the single navigate-to-note
   // seam, then restore content once the editor mounts. The 1s timeout is a
   // render-delay workaround, intentionally separate from route construction.
-  const handleRecoverDraft = (noteId: string, content: string) => {
-    try {
-      navigateToNote(noteId);
+  const handleRecoverDraft = useCallback(
+    (noteId: string, content: string) => {
+      try {
+        navigateToNote(noteId);
 
-      setTimeout(() => {
-        if (editorRef.current) {
-          editorRef.current.restoreDraft(content);
-          logger.info('[MainLayout] Recovered draft for note:', noteId);
-        }
-      }, 1000);
-    } catch (error) {
-      logger.error('[MainLayout] Failed to recover draft:', error);
-    }
-  };
+        setTimeout(() => {
+          if (editorRef.current) {
+            editorRef.current.restoreDraft(content);
+            logger.info('[MainLayout] Recovered draft for note:', noteId);
+          }
+        }, 1000);
+      } catch (error) {
+        logger.error('[MainLayout] Failed to recover draft:', error);
+      }
+    },
+    [navigateToNote],
+  );
 
   // First-launch gate: once bootstrap has confirmed there are no workspaces,
   // show onboarding instead of the app shell. The shell would otherwise have
@@ -427,103 +333,10 @@ export function MainLayout() {
         showSidebar={sidebarOpen && !editorFullscreen}
         mainContent={
           <MainContentArea>
-            <Routes>
-              <Route path="/" element={<Navigate to="/today" replace />} />
-              <Route
-                path="/journals"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <JournalsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/tasks"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <TasksPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/graph"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <GraphPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/topics"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <TopicsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/meetings"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <MeetingsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/today"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <DailyReviewPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/settings/:section?"
-                element={
-                  <Suspense fallback={<PageSkeleton />}>
-                    <SettingsPage />
-                  </Suspense>
-                }
-              />
-              <Route
-                path="/note/:noteId"
-                element={<NoteRoute editorRef={editorRef} onEditorChange={handleEditorChange} />}
-              />
-              <Route
-                path="/scratch"
-                element={
-                  <Suspense fallback={<EditorSkeleton />}>
-                    <ScratchEditor />
-                  </Suspense>
-                }
-              />
-              {/* Catch-all redirect to Today */}
-              <Route path="*" element={<Navigate to="/today" replace />} />
-            </Routes>
+            <MainLayoutRoutes editorRef={editorRef} onEditorChange={handleEditorChange} />
           </MainContentArea>
         }
-        overlayContent={
-          <>
-            <Suspense fallback={null}>
-              <CommandCenter />
-            </Suspense>
-            <Suspense fallback={null}>
-              <FindReplaceModal editor={currentEditor} />
-            </Suspense>
-            <Suspense fallback={null}>
-              <AskNotesPanel />
-            </Suspense>
-            <Suspense fallback={null}>
-              <RecordingDock />
-            </Suspense>
-            <Suspense fallback={null}>
-              <TemplatePickerDialog />
-            </Suspense>
-            <Suspense fallback={null}>
-              <VoiceCaptureDock />
-            </Suspense>
-          </>
-        }
+        overlayContent={<MainLayoutOverlays editor={currentEditor} />}
       />
 
       <Suspense fallback={null}>

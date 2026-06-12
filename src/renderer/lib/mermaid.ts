@@ -166,7 +166,7 @@ export function initializeMermaid(
   mermaid.initialize({
     startOnLoad: false,
     theme: 'base',
-    securityLevel: 'loose',
+    securityLevel: 'antiscript',
     htmlLabels: false,
     themeVariables: {
       primaryColor: nodePrimary,

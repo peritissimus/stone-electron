@@ -2,7 +2,7 @@
  * Diagram Fullscreen Dialog - Fullscreen view with zoom and pan
  */
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { X, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsIn, ArrowsOut } from '@phosphor-icons/react';
 import {
   Dialog,
@@ -29,17 +29,19 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const diagramRef = useRef<HTMLDivElement>(null);
 
   // Reset zoom and position when dialog opens
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setScale(1);
       setPosition({ x: 0, y: 0 });
     }
-  }, [open]);
+  }
 
   const handleZoomIn = useCallback(() => {
     setScale((s) => Math.min(s + 0.25, 4));
@@ -79,18 +81,18 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+      dragStartRef.current = { x: e.clientX - position.x, y: e.clientY - position.y };
     }
   }, [position]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging) {
       setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y,
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y,
       });
     }
-  }, [isDragging, dragStart]);
+  }, [isDragging]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
