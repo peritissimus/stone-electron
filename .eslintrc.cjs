@@ -13,6 +13,11 @@ module.exports = {
   },
   plugins: ['@typescript-eslint'],
   rules: {
+    // TypeScript's own resolver handles undefined identifiers far better than
+    // ESLint's no-undef, which false-positives on ambient types (NodeJS,
+    // Electron, the React namespace, DOM lib types like MediaRecorderOptions).
+    // Disabling it is the typescript-eslint-recommended posture.
+    'no-undef': 'off',
     'no-unused-vars': 'off',
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/explicit-function-return-types': 'off',

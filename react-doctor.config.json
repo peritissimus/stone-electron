@@ -1,0 +1,21 @@
+{
+  "$schema": "https://github.com/millionco/react-doctor",
+  "ignore": {
+    "files": [
+      "src/main/**",
+      "src/shared/**",
+      "src/types/**",
+      "src/preload.ts",
+      "src/env.d.ts",
+      "scripts/**",
+      "tests/**",
+      "test-results/**",
+      "migrations/**",
+      "docs/**",
+      "data/**",
+      "public/**",
+      "Sources/**",
+      "Personal/**"
+    ]
+  }
+}
