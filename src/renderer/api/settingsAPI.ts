@@ -282,4 +282,12 @@ export const systemAPI = {
     const response = await invokeIpc(SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS, {});
     return validateResponse(response, z.object({ status: SystemAudioAccessSchema }));
   },
+
+  /**
+   * Open an https:// link or a System Settings deep link in the OS.
+   */
+  openExternal: async (url: string): Promise<IpcResponse<void>> => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.OPEN_EXTERNAL, { url });
+    return validateResponse(response, z.void().or(z.object({}).transform(() => undefined)));
+  },
 };

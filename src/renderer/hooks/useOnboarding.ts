@@ -108,7 +108,13 @@ export function useMicPermission() {
     }
   }, []);
 
-  return { status, requesting, refresh, request };
+  const openSettings = useCallback(() => {
+    void systemAPI.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone',
+    );
+  }, []);
+
+  return { status, requesting, refresh, request, openSettings };
 }
 
 /**
@@ -148,7 +154,13 @@ export function useSystemAudioPermission() {
     }
   }, []);
 
-  return { status, requesting, refresh, request };
+  const openSettings = useCallback(() => {
+    void systemAPI.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture',
+    );
+  }, []);
+
+  return { status, requesting, refresh, request, openSettings };
 }
 
 export interface ModelDownloadProgress {

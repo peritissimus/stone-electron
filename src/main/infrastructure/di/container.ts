@@ -844,6 +844,7 @@ export function registerIPCHandlers(): void {
     requestMicAccess: container.systemUseCases.requestMicAccess,
     getSystemAudioAccess: container.systemUseCases.getSystemAudioAccess,
     requestSystemAudioAccess: container.systemUseCases.requestSystemAudioAccess,
+    openExternal: container.systemUseCases.openExternal,
   });
   registerSettingsHandlers({
     getSetting: container.settingsUseCases.get,

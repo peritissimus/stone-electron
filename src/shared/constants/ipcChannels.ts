@@ -206,6 +206,7 @@ export const SYSTEM_CHANNELS = {
   REQUEST_MIC_ACCESS: 'system:requestMicAccess',
   GET_SYSTEM_AUDIO_ACCESS: 'system:getSystemAudioAccess',
   REQUEST_SYSTEM_AUDIO_ACCESS: 'system:requestSystemAudioAccess',
+  OPEN_EXTERNAL: 'system:openExternal',
 } as const;
 
 // Git Operations

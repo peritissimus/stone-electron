@@ -9,12 +9,14 @@
 import { ipcMain } from 'electron';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import type { SystemGetFontsResponse } from '@shared/schemas';
+import { z } from 'zod';
 import type {
   IGetSystemFontsUseCase,
   IGetMicAccessStatusUseCase,
   IRequestMicAccessUseCase,
   IGetSystemAudioAccessUseCase,
   IRequestSystemAudioAccessUseCase,
+  IOpenExternalUseCase,
 } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
@@ -25,6 +27,7 @@ export interface SystemIPCDeps {
   requestMicAccess: IRequestMicAccessUseCase;
   getSystemAudioAccess: IGetSystemAudioAccessUseCase;
   requestSystemAudioAccess: IRequestSystemAudioAccessUseCase;
+  openExternal: IOpenExternalUseCase;
 }
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
@@ -34,6 +37,7 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
     requestMicAccess,
     getSystemAudioAccess,
     requestSystemAudioAccess,
+    openExternal,
   } = deps;
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
@@ -89,6 +93,29 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
         context: { channel: SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS },
+      },
+    );
+  });
+
+  // Renderer-initiated external opens are scheme-allowlisted: web links and
+  // the macOS System Settings deep links only — never arbitrary protocols.
+  const OpenExternalRequestSchema = z.object({
+    url: z
+      .string()
+      .refine(
+        (u) => u.startsWith('https://') || u.startsWith('x-apple.systempreferences:'),
+        'URL scheme not allowed',
+      ),
+  });
+
+  ipcMain.handle(SYSTEM_CHANNELS.OPEN_EXTERNAL, async (_event, rawRequest) => {
+    const request = OpenExternalRequestSchema.parse(rawRequest);
+    return handleIpcRequest(
+      async () => openExternal.execute({ url: request.url }),
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.OPEN_EXTERNAL, url: request.url },
       },
     );
   });

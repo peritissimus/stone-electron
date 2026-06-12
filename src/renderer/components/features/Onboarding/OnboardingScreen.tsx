@@ -469,6 +469,7 @@ function PermissionRow({
   requesting,
   deniedHint,
   onAllow,
+  onOpenSettings,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -477,6 +478,7 @@ function PermissionRow({
   requesting: boolean;
   deniedHint: string;
   onAllow: () => void;
+  onOpenSettings: () => void;
 }) {
   if (state === 'hidden') return null;
 
@@ -515,7 +517,18 @@ function PermissionRow({
         )}
       </div>
       {state === 'denied' && (
-        <Caption className="mt-2 block text-destructive">{deniedHint}</Caption>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <Caption className="text-muted-foreground">{deniedHint}</Caption>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onOpenSettings}
+            className="shrink-0 transition-transform active:scale-[0.96]"
+          >
+            Open Settings
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -524,6 +537,10 @@ function PermissionRow({
 function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
   const mic = useMicPermission();
   const systemAudio = useSystemAudioPermission();
+  // macOS only shows the Screen Recording prompt on the app's FIRST-ever
+  // ask; later asks return instantly with no UI. Once an Allow click comes
+  // back non-granted, stop pretending — flip to the Open Settings state.
+  const [systemAudioAsked, setSystemAudioAsked] = useState(false);
 
   const micState: PermissionRowState =
     mic.status === 'unknown' || mic.status === null
@@ -534,15 +551,14 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
           ? 'ask'
           : 'denied';
 
-  // The Screen Recording prompt only fires on the app's FIRST ask; after
-  // that only System Settings can change it. We can't distinguish
-  // never-asked from user-denied, so offer Allow until it's granted.
   const systemAudioState: PermissionRowState =
     systemAudio.status === 'unsupported' || systemAudio.status === null
       ? 'hidden'
       : systemAudio.status === 'granted'
         ? 'granted'
-        : 'ask';
+        : systemAudioAsked
+          ? 'denied'
+          : 'ask';
 
   const nothingToShow = micState === 'hidden' && systemAudioState === 'hidden';
 
@@ -557,6 +573,7 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
           requesting={mic.requesting}
           deniedHint="Denied — enable Stone under System Settings → Privacy & Security → Microphone. You can finish setup and grant it later."
           onAllow={() => void mic.request()}
+          onOpenSettings={mic.openSettings}
         />
         <PermissionRow
           icon={<SpeakerHigh size={14} />}
@@ -564,12 +581,13 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
           description="Remote voices in meetings, via Screen & System Audio Recording."
           state={systemAudioState}
           requesting={systemAudio.requesting}
-          deniedHint="Enable Stone under System Settings → Privacy & Security → Screen & System Audio Recording, then restart Stone."
+          deniedHint="Enable this app under Screen & System Audio Recording, then restart it. Recording works mic-only in the meantime."
           onAllow={() => {
             void systemAudio.request().then((granted) => {
-              if (!granted) void systemAudio.refresh();
+              if (!granted) setSystemAudioAsked(true);
             });
           }}
+          onOpenSettings={systemAudio.openSettings}
         />
         {nothingToShow && (
           <Caption className="block text-center text-muted-foreground">
