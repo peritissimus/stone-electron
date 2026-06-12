@@ -47,3 +47,4 @@ export { SidebarPanel } from './layout/SidebarPanel';
 export { TabbedModal, type TabbedModalProps, type TabItem } from './layout/TabbedModal';
 export { Sidebar } from './layout/Sidebar';
 export { GitSyncButton } from './layout/GitSyncButton';
+export { DevicePermissions } from './DevicePermissions';

@@ -9,6 +9,7 @@ import {
   GitBranch,
   Info,
   Keyboard,
+  Microphone,
   Palette,
 } from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
@@ -23,10 +24,12 @@ import { DatabaseSettings } from '@renderer/components/features/Settings/Databas
 import { GitSettings } from '@renderer/components/features/Settings/GitSettings';
 import { KeyboardShortcutsSettings } from '@renderer/components/features/Settings/KeyboardShortcutsSettings';
 import { PerformanceSettings } from '@renderer/components/features/Settings/PerformanceSettings';
+import { RecordingSettings } from '@renderer/components/features/Settings/RecordingSettings';
 
 type SettingsSectionId =
   | 'appearance'
   | 'ai'
+  | 'recording'
   | 'shortcuts'
   | 'git'
   | 'database'
@@ -52,6 +55,12 @@ const SECTIONS: SettingsSectionDef[] = [
     label: 'AI',
     icon: <Brain size={16} />,
     element: <AISettings />,
+  },
+  {
+    id: 'recording',
+    label: 'Recording',
+    icon: <Microphone size={16} />,
+    element: <RecordingSettings />,
   },
   {
     id: 'shortcuts',
