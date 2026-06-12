@@ -16,6 +16,7 @@ import path from 'node:path';
 import { app } from 'electron';
 import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
+import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 
@@ -118,6 +119,15 @@ export class EmbeddingWorker {
       // Set up message handler for responses
       this.worker.on('message', (msg: WorkerResponse) => {
         if (msg.type === 'ready') return; // Already handled
+
+        // Unsolicited model-download progress (no request id) — broadcast to
+        // renderers so onboarding/status UIs can show a real progress bar.
+        if (msg.type === 'downloadProgress') {
+          getMLStatusTracker().broadcastModelDownloadProgress(
+            msg as unknown as MLModelDownloadProgressPayload,
+          );
+          return;
+        }
 
         const { id, success, data, error } = msg;
         if (!id) return;

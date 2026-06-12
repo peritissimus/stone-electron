@@ -73,4 +73,13 @@ export const aiAPI = {
     const response = await invokeIpc(AI_CHANNELS.SUGGEST_LINKS, { noteId, limit });
     return validateResponse(response, SuggestLinksResponseSchema);
   },
+
+  /**
+   * Pre-download/load the Whisper model so first transcription is instant.
+   * Idempotent; resolves when the model is ready (or failed: ready=false).
+   */
+  warmTranscriber: async (): Promise<IpcResponse<{ ready: boolean }>> => {
+    const response = await invokeIpc(AI_CHANNELS.WARM_TRANSCRIBER, {});
+    return validateResponse(response, z.object({ ready: z.boolean() }));
+  },
 };

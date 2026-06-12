@@ -104,6 +104,7 @@ export const SEARCH_CHANNELS = {
 // AI Operations
 export const AI_CHANNELS = {
   ASK_NOTES: 'ai:askNotes',
+  WARM_TRANSCRIBER: 'ai:warmTranscriber',
   SUMMARIZE_NOTE: 'ai:summarizeNote',
   SUGGEST_LINKS: 'ai:suggestLinks',
 } as const;
@@ -321,6 +322,7 @@ export const EVENTS = {
   ML_OPERATION_PROGRESS: 'ml:operationProgress',
   ML_OPERATION_COMPLETED: 'ml:operationCompleted',
   ML_OPERATION_ERROR: 'ml:operationError',
+  ML_MODEL_DOWNLOAD_PROGRESS: 'ml:modelDownloadProgress',
 } as const;
 
 // Get all channels as an array for validation

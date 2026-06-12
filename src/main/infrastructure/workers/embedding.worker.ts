@@ -98,6 +98,35 @@ let rerankerInitialized = false;
 let transcriberInitialized = false;
 
 /**
+ * Build a transformers.js progress_callback that forwards per-file download
+ * progress to the main thread as unsolicited 'downloadProgress' messages
+ * (no request id — EmbeddingWorker routes them by type, not by pending map).
+ * Throttled to whole-percent steps per file so the IPC stream stays light.
+ */
+function makeDownloadProgressCallback(model: 'embedding' | 'whisper' | 'reranker') {
+  const lastPercentByFile = new Map<string, number>();
+  return (info: {
+    status?: string;
+    file?: string;
+    loaded?: number;
+    total?: number;
+    progress?: number;
+  }) => {
+    if (info.status !== 'progress' || !info.file) return;
+    const percent = Math.floor(info.progress ?? 0);
+    if (lastPercentByFile.get(info.file) === percent) return;
+    lastPercentByFile.set(info.file, percent);
+    parentPort?.postMessage({
+      type: 'downloadProgress',
+      model,
+      file: info.file,
+      loaded: info.loaded ?? 0,
+      total: info.total ?? 0,
+    });
+  };
+}
+
+/**
  * Initialize the embedding model
  */
 async function initialize(): Promise<{ model: string; dims: number }> {
@@ -122,6 +151,7 @@ async function initialize(): Promise<{ model: string; dims: number }> {
   // Create feature extraction pipeline with quantized model
   pipeline = await createPipeline('feature-extraction', MODEL_NAME, {
     quantized: true,
+    progress_callback: makeDownloadProgressCallback('embedding'),
   });
 
   initialized = true;
@@ -275,7 +305,7 @@ async function initializeTranscriber(): Promise<{ model: string }> {
   transcriberPipeline = await createPipeline(
     'automatic-speech-recognition',
     TRANSCRIBER_MODEL_NAME,
-    { quantized: true },
+    { quantized: true, progress_callback: makeDownloadProgressCallback('whisper') },
   );
 
   transcriberInitialized = true;

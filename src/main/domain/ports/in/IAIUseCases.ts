@@ -48,8 +48,18 @@ export interface ISuggestLinksUseCase {
   execute(request: SuggestLinksRequest): Promise<SuggestLinksResponse>;
 }
 
+export interface WarmUpTranscriberResponse {
+  /** True once the Whisper model is loaded and ready to transcribe. */
+  ready: boolean;
+}
+
+export interface IWarmUpTranscriberUseCase {
+  execute(): Promise<WarmUpTranscriberResponse>;
+}
+
 export interface IAIUseCases {
   askNotes: IAskNotesUseCase;
   summarizeNote: ISummarizeNoteUseCase;
   suggestLinks: ISuggestLinksUseCase;
+  warmUpTranscriber: IWarmUpTranscriberUseCase;
 }

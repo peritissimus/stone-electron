@@ -64,6 +64,18 @@ export interface MLOperationProgressPayload {
   message?: string;
 }
 
+/** Per-file download progress while a local model's weights are fetched. */
+export interface MLModelDownloadProgressPayload {
+  /** Which model is downloading. */
+  model: 'embedding' | 'whisper' | 'reranker';
+  /** File within the model repo (the .onnx weights dominate). */
+  file: string;
+  /** Bytes downloaded so far for this file. */
+  loaded: number;
+  /** Total bytes for this file (0 if unknown). */
+  total: number;
+}
+
 export interface MLOperationCompletedPayload {
   id: string;
   type: MLOperationType;

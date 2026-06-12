@@ -3,10 +3,18 @@
  * workspace. Wraps useWorkspaceAPI so the onboarding screen stays a pure
  * component: it resolves a suggested default location, lets the user pick a
  * different folder, then creates + activates the workspace.
+ *
+ * Also exposes the local-model warm-up commands the wizard's "download
+ * models" step uses (embedding model + Whisper), so neither model has to
+ * lazily download on first real use.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
+import { topicAPI, aiAPI } from '@renderer/api';
+import { subscribe } from '@renderer/lib/events';
+import { EVENTS } from '@shared/constants/ipcChannels';
+import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 export interface CompleteOnboardingInput {
   name: string;
@@ -28,5 +36,80 @@ export function useOnboarding() {
     [createWorkspace, setActiveWorkspace],
   );
 
-  return { getDefaultWorkspacePath, selectFolder, completeOnboarding };
+  /** Download/load the local embedding model (search, topics). ~35 MB once. */
+  const warmUpEmbeddings = useCallback(async () => {
+    try {
+      const response = await topicAPI.initialize();
+      return Boolean(response.success && response.data?.ready);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  /** Download/load Whisper (meeting + voice transcription). ~80 MB once. */
+  const warmUpWhisper = useCallback(async () => {
+    try {
+      const response = await aiAPI.warmTranscriber();
+      return Boolean(response.success && response.data?.ready);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  return {
+    getDefaultWorkspacePath,
+    selectFolder,
+    completeOnboarding,
+    warmUpEmbeddings,
+    warmUpWhisper,
+  };
+}
+
+export interface ModelDownloadProgress {
+  /** 0–100 across all files seen so far for this model. */
+  percent: number;
+  loadedBytes: number;
+  totalBytes: number;
+}
+
+/**
+ * Live download progress for the local models, aggregated across the
+ * multiple files each model repo ships (the .onnx weights dominate).
+ * Null until the first progress event for that model arrives.
+ */
+export function useModelDownloadProgress() {
+  const [embedding, setEmbedding] = useState<ModelDownloadProgress | null>(null);
+  const [whisper, setWhisper] = useState<ModelDownloadProgress | null>(null);
+
+  // file → {loaded, total}, per model. Refs: aggregation state, not render state.
+  const filesRef = useRef<Record<string, Map<string, { loaded: number; total: number }>>>({
+    embedding: new Map(),
+    whisper: new Map(),
+  });
+
+  useEffect(() => {
+    return subscribe(EVENTS.ML_MODEL_DOWNLOAD_PROGRESS, (raw: unknown) => {
+      const payload = raw as MLModelDownloadProgressPayload;
+      if (payload.model !== 'embedding' && payload.model !== 'whisper') return;
+
+      const files = filesRef.current[payload.model];
+      files.set(payload.file, { loaded: payload.loaded, total: payload.total });
+
+      let loadedBytes = 0;
+      let totalBytes = 0;
+      for (const f of files.values()) {
+        loadedBytes += f.loaded;
+        totalBytes += f.total;
+      }
+      const next: ModelDownloadProgress = {
+        percent: totalBytes > 0 ? Math.min(100, Math.round((loadedBytes / totalBytes) * 100)) : 0,
+        loadedBytes,
+        totalBytes,
+      };
+      if (payload.model === 'embedding') setEmbedding(next);
+      else setWhisper(next);
+    });
+  }, []);
+
+  return { embedding, whisper };
 }

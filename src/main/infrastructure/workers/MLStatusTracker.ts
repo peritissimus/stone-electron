@@ -18,6 +18,7 @@ import {
   MLOperationProgressPayload,
   MLOperationCompletedPayload,
   MLOperationErrorPayload,
+  MLModelDownloadProgressPayload,
 } from '@shared/types/mlStatus';
 import { logger } from '../../shared/utils';
 
@@ -191,6 +192,15 @@ class MLStatusTracker {
     logger.error(`[MLStatus] Operation failed: ${this.currentOperation.type}`, { id, error });
 
     this.currentOperation = null;
+  }
+
+  /**
+   * Forward per-file model download progress to renderers (onboarding's
+   * "download local models" step renders a live progress bar from these).
+   * Not logged — events arrive at whole-percent granularity per file.
+   */
+  broadcastModelDownloadProgress(payload: MLModelDownloadProgressPayload): void {
+    this.broadcast(EVENTS.ML_MODEL_DOWNLOAD_PROGRESS, payload);
   }
 
   /**
