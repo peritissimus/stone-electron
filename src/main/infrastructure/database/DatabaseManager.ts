@@ -35,7 +35,6 @@ import { drizzle } from 'drizzle-orm/libsql';
 import { migrate } from 'drizzle-orm/libsql/migrator';
 import * as schema from '../../shared/database';
 import { logger } from '../../shared/utils';
-import { seedDatabase } from '../seed/seedDatabase';
 import { AppConfigRepository } from '../../adapters/out/persistence/AppConfigRepository';
 import { DEFAULT_APP_CONFIG, type AppConfig } from '@shared/types/settings';
 
@@ -162,7 +161,10 @@ export class DatabaseManager {
         },
       },
     });
-    const appConfig = await appConfigRepository.get();
+    // Trigger the legacy appearance → config.json migration. We don't use the
+    // returned config here; the value is the write side effect (loadConfig
+    // persists migrated appearance settings if config.json doesn't exist yet).
+    await appConfigRepository.get();
 
     // Seed/refresh predefined topics. Descriptions feed the centroid seed in
     // InitializeTopicsUseCase — name-only embeddings are too weak a signal.
@@ -242,18 +244,10 @@ export class DatabaseManager {
       }
     }
 
-    // Seed default workspace, notebooks, and notes if not present
-    const seedResult = await seedDatabase(this.db, {
-      workspacePath: path.join(app.getPath('userData'), appConfig.workspace.defaultWorkspacePath),
-    });
-    if (seedResult) {
-      logger.info('Seeded default workspace:', {
-        workspaceId: seedResult.workspaceId,
-        workspacePath: seedResult.workspacePath,
-        notebooks: seedResult.notebooks.length,
-        notes: seedResult.notes.length,
-      });
-    }
+    // NOTE: We intentionally do NOT seed a default workspace. A fresh install
+    // has zero workspaces so first launch shows onboarding (see MainLayout's
+    // gate), where the user picks where their notebook folder lives. The
+    // seedDatabase() helper is retained for tests/fixtures only.
   }
 
   getDrizzle() {
