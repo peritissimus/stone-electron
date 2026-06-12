@@ -11,6 +11,7 @@ import { Microphone, Stop, X, CircleNotch, Check, Warning } from '@phosphor-icon
 import { cn } from '@renderer/lib/utils';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
 import { useMeetingRecorder, type RecorderPhase } from '@renderer/hooks/useMeetingRecorder';
+import { useSystemAudioPermission } from '@renderer/hooks/useOnboarding';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
@@ -31,6 +32,7 @@ export function RecordingDock() {
     closeDock,
     reset,
   } = useMeetingRecorder();
+  const systemAudio = useSystemAudioPermission();
 
   // Auto-dismiss the success state so the dock isn't stuck on-screen.
   useEffect(() => {
@@ -107,6 +109,8 @@ export function RecordingDock() {
         audioLevel={audioLevel}
         captureMode={captureMode}
         error={error}
+        systemAudioStatus={systemAudio.status}
+        onEnableSystemAudio={systemAudio.openSettings}
         lastTitle={lastRecording?.title ?? null}
       />
 
@@ -162,6 +166,8 @@ function PhaseBody({
   audioLevel,
   captureMode,
   error,
+  systemAudioStatus,
+  onEnableSystemAudio,
   lastTitle,
 }: {
   phase: RecorderPhase;
@@ -169,11 +175,17 @@ function PhaseBody({
   audioLevel: number;
   captureMode: 'mic-only' | 'mic+system';
   error: string | null;
+  systemAudioStatus: 'granted' | 'denied' | 'unsupported' | null;
+  onEnableSystemAudio: () => void;
   lastTitle: string | null;
 }) {
   return (
     <div className="relative mt-3 min-h-[68px] rounded-xl bg-muted/40 p-3">
-      <Idle visible={phase === 'idle'} />
+      <Idle
+        visible={phase === 'idle'}
+        systemAudioStatus={systemAudioStatus}
+        onEnableSystemAudio={onEnableSystemAudio}
+      />
       <Preparing visible={phase === 'preparing'} />
       <Recording
         visible={phase === 'recording'}
@@ -197,15 +209,22 @@ const layerCn = (visible: boolean) =>
     visible ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-1',
   );
 
-function Idle({ visible }: { visible: boolean }) {
+function Idle({
+  visible,
+  systemAudioStatus,
+  onEnableSystemAudio,
+}: {
+  visible: boolean;
+  systemAudioStatus: 'granted' | 'denied' | 'unsupported' | null;
+  onEnableSystemAudio: () => void;
+}) {
+  const needsSystemAudioGrant = isMacOS() && systemAudioStatus === 'denied';
   return (
     <div className={layerCn(visible)}>
       <p className="text-xs leading-relaxed text-muted-foreground">
         {isMacOS() ? (
           <>
-            Captures your microphone, plus system audio (remote voices) when Stone has
-            Screen &amp; System Audio Recording access — macOS asks the first time. The
-            badge shows which sources are live.
+            Captures your microphone{systemAudioStatus === 'granted' ? ' plus system audio (remote voices).' : '.'}
           </>
         ) : (
           <>
@@ -219,6 +238,19 @@ function Idle({ visible }: { visible: boolean }) {
         </code>{' '}
         until processing finishes, then it's deleted.
       </p>
+      {needsSystemAudioGrant && (
+        <button
+          type="button"
+          onClick={onEnableSystemAudio}
+          className={cn(
+            'mt-2 inline-flex w-fit items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground',
+            'transition-[transform,background-color] duration-150 hover:bg-muted active:scale-[0.96]',
+          )}
+          title="Opens System Settings → Privacy & Security → Screen & System Audio Recording"
+        >
+          Enable system audio (remote voices)
+        </button>
+      )}
     </div>
   );
 }

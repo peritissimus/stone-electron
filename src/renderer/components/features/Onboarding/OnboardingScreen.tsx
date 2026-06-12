@@ -542,6 +542,30 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
   // back non-granted, stop pretending — flip to the Open Settings state.
   const [systemAudioAsked, setSystemAudioAsked] = useState(false);
 
+  // Live re-check: each check spawns a fresh helper process, which reads the
+  // CURRENT TCC state — so while the user flips the toggle in System
+  // Settings, the rows turn green on their own (poll + window refocus).
+  useEffect(() => {
+    const refreshAll = () => {
+      if (mic.status !== 'granted') void mic.refresh();
+      if (systemAudio.status !== 'granted' && systemAudio.status !== 'unsupported') {
+        void systemAudio.refresh();
+      }
+    };
+    const everythingSettled =
+      (mic.status === 'granted' || mic.status === 'unknown') &&
+      (systemAudio.status === 'granted' || systemAudio.status === 'unsupported');
+    if (everythingSettled) return;
+
+    const interval = window.setInterval(refreshAll, 2500);
+    window.addEventListener('focus', refreshAll);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshAll);
+    };
+    // refresh callbacks are useCallback-stable; statuses are the real inputs.
+  }, [mic.status, systemAudio.status]);
+
   const micState: PermissionRowState =
     mic.status === 'unknown' || mic.status === null
       ? 'hidden'
@@ -581,7 +605,7 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
           description="Remote voices in meetings, via Screen & System Audio Recording."
           state={systemAudioState}
           requesting={systemAudio.requesting}
-          deniedHint="Enable this app under Screen & System Audio Recording, then restart it. Recording works mic-only in the meantime."
+          deniedHint="Enable this app under Screen & System Audio Recording — this row turns green by itself. If a recording still says mic-only afterwards, restart the app."
           onAllow={() => {
             void systemAudio.request().then((granted) => {
               if (!granted) setSystemAudioAsked(true);
