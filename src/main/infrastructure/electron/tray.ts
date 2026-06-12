@@ -258,33 +258,41 @@ function stopTimerTick(): void {
 }
 
 /**
- * Resolve the tray icon. macOS gets the app icon as a template image so
- * the menu bar themes it correctly in dark/light mode. Windows/Linux
- * get the same image without template treatment.
+ * Resolve the tray icon.
  *
- * Dev: build/icon.png in the repo root.
- * Packaged: app.asar.unpacked/build/icon.png (electron-builder rule
- * keeps build/ unpacked alongside the asar).
+ * macOS: a dedicated TEMPLATE asset (build/tray/stoneTrayTemplate.png) —
+ * black logo ink on transparent, 16px + @2x. Template rendering uses only
+ * the alpha channel, so the full app icon (opaque white tile) is unusable
+ * here: it renders as a solid block. The "Template" filename suffix makes
+ * Electron apply template mode and pick up the @2x variant automatically.
+ *
+ * Windows/Linux: the colored app icon, resized to 16px.
+ *
+ * Both are bundled via electron-builder extraResources (Resources/tray and
+ * Resources/icon.png); dev reads straight from the repo.
  */
 function loadTrayIcon(): NativeImage | null {
-  const candidates = [
-    // Packaged build — app icon is copied into Contents/Resources.
-    path.join(process.resourcesPath, 'build', 'icon.png'),
-    path.join(process.resourcesPath, 'icon.png'),
-    // Dev — read straight from the repo.
-    path.join(app.getAppPath(), 'build', 'icon.png'),
-    path.join(app.getAppPath(), '..', 'build', 'icon.png'),
-  ];
+  const candidates =
+    process.platform === 'darwin'
+      ? [
+          path.join(process.resourcesPath, 'tray', 'stoneTrayTemplate.png'),
+          path.join(app.getAppPath(), 'build', 'tray', 'stoneTrayTemplate.png'),
+        ]
+      : [
+          path.join(process.resourcesPath, 'icon.png'),
+          path.join(app.getAppPath(), 'build', 'icon.png'),
+        ];
 
   for (const candidate of candidates) {
     try {
       const image = nativeImage.createFromPath(candidate);
       if (image.isEmpty()) continue;
-      const resized = image.resize({ width: 16, height: 16, quality: 'best' });
       if (process.platform === 'darwin') {
-        resized.setTemplateImage(true);
+        // Filename suffix already marks it template; set explicitly anyway.
+        image.setTemplateImage(true);
+        return image;
       }
-      return resized;
+      return image.resize({ width: 16, height: 16, quality: 'best' });
     } catch (error) {
       logger.debug(`[Tray] failed to load icon from ${candidate}`, error);
     }
