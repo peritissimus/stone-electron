@@ -1,7 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AskNotesUseCase } from '../../../../src/main/application/usecases/ai/AskNotesUseCase';
+import { SuggestLinksUseCase } from '../../../../src/main/application/usecases/ai/SuggestLinksUseCase';
+import { SummarizeNoteUseCase } from '../../../../src/main/application/usecases/ai/SummarizeNoteUseCase';
+import { WarmUpTranscriberUseCase } from '../../../../src/main/application/usecases/ai/WarmUpTranscriberUseCase';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
-import type { INoteRepository, ITextGenerator } from '../../../../src/main/domain';
+import type {
+  IIndexRepository,
+  IMarkdownProcessor,
+  INoteRepository,
+  ITextGenerator,
+  ITranscriber,
+} from '../../../../src/main/domain';
 import type {
   IHybridSearchUseCase,
   HybridSearchResultRow,
@@ -37,6 +46,27 @@ function createMockHybridSearch(): IHybridSearchUseCase {
 
 function createMockTextGenerator(): ITextGenerator {
   return { generateAnswer: vi.fn() } as unknown as ITextGenerator;
+}
+
+function createMockIndexRepository(): IIndexRepository {
+  return {
+    getNoteVector: vi.fn(),
+    findSimilarNotesByVector: vi.fn(),
+  } as unknown as IIndexRepository;
+}
+
+function createMockMarkdownProcessor(): IMarkdownProcessor {
+  return {
+    extractPlainText: vi.fn((markdown: string) => markdown.replace(/[#*_`]/g, '')),
+  } as unknown as IMarkdownProcessor;
+}
+
+function createMockTranscriber(): ITranscriber {
+  return {
+    isReady: vi.fn().mockReturnValue(false),
+    initialize: vi.fn(),
+    transcribe: vi.fn(),
+  };
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -180,6 +210,128 @@ describe('AIUseCases', () => {
         answer: 'I could not find relevant notes to answer that.',
         sources: [],
       });
+    });
+  });
+
+  describe('SuggestLinksUseCase', () => {
+    let noteRepository: INoteRepository;
+    let indexRepository: IIndexRepository;
+    let useCase: SuggestLinksUseCase;
+
+    beforeEach(() => {
+      noteRepository = createMockNoteRepository();
+      indexRepository = createMockIndexRepository();
+      useCase = new SuggestLinksUseCase(noteRepository, indexRepository);
+    });
+
+    it('suggests semantic links from the indexed note vector', async () => {
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValue([0.1, 0.2, 0.3]);
+      vi.mocked(noteRepository.findById).mockResolvedValue(
+        createNoteProps({ id: 'source', workspaceId: 'ws-1' }),
+      );
+      vi.mocked(indexRepository.findSimilarNotesByVector).mockResolvedValue([
+        { noteId: 'target', title: 'Target', similarity: 0.82, matchedChunks: 2 },
+      ]);
+
+      const result = await useCase.execute({ noteId: 'source', limit: 4 });
+
+      expect(indexRepository.findSimilarNotesByVector).toHaveBeenCalledWith([0.1, 0.2, 0.3], {
+        limit: 4,
+        workspaceId: 'ws-1',
+        excludeNoteId: 'source',
+      });
+      expect(result.links).toEqual([
+        {
+          noteId: 'target',
+          title: 'Target',
+          reason: 'Semantically similar note',
+          score: 0.82,
+        },
+      ]);
+    });
+
+    it('returns no suggestions when the source note has no vector or metadata', async () => {
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValueOnce(null);
+      await expect(useCase.execute({ noteId: 'source' })).resolves.toEqual({ links: [] });
+
+      vi.mocked(indexRepository.getNoteVector).mockResolvedValueOnce([1, 2, 3]);
+      vi.mocked(noteRepository.findById).mockResolvedValueOnce(null);
+      await expect(useCase.execute({ noteId: 'source' })).resolves.toEqual({ links: [] });
+    });
+  });
+
+  describe('SummarizeNoteUseCase', () => {
+    let noteRepository: INoteRepository;
+    let markdownProcessor: IMarkdownProcessor;
+    let textGenerator: ITextGenerator;
+    let useCase: SummarizeNoteUseCase;
+
+    beforeEach(() => {
+      noteRepository = createMockNoteRepository();
+      markdownProcessor = createMockMarkdownProcessor();
+      textGenerator = createMockTextGenerator();
+      useCase = new SummarizeNoteUseCase(noteRepository, markdownProcessor, textGenerator);
+    });
+
+    it('summarizes note content through the text generator with one citation source', async () => {
+      vi.mocked(noteRepository.findById).mockResolvedValue(
+        createNoteProps({ id: 'note-1', title: 'Architecture' }),
+      );
+      vi.mocked(noteRepository.getContentById).mockResolvedValue('# Architecture\n\n**Ports**');
+      vi.mocked(textGenerator.generateAnswer).mockImplementation(async (request) => ({
+        text: 'Ports keep adapters swappable.',
+        usedSources: request.sources,
+      }));
+
+      const result = await useCase.execute({ noteId: 'note-1' });
+
+      expect(markdownProcessor.extractPlainText).toHaveBeenCalledWith('# Architecture\n\n**Ports**');
+      expect(textGenerator.generateAnswer).toHaveBeenCalledWith({
+        query: 'Summarize this note: Architecture',
+        sources: [
+          {
+            chunkId: 'note-1',
+            noteId: 'note-1',
+            title: 'Architecture',
+            excerpt: 'Architecture Ports',
+          },
+        ],
+      });
+      expect(result.summary).toBe('Ports keep adapters swappable.');
+      expect(result.sources).toHaveLength(1);
+    });
+
+    it('throws for missing notes and returns empty output for empty content', async () => {
+      vi.mocked(noteRepository.findById).mockResolvedValueOnce(null);
+      await expect(useCase.execute({ noteId: 'missing' })).rejects.toThrow(
+        'Note not found: missing',
+      );
+
+      vi.mocked(noteRepository.findById).mockResolvedValueOnce(createNoteProps());
+      vi.mocked(noteRepository.getContentById).mockResolvedValueOnce(null);
+      await expect(useCase.execute({ noteId: 'note-1' })).resolves.toEqual({
+        summary: '',
+        sources: [],
+      });
+    });
+  });
+
+  describe('WarmUpTranscriberUseCase', () => {
+    it('initializes the transcriber when it is not ready', async () => {
+      const transcriber = createMockTranscriber();
+      vi.mocked(transcriber.isReady).mockReturnValueOnce(false).mockReturnValueOnce(true);
+      const useCase = new WarmUpTranscriberUseCase(transcriber);
+
+      await expect(useCase.execute()).resolves.toEqual({ ready: true });
+      expect(transcriber.initialize).toHaveBeenCalled();
+    });
+
+    it('reports not ready when initialization fails', async () => {
+      const transcriber = createMockTranscriber();
+      vi.mocked(transcriber.initialize).mockRejectedValue(new Error('download failed'));
+      const useCase = new WarmUpTranscriberUseCase(transcriber);
+
+      await expect(useCase.execute()).resolves.toEqual({ ready: false });
     });
   });
 });
