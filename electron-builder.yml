@@ -74,6 +74,11 @@ mac:
       are transcribed locally on your device.
   # Minimize app size
   minimumSystemVersion: "10.15"
+  # Native helpers (stone-audio-tap: ScreenCaptureKit system-audio capture).
+  # Built by scripts/build-native.sh before packaging.
+  extraResources:
+    - from: native/bin
+      to: native
 
 win:
   target:

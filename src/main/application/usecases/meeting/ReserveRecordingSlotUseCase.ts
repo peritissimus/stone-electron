@@ -13,6 +13,7 @@ import type {
   IFileStorage,
   IIdGenerator,
   IPathService,
+  ISystemAudioTap,
 } from '../../../domain';
 import type {
   IReserveRecordingSlotUseCase,
@@ -29,6 +30,7 @@ export class ReserveRecordingSlotUseCase implements IReserveRecordingSlotUseCase
     private readonly fileStorage: IFileStorage,
     private readonly idGenerator: IIdGenerator,
     private readonly pathService: IPathService,
+    private readonly systemAudioTap?: ISystemAudioTap,
   ) {}
 
   async execute(request: ReserveRecordingSlotRequest): Promise<ReserveRecordingSlotResponse> {
@@ -55,6 +57,19 @@ export class ReserveRecordingSlotUseCase implements IReserveRecordingSlotUseCase
     });
     await this.meetingRepository.save(recording);
 
-    return { recordingId: id, audioAbsolutePath };
+    // Best-effort: start the native system-audio tap (macOS). The mic is
+    // the source of truth; if the helper is missing, unsupported, or the
+    // user denies Screen & System Audio Recording, we record mic-only.
+    let systemAudio = false;
+    if (this.systemAudioTap?.isSupported()) {
+      try {
+        await this.systemAudioTap.start(id, `${audioAbsolutePath}.system.pcm`);
+        systemAudio = true;
+      } catch {
+        systemAudio = false;
+      }
+    }
+
+    return { recordingId: id, audioAbsolutePath, systemAudio };
   }
 }

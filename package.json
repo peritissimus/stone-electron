@@ -17,7 +17,7 @@
   },
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "build": "npm run build:main && npm run build:worker && npm run build:preload && npm run build:renderer",
+    "build": "npm run build:native && npm run build:main && npm run build:worker && npm run build:preload && npm run build:renderer",
     "build:worker": "vite build --config vite.worker.config.ts",
     "build:main": "vite build --config vite.main.config.ts",
     "build:preload": "vite build --config vite.preload.config.ts",
@@ -53,7 +53,8 @@
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
     "postinstall": "electron-rebuild",
-    "react-devtools": "react-devtools"
+    "react-devtools": "react-devtools",
+    "build:native": "./scripts/build-native.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",

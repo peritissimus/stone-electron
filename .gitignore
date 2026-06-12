@@ -40,3 +40,4 @@ bundle-stats.html
 playwright-report/
 test-results/
 
+native/bin/

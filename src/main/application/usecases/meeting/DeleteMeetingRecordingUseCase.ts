@@ -8,6 +8,7 @@ import type {
   IFileStorage,
   IMeetingRecordingRepository,
   IPathService,
+  ISystemAudioTap,
   IWorkspaceRepository,
 } from '../../../domain';
 import type {
@@ -21,9 +22,17 @@ export class DeleteMeetingRecordingUseCase implements IDeleteMeetingRecordingUse
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly fileStorage: IFileStorage,
     private readonly pathService: IPathService,
+    private readonly systemAudioTap?: ISystemAudioTap,
   ) {}
 
   async execute(request: DeleteMeetingRecordingRequest): Promise<void> {
+    // Cancel path: a live system-audio tap must die with the recording.
+    try {
+      await this.systemAudioTap?.stop(request.recordingId);
+    } catch {
+      // best-effort
+    }
+
     const recording = await this.meetingRepository.findById(request.recordingId);
     if (!recording) return;
 
@@ -35,6 +44,11 @@ export class DeleteMeetingRecordingUseCase implements IDeleteMeetingRecordingUse
           await this.fileStorage.delete(absolutePath);
         } catch {
           // best-effort — DB row removal proceeds even if the file is gone.
+        }
+        try {
+          await this.fileStorage.delete(`${absolutePath}.system.pcm`);
+        } catch {
+          // scratch system track may not exist.
         }
       }
     }

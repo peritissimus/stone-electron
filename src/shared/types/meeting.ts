@@ -36,4 +36,6 @@ export interface MeetingRecording {
 export interface RecordingSlot {
   recordingId: string;
   audioAbsolutePath: string;
+  /** True when the native system-audio tap is live for this recording. */
+  systemAudio?: boolean;
 }

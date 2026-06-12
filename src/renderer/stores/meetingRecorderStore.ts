@@ -46,7 +46,11 @@ interface MeetingRecorderState {
   closeDock: () => void;
 
   // Lifecycle (called by the hook in response to MediaRecorder events)
-  reserveSlot: () => Promise<{ recordingId: string; audioPath: string } | null>;
+  reserveSlot: () => Promise<{
+    recordingId: string;
+    audioPath: string;
+    systemAudio: boolean;
+  } | null>;
   markRecordingStarted: (slot: {
     recordingId: string;
     audioPath: string;
@@ -92,6 +96,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
       return {
         recordingId: result.data.recordingId,
         audioPath: result.data.audioAbsolutePath,
+        systemAudio: result.data.systemAudio ?? false,
       };
     } catch (err) {
       logger.error('[meetingRecorderStore] reserveSlot failed', err);

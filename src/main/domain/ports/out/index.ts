@@ -20,6 +20,7 @@ export * from './ISearchEngine';
 export * from './IEmbedder';
 export * from './IExporter';
 export * from './ISystemBridge';
+export * from './ISystemAudioTap';
 export * from './IGitClient';
 export * from './ISettingsRepository';
 export * from './IAppConfigRepository';

@@ -37,6 +37,7 @@ import type {
   IMeetingRecordingRepository,
   ITemplateRepository,
   IExporter,
+  ISystemAudioTap,
   ISystemBridge,
   IGitClient,
   IIdGenerator,
@@ -173,6 +174,7 @@ import {
   SearchEngine,
   Embedder,
   Exporter,
+  SystemAudioTap,
   SystemBridge,
   GitClient,
   CryptoIdGenerator,
@@ -343,6 +345,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const eventPublisher: IEventPublisher = new EventPublisher();
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
+  const systemAudioTap: ISystemAudioTap = new SystemAudioTap();
   const gitClient: IGitClient = new GitClient();
   const idGenerator: IIdGenerator = new CryptoIdGenerator();
   const pathService: IPathService = new NodePathService();
@@ -628,6 +631,7 @@ export function createContainer(deps: ContainerDeps): Container {
     pathService,
     transcriber,
     summarizer,
+    systemAudioTap,
     appendToJournal: (content, workspaceId) =>
       quickCaptureUseCases.appendToJournal(content, workspaceId),
   });

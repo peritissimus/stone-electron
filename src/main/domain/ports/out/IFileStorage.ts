@@ -33,6 +33,11 @@ export interface IFileStorage {
   writeBytes(filePath: string, bytes: Uint8Array, opts?: { append?: boolean }): Promise<void>;
 
   /**
+   * Read a file as binary bytes. Returns null if the file doesn't exist.
+   */
+  readBytes(filePath: string): Promise<Uint8Array | null>;
+
+  /**
    * Delete a file
    */
   delete(filePath: string): Promise<void>;

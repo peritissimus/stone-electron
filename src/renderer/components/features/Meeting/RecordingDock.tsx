@@ -203,8 +203,9 @@ function Idle({ visible }: { visible: boolean }) {
       <p className="text-xs leading-relaxed text-muted-foreground">
         {isMacOS() ? (
           <>
-            Captures your microphone. System audio (remote voices) isn't capturable on
-            macOS yet — use speakers, or position the mic to hear the room.
+            Captures your microphone, plus system audio (remote voices) when Stone has
+            Screen &amp; System Audio Recording access — macOS asks the first time. The
+            badge shows which sources are live.
           </>
         ) : (
           <>

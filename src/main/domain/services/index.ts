@@ -69,3 +69,4 @@ export type {
   ResolvedShortcuts,
   ShortcutConflict,
 } from './ShortcutRules';
+export { AudioMixer } from './AudioMixer';

@@ -55,6 +55,7 @@ const MeetingRecordingSchema = z.object({
 const RecordingSlotSchema: z.ZodType<RecordingSlot> = z.object({
   recordingId: z.string(),
   audioAbsolutePath: z.string(),
+  systemAudio: z.boolean().optional(),
 });
 
 const ListResponseSchema = z.object({

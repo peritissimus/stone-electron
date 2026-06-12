@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
 import { describeMicError } from '@renderer/lib/micErrors';
+import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { logger } from '@renderer/lib/logger';
 
 export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
@@ -149,17 +150,21 @@ export function useMeetingRecorder() {
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = micStream;
 
-      // System audio is optional — request it, but fall back to
-      // mic-only if the user denies the macOS Screen Recording prompt
-      // or the platform doesn't support it (Linux, older macOS).
-      const systemStream = await tryCaptureSystemAudio();
+      // System audio: on macOS the native tap (started main-side during
+      // reserveSlot, reported via slot.systemAudio) is the only working
+      // path — Electron's getDisplayMedia loopback is Windows-only, so
+      // don't even ask there (it would just flash a useless screen-share
+      // prompt). On Windows, capture the loopback stream here and mix.
+      const systemStream = isMacOS() ? null : await tryCaptureSystemAudio();
       systemStreamRef.current = systemStream;
 
-      const { recordedStream, mixerCtx, captureMode } = buildRecordedStream(
+      const { recordedStream, mixerCtx, captureMode: rendererMode } = buildRecordedStream(
         micStream,
         systemStream,
       );
       if (mixerCtx) mixerCtxRef.current = mixerCtx;
+      const captureMode: 'mic-only' | 'mic+system' =
+        rendererMode === 'mic+system' || slot.systemAudio ? 'mic+system' : 'mic-only';
 
       const recorder = new MediaRecorder(recordedStream, pickMimeType());
       recorderRef.current = recorder;

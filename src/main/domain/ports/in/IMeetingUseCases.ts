@@ -26,6 +26,8 @@ export interface ReserveRecordingSlotResponse {
   recordingId: string;
   /** Absolute audio path the renderer should write bytes to (via IPC). */
   audioAbsolutePath: string;
+  /** True when the native system-audio tap started (macOS, permission granted). */
+  systemAudio: boolean;
 }
 
 // ---------- Finalize: ingest captured audio and run the pipeline ----------

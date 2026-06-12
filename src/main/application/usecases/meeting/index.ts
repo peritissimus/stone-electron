@@ -5,6 +5,7 @@ import type {
   IMeetingUseCases,
   IPathService,
   ISummarizationStrategy,
+  ISystemAudioTap,
   ITranscriber,
   IWorkspaceRepository,
 } from '../../../domain';
@@ -38,6 +39,7 @@ export interface MeetingUseCasesDeps {
     content: string,
     workspaceId?: string,
   ) => Promise<{ noteId: string; appended: boolean }>;
+  systemAudioTap?: ISystemAudioTap;
   defaultPrompt?: string;
 }
 
@@ -49,6 +51,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       deps.fileStorage,
       deps.idGenerator,
       deps.pathService,
+      deps.systemAudioTap,
     ),
     appendRecordingAudio: new AppendRecordingAudioUseCase(
       deps.meetingRepository,
@@ -63,6 +66,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       pathService: deps.pathService,
       transcriber: deps.transcriber,
       summarizer: deps.summarizer,
+      systemAudioTap: deps.systemAudioTap,
       defaultPrompt: deps.defaultPrompt,
     }),
     listMeetingRecordings: new ListMeetingRecordingsUseCase(
@@ -75,6 +79,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       deps.workspaceRepository,
       deps.fileStorage,
       deps.pathService,
+      deps.systemAudioTap,
     ),
     resummarizeMeeting: new ResummarizeMeetingUseCase({
       meetingRepository: deps.meetingRepository,

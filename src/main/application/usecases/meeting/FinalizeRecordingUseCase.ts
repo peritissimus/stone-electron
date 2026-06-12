@@ -11,12 +11,14 @@
  */
 
 import {
+  AudioMixer,
   DEFAULT_MEETING_SUMMARY_PROMPT,
   MeetingRecordingNotFoundError,
   type IFileStorage,
   type IMeetingRecordingRepository,
   type IPathService,
   type ISummarizationStrategy,
+  type ISystemAudioTap,
   type ITranscriber,
   type IWorkspaceRepository,
 } from '../../../domain';
@@ -33,11 +35,15 @@ export interface FinalizeRecordingUseCaseDeps {
   pathService: IPathService;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  /** Native system-audio capture (macOS); absent on other platforms. */
+  systemAudioTap?: ISystemAudioTap;
   /** Override for tests / future settings. */
   defaultPrompt?: string;
 }
 
 export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
+  private readonly mixer = new AudioMixer();
+
   constructor(private readonly deps: FinalizeRecordingUseCaseDeps) {}
 
   async execute(request: FinalizeRecordingRequest): Promise<FinalizeRecordingResponse> {
@@ -55,6 +61,11 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
     );
 
     const prompt = this.deps.defaultPrompt ?? DEFAULT_MEETING_SUMMARY_PROMPT;
+
+    // System-audio merge (macOS tap): stop the helper so the PCM file is
+    // flushed, then mix it into the mic WAV. Any failure here degrades to
+    // mic-only — the mic track is never put at risk.
+    await this.mergeSystemAudio(request.recordingId, audioAbsolutePath);
 
     try {
       recording.markTranscribing();
@@ -90,5 +101,29 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
     }
 
     return { recording: recording.toPersistence() };
+  }
+
+  private async mergeSystemAudio(recordingId: string, audioAbsolutePath: string): Promise<void> {
+    const systemPcmPath = `${audioAbsolutePath}.system.pcm`;
+    try {
+      await this.deps.systemAudioTap?.stop(recordingId);
+      const systemBytes = await this.deps.fileStorage.readBytes(systemPcmPath);
+      if (!systemBytes || systemBytes.byteLength === 0) return;
+      const micBytes = await this.deps.fileStorage.readBytes(audioAbsolutePath);
+      if (!micBytes) return;
+      const mixed = this.mixer.mix(
+        this.mixer.decodeWav(micBytes),
+        this.mixer.decodeRawPcm(systemBytes),
+      );
+      await this.deps.fileStorage.writeBytes(audioAbsolutePath, this.mixer.encodeWav(mixed));
+    } catch {
+      // Mic-only fallback — never fail the recording over the system track.
+    } finally {
+      try {
+        await this.deps.fileStorage.delete(systemPcmPath);
+      } catch {
+        // Scratch cleanup is best-effort.
+      }
+    }
   }
 }
