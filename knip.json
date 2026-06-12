@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/main/index.ts",
+    "src/main/api/standalone.ts",
+    "src/preload.ts",
+    "src/renderer/index.tsx",
+    "src/main/infrastructure/workers/embedding.worker.ts",
+    "vite.config.ts",
+    "vite.main.config.ts",
+    "vite.preload.config.ts",
+    "vite.renderer.config.ts",
+    "vite.worker.config.ts",
+    "vitest.config.ts",
+    "drizzle.config.ts"
+  ],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": ["scripts/**", "tests/**", "src/renderer/specs/**"],
+  "ignoreDependencies": []
+}
