@@ -25,14 +25,16 @@ import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
 import type { SuggestedTopic } from '@shared/types';
 
-/** Collapse preference survives restarts — purely a UI choice. */
+/** Collapse preference survives restarts — purely a UI choice. Collapsed by
+ *  default: suggestions are an offer, not the page's content — the user's
+ *  own topics come first. */
 const COLLAPSED_KEY = 'knowledge-suggested-collapsed';
 
 export function SuggestedTopicsSection() {
   const { suggestions, loading, adopting, hasLoadedOnce, refresh, dismiss, adopt } =
     useSuggestedTopics();
   const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(COLLAPSED_KEY) === 'true',
+    () => localStorage.getItem(COLLAPSED_KEY) !== 'false',
   );
 
   const toggleCollapsed = useCallback(() => {
