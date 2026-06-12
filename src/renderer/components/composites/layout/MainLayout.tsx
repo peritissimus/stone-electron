@@ -110,6 +110,11 @@ const TemplatePickerDialog = lazy(() =>
     default: m.TemplatePickerDialog,
   })),
 );
+const VoiceCaptureDock = lazy(() =>
+  import('@renderer/components/features/VoiceCapture').then((m) => ({
+    default: m.VoiceCaptureDock,
+  })),
+);
 
 // Loading skeletons
 const EditorSkeleton = () => (
@@ -528,6 +533,9 @@ export function MainLayout() {
             </Suspense>
             <Suspense fallback={null}>
               <TemplatePickerDialog />
+            </Suspense>
+            <Suspense fallback={null}>
+              <VoiceCaptureDock />
             </Suspense>
           </>
         }

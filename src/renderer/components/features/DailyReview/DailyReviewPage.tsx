@@ -29,6 +29,7 @@ import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useDailyReview } from '@renderer/hooks/useDailyReview';
 import { useStatusReport } from '@renderer/hooks/useStatusReport';
+import { useVoiceCaptureTrigger } from '@renderer/hooks/useVoiceCapture';
 import { toNote } from '@renderer/navigation';
 import { StatusReportDialog } from './StatusReportDialog';
 import type {
@@ -43,6 +44,7 @@ export function DailyReviewPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { snapshot, loading, loadedOnce, refreshing, error, reload } = useDailyReview();
   const { openAndGenerate: openStatusReport } = useStatusReport();
+  const { openVoiceCapture } = useVoiceCaptureTrigger();
 
   const headerDate = useMemo(() => formatHeaderDate(snapshot?.date ?? todayIso()), [
     snapshot?.date,
@@ -81,6 +83,16 @@ export function DailyReviewPage() {
         >
           <ArrowClockwise size={14} />
           Refresh
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={openVoiceCapture}
+          className="text-xs"
+          title="Record a voice note — transcribed locally and saved to today's journal"
+        >
+          <Microphone size={14} weight="fill" />
+          Voice note
         </Button>
         <Button
           variant="ghost"

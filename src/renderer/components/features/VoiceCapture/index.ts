@@ -1,0 +1,1 @@
+export { VoiceCaptureDock } from './VoiceCaptureDock';
