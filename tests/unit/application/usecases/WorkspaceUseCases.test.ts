@@ -131,15 +131,19 @@ describe('WorkspaceUseCases', () => {
   describe('CreateWorkspaceUseCase', () => {
     let workspaceRepo: IWorkspaceRepository;
     let eventPublisher: IEventPublisher;
+    let fileStorage: IFileStorage;
     let useCase: CreateWorkspaceUseCase;
 
     beforeEach(() => {
       workspaceRepo = createMockWorkspaceRepository();
       eventPublisher = createMockEventPublisher();
+      fileStorage = createMockFileStorage();
       useCase = new CreateWorkspaceUseCase(
         workspaceRepo,
         createMockIdGenerator(),
-        createMockFileStorage(),
+        fileStorage,
+        createMockAppConfigRepository(),
+        createMockPathService(),
         eventPublisher,
       );
     });
@@ -160,6 +164,23 @@ describe('WorkspaceUseCases', () => {
       expect(eventPublisher.publish).toHaveBeenCalled();
     });
 
+    it('scaffolds the standard folders from the location policy', async () => {
+      vi.mocked(workspaceRepo.findAll).mockResolvedValue([]);
+      vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
+
+      await useCase.execute({ name: 'Fresh', folderPath: '/ws' });
+
+      const created = vi.mocked(fileStorage.createDirectory).mock.calls.map((c) => c[0]);
+      expect(created).toContain('/ws');
+      // Defaults: Journal (journalFolder), Personal (defaultNoteFolder +
+      // personal slot, deduped), Work (work slot).
+      expect(created).toContain('/ws/Journal');
+      expect(created).toContain('/ws/Personal');
+      expect(created).toContain('/ws/Work');
+      // Personal appears once despite being both default folder and slot.
+      expect(created.filter((p) => p === '/ws/Personal')).toHaveLength(1);
+    });
+
     it('returns the existing workspace when the folder is already in use', async () => {
       const existing = createWorkspaceProps({
         id: 'ws-existing',
@@ -178,6 +199,8 @@ describe('WorkspaceUseCases', () => {
       expect(result.workspace.id).toBe('ws-existing');
       expect(workspaceRepo.save).not.toHaveBeenCalled();
       expect(eventPublisher.publish).not.toHaveBeenCalled();
+      // The scaffold still runs, backfilling folders on a bare workspace.
+      expect(fileStorage.createDirectory).toHaveBeenCalledWith('/path/to/workspace/Journal');
     });
   });
 

@@ -82,6 +82,8 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
       workspaceRepository,
       idGenerator,
       fileStorage,
+      appConfigRepository,
+      pathService,
       eventPublisher,
     ),
     getWorkspace: new GetWorkspaceUseCase(workspaceRepository),
