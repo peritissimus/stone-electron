@@ -11,6 +11,13 @@ export type { LinkType, ExtractedLink } from './LinkExtractor';
 export { SimilarityCalculator } from './SimilarityCalculator';
 export type { EmbeddingVector, SimilarityResult } from './SimilarityCalculator';
 
+export { RelatedNotesScorer } from './RelatedNotesScorer';
+export type {
+  AlignableChunk,
+  SemanticCandidate,
+  StructuralSignals,
+} from './RelatedNotesScorer';
+
 export { TopicClassifier, TOPIC_CONFIDENCE_THRESHOLD } from './TopicClassifier';
 export type { TopicCandidate, TopicMatch } from './TopicClassifier';
 

@@ -210,7 +210,13 @@ function RelatedRow({ match, linked, canLink, onClick, onLink }: RelatedRowProps
                 Linked
               </span>
             )}
-            <span className="text-[11px] tabular-nums text-muted-foreground/70">
+            <span
+              className={cn(
+                'text-[11px] tabular-nums text-muted-foreground/70',
+                // The hover Link button occupies this corner — yield to it.
+                canLink && !linked && 'transition-opacity duration-150 group-hover:opacity-0',
+              )}
+            >
               {similarityPct}%
             </span>
           </div>

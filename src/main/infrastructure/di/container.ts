@@ -478,6 +478,8 @@ export function createContainer(deps: ContainerDeps): Container {
     searchEngine,
     embedder,
     indexRepository,
+    tagRepository,
+    noteLinkRepository,
     reranker,
   });
 

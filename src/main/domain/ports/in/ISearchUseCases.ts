@@ -125,9 +125,12 @@ export interface GetRelatedNotesRequest {
 export interface RelatedNoteMatch {
   noteId: string;
   title: string;
-  /** Best chunk-to-source cosine in [-1, 1]. */
+  /**
+   * Calibrated relatedness in [0, 1] — chunk-alignment semantics plus
+   * tag/link-graph/notebook boosts. Safe to render as a percentage.
+   */
   similarity: number;
-  /** How many of this note's chunks scored above the discovery threshold. */
+  /** How many of this note's chunks align strongly with the source note. */
   matchedChunks: number;
   bestChunk: {
     chunkId: string;
