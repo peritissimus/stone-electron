@@ -28,6 +28,7 @@ import {
   updateTrayState,
   type TrayRecorderPhase,
 } from '@main/infrastructure/electron/tray';
+import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
 
 // Create at module load so the constructor's performance.now() reading
 // captures the earliest possible app start time. Passed into the DI
@@ -229,10 +230,12 @@ async function createWindow() {
     // Load the app
     if (isDev) {
       const devServerUrl = await resolveDevServerUrl();
+      hardenWindowNavigation(mainWindow, [devServerUrl, 'file://']);
       logger.info(`Loading dev server at ${devServerUrl}`);
       await mainWindow.loadURL(devServerUrl);
       mainWindow.webContents.openDevTools();
     } else {
+      hardenWindowNavigation(mainWindow, ['file://']);
       const htmlPath = path.join(__dirname, '../renderer/index.html');
       logger.info(`Loading production build from: ${htmlPath}`);
       await mainWindow.loadFile(htmlPath);
@@ -292,9 +295,12 @@ function createQuickCaptureWindow() {
   // Load quick capture route
   if (isDev) {
     void resolveDevServerUrl().then((devServerUrl) => {
-      void quickCaptureWindow?.loadURL(`${devServerUrl}/#/quick-capture`);
+      if (!quickCaptureWindow) return;
+      hardenWindowNavigation(quickCaptureWindow, [devServerUrl, 'file://']);
+      void quickCaptureWindow.loadURL(`${devServerUrl}/#/quick-capture`);
     });
   } else {
+    hardenWindowNavigation(quickCaptureWindow, ['file://']);
     const htmlPath = path.join(__dirname, '../renderer/index.html');
     quickCaptureWindow.loadFile(htmlPath, { hash: '/quick-capture' });
   }
