@@ -9,6 +9,7 @@
 import type { Database } from '@main/shared';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
+import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
 
 // Domain Layer - Ports
 import type {
@@ -795,6 +796,11 @@ export function resetContainer(): void {
 
 export function registerIPCHandlers(): void {
   const container = getContainer();
+
+  // Must run before any handler registration below so all channels are timed
+  instrumentIpcHandlers((channel, durationMs, success) =>
+    container.perfMonitor.recordIPCCall(channel, durationMs, success),
+  );
 
   // Class-based IPC handlers
   container.noteIPC.registerHandlers();
