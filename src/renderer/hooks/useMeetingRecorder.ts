@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
+import { describeMicError } from '@renderer/lib/micErrors';
 import { logger } from '@renderer/lib/logger';
 
 export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
@@ -181,7 +182,7 @@ export function useMeetingRecorder() {
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
       releaseHardware();
-      store.markError(err instanceof Error ? err.message : 'Failed to start recording');
+      store.markError(describeMicError(err));
     }
   }, []);
 

@@ -66,6 +66,12 @@ mac:
   entitlementsInherit: build/entitlements.mac.plist
   hardenedRuntime: true
   gatekeeperAssess: false
+  # TCC usage descriptions — a hardened-runtime app that touches the mic
+  # without NSMicrophoneUsageDescription is killed by macOS, not prompted.
+  extendInfo:
+    NSMicrophoneUsageDescription: >-
+      Stone uses the microphone to record meetings and voice notes, which
+      are transcribed locally on your device.
   # Minimize app size
   minimumSystemVersion: "10.15"
 

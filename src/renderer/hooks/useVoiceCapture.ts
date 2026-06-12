@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useVoiceCaptureStore } from '@renderer/stores/voiceCaptureStore';
 import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
+import { describeMicError } from '@renderer/lib/micErrors';
 import { toNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 
@@ -149,7 +150,7 @@ export function useVoiceCapture() {
     } catch (err) {
       logger.error('[useVoiceCapture] start failed', err);
       releaseHardware();
-      store.markError(err instanceof Error ? err.message : 'Microphone unavailable');
+      store.markError(describeMicError(err));
     }
   }, []);
 

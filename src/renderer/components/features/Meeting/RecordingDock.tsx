@@ -9,7 +9,9 @@
 import { useEffect } from 'react';
 import { Microphone, Stop, X, CircleNotch, Check, Warning } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
+import { StoneLogo } from '@renderer/components/base/StoneLogo';
 import { useMeetingRecorder, type RecorderPhase } from '@renderer/hooks/useMeetingRecorder';
+import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 
@@ -78,9 +80,7 @@ export function RecordingDock() {
       )}
     >
       <header className="flex items-center gap-2 px-1">
-        <div className="flex size-5 items-center justify-center rounded-md bg-primary/10 text-primary">
-          <Microphone size={12} weight="fill" />
-        </div>
+        <StoneLogo size={18} className="shrink-0" />
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Meeting recorder
         </span>
@@ -201,8 +201,17 @@ function Idle({ visible }: { visible: boolean }) {
   return (
     <div className={layerCn(visible)}>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        Captures your microphone plus system audio (remote meeting voices). macOS will ask
-        for Screen Recording permission the first time so it can read the loopback stream.
+        {isMacOS() ? (
+          <>
+            Captures your microphone. System audio (remote voices) isn't capturable on
+            macOS yet — use speakers, or position the mic to hear the room.
+          </>
+        ) : (
+          <>
+            Captures your microphone plus system audio (remote meeting voices) via the
+            system loopback device.
+          </>
+        )}{' '}
         Audio stays under{' '}
         <code className="rounded bg-background px-1 py-px font-mono text-[10px]">
           .stone/recordings
