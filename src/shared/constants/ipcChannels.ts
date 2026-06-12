@@ -218,6 +218,7 @@ export const GIT_CHANNELS = {
 // Quick Capture Operations
 export const QUICK_CAPTURE_CHANNELS = {
   APPEND_TO_JOURNAL: 'quickCapture:appendToJournal',
+  TRANSCRIBE_VOICE: 'quickCapture:transcribeVoice',
 } as const;
 
 // Journal Operations

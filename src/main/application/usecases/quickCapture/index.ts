@@ -5,10 +5,13 @@ import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigR
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
 import type { IPathService } from '../../../domain/ports/out/IPathService';
+import type { ITranscriber } from '../../../domain/ports/out/ITranscriber';
 import type { IQuickCaptureUseCases } from '../../../domain/ports/in/IQuickCaptureUseCases';
 import { AppendToJournalUseCase } from './AppendToJournalUseCase';
+import { TranscribeVoiceCaptureUseCase } from './TranscribeVoiceCaptureUseCase';
 
 export { AppendToJournalUseCase } from './AppendToJournalUseCase';
+export { TranscribeVoiceCaptureUseCase } from './TranscribeVoiceCaptureUseCase';
 
 export interface QuickCaptureUseCasesDeps {
   noteRepository: INoteRepository;
@@ -17,6 +20,7 @@ export interface QuickCaptureUseCasesDeps {
   appConfigRepository: IAppConfigRepository;
   idGenerator: IIdGenerator;
   pathService: IPathService;
+  transcriber: ITranscriber;
   eventPublisher?: IEventPublisher;
 }
 
@@ -28,6 +32,7 @@ export function createQuickCaptureUseCases(deps: QuickCaptureUseCasesDeps): IQui
     appConfigRepository,
     idGenerator,
     pathService,
+    transcriber,
     eventPublisher,
   } = deps;
 
@@ -41,8 +46,17 @@ export function createQuickCaptureUseCases(deps: QuickCaptureUseCasesDeps): IQui
     eventPublisher,
   );
 
+  const transcribeVoiceCaptureUseCase = new TranscribeVoiceCaptureUseCase(
+    workspaceRepository,
+    fileStorage,
+    pathService,
+    idGenerator,
+    transcriber,
+  );
+
   return {
     appendToJournal: (content: string, workspaceId?: string) =>
       appendToJournalUseCase.execute(content, workspaceId),
+    transcribeVoiceCapture: (request) => transcribeVoiceCaptureUseCase.execute(request),
   };
 }

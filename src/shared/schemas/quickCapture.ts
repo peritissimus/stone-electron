@@ -23,3 +23,13 @@ export const AppendToJournalResponseSchema = z.object({
 });
 
 export type AppendToJournalResponse = z.infer<typeof AppendToJournalResponseSchema>;
+
+// Voice capture: the WAV travels as an ArrayBuffer via structured clone, so
+// the zod schema only covers the JSON-ish envelope around it (the buffer
+// itself is validated by presence/type checks in the IPC adapter).
+export const TranscribeVoiceResponseSchema = z.object({
+  text: z.string(),
+  durationMs: z.number(),
+});
+
+export type TranscribeVoiceResponse = z.infer<typeof TranscribeVoiceResponseSchema>;

@@ -10,6 +10,7 @@ import type { INoteRepository } from '../../../../src/main/domain/ports/out/INot
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
+import type { ITranscriber } from '../../../../src/main/domain/ports/out/ITranscriber';
 import type { IQuickCaptureUseCases } from '../../../../src/main/domain/ports/in/IQuickCaptureUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -53,10 +54,19 @@ function createMockWorkspaceRepository(): IWorkspaceRepository {
   } as unknown as IWorkspaceRepository;
 }
 
+function createMockTranscriber(): ITranscriber {
+  return {
+    isReady: vi.fn().mockReturnValue(true),
+    initialize: vi.fn(),
+    transcribe: vi.fn().mockResolvedValue({ text: '', segments: [], durationMs: 0 }),
+  } as unknown as ITranscriber;
+}
+
 function createMockFileStorage(): IFileStorage {
   return {
     read: vi.fn(),
     write: vi.fn(),
+    writeBytes: vi.fn(),
     delete: vi.fn(),
     exists: vi.fn(),
     rename: vi.fn(),
@@ -120,6 +130,7 @@ describe('QuickCaptureUseCases', () => {
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
   let appConfigRepository: IAppConfigRepository;
+  let transcriber: ITranscriber;
   let useCases: IQuickCaptureUseCases;
 
   beforeEach(() => {
@@ -129,6 +140,7 @@ describe('QuickCaptureUseCases', () => {
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
     appConfigRepository = createMockAppConfigRepository();
+    transcriber = createMockTranscriber();
     useCases = createQuickCaptureUseCases({
       noteRepository: noteRepo,
       workspaceRepository: workspaceRepo,
@@ -136,6 +148,7 @@ describe('QuickCaptureUseCases', () => {
       appConfigRepository,
       idGenerator: createMockIdGenerator(),
       pathService: createMockPathService(),
+      transcriber,
     });
   });
 
@@ -228,6 +241,57 @@ describe('QuickCaptureUseCases', () => {
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
 
       await expect(useCases.appendToJournal('Content')).rejects.toThrow('No active workspace');
+    });
+  });
+
+  describe('transcribeVoiceCapture', () => {
+    const wav = new Uint8Array([1, 2, 3, 4]);
+
+    it('writes scratch WAV, transcribes, and cleans up', async () => {
+      const workspace = createWorkspaceProps();
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
+      vi.mocked(fileStorage.createDirectory).mockResolvedValue(undefined);
+      vi.mocked(fileStorage.writeBytes).mockResolvedValue(undefined);
+      vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+      vi.mocked(transcriber.transcribe).mockResolvedValue({
+        text: '  Buy milk tomorrow.  ',
+        segments: [],
+        durationMs: 2400,
+      });
+
+      const result = await useCases.transcribeVoiceCapture({ wav });
+
+      expect(result).toEqual({ text: 'Buy milk tomorrow.', durationMs: 2400 });
+      expect(fileStorage.createDirectory).toHaveBeenCalledWith(
+        '/test/workspace/.stone/recordings',
+      );
+      const writtenPath = vi.mocked(fileStorage.writeBytes).mock.calls[0][0];
+      expect(writtenPath).toMatch(/^\/test\/workspace\/\.stone\/recordings\/capture-.+\.wav$/);
+      expect(transcriber.transcribe).toHaveBeenCalledWith({ audioPath: writtenPath });
+      // Scratch audio is deleted after transcription.
+      expect(fileStorage.delete).toHaveBeenCalledWith(writtenPath);
+    });
+
+    it('cleans up the scratch WAV even when transcription fails', async () => {
+      const workspace = createWorkspaceProps();
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
+      vi.mocked(fileStorage.createDirectory).mockResolvedValue(undefined);
+      vi.mocked(fileStorage.writeBytes).mockResolvedValue(undefined);
+      vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+      vi.mocked(transcriber.transcribe).mockRejectedValue(new Error('decode failed'));
+
+      await expect(useCases.transcribeVoiceCapture({ wav })).rejects.toThrow('decode failed');
+
+      expect(fileStorage.delete).toHaveBeenCalled();
+    });
+
+    it('throws when no workspace exists', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
+
+      await expect(useCases.transcribeVoiceCapture({ wav })).rejects.toThrow(
+        'Workspace not found',
+      );
+      expect(transcriber.transcribe).not.toHaveBeenCalled();
     });
   });
 });

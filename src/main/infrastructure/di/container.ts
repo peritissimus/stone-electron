@@ -552,6 +552,7 @@ export function createContainer(deps: ContainerDeps): Container {
     appConfigRepository,
     idGenerator,
     pathService,
+    transcriber,
     eventPublisher,
   });
 
@@ -818,6 +819,8 @@ export function registerIPCHandlers(): void {
   registerQuickCaptureHandlers({
     appendToJournal: (content: string, workspaceId?: string) =>
       container.quickCaptureUseCases.appendToJournal(content, workspaceId),
+    transcribeVoiceCapture: (request) =>
+      container.quickCaptureUseCases.transcribeVoiceCapture(request),
   });
   registerJournalHandlers({
     journalUseCases: container.journalUseCases,
