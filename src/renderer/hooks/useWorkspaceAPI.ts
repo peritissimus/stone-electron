@@ -8,10 +8,16 @@ import { useNavigateHome } from '@renderer/navigation';
 import { workspaceAPI } from '@renderer/api';
 import { clearPathCache } from '@renderer/lib/pathCache';
 import { clearMermaidCache } from '@renderer/lib/mermaid';
+import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
+import { useTagAPI } from '@renderer/hooks/useTagAPI';
+import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 
 export function useWorkspaceAPI() {
   const navigateHome = useNavigateHome();
   const { setWorkspaces, setActiveWorkspaceId, setLoading, setError } = useWorkspaceStore();
+  const { loadFileTree } = useFileTreeAPI();
+  const { loadTags } = useTagAPI();
+  const { loadNotes } = useNoteAPI();
 
   const loadWorkspaces = useCallback(async () => {
     setLoading(true);
@@ -42,7 +48,13 @@ export function useWorkspaceAPI() {
           // Tree selection is derived from the route; navigating home
           // drops the active note and the derivation follows automatically.
           navigateHome();
-          await loadWorkspaces();
+          // The sidebar tree, tags, and notes all belong to the previous
+          // workspace until reloaded — nothing subscribes to the
+          // WORKSPACE_SWITCHED event, so refresh them here at the seam.
+          await Promise.all([loadWorkspaces(), loadFileTree(), loadTags()]);
+          // Notes are the heaviest load and nothing above the fold needs
+          // them synchronously — refresh in the background.
+          void loadNotes();
         } else {
           setError(response.error?.message || 'Failed to switch workspace');
         }
@@ -50,7 +62,15 @@ export function useWorkspaceAPI() {
         setError(error instanceof Error ? error.message : 'Failed to switch workspace');
       }
     },
-    [loadWorkspaces, setActiveWorkspaceId, navigateHome, setError],
+    [
+      loadWorkspaces,
+      loadFileTree,
+      loadTags,
+      loadNotes,
+      setActiveWorkspaceId,
+      navigateHome,
+      setError,
+    ],
   );
 
   const syncWorkspace = useCallback(
