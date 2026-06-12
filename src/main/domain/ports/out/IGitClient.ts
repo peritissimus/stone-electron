@@ -52,6 +52,34 @@ export interface GitOperationResult {
 }
 
 /**
+ * Classified failure cause — drives actionable UI copy instead of a
+ * generic "sync failed".
+ */
+export type GitErrorKind = 'auth' | 'network' | 'conflict' | 'unknown';
+
+/**
+ * Result of a full sync (commit → pull --rebase → push).
+ */
+export interface GitSyncResult {
+  success: boolean;
+  /** True when local changes were committed as part of this sync. */
+  committed: boolean;
+  commitMessage?: string;
+  /** Commits integrated from the remote during this sync. */
+  pulledCount: number;
+  /** Commits sent to the remote during this sync. */
+  pushedCount: number;
+  /**
+   * Conflicted file paths when the rebase stopped. The client aborts the
+   * rebase before returning, so the working tree is clean and the local
+   * commit is intact — nothing is half-merged.
+   */
+  conflicts: string[];
+  errorKind?: GitErrorKind;
+  error?: string;
+}
+
+/**
  * Git Service - Handles git operations
  */
 export interface IGitClient {
@@ -101,7 +129,8 @@ export interface IGitClient {
   getCommits(path: string, limit?: number): Promise<GitCommit[]>;
 
   /**
-   * Sync (pull + commit + push)
+   * Sync: commit local changes, pull --rebase, push. Conflict-aware —
+   * see GitSyncResult.
    */
-  sync(path: string, message?: string): Promise<GitOperationResult>;
+  sync(path: string, message?: string): Promise<GitSyncResult>;
 }

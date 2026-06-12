@@ -3,6 +3,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useGitAPI } from '@renderer/hooks/useGitAPI';
 import { useFileEvents } from '@renderer/hooks/useFileEvents';
@@ -14,6 +15,22 @@ import {
   Check,
   Warning,
 } from '@phosphor-icons/react';
+
+function formatLastSync(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return '';
+  const minutes = Math.floor(ms / 60_000);
+  const label =
+    minutes < 1
+      ? 'just now'
+      : minutes < 60
+        ? `${minutes}m ago`
+        : minutes < 60 * 24
+          ? `${Math.floor(minutes / 60)}h ago`
+          : `${Math.floor(minutes / (60 * 24))}d ago`;
+  return ` · last synced ${label}`;
+}
 
 export function GitSyncButton() {
   const { activeWorkspaceId } = useWorkspaces();
@@ -40,10 +57,61 @@ export function GitSyncButton() {
     if (!activeWorkspaceId || syncing) return;
 
     const result = await sync(activeWorkspaceId);
-    if (result) {
-      logger.info('[GitSyncButton] Sync completed');
-      await loadStatus();
+    if (!result) {
+      toast.error('Sync failed — check Settings → Git Sync.');
+      return;
     }
+    logger.info('[GitSyncButton] Sync completed', result);
+
+    if (result.success) {
+      const moved =
+        [
+          result.pushed ? `↑${result.pushed}` : null,
+          result.pulled ? `↓${result.pulled}` : null,
+        ]
+          .filter(Boolean)
+          .join(' ') || null;
+      toast.success(
+        moved
+          ? `Synced ${moved}`
+          : result.committed
+            ? 'Committed locally — no remote changes to exchange'
+            : 'Already up to date',
+      );
+    } else {
+      switch (result.errorKind) {
+        case 'conflict': {
+          const files = result.conflicts ?? [];
+          toast.error(
+            files.length > 0
+              ? `Sync stopped: ${files.length} conflicting file${files.length === 1 ? '' : 's'} (${files
+                  .slice(0, 2)
+                  .join(', ')}${files.length > 2 ? '…' : ''})`
+              : 'Sync stopped on a conflict',
+            {
+              description:
+                'Your changes are committed locally and nothing was half-merged. Resolve the conflict in a git tool, then sync again.',
+              duration: 10000,
+            },
+          );
+          break;
+        }
+        case 'auth':
+          toast.error('Git authentication failed', {
+            description:
+              'Check your SSH key or stored credentials for the remote, then sync again.',
+          });
+          break;
+        case 'network':
+          toast.error("Can't reach the remote", {
+            description: 'You appear to be offline. Your changes are committed locally.',
+          });
+          break;
+        default:
+          toast.error('Sync failed', { description: result.error });
+      }
+    }
+    await loadStatus();
   };
 
   // Don't show if no workspace or not a git repo
@@ -73,7 +141,7 @@ export function GitSyncButton() {
             ? 'No remote configured - configure in Settings > Git Sync'
             : syncing
               ? 'Syncing...'
-              : 'Sync workspace (commit, pull, push)'
+              : `Sync workspace (commit, pull --rebase, push)${formatLastSync(status.lastSyncAt)}`
         }
       >
         <div className="flex items-center gap-2">

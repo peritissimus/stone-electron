@@ -7,6 +7,8 @@ import type {
   GitStatus,
   GitCommit,
   GitOperationResult,
+  GitSyncResult,
+  GitErrorKind,
   GitFileChange,
 } from '../../../domain';
 import { logger } from '../../../shared';
@@ -20,6 +22,52 @@ async function getSimpleGit() {
     simpleGit = module.simpleGit;
   }
   return simpleGit;
+}
+
+/**
+ * Open a repo handle with interactive prompts disabled. Without
+ * GIT_TERMINAL_PROMPT=0, an HTTPS remote with missing credentials makes
+ * git wait forever for a username on a TTY that doesn't exist — the sync
+ * appears to hang. With it, the same situation fails fast with an auth
+ * error we can classify.
+ */
+async function openRepo(path: string) {
+  const factory = await getSimpleGit();
+  return factory(path).env({
+    ...process.env,
+    GIT_TERMINAL_PROMPT: '0',
+    // Match terminal-prompt behavior for ssh: fail instead of asking.
+    GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? 'ssh -oBatchMode=yes',
+  });
+}
+
+/** Map a raw git error message onto an actionable category. */
+function classifyGitError(message: string): GitErrorKind {
+  const m = message.toLowerCase();
+  if (
+    m.includes('authentication failed') ||
+    m.includes('could not read username') ||
+    m.includes('could not read password') ||
+    m.includes('permission denied') ||
+    m.includes('host key verification failed') ||
+    m.includes('terminal prompts disabled')
+  ) {
+    return 'auth';
+  }
+  if (
+    m.includes('could not resolve host') ||
+    m.includes('unable to access') ||
+    m.includes('connection timed out') ||
+    m.includes('connection refused') ||
+    m.includes('network is unreachable') ||
+    m.includes('operation timed out')
+  ) {
+    return 'network';
+  }
+  if (m.includes('conflict') || m.includes('could not apply') || m.includes('needs merge')) {
+    return 'conflict';
+  }
+  return 'unknown';
 }
 
 /**
@@ -243,31 +291,125 @@ export class GitClient implements IGitClient {
     });
   }
 
-  async sync(path: string, message?: string): Promise<GitOperationResult> {
+  async sync(path: string, message?: string): Promise<GitSyncResult> {
     return await logger.withContext('out:GitClient.sync', async () => {
+      const fail = (error: unknown, fallbackKind?: GitErrorKind): GitSyncResult => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('[GitClient] Sync failed:', error);
+        return {
+          success: false,
+          committed,
+          commitMessage,
+          pulledCount: 0,
+          pushedCount: 0,
+          conflicts: [],
+          errorKind: fallbackKind ?? classifyGitError(errorMessage),
+          error: errorMessage,
+        };
+      };
+
+      let committed = false;
+      let commitMessage: string | undefined;
+
       try {
-        const git = (await getSimpleGit())(path);
+        const git = await openRepo(path);
 
-        // Stage all changes
-        await git.add('.');
-
-        // Check if there are changes to commit
-        const status = await git.status();
-        if (!status.isClean()) {
-          await git.commit(message || `Sync: ${new Date().toISOString()}`);
+        // 1. Commit local changes (if any).
+        const before = await git.status();
+        if (!before.isClean()) {
+          await git.add('.');
+          const changeCount =
+            before.modified.length +
+            before.created.length +
+            before.deleted.length +
+            before.renamed.length +
+            before.not_added.length;
+          commitMessage = message ?? defaultCommitMessage(changeCount);
+          await git.commit(commitMessage);
+          committed = true;
         }
 
-        // Pull then push
-        await git.pull();
-        await git.push();
+        // No remote → a local-only commit is a successful "sync".
+        const remotes = await git.getRemotes();
+        if (!remotes.some((r: { name: string }) => r.name === 'origin')) {
+          return {
+            success: true,
+            committed,
+            commitMessage,
+            pulledCount: 0,
+            pushedCount: 0,
+            conflicts: [],
+          };
+        }
 
-        logger.info('[GitClient] Synced repository');
-        return { success: true, message: 'Repository synced' };
+        // 2. Fetch so ahead/behind are real, then integrate.
+        await git.fetch();
+        const divergence = await git.status();
+        const pulledCount = divergence.behind ?? 0;
+
+        if (pulledCount > 0) {
+          try {
+            // Rebase keeps a single-user history linear — no
+            // "Merge branch 'main'" noise from syncing two devices.
+            await git.pull(['--rebase']);
+          } catch (pullError) {
+            // Rebase stopped on conflicts: collect the files, then abort
+            // so the tree is left clean with the local commit intact.
+            let conflicts: string[] = [];
+            try {
+              const conflictStatus = await git.status();
+              conflicts = conflictStatus.conflicted ?? [];
+            } catch {
+              // status unavailable mid-rebase failure — report empty list.
+            }
+            try {
+              await git.rebase(['--abort']);
+            } catch {
+              // nothing to abort (pull failed before rebasing).
+            }
+            const errorMessage =
+              pullError instanceof Error ? pullError.message : String(pullError);
+            const kind = classifyGitError(errorMessage);
+            return {
+              success: false,
+              committed,
+              commitMessage,
+              pulledCount: 0,
+              pushedCount: 0,
+              conflicts,
+              errorKind: conflicts.length > 0 ? 'conflict' : kind,
+              error: errorMessage,
+            };
+          }
+        }
+
+        // 3. Push whatever we're ahead by.
+        const afterPull = await git.status();
+        const pushedCount = afterPull.ahead ?? 0;
+        if (pushedCount > 0) {
+          await git.push();
+        }
+
+        logger.info('[GitClient] Synced repository', { pulledCount, pushedCount, committed });
+        return {
+          success: true,
+          committed,
+          commitMessage,
+          pulledCount,
+          pushedCount,
+          conflicts: [],
+        };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('[GitClient] Sync failed:', error);
-        return { success: false, error: errorMessage };
+        return fail(error);
       }
     });
   }
+}
+
+/** "stone: 3 changes · 2026-06-13 09:30" — human-scannable in any git UI. */
+function defaultCommitMessage(changeCount: number): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return `stone: ${changeCount} change${changeCount === 1 ? '' : 's'} · ${stamp}`;
 }

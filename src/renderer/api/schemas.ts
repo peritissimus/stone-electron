@@ -235,6 +235,7 @@ export const GitStatusSchema = z.object({
   unstaged: z.number(),
   untracked: z.number(),
   hasChanges: z.boolean(),
+  lastSyncAt: z.string().nullable().optional(),
 });
 
 export const GitCommitResultSchema = z.object({
@@ -246,8 +247,11 @@ export const GitCommitResultSchema = z.object({
 
 export const GitSyncResultSchema = z.object({
   success: z.boolean(),
+  committed: z.boolean().optional(),
   pulled: z.number().optional(),
   pushed: z.number().optional(),
+  conflicts: z.array(z.string()).optional(),
+  errorKind: z.enum(['auth', 'network', 'conflict', 'unknown']).optional(),
   error: z.string().optional(),
 });
 

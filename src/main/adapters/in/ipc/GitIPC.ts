@@ -70,6 +70,7 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
           staged: status.staged.length,
           unstaged: status.modified.length,
           untracked: status.untracked.length,
+          lastSyncAt: status.lastSyncAt,
           hasChanges: status.hasChanges,
         };
       },

@@ -19,6 +19,8 @@ export interface GitStatusResponse {
   staged: string[];
   modified: string[];
   untracked: string[];
+  /** ISO timestamp of the last successful sync for this workspace. */
+  lastSyncAt: string | null;
 }
 
 export interface GitInitRequest {
@@ -67,9 +69,14 @@ export interface GitSyncRequest {
 
 export interface GitSyncResponse {
   success: boolean;
+  /** True when local changes were committed as part of this sync. */
+  committed: boolean;
   pulled: number;
   pushed: number;
+  /** Conflicted file paths; the rebase was aborted, local commit kept. */
   conflicts: string[];
+  /** 'auth' | 'network' | 'conflict' | 'unknown' — drives UI copy. */
+  errorKind?: string;
   error?: string;
 }
 

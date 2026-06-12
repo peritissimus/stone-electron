@@ -28,6 +28,8 @@ export interface GitStatus {
   unstaged: number;
   untracked: number;
   hasChanges: boolean;
+  /** ISO timestamp of the last successful sync, if any. */
+  lastSyncAt?: string | null;
 }
 
 export interface GitCommitResult {
@@ -39,8 +41,11 @@ export interface GitCommitResult {
 
 export interface GitSyncResult {
   success: boolean;
+  committed?: boolean;
   pulled?: number;
   pushed?: number;
+  conflicts?: string[];
+  errorKind?: 'auth' | 'network' | 'conflict' | 'unknown';
   error?: string;
 }
 

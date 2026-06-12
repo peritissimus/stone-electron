@@ -537,6 +537,9 @@ export function createContainer(deps: ContainerDeps): Container {
   const gitUseCases = createGitUseCases({
     workspaceRepository,
     gitClient,
+    fileStorage,
+    pathService,
+    settingsRepository,
   });
 
   // Database use cases
