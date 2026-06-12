@@ -14,7 +14,17 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.spec.ts',
-        'src/renderer/**/*',
+        // Renderer UI surfaces stay excluded (component/page rendering isn't
+        // unit-tested here), but renderer LOGIC — lib/, stores/, hooks/,
+        // navigation/ — is measurable and increasingly covered (markdown
+        // round-trip, tree selection, stores), so it must count.
+        'src/renderer/components/**/*',
+        'src/renderer/pages/**/*',
+        'src/renderer/editor/**/*',
+        'src/renderer/specs/**/*',
+        'src/renderer/types/**/*',
+        'src/renderer/index.tsx',
+        'src/renderer/App.tsx',
         'src/preload.ts',
         // Electron entry points - require full runtime, not unit testable
         'src/main/index.ts',
