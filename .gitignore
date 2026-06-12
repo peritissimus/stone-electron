@@ -41,3 +41,6 @@ playwright-report/
 test-results/
 
 native/bin/
+
+# Claude Code agent worktrees
+.claude/worktrees/
