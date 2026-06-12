@@ -122,19 +122,26 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           style={{ animationDuration: '400ms' }}
         >
           <StoneLogo size={64} className="mb-4" />
-          <Heading2 className="text-balance">
-            {step === 'workspace' && 'Welcome to Stone'}
-            {step === 'ai' && 'Set up AI'}
-            {step === 'models' && 'Local models'}
-          </Heading2>
-          <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
-            {step === 'workspace' &&
-              'Your notebook lives in a folder on your computer. Choose where to keep it — everything stays local, in plain Markdown.'}
-            {step === 'ai' &&
-              'Optional. Cloud AI powers summaries, Ask-your-notes, and weekly status drafts. Skip it and Stone works fully offline.'}
-            {step === 'models' &&
-              'Stone runs search and speech-to-text on your machine. Download the models now so nothing stalls later — or skip and they download on first use.'}
-          </Body>
+          {/* Keyed on step so the copy crossfades when navigating. */}
+          <div
+            key={step}
+            className="animate-in fade-in slide-in-from-bottom-1 flex flex-col items-center"
+            style={{ animationDuration: '250ms' }}
+          >
+            <Heading2 className="text-balance">
+              {step === 'workspace' && 'Welcome to Stone'}
+              {step === 'ai' && 'Set up AI'}
+              {step === 'models' && 'Local models'}
+            </Heading2>
+            <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
+              {step === 'workspace' &&
+                'Your notebook lives in a folder on your computer. Choose where to keep it — everything stays local, in plain Markdown.'}
+              {step === 'ai' &&
+                'Optional. Cloud AI powers summaries, Ask-your-notes, and weekly status drafts. Skip it and Stone works fully offline.'}
+              {step === 'models' &&
+                'Stone runs search and speech-to-text on your machine. Download the models now so nothing stalls later — or skip and they download on first use.'}
+            </Body>
+          </div>
         </div>
 
         {/* Step card */}
@@ -142,6 +149,12 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           className="animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]"
           style={{ animationDuration: '400ms', animationDelay: '120ms', animationFillMode: 'both' }}
         >
+          {/* Keyed on step so each step's form slides in instead of snapping. */}
+          <div
+            key={step}
+            className="animate-in fade-in slide-in-from-bottom-1"
+            style={{ animationDuration: '250ms' }}
+          >
           {step === 'workspace' && (
             <WorkspaceStep
               path={path}
@@ -169,6 +182,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               onFinish={() => void finish()}
             />
           )}
+          </div>
         </div>
 
         {/* Step dots */}
