@@ -5,248 +5,186 @@
 <h1 align="center">Stone</h1>
 
 <p align="center">
-  <strong>A beautiful, local-first note-taking app for deep work</strong>
+  <strong>A local-first desktop workspace for notes, journals, meetings, and project memory.</strong>
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#keyboard-shortcuts">Shortcuts</a> •
-  <a href="#development">Development</a> •
-  <a href="#tech-stack">Tech Stack</a>
+  <a href="#who-it-is-for">Who it is for</a> |
+  <a href="#what-it-does">What it does</a> |
+  <a href="#privacy-model">Privacy</a> |
+  <a href="#install">Install</a> |
+  <a href="#development">Development</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.3.0-blue.svg" alt="Version" />
-  <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg" alt="Platform" />
-  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License" />
+  <img src="https://img.shields.io/badge/version-0.6.0-blue.svg" alt="Version 0.6.0" />
+  <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="macOS" />
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" />
 </p>
 
 ---
 
-## Why Stone?
+Stone is for people who want their working memory in files they own.
 
-Stone is built for people who think in text. It combines the elegance of Notion with the speed of local-first apps, giving you a distraction-free environment for capturing ideas, writing documents, and organizing knowledge.
+It is a desktop app for Markdown notes, daily journals, task capture, meeting records, and semantic search. Your workspace is a normal folder on disk. Stone adds a fast editor, local indexes, Git-friendly history, and optional AI-assisted workflows around it without turning your notes into a hosted service.
 
-**Your notes stay yours.** Everything is stored as plain Markdown files on your computer—no cloud lock-in, no subscriptions, no tracking.
+## Who It Is For
 
----
+Stone is built for:
 
-## Features
+- Developers and technical leads who want project notes, meeting context, and decisions in plain text.
+- Researchers, founders, and operators who keep a daily work journal and need to recover context quickly.
+- People who like tools such as Obsidian, Logseq, and Notion, but want a native local workspace with stronger file ownership.
 
-### Rich Editor
+Stone is probably not the right fit if you need multiplayer editing, mobile apps, or a hosted team wiki today.
 
-A powerful block-based editor inspired by Notion:
+## What It Does
 
-- **Slash Commands** — Type `/` to access headings, lists, code blocks, quotes, and more
-- **Block Hover Actions** — Drag handles and quick-add buttons on every block
-- **Smart Formatting** — Bold, italic, strikethrough, highlights, and inline code
-- **Tables** — Full table support with easy editing
-- **Images** — Drag and drop or paste images directly
+### Today-first workflow
 
-### Mermaid Diagrams
+Stone opens on Today: the place for your current journal, meetings, tasks, recent edits, and "on this day" context. It is meant to answer the practical question: what am I working from right now?
 
-Create beautiful diagrams right inside your notes:
+### Markdown notes that stay portable
 
-```
-graph TD
-    A[Idea] --> B{Decision}
-    B -->|Yes| C[Build it]
-    B -->|No| D[Archive]
-```
+- Notes live as Markdown files in your workspace.
+- SQLite stores metadata and indexes, not the canonical body of your notes.
+- Workspaces are ordinary folders that can be backed up, searched, synced, or versioned with tools you already use.
 
-Supports flowcharts, sequence diagrams, class diagrams, state diagrams, ER diagrams, Gantt charts, and more.
+### Fast writing surface
 
-### Code Blocks
+- Rich TipTap editor with headings, lists, quotes, code blocks, links, tables, and images.
+- Slash commands for quick structure.
+- Raw Markdown is still the durable storage format.
+- Mermaid diagrams render directly in notes.
 
-First-class support for developers:
+### Journals and tasks
 
-- **Syntax Highlighting** — 20+ languages including TypeScript, Python, Rust, Go, and SQL
-- **Custom Theme** — Beautiful colors that match the app's design system
-- **Language Selector** — Easy dropdown to switch languages
+- Daily journals are first-class, not an afterthought.
+- Task states support practical flows such as `TODO`, `DOING`, `DONE`, `WAITING`, `HOLD`, `CANCELED`, and `IDEA`.
+- Journal entries, regular notes, and meeting records can all feed the same workspace memory.
 
-### Task Management
+### Meetings and voice notes
 
-Logseq-inspired task states for flexible workflows:
+- Record meetings or voice notes from Stone.
+- Transcription runs locally.
+- Audio is treated as temporary capture material and deleted after transcription.
+- Meeting summaries can be reviewed and sent into the journal when you are ready.
 
-- `TODO` → `DOING` → `DONE`
-- Additional states: `WAITING`, `HOLD`, `CANCELED`, `IDEA`
-- Click task badges to cycle through states
+### Search, graph, and related notes
 
-### Daily Journal
+- Full-text search for exact recall.
+- Semantic search and related-note scoring for rediscovering nearby work.
+- Link and tag structure contributes to ranking, so Stone can surface useful context without relying only on embeddings.
 
-Start each day with a fresh page:
+### Git-backed ownership
 
-- Automatically opens today's journal on launch
-- Organized in a `Journal/` folder with date-based filenames
-- Perfect for daily notes, standup logs, or morning pages
+- Initialize Git for a workspace from inside Stone.
+- Commit, pull, push, and sync notes without leaving the app.
+- The workspace remains a normal repository, so you are not locked into Stone's UI.
 
-### Organization
+### Optional AI
 
-Keep your knowledge structured:
+Stone can use local and provider-backed AI adapters for features such as Ask Notes, summaries, embeddings, and transcription. The architecture keeps providers behind outbound adapters, so the app owns retrieval, ranking, indexing, and persistence.
 
-- **Workspaces** — Multiple vaults for different projects or areas of life
-- **Folders** — Hierarchical organization with drag-and-drop
-- **Tags** — Cross-cutting categorization
-- **Full-Text Search** — Find anything instantly
+## Privacy Model
 
-### Local-First
+Stone is local-first by default:
 
-Your data, your rules:
+- Your notes are files on your machine.
+- The app does not require a Stone account.
+- There is no Stone cloud backend.
+- Meeting transcription is local.
+- External AI providers are optional and only apply to features you configure.
+- External links open in the system browser, not inside a privileged Electron window.
 
-- **Markdown Files** — Plain text that works everywhere
-- **No Cloud Required** — Everything stays on your machine
-- **Git-Friendly** — Version control your notes naturally
-- **Fast** — No network latency, instant saves
+Security posture:
 
-### Beautiful Design
+- Renderer windows run with `nodeIntegration: false` and `contextIsolation: true`.
+- IPC channels are validated at the app boundary.
+- Foreign navigation and `window.open` are denied for app windows.
+- The production dependency tree currently audits clean with `pnpm audit --prod`.
 
-Crafted with attention to detail:
+## Install
 
-- **Typography** — Inter for UI, Barlow for content, SF Mono for code
-- **Dark Mode** — System-aware with manual override
-- **Notion-Inspired** — Clean, spacious, focused
-- **Native Feel** — macOS-style scrollbars and interactions
+Download the latest macOS build from GitHub:
 
----
+[github.com/peritissimus/stone-electron/releases/latest](https://github.com/peritissimus/stone-electron/releases/latest)
 
-## Installation
-
-### Download
-
-Download the latest release for your platform:
-
-| Platform              | Download                                                                       |
-| --------------------- | ------------------------------------------------------------------------------ |
-| macOS (Apple Silicon) | [Latest release](https://github.com/peritissimus/stone/releases/latest)        |
-| macOS (Intel)         | Coming soon                                                                    |
-| Windows               | Coming soon                                                                    |
-| Linux                 | Coming soon                                                                    |
-
-### Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/peritissimus/stone.git
-cd stone
-
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run dev
-
-# Build for production
-npm run build && npm run package
-```
-
-Requires Node.js 20+ and npm.
-
----
-
-## Keyboard Shortcuts
-
-| Action         | macOS | Windows/Linux |
-| -------------- | ----- | ------------- |
-| Save note      | `⌘S`  | `Ctrl+S`      |
-| New note       | `⌘N`  | `Ctrl+N`      |
-| Open settings  | `⌘,`  | `Ctrl+,`      |
-| Bold           | `⌘B`  | `Ctrl+B`      |
-| Italic         | `⌘I`  | `Ctrl+I`      |
-| Code           | `⌘E`  | `Ctrl+E`      |
-| Link           | `⌘K`  | `Ctrl+K`      |
-| Slash commands | `/`   | `/`           |
-
----
+Current release artifacts are macOS DMG and ZIP builds. Windows and Linux packaging targets exist in the project configuration, but release automation currently publishes macOS builds.
 
 ## Development
 
 ### Prerequisites
 
 - Node.js 20+
-- npm
+- pnpm 10.27.0 via Corepack
+- macOS with Xcode Command Line Tools for the native audio helper
 
-### Scripts
+### Run Locally
 
 ```bash
-npm run dev            # Start development mode
-npm run build          # Build all (main, worker, preload, renderer)
-npm run package        # Package for current platform
-npm test               # Run unit tests
-npm run test:e2e       # Run Cypress end-to-end tests
-npm run typecheck      # TypeScript type checking
-npm run lint           # ESLint
+git clone git@github.com:peritissimus/stone-electron.git stone
+cd stone
+
+corepack enable
+pnpm install
+pnpm dev
 ```
 
-### Project Structure
+### Common Commands
 
-```
-stone/
-├── src/
-│   ├── main/                    # Electron main process
-│   │   ├── domain/              # Entities, ports, domain services
-│   │   ├── application/         # Use cases and DTOs
-│   │   ├── adapters/            # IPC, persistence, external integrations
-│   │   ├── infrastructure/      # DI, database, workers, bootstrap
-│   │   └── shared/              # Main-process shared utilities
-│   ├── renderer/                # React UI
-│   │   ├── api/                 # IPC client layer
-│   │   ├── stores/              # Zustand state
-│   │   ├── hooks/               # React hooks
-│   │   ├── components/          # UI components
-│   │   └── pages/               # Route-level pages
-│   ├── shared/                  # Cross-process types/constants
-│   └── preload.ts               # Electron preload bridge
-├── tests/                       # Unit and integration tests
-├── build/                       # Packaging resources and icons
-└── dist/                        # Build and package output
+```bash
+pnpm dev              # Start Vite and Electron in development
+pnpm build            # Build native helper, main, worker, preload, and renderer
+pnpm package          # Package for the current platform
+pnpm typecheck        # TypeScript type checking
+pnpm lint             # ESLint
+pnpm test             # Unit and integration tests
+pnpm test:e2e         # Build and run Playwright end-to-end tests
+pnpm audit --prod     # Check shipped dependencies for known vulnerabilities
 ```
 
-### Architecture
+## Architecture
 
-Stone uses a **file-first architecture**:
+Stone is an Electron app with a hexagonal main process and a layered React renderer.
 
-- **Files** are the source of truth (Markdown on disk)
-- **Database** stores metadata only (titles, timestamps, flags)
-- **Editor** renders HTML, saves as Markdown
-- **No content in DB** — fast list views, scalable storage
+```text
+src/
+  main/
+    domain/            pure entities, value objects, services, ports
+    application/       use cases and DTOs
+    adapters/          IPC, persistence, storage, integrations
+    infrastructure/    DI, database setup, Electron bootstrap, workers
+  renderer/
+    api/               thin IPC wrappers
+    stores/            Zustand state
+    hooks/             React lifecycle and state composition
+    components/        UI components
+    pages/             route-level screens
+  shared/              serializable cross-process types and channel constants
+```
 
----
+Core rule: dependencies point inward. Domain code has no external imports, use cases depend on ports, adapters implement ports, and infrastructure wires concrete implementations together.
 
 ## Tech Stack
 
-| Layer      | Technology            |
-| ---------- | --------------------- |
-| Framework  | Electron 33           |
-| Frontend   | React 18 + TypeScript |
-| Editor     | TipTap (ProseMirror)  |
-| Styling    | Tailwind CSS 4        |
-| Components | shadcn/ui (Radix)     |
-| State      | Zustand               |
-| Database   | SQLite (libsql)       |
-| Diagrams   | Mermaid               |
-| Build      | Vite                  |
+| Area | Technology |
+| --- | --- |
+| Desktop | Electron |
+| UI | React, TypeScript, Vite |
+| Editor | TipTap / ProseMirror |
+| Styling | Tailwind CSS, Radix primitives |
+| State | Zustand |
+| Storage | Markdown files, SQLite/libSQL, Drizzle ORM |
+| Search | Full-text, local embeddings, workspace ranking |
+| Diagrams | Mermaid |
+| Testing | Vitest, Playwright |
+| Packaging | electron-builder |
 
----
+## Status
+
+Stone is actively developed and currently best tested on macOS. The file format is intentionally boring: Markdown files in folders, with local metadata and indexes that can be rebuilt.
 
 ## Contributing
 
-Contributions are welcome! Please read the contributing guidelines before submitting a PR.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing`)
-5. Open a Pull Request
-
----
-
-## License
-
-MIT © [peritissimus](https://github.com/peritissimus)
-
----
-
-<p align="center">
-  <sub>Built with obsessive attention to detail.</sub>
-</p>
+Issues and pull requests are welcome. Before opening a larger change, read [CONTRIBUTING.md](CONTRIBUTING.md) and keep changes aligned with the architecture rules in [AGENTS.md](AGENTS.md).

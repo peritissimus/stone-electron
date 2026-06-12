@@ -9,11 +9,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/peritissimus/stone.git"
+    "url": "https://github.com/peritissimus/stone-electron.git"
   },
-  "homepage": "https://github.com/peritissimus/stone#readme",
+  "homepage": "https://github.com/peritissimus/stone-electron#readme",
   "bugs": {
-    "url": "https://github.com/peritissimus/stone/issues"
+    "url": "https://github.com/peritissimus/stone-electron/issues"
   },
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
