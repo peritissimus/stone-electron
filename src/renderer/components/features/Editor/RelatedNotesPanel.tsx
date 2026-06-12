@@ -5,7 +5,9 @@
  * Unlike BacklinksPanel (which shows explicit wiki-links), this surfaces
  * connections you didn't make manually. Each row shows the matching heading
  * path and an excerpt of the best chunk so the reason for the match is
- * legible.
+ * legible — and a one-click "Link" action inserts a [[wiki-link]] at the
+ * cursor, turning the implicit connection into an explicit one. Rows whose
+ * note is already linked show a quiet "Linked" state instead.
  */
 
 import { useMemo, useState } from 'react';
@@ -14,26 +16,47 @@ import {
   ArrowsOutLineVertical,
   CaretDown,
   CaretRight,
+  Check,
   Compass,
+  Plus,
 } from '@phosphor-icons/react';
 import { useRelatedNotes } from '@renderer/hooks/useRelatedNotes';
+import { useForwardLinks } from '@renderer/hooks/useForwardLinks';
 import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';
+import type { RichTextEditor } from '@renderer/editor';
 import type { RelatedNoteMatch } from '@shared/types';
 
 export interface RelatedNotesPanelProps {
   noteId: string;
+  /** Active tiptap editor — enables the one-click "Link" action. */
+  editor?: RichTextEditor | null;
 }
 
-export function RelatedNotesPanel({ noteId }: RelatedNotesPanelProps) {
+export function RelatedNotesPanel({ noteId, editor }: RelatedNotesPanelProps) {
   const { results, loading, error } = useRelatedNotes(noteId, 5);
+  const { linkedIds } = useForwardLinks(noteId);
   const [isExpanded, setIsExpanded] = useState(true);
+  // Links inserted this session — flips the row state immediately; the DB
+  // catches up after the next save reindexes the note's links.
+  const [insertedIds, setInsertedIds] = useState<Set<string>>(() => new Set());
   const navigateToNote = useNavigateToNote();
 
   const visibleResults = useMemo(
     () => results.filter((r) => r.similarity > 0.4),
     [results],
   );
+
+  const insertLink = (match: RelatedNoteMatch) => {
+    if (!editor || editor.isDestroyed) return;
+    editor
+      .chain()
+      .focus()
+      .insertNoteLink({ noteId: match.noteId, title: match.title })
+      .insertContent(' ')
+      .run();
+    setInsertedIds((prev) => new Set(prev).add(match.noteId));
+  };
 
   // Hide entirely on first load with nothing — no flash of empty UI.
   if (!loading && visibleResults.length === 0 && !error) {
@@ -133,7 +156,10 @@ export function RelatedNotesPanel({ noteId }: RelatedNotesPanelProps) {
                 <RelatedRow
                   key={match.noteId}
                   match={match}
+                  linked={linkedIds.has(match.noteId) || insertedIds.has(match.noteId)}
+                  canLink={Boolean(editor && !editor.isDestroyed)}
                   onClick={() => navigateToNote(match.noteId)}
+                  onLink={() => insertLink(match)}
                 />
               ))}
             </ul>
@@ -146,10 +172,13 @@ export function RelatedNotesPanel({ noteId }: RelatedNotesPanelProps) {
 
 interface RelatedRowProps {
   match: RelatedNoteMatch;
+  linked: boolean;
+  canLink: boolean;
   onClick: () => void;
+  onLink: () => void;
 }
 
-function RelatedRow({ match, onClick }: RelatedRowProps) {
+function RelatedRow({ match, linked, canLink, onClick, onLink }: RelatedRowProps) {
   const heading =
     match.bestChunk.headingPath.length > 0
       ? match.bestChunk.headingPath.join(' › ')
@@ -157,7 +186,7 @@ function RelatedRow({ match, onClick }: RelatedRowProps) {
   const similarityPct = Math.round(match.similarity * 100);
 
   return (
-    <li>
+    <li className="group relative">
       <button
         type="button"
         onClick={onClick}
@@ -171,8 +200,19 @@ function RelatedRow({ match, onClick }: RelatedRowProps) {
           <div className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
             {match.title}
           </div>
-          <div className="shrink-0 text-[11px] tabular-nums text-muted-foreground/70">
-            {similarityPct}%
+          <div className="flex shrink-0 items-center gap-1.5">
+            {linked && (
+              <span
+                className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                title="This note is already wiki-linked from the current note"
+              >
+                <Check size={10} weight="bold" />
+                Linked
+              </span>
+            )}
+            <span className="text-[11px] tabular-nums text-muted-foreground/70">
+              {similarityPct}%
+            </span>
           </div>
         </div>
         {heading && (
@@ -182,6 +222,28 @@ function RelatedRow({ match, onClick }: RelatedRowProps) {
           {match.bestChunk.excerpt}
         </div>
       </button>
+
+      {/* Hover action: insert [[link]] at the cursor. Sits over the row's
+          top-right corner; hidden once linked. */}
+      {canLink && !linked && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onLink();
+          }}
+          className={cn(
+            'absolute right-1.5 top-1.5 inline-flex h-6 items-center gap-1 rounded-md border border-border bg-background px-1.5 text-[11px] font-medium text-muted-foreground shadow-sm',
+            'opacity-0 transition-[opacity,transform,background-color,color] duration-150 ease-out',
+            'group-hover:opacity-100 focus-visible:opacity-100',
+            'hover:bg-muted hover:text-foreground active:scale-[0.96]',
+          )}
+          title={`Insert [[${match.title}]] at the cursor`}
+        >
+          <Plus size={10} weight="bold" />
+          Link
+        </button>
+      )}
     </li>
   );
 }

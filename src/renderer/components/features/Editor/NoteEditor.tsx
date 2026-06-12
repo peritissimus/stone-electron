@@ -382,7 +382,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
       {activeNoteId && editorMode === 'rich' && (
         <>
           <BacklinksPanel noteId={activeNoteId} />
-          <RelatedNotesPanel noteId={activeNoteId} />
+          <RelatedNotesPanel noteId={activeNoteId} editor={editor} />
         </>
       )}
 
