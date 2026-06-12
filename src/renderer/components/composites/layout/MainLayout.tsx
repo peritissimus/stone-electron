@@ -248,6 +248,10 @@ export function MainLayout() {
   // Track bootstrap state
   const [bootstrapComplete, setBootstrapComplete] = useState(false);
 
+  // Set once onboarding completes, so the gate (incl. the dev force override)
+  // releases and the app shell takes over.
+  const [onboardingDone, setOnboardingDone] = useState(false);
+
   // Load initial data
   useEffect(() => {
     let cancelled = false;
@@ -391,10 +395,19 @@ export function MainLayout() {
   // show onboarding instead of the app shell. The shell would otherwise have
   // no active workspace to render against (empty tree, journals with nowhere
   // to write). Creating + activating a workspace flips this off.
-  if (bootstrapComplete && workspaces.length === 0) {
+  //
+  // Dev-only override: VITE_FORCE_ONBOARDING=true forces the screen even when
+  // workspaces exist, so the onboarding UI can be iterated with a normal
+  // `pnpm dev`. Completing onboarding once clears the override (onboardingDone)
+  // so you're not stuck on it.
+  const devForceOnboarding =
+    import.meta.env.DEV && import.meta.env.VITE_FORCE_ONBOARDING === 'true';
+  const showOnboarding =
+    !onboardingDone && ((bootstrapComplete && workspaces.length === 0) || devForceOnboarding);
+  if (showOnboarding) {
     return (
       <Suspense fallback={<PageSkeleton />}>
-        <OnboardingScreen />
+        <OnboardingScreen onComplete={() => setOnboardingDone(true)} />
       </Suspense>
     );
   }

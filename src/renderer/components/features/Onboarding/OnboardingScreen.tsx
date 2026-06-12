@@ -20,7 +20,13 @@ function basename(path: string): string {
   return parts[parts.length - 1] ?? '';
 }
 
-export function OnboardingScreen() {
+export interface OnboardingScreenProps {
+  /** Fired after a workspace is successfully created + activated. Lets the
+   *  host release the gate (including the dev force override). */
+  onComplete?: () => void;
+}
+
+export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const { getDefaultWorkspacePath, selectFolder, completeOnboarding } = useOnboarding();
 
   const [path, setPath] = useState('');
@@ -67,15 +73,18 @@ export function OnboardingScreen() {
       const workspace = await completeOnboarding({ name, path });
       if (!workspace) {
         setError('Could not create the workspace. Try a different folder.');
+      } else {
+        // The workspace activates and MainLayout swaps this screen out for the
+        // app shell. Signal completion so the gate releases (also clears the
+        // dev force override).
+        onComplete?.();
       }
-      // On success the workspace activates and MainLayout swaps this screen
-      // out for the app shell — nothing more to do here.
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create the workspace.');
     } finally {
       setCreating(false);
     }
-  }, [path, name, creating, completeOnboarding]);
+  }, [path, name, creating, completeOnboarding, onComplete]);
 
   const canCreate = Boolean(path) && name.trim().length > 0 && !creating;
 
