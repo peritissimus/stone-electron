@@ -260,37 +260,27 @@ function stopTimerTick(): void {
 /**
  * Resolve the tray icon.
  *
- * macOS: a dedicated TEMPLATE asset (build/tray/stoneTrayTemplate.png) —
- * black logo ink on transparent, 16px + @2x. Template rendering uses only
- * the alpha channel, so the full app icon (opaque white tile) is unusable
- * here: it renders as a solid block. The "Template" filename suffix makes
- * Electron apply template mode and pick up the @2x variant automatically.
+ * Use the app icon as a normal raster icon. On macOS we intentionally do not
+ * mark it as a template image: the Stone mark is line-heavy, so a template
+ * mask becomes too faint in the menu bar without the white tile behind it.
  *
- * Windows/Linux: the colored app icon, resized to 16px.
- *
- * Both are bundled via electron-builder extraResources (Resources/tray and
- * Resources/icon.png); dev reads straight from the repo.
+ * Packaged builds read electron-builder's Resources/icon.png; dev reads
+ * straight from build/icon.png in the repo.
  */
 function loadTrayIcon(): NativeImage | null {
-  const candidates =
-    process.platform === 'darwin'
-      ? [
-          path.join(process.resourcesPath, 'tray', 'stoneTrayTemplate.png'),
-          path.join(app.getAppPath(), 'build', 'tray', 'stoneTrayTemplate.png'),
-        ]
-      : [
-          path.join(process.resourcesPath, 'icon.png'),
-          path.join(app.getAppPath(), 'build', 'icon.png'),
-        ];
+  const candidates = [
+    path.join(process.resourcesPath, 'icon.png'),
+    path.join(app.getAppPath(), 'build', 'icon.png'),
+  ];
 
   for (const candidate of candidates) {
     try {
       const image = nativeImage.createFromPath(candidate);
       if (image.isEmpty()) continue;
       if (process.platform === 'darwin') {
-        // Filename suffix already marks it template; set explicitly anyway.
-        image.setTemplateImage(true);
-        return image;
+        const trayIcon = image.resize({ width: 18, height: 18, quality: 'best' });
+        trayIcon.setTemplateImage(false);
+        return trayIcon;
       }
       return image.resize({ width: 16, height: 16, quality: 'best' });
     } catch (error) {

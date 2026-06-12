@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Stone logo" width="120" height="120" />
+  <img src="build/icon.png" alt="Stone icon" width="120" height="120" />
 </p>
 
 <h1 align="center">Stone</h1>

@@ -54,11 +54,8 @@ asarUnpack:
   - node_modules/**/*
   - dist/main/workers/**/*
 
-# Bundled loose assets (all platforms): the tray icons. macOS uses the
-# template variant; Windows/Linux tray uses the colored app icon.
+# Bundled loose assets (all platforms): app icon reused by the tray.
 extraResources:
-  - from: build/tray
-    to: tray
   - from: build/icon.png
     to: icon.png
 
