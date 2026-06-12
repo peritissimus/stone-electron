@@ -4,19 +4,26 @@
 
 import os from 'os';
 import path from 'path';
-import type { ISystemBridge, FilePickerOptions, FolderPickerOptions } from '../../../domain';
+import type {
+  ISystemBridge,
+  FilePickerOptions,
+  FolderPickerOptions,
+  MicrophoneAccessStatus,
+} from '../../../domain';
 import { logger } from '../../../shared';
 
 // Conditionally import Electron modules
 let dialog: any = null;
 let shell: any = null;
 let app: any = null;
+let systemPreferences: any = null;
 
 try {
   const electron = require('electron');
   dialog = electron.dialog;
   shell = electron.shell;
   app = electron.app;
+  systemPreferences = electron.systemPreferences;
 } catch {
   logger.warn('[SystemBridge] Running outside Electron context');
 }
@@ -63,6 +70,30 @@ export class SystemBridge implements ISystemBridge {
         ];
       }
     });
+  }
+
+  getMicrophoneAccessStatus(): MicrophoneAccessStatus {
+    // getMediaAccessStatus exists on macOS and Windows; Linux has no TCC
+    // equivalent — report 'unknown' and let getUserMedia just work.
+    if (!systemPreferences?.getMediaAccessStatus) return 'unknown';
+    try {
+      return systemPreferences.getMediaAccessStatus('microphone') as MicrophoneAccessStatus;
+    } catch {
+      return 'unknown';
+    }
+  }
+
+  async askForMicrophoneAccess(): Promise<boolean> {
+    // askForMediaAccess is macOS-only; elsewhere fall back to the status.
+    if (systemPreferences?.askForMediaAccess) {
+      try {
+        return await systemPreferences.askForMediaAccess('microphone');
+      } catch {
+        return false;
+      }
+    }
+    const status = this.getMicrophoneAccessStatus();
+    return status === 'granted' || status === 'unknown';
   }
 
   async selectFolder(options?: FolderPickerOptions): Promise<string | null> {

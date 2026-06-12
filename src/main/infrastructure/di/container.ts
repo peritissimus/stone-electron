@@ -835,6 +835,8 @@ export function registerIPCHandlers(): void {
   });
   registerSystemHandlers({
     getSystemFonts: container.systemUseCases.getFonts,
+    getMicAccessStatus: container.systemUseCases.getMicAccessStatus,
+    requestMicAccess: container.systemUseCases.requestMicAccess,
   });
   registerSettingsHandlers({
     getSetting: container.settingsUseCases.get,

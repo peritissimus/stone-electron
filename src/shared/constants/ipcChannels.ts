@@ -202,6 +202,8 @@ export const SETTINGS_CHANNELS = {
 // System Operations
 export const SYSTEM_CHANNELS = {
   GET_FONTS: 'system:getFonts',
+  GET_MIC_ACCESS_STATUS: 'system:getMicAccessStatus',
+  REQUEST_MIC_ACCESS: 'system:requestMicAccess',
 } as const;
 
 // Git Operations

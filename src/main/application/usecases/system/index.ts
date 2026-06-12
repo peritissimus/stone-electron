@@ -5,12 +5,14 @@ import { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
 import { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
 import { OpenInFolderUseCase } from './OpenInFolderUseCase';
 import { OpenExternalUseCase } from './OpenExternalUseCase';
+import { GetMicAccessStatusUseCase, RequestMicAccessUseCase } from './MicAccessUseCases';
 
 export { GetSystemFontsUseCase } from './GetSystemFontsUseCase';
 export { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
 export { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
 export { OpenInFolderUseCase } from './OpenInFolderUseCase';
 export { OpenExternalUseCase } from './OpenExternalUseCase';
+export { GetMicAccessStatusUseCase, RequestMicAccessUseCase } from './MicAccessUseCases';
 
 export interface SystemUseCasesDeps {
   systemBridge: ISystemBridge;
@@ -25,5 +27,7 @@ export function createSystemUseCases(deps: SystemUseCasesDeps): ISystemUseCases 
     validatePath: new ValidateSystemPathUseCase(systemBridge),
     openInFolder: new OpenInFolderUseCase(systemBridge),
     openExternal: new OpenExternalUseCase(systemBridge),
+    getMicAccessStatus: new GetMicAccessStatusUseCase(systemBridge),
+    requestMicAccess: new RequestMicAccessUseCase(systemBridge),
   };
 }

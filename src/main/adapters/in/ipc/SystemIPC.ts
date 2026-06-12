@@ -9,16 +9,22 @@
 import { ipcMain } from 'electron';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import type { SystemGetFontsResponse } from '@shared/schemas';
-import type { IGetSystemFontsUseCase } from '../../../domain';
+import type {
+  IGetSystemFontsUseCase,
+  IGetMicAccessStatusUseCase,
+  IRequestMicAccessUseCase,
+} from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
 export interface SystemIPCDeps {
   getSystemFonts: IGetSystemFontsUseCase;
+  getMicAccessStatus: IGetMicAccessStatusUseCase;
+  requestMicAccess: IRequestMicAccessUseCase;
 }
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
-  const { getSystemFonts } = deps;
+  const { getSystemFonts, getMicAccessStatus, requestMicAccess } = deps;
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
     return handleIpcRequest<SystemGetFontsResponse>(
@@ -29,6 +35,28 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
         context: { channel: SYSTEM_CHANNELS.GET_FONTS },
+      },
+    );
+  });
+
+  ipcMain.handle(SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS, async () => {
+    return handleIpcRequest(
+      async () => getMicAccessStatus.execute(),
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS },
+      },
+    );
+  });
+
+  ipcMain.handle(SYSTEM_CHANNELS.REQUEST_MIC_ACCESS, async () => {
+    return handleIpcRequest(
+      async () => requestMicAccess.execute(),
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.REQUEST_MIC_ACCESS },
       },
     );
   });

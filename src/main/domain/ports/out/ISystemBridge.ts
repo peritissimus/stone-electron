@@ -25,6 +25,17 @@ export interface FolderPickerOptions {
 }
 
 /**
+ * Microphone TCC state. 'not-determined' means the OS has never prompted;
+ * 'unknown' covers platforms without a permission model (Linux).
+ */
+export type MicrophoneAccessStatus =
+  | 'granted'
+  | 'denied'
+  | 'not-determined'
+  | 'restricted'
+  | 'unknown';
+
+/**
  * System Service - Handles OS-level operations
  */
 export interface ISystemBridge {
@@ -32,6 +43,17 @@ export interface ISystemBridge {
    * Get available system fonts
    */
   getFonts(): Promise<string[]>;
+
+  /**
+   * Current microphone permission state (no prompt).
+   */
+  getMicrophoneAccessStatus(): MicrophoneAccessStatus;
+
+  /**
+   * Trigger the OS microphone prompt (macOS; no-op elsewhere).
+   * Resolves true if access is granted afterwards.
+   */
+  askForMicrophoneAccess(): Promise<boolean>;
 
   /**
    * Resolve the suggested default location for a new notebook workspace.

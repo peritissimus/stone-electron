@@ -223,6 +223,16 @@ export const databaseAPI = {
   },
 };
 
+const MicAccessStatusSchema = z.enum([
+  'granted',
+  'denied',
+  'not-determined',
+  'restricted',
+  'unknown',
+]);
+
+export type MicAccessStatus = z.infer<typeof MicAccessStatusSchema>;
+
 export const systemAPI = {
   /**
    * Get available system fonts
@@ -230,5 +240,26 @@ export const systemAPI = {
   getFonts: async (): Promise<IpcResponse<{ fonts: string[] }>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.GET_FONTS, {});
     return validateResponse(response, SystemGetFontsResponseSchema);
+  },
+
+  /**
+   * Current OS microphone permission state (no prompt).
+   */
+  getMicAccessStatus: async (): Promise<IpcResponse<{ status: MicAccessStatus }>> => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS, {});
+    return validateResponse(response, z.object({ status: MicAccessStatusSchema }));
+  },
+
+  /**
+   * Trigger the OS microphone prompt (macOS; no-op elsewhere).
+   */
+  requestMicAccess: async (): Promise<
+    IpcResponse<{ granted: boolean; status: MicAccessStatus }>
+  > => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.REQUEST_MIC_ACCESS, {});
+    return validateResponse(
+      response,
+      z.object({ granted: z.boolean(), status: MicAccessStatusSchema }),
+    );
   },
 };

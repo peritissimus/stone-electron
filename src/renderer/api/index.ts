@@ -61,6 +61,7 @@ export { attachmentAPI } from './attachmentAPI';
 
 // Settings & System APIs
 export { settingsAPI, databaseAPI, systemAPI } from './settingsAPI';
+export type { MicAccessStatus } from './settingsAPI';
 
 // Git API
 export { gitAPI } from './gitAPI';

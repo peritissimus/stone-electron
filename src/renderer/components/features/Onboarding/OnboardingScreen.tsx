@@ -24,6 +24,7 @@ import {
   DownloadSimple,
   FolderOpen,
   Lightning,
+  Microphone,
   Warning,
 } from '@phosphor-icons/react';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
@@ -33,7 +34,11 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Switch } from '@renderer/components/base/ui/switch';
 import { Progress } from '@renderer/components/base/ui/progress';
 import { Heading2, Body, Caption, Label } from '@renderer/components/base/ui/text';
-import { useOnboarding, useModelDownloadProgress } from '@renderer/hooks/useOnboarding';
+import {
+  useOnboarding,
+  useModelDownloadProgress,
+  useMicPermission,
+} from '@renderer/hooks/useOnboarding';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 
 export interface OnboardingScreenProps {
@@ -131,7 +136,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
             <Heading2 className="text-balance">
               {step === 'workspace' && 'Welcome to Stone'}
               {step === 'ai' && 'Set up AI'}
-              {step === 'models' && 'Local models'}
+              {step === 'models' && 'Local setup'}
             </Heading2>
             <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
               {step === 'workspace' &&
@@ -139,7 +144,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               {step === 'ai' &&
                 'Optional. Cloud AI powers summaries, Ask-your-notes, and weekly status drafts. Skip it and Stone works fully offline.'}
               {step === 'models' &&
-                'Stone runs search and speech-to-text on your machine. Download the models now so nothing stalls later — or skip and they download on first use.'}
+                'Stone runs search and speech-to-text on your machine. Grant the microphone and download the models now so nothing stalls later — both can wait until first use if you prefer.'}
             </Body>
           </div>
         </div>
@@ -434,8 +439,69 @@ function ProviderKeyRow({
 }
 
 // =============================================================================
-// Step 3 — Local model downloads (with live progress)
+// Step 3 — Local setup: mic permission + model downloads (live progress)
 // =============================================================================
+
+/**
+ * Microphone permission card. Granting here means the meeting recorder and
+ * voice capture work on first use instead of interrupting with the OS
+ * prompt mid-recording. After an OS-level denial only System Settings can
+ * flip it back, so that state links straight there.
+ */
+function MicPermissionRow() {
+  const { status, requesting, request } = useMicPermission();
+
+  // Linux / unknown platforms have no TCC — nothing to set up, hide the row.
+  if (status === 'unknown') return null;
+
+  const granted = status === 'granted';
+  const denied = status === 'denied' || status === 'restricted';
+
+  return (
+    <div className="rounded-xl bg-muted/40 p-3">
+      <div className="flex items-center gap-2">
+        <Microphone size={14} className="shrink-0 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium text-foreground">Microphone</div>
+          <Caption className="text-muted-foreground">
+            Meeting recordings and voice notes — transcribed locally.
+          </Caption>
+        </div>
+        {granted && (
+          <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+            <Check size={11} weight="bold" />
+          </span>
+        )}
+        {status === 'not-determined' && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void request()}
+            disabled={requesting}
+            className="shrink-0 transition-transform active:scale-[0.96]"
+          >
+            {requesting ? <CircleNotch size={12} className="animate-spin" /> : 'Allow'}
+          </Button>
+        )}
+        {denied && (
+          <span
+            className="flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+            title="Microphone access is denied"
+          >
+            <Warning size={11} weight="fill" />
+          </span>
+        )}
+      </div>
+      {denied && (
+        <Caption className="mt-2 block text-destructive">
+          Denied — enable Stone under System Settings → Privacy &amp; Security → Microphone.
+          You can finish setup now and grant it later.
+        </Caption>
+      )}
+    </div>
+  );
+}
 
 type ModelDownloadState = 'idle' | 'running' | 'ready' | 'failed';
 
@@ -476,6 +542,7 @@ function ModelsStep({
   return (
     <div className="space-y-4">
       <div className="space-y-3">
+        <MicPermissionRow />
         <ModelRow
           name="Search & topics"
           detail="BGE-small embeddings · ~35 MB"

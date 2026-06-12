@@ -4,6 +4,8 @@
  * Defines the contract for system-level operations.
  */
 
+import type { MicrophoneAccessStatus } from '../out/ISystemBridge';
+
 export interface IGetSystemFontsUseCase {
   execute(): Promise<{ fonts: string[] }>;
 }
@@ -24,6 +26,14 @@ export interface IOpenExternalUseCase {
   execute(request: { url: string }): Promise<void>;
 }
 
+export interface IGetMicAccessStatusUseCase {
+  execute(): Promise<{ status: MicrophoneAccessStatus }>;
+}
+
+export interface IRequestMicAccessUseCase {
+  execute(): Promise<{ granted: boolean; status: MicrophoneAccessStatus }>;
+}
+
 /**
  * Aggregated system use cases interface for DI container
  */
@@ -33,4 +43,6 @@ export interface ISystemUseCases {
   validatePath: IValidateSystemPathUseCase;
   openInFolder: IOpenInFolderUseCase;
   openExternal: IOpenExternalUseCase;
+  getMicAccessStatus: IGetMicAccessStatusUseCase;
+  requestMicAccess: IRequestMicAccessUseCase;
 }

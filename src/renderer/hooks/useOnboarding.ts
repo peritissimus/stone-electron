@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { topicAPI, aiAPI } from '@renderer/api';
+import { topicAPI, aiAPI, systemAPI, type MicAccessStatus } from '@renderer/api';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
@@ -63,6 +63,46 @@ export function useOnboarding() {
     warmUpEmbeddings,
     warmUpWhisper,
   };
+}
+
+/**
+ * Microphone permission state for the onboarding "local setup" step.
+ * 'unknown' (Linux / no TCC) is treated as fine — getUserMedia just works.
+ */
+export function useMicPermission() {
+  const [status, setStatus] = useState<MicAccessStatus | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const response = await systemAPI.getMicAccessStatus();
+      if (response.success && response.data) setStatus(response.data.status);
+    } catch {
+      // Leave status null — the row renders as "unknown" and stays harmless.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const request = useCallback(async () => {
+    setRequesting(true);
+    try {
+      const response = await systemAPI.requestMicAccess();
+      if (response.success && response.data) {
+        setStatus(response.data.status);
+        return response.data.granted;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      setRequesting(false);
+    }
+  }, []);
+
+  return { status, requesting, refresh, request };
 }
 
 export interface ModelDownloadProgress {

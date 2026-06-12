@@ -17,6 +17,8 @@ function createMockSystemBridge(): ISystemBridge {
     validatePath: vi.fn(),
     showInFolder: vi.fn(),
     openExternal: vi.fn(),
+    getMicrophoneAccessStatus: vi.fn(),
+    askForMicrophoneAccess: vi.fn(),
   } as unknown as ISystemBridge;
 }
 
@@ -111,6 +113,26 @@ describe('SystemUseCases', () => {
       await useCases.openExternal.execute({ url: 'https://example.com' });
 
       expect(systemBridge.openExternal).toHaveBeenCalledWith('https://example.com');
+    });
+  });
+
+  describe('mic access', () => {
+    it('reports the current status without prompting', async () => {
+      vi.mocked(systemBridge.getMicrophoneAccessStatus).mockReturnValue('not-determined');
+
+      const result = await useCases.getMicAccessStatus.execute();
+
+      expect(result).toEqual({ status: 'not-determined' });
+      expect(systemBridge.askForMicrophoneAccess).not.toHaveBeenCalled();
+    });
+
+    it('requests access and returns the fresh status', async () => {
+      vi.mocked(systemBridge.askForMicrophoneAccess).mockResolvedValue(true);
+      vi.mocked(systemBridge.getMicrophoneAccessStatus).mockReturnValue('granted');
+
+      const result = await useCases.requestMicAccess.execute();
+
+      expect(result).toEqual({ granted: true, status: 'granted' });
     });
   });
 });
