@@ -9,8 +9,9 @@
  *                             to createdAt within [start, end] of today
  *   - Open tasks            — ITaskUseCases.getAllTasks, filtered to
  *                             checked === false
- *   - Recent notes          — INoteRepository.findRecentlyUpdated, filtered
- *                             to the last 24h
+ *   - Recently edited       — INoteRepository.findRecentlyUpdated, filtered
+ *                             to the last 24h, excluding journal notes
+ *                             (the journal is already first-class above)
  *   - On this day           — INoteRepository.findAll, filtered to notes
  *                             whose createdAt matches today's MM-DD in a
  *                             prior year
@@ -31,6 +32,7 @@ import type {
   NoteProps,
   TaskItem,
 } from '../../../domain';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 
 const PREVIEW_CHARS = 240;
 const RECENT_NOTES_LIMIT = 8;
@@ -43,6 +45,7 @@ export interface GetDailyReviewUseCaseDeps {
   meetingRepository: IMeetingRecordingRepository;
   journalUseCases: IJournalUseCases;
   taskUseCases: ITaskUseCases;
+  appConfigRepository: IAppConfigRepository;
 }
 
 export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
@@ -133,12 +136,20 @@ export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
 
   private async loadRecentNotes(workspaceId: string, now: Date): Promise<NoteProps[]> {
     try {
-      const all = await this.deps.noteRepository.findRecentlyUpdated(
-        RECENT_NOTES_LIMIT * 4,
-        workspaceId,
-      );
+      const [all, config] = await Promise.all([
+        this.deps.noteRepository.findRecentlyUpdated(RECENT_NOTES_LIMIT * 4, workspaceId),
+        this.deps.appConfigRepository.get(),
+      ]);
       const cutoff = new Date(now.getTime() - RECENT_NOTES_WINDOW_MS);
-      return all.filter((note) => note.updatedAt >= cutoff).slice(0, RECENT_NOTES_LIMIT);
+      // Journal notes are excluded: today's entry is already first-class at
+      // the top of the page, and writing it daily would otherwise pin it (and
+      // yesterday's) to the top of this list forever.
+      const journalPrefix = `${config.notes.locationPolicy.journalFolder}/`;
+      return all
+        .filter(
+          (note) => note.updatedAt >= cutoff && !note.filePath?.startsWith(journalPrefix),
+        )
+        .slice(0, RECENT_NOTES_LIMIT);
     } catch {
       return [];
     }

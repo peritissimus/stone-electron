@@ -6,6 +6,7 @@ import type {
   ITaskUseCases,
   IWorkspaceRepository,
 } from '../../../domain';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
 
 export { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
@@ -16,6 +17,7 @@ export interface DailyReviewUseCasesDeps {
   meetingRepository: IMeetingRecordingRepository;
   journalUseCases: IJournalUseCases;
   taskUseCases: ITaskUseCases;
+  appConfigRepository: IAppConfigRepository;
 }
 
 export function createDailyReviewUseCases(

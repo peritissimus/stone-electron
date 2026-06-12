@@ -294,7 +294,7 @@ function RecentSection({
 }) {
   return (
     <section>
-      <SectionLabel icon={<Clock size={12} />}>Recent captures (last 24h)</SectionLabel>
+      <SectionLabel icon={<Clock size={12} />}>Recently edited (24h)</SectionLabel>
       <ul className="mt-2 space-y-1">
         {notes.map((note) => (
           <li key={note.id}>

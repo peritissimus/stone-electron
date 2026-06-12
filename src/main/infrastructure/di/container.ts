@@ -649,6 +649,7 @@ export function createContainer(deps: ContainerDeps): Container {
     meetingRepository,
     journalUseCases,
     taskUseCases,
+    appConfigRepository,
   });
 
   // Status Report use cases — aggregate the past week's evidence and
