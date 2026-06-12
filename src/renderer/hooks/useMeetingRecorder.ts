@@ -67,7 +67,6 @@ export function useMeetingRecorder() {
     return () => {
       releaseHardware();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function releaseHardware() {

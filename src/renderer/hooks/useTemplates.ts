@@ -44,7 +44,6 @@ export function useTemplates() {
     ) {
       void submit();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, step, creating]);
 
   return {
