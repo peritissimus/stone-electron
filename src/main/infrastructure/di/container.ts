@@ -481,6 +481,7 @@ export function createContainer(deps: ContainerDeps): Container {
     indexRepository,
     tagRepository,
     noteLinkRepository,
+    appConfigRepository,
     reranker,
   });
 

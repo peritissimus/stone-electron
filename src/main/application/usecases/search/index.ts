@@ -4,6 +4,7 @@ import type { IEmbedder } from '../../../domain/ports/out/IEmbedder';
 import type { IIndexRepository } from '../../../domain/ports/out/IIndexRepository';
 import type { ITagRepository } from '../../../domain/ports/out/ITagRepository';
 import type { INoteLinkRepository } from '../../../domain/ports/out/INoteLinkRepository';
+import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IReranker } from '../../../domain/ports/out/IReranker';
 import type { ISearchUseCases } from '../../../domain/ports/in/ISearchUseCases';
 import { FullTextSearchUseCase } from './FullTextSearchUseCase';
@@ -29,6 +30,7 @@ export interface SearchUseCasesDeps {
   indexRepository: IIndexRepository;
   tagRepository: ITagRepository;
   noteLinkRepository: INoteLinkRepository;
+  appConfigRepository: IAppConfigRepository;
   reranker?: IReranker;
 }
 
@@ -40,6 +42,7 @@ export function createSearchUseCases(deps: SearchUseCasesDeps): ISearchUseCases 
     indexRepository,
     tagRepository,
     noteLinkRepository,
+    appConfigRepository,
     reranker,
   } = deps;
 
@@ -55,6 +58,7 @@ export function createSearchUseCases(deps: SearchUseCasesDeps): ISearchUseCases 
       indexRepository,
       tagRepository,
       noteLinkRepository,
+      appConfigRepository,
     ),
   };
 }
