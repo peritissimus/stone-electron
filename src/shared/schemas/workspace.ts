@@ -60,6 +60,12 @@ export const SelectFolderResponseSchema = z.object({
 
 export type SelectFolderResponse = z.infer<typeof SelectFolderResponseSchema>;
 
+export const DefaultWorkspacePathResponseSchema = z.object({
+  path: z.string(),
+});
+
+export type DefaultWorkspacePathResponse = z.infer<typeof DefaultWorkspacePathResponseSchema>;
+
 // Scan returns a full file/folder tree; matches the use case shape.
 // `files` and `total` are extras the renderer currently ignores but are
 // still asserted here so the contract captures reality.

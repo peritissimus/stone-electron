@@ -18,6 +18,7 @@ export const WORKSPACE_CHANNELS = {
   MOVE_FOLDER: 'workspaces:moveFolder',
   VALIDATE_PATH: 'workspaces:validatePath',
   SELECT_FOLDER: 'workspaces:selectFolder',
+  GET_DEFAULT_PATH: 'workspaces:getDefaultPath',
 } as const;
 
 // Note Operations

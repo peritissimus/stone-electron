@@ -10,6 +10,7 @@ import { invokeIpc } from '@renderer/lib/ipc';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Workspace, IpcResponse } from '@shared/types';
 import {
+  DefaultWorkspacePathResponseSchema,
   FolderPathResponseSchema,
   GetActiveWorkspaceResponseSchema,
   ListWorkspacesResponseSchema,
@@ -183,5 +184,14 @@ export const workspaceAPI = {
   > => {
     const response = await invokeIpc(WORKSPACE_CHANNELS.SELECT_FOLDER, {});
     return validateResponse(response, SelectFolderResponseSchema);
+  },
+
+  /**
+   * Resolve the suggested default location for a new workspace (used by
+   * first-launch onboarding to prefill the folder field).
+   */
+  getDefaultPath: async (): Promise<IpcResponse<{ path: string }>> => {
+    const response = await invokeIpc(WORKSPACE_CHANNELS.GET_DEFAULT_PATH, {});
+    return validateResponse(response, DefaultWorkspacePathResponseSchema);
   },
 };

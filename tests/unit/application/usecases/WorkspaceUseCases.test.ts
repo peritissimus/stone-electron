@@ -139,6 +139,7 @@ describe('WorkspaceUseCases', () => {
       useCase = new CreateWorkspaceUseCase(
         workspaceRepo,
         createMockIdGenerator(),
+        createMockFileStorage(),
         eventPublisher,
       );
     });

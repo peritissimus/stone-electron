@@ -79,6 +79,18 @@ export function useWorkspaceAPI() {
     }
   }, [setError]);
 
+  const getDefaultWorkspacePath = useCallback(async () => {
+    try {
+      const response = await workspaceAPI.getDefaultPath();
+      if (response.success && response.data) {
+        return response.data.path;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const createWorkspace = useCallback(
     async (data: { name: string; path: string }) => {
       setLoading(true);
@@ -102,5 +114,12 @@ export function useWorkspaceAPI() {
     [loadWorkspaces, setLoading, setError],
   );
 
-  return { syncWorkspace, loadWorkspaces, setActiveWorkspace, selectFolder, createWorkspace };
+  return {
+    syncWorkspace,
+    loadWorkspaces,
+    setActiveWorkspace,
+    selectFolder,
+    getDefaultWorkspacePath,
+    createWorkspace,
+  };
 }

@@ -18,6 +18,7 @@ import { SetActiveWorkspaceUseCase } from './SetActiveWorkspaceUseCase';
 import { GetActiveWorkspaceUseCase } from './GetActiveWorkspaceUseCase';
 import { DeleteWorkspaceUseCase } from './DeleteWorkspaceUseCase';
 import { UpdateWorkspaceUseCase } from './UpdateWorkspaceUseCase';
+import { GetDefaultWorkspacePathUseCase } from './GetDefaultWorkspacePathUseCase';
 import { SelectFolderUseCase } from './SelectFolderUseCase';
 import { ValidatePathUseCase } from './ValidatePathUseCase';
 import { CreateFolderUseCase } from './CreateFolderUseCase';
@@ -34,6 +35,7 @@ export { SetActiveWorkspaceUseCase } from './SetActiveWorkspaceUseCase';
 export { GetActiveWorkspaceUseCase } from './GetActiveWorkspaceUseCase';
 export { DeleteWorkspaceUseCase } from './DeleteWorkspaceUseCase';
 export { UpdateWorkspaceUseCase } from './UpdateWorkspaceUseCase';
+export { GetDefaultWorkspacePathUseCase } from './GetDefaultWorkspacePathUseCase';
 export { SelectFolderUseCase } from './SelectFolderUseCase';
 export { ValidatePathUseCase } from './ValidatePathUseCase';
 export { CreateFolderUseCase } from './CreateFolderUseCase';
@@ -76,7 +78,12 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
   } = deps;
 
   return {
-    createWorkspace: new CreateWorkspaceUseCase(workspaceRepository, idGenerator, eventPublisher),
+    createWorkspace: new CreateWorkspaceUseCase(
+      workspaceRepository,
+      idGenerator,
+      fileStorage,
+      eventPublisher,
+    ),
     getWorkspace: new GetWorkspaceUseCase(workspaceRepository),
     listWorkspaces: new ListWorkspacesUseCase(workspaceRepository),
     setActiveWorkspace: new SetActiveWorkspaceUseCase(
@@ -87,6 +94,7 @@ export function createWorkspaceUseCases(deps: WorkspaceUseCasesDeps): IWorkspace
     getActiveWorkspace: new GetActiveWorkspaceUseCase(workspaceRepository),
     deleteWorkspace: new DeleteWorkspaceUseCase(workspaceRepository, eventPublisher),
     updateWorkspace: new UpdateWorkspaceUseCase(workspaceRepository, eventPublisher),
+    getDefaultWorkspacePath: new GetDefaultWorkspacePathUseCase(systemBridge, appConfigRepository),
     selectFolder: new SelectFolderUseCase(systemBridge, appConfigRepository),
     validatePath: new ValidatePathUseCase(systemBridge),
     createFolder: new CreateFolderUseCase(workspaceRepository, fileStorage, pathService),

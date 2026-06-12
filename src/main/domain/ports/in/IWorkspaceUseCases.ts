@@ -55,6 +55,11 @@ export interface UpdateWorkspaceResponse {
   workspace: WorkspaceProps;
 }
 
+export interface GetDefaultWorkspacePathResponse {
+  /** Absolute path suggested for a new notebook workspace. */
+  path: string;
+}
+
 export interface SelectFolderRequest {
   title?: string;
   defaultPath?: string;
@@ -189,6 +194,10 @@ export interface IUpdateWorkspaceUseCase {
   execute(request: UpdateWorkspaceRequest): Promise<UpdateWorkspaceResponse>;
 }
 
+export interface IGetDefaultWorkspacePathUseCase {
+  execute(): Promise<GetDefaultWorkspacePathResponse>;
+}
+
 export interface ISelectFolderUseCase {
   execute(request?: SelectFolderRequest): Promise<SelectFolderResponse>;
 }
@@ -232,6 +241,7 @@ export interface IWorkspaceUseCases {
   getActiveWorkspace: IGetActiveWorkspaceUseCase;
   deleteWorkspace: IDeleteWorkspaceUseCase;
   updateWorkspace: IUpdateWorkspaceUseCase;
+  getDefaultWorkspacePath: IGetDefaultWorkspacePathUseCase;
   selectFolder: ISelectFolderUseCase;
   validatePath: IValidatePathUseCase;
   createFolder: ICreateFolderUseCase;

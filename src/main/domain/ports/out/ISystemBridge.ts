@@ -34,6 +34,14 @@ export interface ISystemBridge {
   getFonts(): Promise<string[]>;
 
   /**
+   * Resolve the suggested default location for a new notebook workspace.
+   * If `configuredPath` is already an absolute path it is returned as-is;
+   * otherwise a sensible OS default is used (e.g. ~/Documents/Stone).
+   * Used by first-launch onboarding to prefill the workspace location.
+   */
+  getDefaultWorkspaceDir(configuredPath?: string): string;
+
+  /**
    * Show folder selection dialog
    */
   selectFolder(options?: FolderPickerOptions): Promise<string | null>;

@@ -21,6 +21,7 @@ import {
   UpdateWorkspaceRequestSchema,
   ValidatePathRequestSchema,
   WorkspaceIdRequestSchema,
+  type DefaultWorkspacePathResponse,
   type FolderPathResponse,
   type GetActiveWorkspaceResponse,
   type ListWorkspacesResponse,
@@ -129,6 +130,15 @@ export class WorkspaceIPC {
       );
     });
 
+    ipcMain.handle(WORKSPACE_CHANNELS.GET_DEFAULT_PATH, async () => {
+      return this.handleRequest<DefaultWorkspacePathResponse>(
+        async () => {
+          return await workspaceUseCases.getDefaultWorkspacePath.execute();
+        },
+        { channel: WORKSPACE_CHANNELS.GET_DEFAULT_PATH },
+      );
+    });
+
     ipcMain.handle(WORKSPACE_CHANNELS.VALIDATE_PATH, async (_event, rawRequest) => {
       const { path, folderPath } = ValidatePathRequestSchema.parse(rawRequest);
       const resolvedPath = folderPath ?? path!;
@@ -224,6 +234,7 @@ export class WorkspaceIPC {
     ipcMain.removeHandler(WORKSPACE_CHANNELS.GET_ACTIVE);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.UPDATE);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.SELECT_FOLDER);
+    ipcMain.removeHandler(WORKSPACE_CHANNELS.GET_DEFAULT_PATH);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.VALIDATE_PATH);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.CREATE_FOLDER);
     ipcMain.removeHandler(WORKSPACE_CHANNELS.RENAME_FOLDER);

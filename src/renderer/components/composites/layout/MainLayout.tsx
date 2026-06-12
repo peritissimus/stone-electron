@@ -55,8 +55,14 @@ const DailyReviewPage = lazy(() =>
   })),
 );
 const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
+const OnboardingScreen = lazy(() =>
+  import('@renderer/components/features/Onboarding').then((m) => ({
+    default: m.OnboardingScreen,
+  })),
+);
 
 import { useUI } from '@renderer/hooks/useUI';
+import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -153,6 +159,7 @@ export function MainLayout() {
   const initialPathRef = useRef(location.pathname);
   const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
+  const { workspaces } = useWorkspaces();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
   // These used to live inside <Sidebar>; kept here so <Sidebar> is pure
@@ -379,6 +386,18 @@ export function MainLayout() {
       logger.error('[MainLayout] Failed to recover draft:', error);
     }
   };
+
+  // First-launch gate: once bootstrap has confirmed there are no workspaces,
+  // show onboarding instead of the app shell. The shell would otherwise have
+  // no active workspace to render against (empty tree, journals with nowhere
+  // to write). Creating + activating a workspace flips this off.
+  if (bootstrapComplete && workspaces.length === 0) {
+    return (
+      <Suspense fallback={<PageSkeleton />}>
+        <OnboardingScreen />
+      </Suspense>
+    );
+  }
 
   return (
     <>

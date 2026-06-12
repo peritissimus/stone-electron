@@ -2,17 +2,21 @@
  * System Service Adapter - OS-level operations (fonts, dialogs, shell)
  */
 
+import os from 'os';
+import path from 'path';
 import type { ISystemBridge, FilePickerOptions, FolderPickerOptions } from '../../../domain';
 import { logger } from '../../../shared';
 
 // Conditionally import Electron modules
 let dialog: any = null;
 let shell: any = null;
+let app: any = null;
 
 try {
   const electron = require('electron');
   dialog = electron.dialog;
   shell = electron.shell;
+  app = electron.app;
 } catch {
   logger.warn('[SystemBridge] Running outside Electron context');
 }
@@ -21,6 +25,23 @@ try {
  * System Service implementation
  */
 export class SystemBridge implements ISystemBridge {
+  getDefaultWorkspaceDir(configuredPath?: string): string {
+    // Honor an explicit absolute path the user has configured.
+    if (configuredPath && path.isAbsolute(configuredPath)) {
+      return configuredPath;
+    }
+
+    // Otherwise fall back to ~/Documents/Stone (electron's documents path
+    // when available, plain homedir join outside Electron / in tests).
+    let documentsDir: string;
+    try {
+      documentsDir = app?.getPath ? app.getPath('documents') : path.join(os.homedir(), 'Documents');
+    } catch {
+      documentsDir = path.join(os.homedir(), 'Documents');
+    }
+    return path.join(documentsDir, 'Stone');
+  }
+
   async getFonts(): Promise<string[]> {
     return await logger.withContext('out:SystemBridge.getFonts', async () => {
       try {
