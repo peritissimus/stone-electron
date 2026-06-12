@@ -29,9 +29,6 @@ const ScratchEditor = lazy(() =>
     default: m.ScratchEditor,
   })),
 );
-const HomePage = lazy(() =>
-  import('@renderer/components/features/HomePage/HomePage').then((m) => ({ default: m.HomePage })),
-);
 const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
 const TasksPage = lazy(() =>
   import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
@@ -431,19 +428,7 @@ export function MainLayout() {
         mainContent={
           <MainContentArea>
             <Routes>
-              <Route path="/" element={<Navigate to="/journals" replace />} />
-              <Route
-                path="/home"
-                element={
-                  bootstrapComplete ? (
-                    <Suspense fallback={<PageSkeleton />}>
-                      <HomePage />
-                    </Suspense>
-                  ) : (
-                    <PageSkeleton />
-                  )
-                }
-              />
+              <Route path="/" element={<Navigate to="/today" replace />} />
               <Route
                 path="/journals"
                 element={
@@ -512,8 +497,8 @@ export function MainLayout() {
                   </Suspense>
                 }
               />
-              {/* Catch-all redirect to home */}
-              <Route path="*" element={<Navigate to="/home" replace />} />
+              {/* Catch-all redirect to Today */}
+              <Route path="*" element={<Navigate to="/today" replace />} />
             </Routes>
           </MainContentArea>
         }

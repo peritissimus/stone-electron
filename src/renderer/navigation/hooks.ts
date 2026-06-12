@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { toHome, toNote } from './routes';
+import { toToday, toNote } from './routes';
 
 /**
  * The id of the note currently rendered by the /note/:noteId route.
@@ -24,10 +24,10 @@ export function useNavigateToNote() {
 }
 
 /**
- * Navigate to the app home. Exposed here so callers don't need to
- * import useNavigate alongside a raw '/home' string literal.
+ * Navigate to the app's landing page. Home IS the Today page — the old
+ * /home view was removed in favor of it.
  */
 export function useNavigateHome() {
   const navigate = useNavigate();
-  return useCallback(() => navigate(toHome()), [navigate]);
+  return useCallback(() => navigate(toToday()), [navigate]);
 }

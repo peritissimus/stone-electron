@@ -7,12 +7,12 @@
 
 import { useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { toHome, toJournals, toTasks, toGraph, toTopics, toNote } from '@renderer/navigation';
+import { toToday, toJournals, toTasks, toGraph, toTopics, toNote } from '@renderer/navigation';
 
-export type AppPage = 'home' | 'journals' | 'tasks' | 'graph' | 'topics';
+export type AppPage = 'today' | 'journals' | 'tasks' | 'graph' | 'topics';
 
 const PAGE_ROUTES: Record<AppPage, string> = {
-  home: toHome(),
+  today: toToday(),
   journals: toJournals(),
   tasks: toTasks(),
   graph: toGraph(),
@@ -40,9 +40,9 @@ export function useAppNavigation() {
     [navigate],
   );
 
-  // Navigate to home
+  // Navigate to Today
   const goHome = useCallback(() => {
-    navigate(toHome());
+    navigate(toToday());
   }, [navigate]);
 
   // Get current active note ID from URL
@@ -51,7 +51,7 @@ export function useAppNavigation() {
   // Get current page from URL
   const getCurrentPage = useCallback((): AppPage | null => {
     const path = location.pathname;
-    if (path === '/home' || path === '/') return 'home';
+    if (path === '/today' || path === '/') return 'today';
     if (path === '/journals') return 'journals';
     if (path === '/tasks') return 'tasks';
     if (path === '/graph') return 'graph';

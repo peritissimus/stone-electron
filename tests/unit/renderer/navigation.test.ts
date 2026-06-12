@@ -5,7 +5,6 @@ describe('navigation/destinations', () => {
   it('lists Today, Home, Journals, Tasks, Graph, Topics, Meetings as primary destinations', () => {
     expect(PRIMARY_DESTINATIONS.map((d) => d.id)).toEqual([
       'today',
-      'home',
       'journals',
       'tasks',
       'graph',

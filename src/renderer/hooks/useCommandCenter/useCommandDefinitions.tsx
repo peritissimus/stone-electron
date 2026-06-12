@@ -86,9 +86,9 @@ export function useCommandDefinitions(query: string) {
         run: handleClose,
       },
       {
-        id: 'go-home',
-        title: 'Go Home',
-        subtitle: 'Navigate to home view',
+        id: 'go-today',
+        title: 'Go to Today',
+        subtitle: 'Daily review',
         icon: <House size={18} />,
         shortcut: '⌘⇧H',
         run: () => {

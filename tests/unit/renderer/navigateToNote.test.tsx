@@ -18,7 +18,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import { useNavigateToNote, useNavigateHome, toHome, toNote } from '@renderer/navigation';
+import { useNavigateToNote, useNavigateHome, toToday, toNote } from '@renderer/navigation';
 
 function renderHook<T>(callback: () => T): { current: T; unmount: () => void; rerender: () => void } {
   const container = document.createElement('div');
@@ -64,12 +64,12 @@ describe('useNavigateToNote / useNavigateHome', () => {
     hook.unmount();
   });
 
-  it('useNavigateHome() calls navigate with toHome()', () => {
+  it('useNavigateHome() routes to Today (home was removed)', () => {
     const hook = renderHook(() => useNavigateHome());
     hook.current();
     expect(navigateMock).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith(toHome());
-    expect(navigateMock).toHaveBeenCalledWith('/home');
+    expect(navigateMock).toHaveBeenCalledWith(toToday());
+    expect(navigateMock).toHaveBeenCalledWith('/today');
     hook.unmount();
   });
 
