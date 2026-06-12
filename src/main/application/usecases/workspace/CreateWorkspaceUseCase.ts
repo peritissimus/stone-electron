@@ -19,6 +19,17 @@ export class CreateWorkspaceUseCase implements ICreateWorkspaceUseCase {
   ) {}
 
   async execute(request: CreateWorkspaceRequest): Promise<CreateWorkspaceResponse> {
+    // Idempotent on folder: folder_path is UNIQUE in the DB, and a folder
+    // already backing a workspace IS that workspace (single-workspace mode).
+    // Re-running onboarding (or picking the same folder twice) returns the
+    // existing row instead of surfacing a raw constraint violation.
+    const existing = (await this.workspaceRepository.findAll()).find(
+      (w) => w.folderPath === request.folderPath,
+    );
+    if (existing) {
+      return { workspace: existing };
+    }
+
     // Ensure the target folder exists. The native picker guarantees this for
     // user-selected folders, but onboarding may pass a suggested default
     // (e.g. ~/Documents/Stone) that hasn't been created yet. Recursive mkdir

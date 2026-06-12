@@ -145,6 +145,7 @@ describe('WorkspaceUseCases', () => {
     });
 
     it('creates workspace with name and folderPath', async () => {
+      vi.mocked(workspaceRepo.findAll).mockResolvedValue([]);
       vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
 
       const result = await useCase.execute({
@@ -157,6 +158,26 @@ describe('WorkspaceUseCases', () => {
       expect(result.workspace.isActive).toBe(false);
       expect(workspaceRepo.save).toHaveBeenCalled();
       expect(eventPublisher.publish).toHaveBeenCalled();
+    });
+
+    it('returns the existing workspace when the folder is already in use', async () => {
+      const existing = createWorkspaceProps({
+        id: 'ws-existing',
+        name: 'Stone',
+        folderPath: '/path/to/workspace',
+      });
+      vi.mocked(workspaceRepo.findAll).mockResolvedValue([existing]);
+
+      const result = await useCase.execute({
+        name: 'Different Name',
+        folderPath: '/path/to/workspace',
+      });
+
+      // folder_path is UNIQUE — re-creating over the same folder is
+      // idempotent rather than a constraint violation.
+      expect(result.workspace.id).toBe('ws-existing');
+      expect(workspaceRepo.save).not.toHaveBeenCalled();
+      expect(eventPublisher.publish).not.toHaveBeenCalled();
     });
   });
 
