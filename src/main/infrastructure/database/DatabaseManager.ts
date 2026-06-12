@@ -246,8 +246,7 @@ export class DatabaseManager {
 
     // NOTE: We intentionally do NOT seed a default workspace. A fresh install
     // has zero workspaces so first launch shows onboarding (see MainLayout's
-    // gate), where the user picks where their notebook folder lives. The
-    // seedDatabase() helper is retained for tests/fixtures only.
+    // gate), where the user picks where their notebook folder lives.
   }
 
   getDrizzle() {
