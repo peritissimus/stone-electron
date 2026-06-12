@@ -5,6 +5,7 @@
  */
 
 import type { MicrophoneAccessStatus } from '../out/ISystemBridge';
+import type { SystemAudioPermission } from '../out/ISystemAudioTap';
 
 export interface IGetSystemFontsUseCase {
   execute(): Promise<{ fonts: string[] }>;
@@ -34,6 +35,14 @@ export interface IRequestMicAccessUseCase {
   execute(): Promise<{ granted: boolean; status: MicrophoneAccessStatus }>;
 }
 
+export interface IGetSystemAudioAccessUseCase {
+  execute(): Promise<{ status: SystemAudioPermission }>;
+}
+
+export interface IRequestSystemAudioAccessUseCase {
+  execute(): Promise<{ status: SystemAudioPermission }>;
+}
+
 /**
  * Aggregated system use cases interface for DI container
  */
@@ -45,4 +54,6 @@ export interface ISystemUseCases {
   openExternal: IOpenExternalUseCase;
   getMicAccessStatus: IGetMicAccessStatusUseCase;
   requestMicAccess: IRequestMicAccessUseCase;
+  getSystemAudioAccess: IGetSystemAudioAccessUseCase;
+  requestSystemAudioAccess: IRequestSystemAudioAccessUseCase;
 }

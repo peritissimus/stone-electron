@@ -233,6 +233,10 @@ const MicAccessStatusSchema = z.enum([
 
 export type MicAccessStatus = z.infer<typeof MicAccessStatusSchema>;
 
+const SystemAudioAccessSchema = z.enum(['granted', 'denied', 'unsupported']);
+
+export type SystemAudioAccess = z.infer<typeof SystemAudioAccessSchema>;
+
 export const systemAPI = {
   /**
    * Get available system fonts
@@ -261,5 +265,21 @@ export const systemAPI = {
       response,
       z.object({ granted: z.boolean(), status: MicAccessStatusSchema }),
     );
+  },
+
+  /**
+   * Screen & System Audio Recording permission (macOS; 'unsupported' elsewhere).
+   */
+  getSystemAudioAccess: async (): Promise<IpcResponse<{ status: SystemAudioAccess }>> => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.GET_SYSTEM_AUDIO_ACCESS, {});
+    return validateResponse(response, z.object({ status: SystemAudioAccessSchema }));
+  },
+
+  /**
+   * Trigger the Screen & System Audio Recording prompt (first ask only).
+   */
+  requestSystemAudioAccess: async (): Promise<IpcResponse<{ status: SystemAudioAccess }>> => {
+    const response = await invokeIpc(SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS, {});
+    return validateResponse(response, z.object({ status: SystemAudioAccessSchema }));
   },
 };

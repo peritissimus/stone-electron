@@ -11,7 +11,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
-import { topicAPI, aiAPI, systemAPI, type MicAccessStatus } from '@renderer/api';
+import {
+  topicAPI,
+  aiAPI,
+  systemAPI,
+  type MicAccessStatus,
+  type SystemAudioAccess,
+} from '@renderer/api';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
@@ -93,6 +99,46 @@ export function useMicPermission() {
       if (response.success && response.data) {
         setStatus(response.data.status);
         return response.data.granted;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      setRequesting(false);
+    }
+  }, []);
+
+  return { status, requesting, refresh, request };
+}
+
+/**
+ * Screen & System Audio Recording permission state (macOS). 'unsupported'
+ * on other platforms — callers hide the affordance entirely.
+ */
+export function useSystemAudioPermission() {
+  const [status, setStatus] = useState<SystemAudioAccess | null>(null);
+  const [requesting, setRequesting] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const response = await systemAPI.getSystemAudioAccess();
+      if (response.success && response.data) setStatus(response.data.status);
+    } catch {
+      // Leave null — row stays hidden.
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const request = useCallback(async () => {
+    setRequesting(true);
+    try {
+      const response = await systemAPI.requestSystemAudioAccess();
+      if (response.success && response.data) {
+        setStatus(response.data.status);
+        return response.data.status === 'granted';
       }
       return false;
     } catch {

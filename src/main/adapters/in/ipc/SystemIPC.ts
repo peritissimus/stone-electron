@@ -13,6 +13,8 @@ import type {
   IGetSystemFontsUseCase,
   IGetMicAccessStatusUseCase,
   IRequestMicAccessUseCase,
+  IGetSystemAudioAccessUseCase,
+  IRequestSystemAudioAccessUseCase,
 } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
@@ -21,10 +23,18 @@ export interface SystemIPCDeps {
   getSystemFonts: IGetSystemFontsUseCase;
   getMicAccessStatus: IGetMicAccessStatusUseCase;
   requestMicAccess: IRequestMicAccessUseCase;
+  getSystemAudioAccess: IGetSystemAudioAccessUseCase;
+  requestSystemAudioAccess: IRequestSystemAudioAccessUseCase;
 }
 
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
-  const { getSystemFonts, getMicAccessStatus, requestMicAccess } = deps;
+  const {
+    getSystemFonts,
+    getMicAccessStatus,
+    requestMicAccess,
+    getSystemAudioAccess,
+    requestSystemAudioAccess,
+  } = deps;
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
     return handleIpcRequest<SystemGetFontsResponse>(
@@ -57,6 +67,28 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
         context: { channel: SYSTEM_CHANNELS.REQUEST_MIC_ACCESS },
+      },
+    );
+  });
+
+  ipcMain.handle(SYSTEM_CHANNELS.GET_SYSTEM_AUDIO_ACCESS, async () => {
+    return handleIpcRequest(
+      async () => getSystemAudioAccess.execute(),
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.GET_SYSTEM_AUDIO_ACCESS },
+      },
+    );
+  });
+
+  ipcMain.handle(SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS, async () => {
+    return handleIpcRequest(
+      async () => requestSystemAudioAccess.execute(),
+      {
+        loggerPrefix: 'SystemIPC',
+        defaultCode: 'INTERNAL_ERROR',
+        context: { channel: SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS },
       },
     );
   });

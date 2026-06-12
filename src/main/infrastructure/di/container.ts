@@ -602,6 +602,7 @@ export function createContainer(deps: ContainerDeps): Container {
   // System use cases
   const systemUseCases = createSystemUseCases({
     systemBridge,
+    systemAudioTap,
   });
 
   // Settings use cases
@@ -841,6 +842,8 @@ export function registerIPCHandlers(): void {
     getSystemFonts: container.systemUseCases.getFonts,
     getMicAccessStatus: container.systemUseCases.getMicAccessStatus,
     requestMicAccess: container.systemUseCases.requestMicAccess,
+    getSystemAudioAccess: container.systemUseCases.getSystemAudioAccess,
+    requestSystemAudioAccess: container.systemUseCases.requestSystemAudioAccess,
   });
   registerSettingsHandlers({
     getSetting: container.settingsUseCases.get,

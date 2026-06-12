@@ -25,6 +25,7 @@ import {
   FolderOpen,
   Lightning,
   Microphone,
+  SpeakerHigh,
   Warning,
 } from '@phosphor-icons/react';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
@@ -38,6 +39,7 @@ import {
   useOnboarding,
   useModelDownloadProgress,
   useMicPermission,
+  useSystemAudioPermission,
 } from '@renderer/hooks/useOnboarding';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 
@@ -47,9 +49,9 @@ export interface OnboardingScreenProps {
   onComplete?: () => void;
 }
 
-type StepId = 'workspace' | 'ai' | 'models';
+type StepId = 'workspace' | 'permissions' | 'ai' | 'models';
 
-const STEPS: StepId[] = ['workspace', 'ai', 'models'];
+const STEPS: StepId[] = ['workspace', 'permissions', 'ai', 'models'];
 
 /** Last path segment, tolerant of both posix and windows separators. */
 function basename(path: string): string {
@@ -135,16 +137,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           >
             <Heading2 className="text-balance">
               {step === 'workspace' && 'Welcome to Stone'}
+              {step === 'permissions' && 'Permissions'}
               {step === 'ai' && 'Set up AI'}
-              {step === 'models' && 'Local setup'}
+              {step === 'models' && 'Local models'}
             </Heading2>
             <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
               {step === 'workspace' &&
                 'Your notebook lives in a folder on your computer. Choose where to keep it — everything stays local, in plain Markdown.'}
+              {step === 'permissions' &&
+                'What Stone may use on this Mac. Granting now means recording works on first use — nothing here is required, and you can change it anytime in System Settings.'}
               {step === 'ai' &&
                 'Optional. Cloud AI powers summaries, Ask-your-notes, and weekly status drafts. Skip it and Stone works fully offline.'}
               {step === 'models' &&
-                'Stone runs search and speech-to-text on your machine. Grant the microphone and download the models now so nothing stalls later — both can wait until first use if you prefer.'}
+                'Stone runs search and speech-to-text on your machine. Download the models now so nothing stalls later — or skip and they download on first use.'}
             </Body>
           </div>
         </div>
@@ -171,12 +176,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
                 setName(value);
               }}
               canContinue={workspaceValid}
+              onContinue={() => setStep('permissions')}
+            />
+          )}
+
+          {step === 'permissions' && (
+            <PermissionsStep
+              onBack={() => setStep('workspace')}
               onContinue={() => setStep('ai')}
             />
           )}
 
           {step === 'ai' && (
-            <AIStep onBack={() => setStep('workspace')} onContinue={() => setStep('models')} />
+            <AIStep onBack={() => setStep('permissions')} onContinue={() => setStep('models')} />
           )}
 
           {step === 'models' && (
@@ -439,69 +451,157 @@ function ProviderKeyRow({
 }
 
 // =============================================================================
-// Step 3 — Local setup: mic permission + model downloads (live progress)
+// Step 2 — Permissions (microphone + system audio)
 // =============================================================================
 
+type PermissionRowState = 'granted' | 'ask' | 'denied' | 'hidden';
+
 /**
- * Microphone permission card. Granting here means the meeting recorder and
- * voice capture work on first use instead of interrupting with the OS
- * prompt mid-recording. After an OS-level denial only System Settings can
- * flip it back, so that state links straight there.
+ * One device permission. Granting during setup means recording features
+ * work on first use instead of interrupting with an OS prompt mid-meeting.
+ * Denied states can't be re-prompted by apps — they link to System Settings.
  */
-function MicPermissionRow() {
-  const { status, requesting, request } = useMicPermission();
-
-  // Linux / unknown platforms have no TCC — nothing to set up, hide the row.
-  if (status === 'unknown') return null;
-
-  const granted = status === 'granted';
-  const denied = status === 'denied' || status === 'restricted';
+function PermissionRow({
+  icon,
+  title,
+  description,
+  state,
+  requesting,
+  deniedHint,
+  onAllow,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  state: PermissionRowState;
+  requesting: boolean;
+  deniedHint: string;
+  onAllow: () => void;
+}) {
+  if (state === 'hidden') return null;
 
   return (
     <div className="rounded-xl bg-muted/40 p-3">
       <div className="flex items-center gap-2">
-        <Microphone size={14} className="shrink-0 text-muted-foreground" />
+        <span className="shrink-0 text-muted-foreground">{icon}</span>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-foreground">Microphone</div>
-          <Caption className="text-muted-foreground">
-            Meeting recordings and voice notes — transcribed locally.
-          </Caption>
+          <div className="text-sm font-medium text-foreground">{title}</div>
+          <Caption className="text-muted-foreground">{description}</Caption>
         </div>
-        {granted && (
+        {state === 'granted' && (
           <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
             <Check size={11} weight="bold" />
           </span>
         )}
-        {status === 'not-determined' && (
+        {state === 'ask' && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void request()}
+            onClick={onAllow}
             disabled={requesting}
             className="shrink-0 transition-transform active:scale-[0.96]"
           >
             {requesting ? <CircleNotch size={12} className="animate-spin" /> : 'Allow'}
           </Button>
         )}
-        {denied && (
+        {state === 'denied' && (
           <span
             className="flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive"
-            title="Microphone access is denied"
+            title={`${title} access is denied`}
           >
             <Warning size={11} weight="fill" />
           </span>
         )}
       </div>
-      {denied && (
-        <Caption className="mt-2 block text-destructive">
-          Denied — enable Stone under System Settings → Privacy &amp; Security → Microphone.
-          You can finish setup now and grant it later.
-        </Caption>
+      {state === 'denied' && (
+        <Caption className="mt-2 block text-destructive">{deniedHint}</Caption>
       )}
     </div>
   );
 }
+
+function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
+  const mic = useMicPermission();
+  const systemAudio = useSystemAudioPermission();
+
+  const micState: PermissionRowState =
+    mic.status === 'unknown' || mic.status === null
+      ? 'hidden'
+      : mic.status === 'granted'
+        ? 'granted'
+        : mic.status === 'not-determined'
+          ? 'ask'
+          : 'denied';
+
+  // The Screen Recording prompt only fires on the app's FIRST ask; after
+  // that only System Settings can change it. We can't distinguish
+  // never-asked from user-denied, so offer Allow until it's granted.
+  const systemAudioState: PermissionRowState =
+    systemAudio.status === 'unsupported' || systemAudio.status === null
+      ? 'hidden'
+      : systemAudio.status === 'granted'
+        ? 'granted'
+        : 'ask';
+
+  const nothingToShow = micState === 'hidden' && systemAudioState === 'hidden';
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <PermissionRow
+          icon={<Microphone size={14} />}
+          title="Microphone"
+          description="Your voice in meeting recordings and voice notes — transcribed locally."
+          state={micState}
+          requesting={mic.requesting}
+          deniedHint="Denied — enable Stone under System Settings → Privacy & Security → Microphone. You can finish setup and grant it later."
+          onAllow={() => void mic.request()}
+        />
+        <PermissionRow
+          icon={<SpeakerHigh size={14} />}
+          title="System audio"
+          description="Remote voices in meetings, via Screen & System Audio Recording."
+          state={systemAudioState}
+          requesting={systemAudio.requesting}
+          deniedHint="Enable Stone under System Settings → Privacy & Security → Screen & System Audio Recording, then restart Stone."
+          onAllow={() => {
+            void systemAudio.request().then((granted) => {
+              if (!granted) void systemAudio.refresh();
+            });
+          }}
+        />
+        {nothingToShow && (
+          <Caption className="block text-center text-muted-foreground">
+            Nothing to set up on this platform — recording just works.
+          </Caption>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          className="transition-transform active:scale-[0.96]"
+        >
+          Back
+        </Button>
+        <Button
+          type="button"
+          onClick={onContinue}
+          className="flex-1 transition-transform active:scale-[0.96]"
+        >
+          Continue
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Step 4 — Local model downloads (with live progress)
+// =============================================================================
 
 type ModelDownloadState = 'idle' | 'running' | 'ready' | 'failed';
 
@@ -542,7 +642,6 @@ function ModelsStep({
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        <MicPermissionRow />
         <ModelRow
           name="Search & topics"
           detail="BGE-small embeddings · ~35 MB"

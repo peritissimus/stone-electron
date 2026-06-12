@@ -204,6 +204,8 @@ export const SYSTEM_CHANNELS = {
   GET_FONTS: 'system:getFonts',
   GET_MIC_ACCESS_STATUS: 'system:getMicAccessStatus',
   REQUEST_MIC_ACCESS: 'system:requestMicAccess',
+  GET_SYSTEM_AUDIO_ACCESS: 'system:getSystemAudioAccess',
+  REQUEST_SYSTEM_AUDIO_ACCESS: 'system:requestSystemAudioAccess',
 } as const;
 
 // Git Operations
