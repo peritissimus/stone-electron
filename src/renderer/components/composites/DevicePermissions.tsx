@@ -143,20 +143,20 @@ export function DevicePermissions() {
       <PermissionRow
         icon={<Microphone size={14} />}
         title="Microphone"
-        description="Your voice in meeting recordings and voice notes — transcribed locally."
+        description="Your voice in recordings."
         state={micState}
         requesting={mic.requesting}
-        deniedHint="Denied — enable Stone under System Settings → Privacy & Security → Microphone."
+        deniedHint="Turn on in System Settings → Microphone."
         onAllow={() => void mic.request()}
         onOpenSettings={mic.openSettings}
       />
       <PermissionRow
         icon={<SpeakerHigh size={14} />}
         title="System audio"
-        description="Remote voices in meetings, via Screen & System Audio Recording."
+        description="Other voices in meetings."
         state={systemAudioState}
         requesting={systemAudio.requesting}
-        deniedHint="Enable this app under Screen & System Audio Recording — this row turns green by itself. If a recording still says mic-only afterwards, restart the app."
+        deniedHint="Turn on in System Settings. Mic-only until then."
         onAllow={() => {
           void systemAudio.request().then((granted) => {
             if (!granted) setSystemAudioAsked(true);
@@ -166,7 +166,7 @@ export function DevicePermissions() {
       />
       {nothingToShow && (
         <Caption className="block text-center text-muted-foreground">
-          Nothing to set up on this platform — recording just works.
+          No setup needed on this platform.
         </Caption>
       )}
     </div>

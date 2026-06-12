@@ -19,7 +19,6 @@ import { Progress } from '@renderer/components/base/ui/progress';
 import { Caption } from '@renderer/components/base/ui/text';
 import { DevicePermissions } from '@renderer/components/composites/DevicePermissions';
 import { useOnboarding, useModelDownloadProgress } from '@renderer/hooks/useOnboarding';
-import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { SettingsSection } from './SettingsSection';
 
 type ModelState = 'idle' | 'running' | 'ready' | 'failed';
@@ -39,22 +38,20 @@ export function RecordingSettings() {
     <ContainerStack gap="xl">
       <SettingsSection
         title="Permissions"
-        description="What Stone may use on this device. Grants apply immediately — rows update on their own once you flip a toggle in System Settings."
+        description="For meeting recordings and voice notes."
       >
         <DevicePermissions />
       </SettingsSection>
 
       <SettingsSection
         title="Speech-to-text model"
-        description="Transcription runs entirely on this device with Whisper (base, ~80 MB). Verify it's ready, or download it ahead of your first recording."
+        description="Runs on this device. ~80 MB, downloaded once."
       >
         <div className="rounded-xl bg-muted/40 p-3">
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium text-foreground">Whisper base</div>
-              <Caption className="text-muted-foreground">
-                Used by meeting recordings and voice notes. Downloaded once, cached locally.
-              </Caption>
+              <Caption className="text-muted-foreground">Transcribes your recordings.</Caption>
             </div>
             {modelState === 'ready' && (
               <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
@@ -100,20 +97,14 @@ export function RecordingSettings() {
             </div>
           )}
           {modelState === 'ready' && (
-            <Caption className="mt-2 block text-muted-foreground">
-              Model is loaded — transcription starts instantly.
-            </Caption>
+            <Caption className="mt-2 block text-muted-foreground">Ready.</Caption>
           )}
         </div>
       </SettingsSection>
 
       <SettingsSection
-        title="How capture works"
-        description={
-          isMacOS()
-            ? 'Recordings capture your microphone, plus system audio (remote voices) when the permission above is granted. Audio is kept under .stone/recordings only while processing, then deleted — transcripts and summaries are what remain.'
-            : 'Recordings capture your microphone plus system audio via the system loopback device. Audio is kept under .stone/recordings only while processing, then deleted — transcripts and summaries are what remain.'
-        }
+        title="Privacy"
+        description="Audio never leaves this device. It's deleted after transcription."
       >
         <></>
       </SettingsSection>

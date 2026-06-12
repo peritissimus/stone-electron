@@ -136,14 +136,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               {step === 'models' && 'Local models'}
             </Heading2>
             <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
-              {step === 'workspace' &&
-                'Your notebook lives in a folder on your computer. Choose where to keep it — everything stays local, in plain Markdown.'}
-              {step === 'permissions' &&
-                'What Stone may use on this Mac. Granting now means recording works on first use — nothing here is required, and you can change it anytime in System Settings.'}
-              {step === 'ai' &&
-                'Optional. Cloud AI powers summaries, Ask-your-notes, and weekly status drafts. Skip it and Stone works fully offline.'}
-              {step === 'models' &&
-                'Stone runs search and speech-to-text on your machine. Download the models now so nothing stalls later — or skip and they download on first use.'}
+              {step === 'workspace' && 'Your notes live in a folder on this computer. Plain Markdown, fully local.'}
+              {step === 'permissions' && 'For recording meetings and voice notes. Optional.'}
+              {step === 'ai' && 'Optional. Powers summaries and weekly reports. Stone works fully offline without it.'}
+              {step === 'models' && 'Search and transcription run on-device. Download now, or on first use.'}
             </Body>
           </div>
         </div>
@@ -261,9 +257,7 @@ function WorkspaceStep({
             Browse
           </Button>
         </div>
-        <Caption className="text-muted-foreground">
-          We'll create this folder if it doesn't exist yet.
-        </Caption>
+        <Caption className="text-muted-foreground">Created if it doesn't exist.</Caption>
       </div>
 
       <div className="space-y-1.5">
@@ -312,10 +306,7 @@ function AIStep({ onBack, onContinue }: { onBack: () => void; onContinue: () => 
           <CloudArrowUp size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
           <div>
             <div className="text-sm font-medium text-foreground">Enable cloud AI</div>
-            <Caption className="text-muted-foreground">
-              Sends note content to your chosen provider for summaries and status reports.
-              Off = fully local.
-            </Caption>
+            <Caption className="text-muted-foreground">Sends notes to your provider. Off = fully local.</Caption>
           </div>
         </div>
         <Switch
@@ -351,10 +342,7 @@ function AIStep({ onBack, onContinue }: { onBack: () => void; onContinue: () => 
                 onSave={(key) => setProviderKey(status.provider, key)}
               />
             ))}
-          <Caption className="text-muted-foreground">
-            Keys are stored encrypted on this machine. Add only the ones you use — you can
-            manage them later in Settings → AI.
-          </Caption>
+          <Caption className="text-muted-foreground">Stored encrypted on this device.</Caption>
         </div>
       )}
 
@@ -601,8 +589,8 @@ function ModelsStep({
       {finished && (
         <Caption className="block text-center text-muted-foreground">
           {embeddingState === 'failed' || whisperState === 'failed'
-            ? 'Some downloads failed — they will retry automatically on first use.'
-            : 'Models ready — search and transcription are instant from day one.'}
+            ? 'Some downloads failed. They retry on first use.'
+            : 'Ready.'}
         </Caption>
       )}
     </div>

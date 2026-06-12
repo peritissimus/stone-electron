@@ -222,21 +222,10 @@ function Idle({
   return (
     <div className={layerCn(visible)}>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        {isMacOS() ? (
-          <>
-            Captures your microphone{systemAudioStatus === 'granted' ? ' plus system audio (remote voices).' : '.'}
-          </>
-        ) : (
-          <>
-            Captures your microphone plus system audio (remote meeting voices) via the
-            system loopback device.
-          </>
-        )}{' '}
-        Audio stays under{' '}
-        <code className="rounded bg-background px-1 py-px font-mono text-[10px]">
-          .stone/recordings
-        </code>{' '}
-        until processing finishes, then it's deleted.
+        {isMacOS() && systemAudioStatus !== 'granted'
+          ? 'Records your mic.'
+          : 'Records your mic and system audio.'}{' '}
+        Audio is deleted after transcription.
       </p>
       {needsSystemAudioGrant && (
         <button
@@ -246,9 +235,9 @@ function Idle({
             'mt-2 inline-flex w-fit items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-foreground',
             'transition-[transform,background-color] duration-150 hover:bg-muted active:scale-[0.96]',
           )}
-          title="Opens System Settings → Privacy & Security → Screen & System Audio Recording"
+          title="Capture other voices in meetings. Opens System Settings."
         >
-          Enable system audio (remote voices)
+          Enable system audio
         </button>
       )}
     </div>

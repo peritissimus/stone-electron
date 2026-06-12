@@ -58,7 +58,7 @@ export function GitSyncButton() {
 
     const result = await sync(activeWorkspaceId);
     if (!result) {
-      toast.error('Sync failed — check Settings → Git Sync.');
+      toast.error('Sync failed', { description: 'Check Settings → Git Sync.' });
       return;
     }
     logger.info('[GitSyncButton] Sync completed', result);
@@ -71,41 +71,31 @@ export function GitSyncButton() {
         ]
           .filter(Boolean)
           .join(' ') || null;
-      toast.success(
-        moved
-          ? `Synced ${moved}`
-          : result.committed
-            ? 'Committed locally — no remote changes to exchange'
-            : 'Already up to date',
-      );
+      toast.success(moved ? `Synced ${moved}` : 'Up to date');
     } else {
       switch (result.errorKind) {
         case 'conflict': {
           const files = result.conflicts ?? [];
           toast.error(
             files.length > 0
-              ? `Sync stopped: ${files.length} conflicting file${files.length === 1 ? '' : 's'} (${files
-                  .slice(0, 2)
-                  .join(', ')}${files.length > 2 ? '…' : ''})`
-              : 'Sync stopped on a conflict',
+              ? `Conflict in ${files.length} file${files.length === 1 ? '' : 's'}`
+              : 'Sync conflict',
             {
-              description:
-                'Your changes are committed locally and nothing was half-merged. Resolve the conflict in a git tool, then sync again.',
+              description: `Your notes are safe, committed locally. Resolve in a git tool.${
+                files.length > 0 ? ` (${files.slice(0, 2).join(', ')}${files.length > 2 ? '…' : ''})` : ''
+              }`,
               duration: 10000,
             },
           );
           break;
         }
         case 'auth':
-          toast.error('Git authentication failed', {
-            description:
-              'Check your SSH key or stored credentials for the remote, then sync again.',
+          toast.error('Authentication failed', {
+            description: 'Check your SSH key or credentials.',
           });
           break;
         case 'network':
-          toast.error("Can't reach the remote", {
-            description: 'You appear to be offline. Your changes are committed locally.',
-          });
+          toast.error('Offline', { description: 'Changes saved locally. Will sync later.' });
           break;
         default:
           toast.error('Sync failed', { description: result.error });
