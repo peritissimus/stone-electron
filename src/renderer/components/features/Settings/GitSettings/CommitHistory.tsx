@@ -1,4 +1,4 @@
-import { Clock } from 'phosphor-react';
+import { Clock } from '@phosphor-icons/react';
 import { ContainerStack } from '@renderer/components/base/ui';
 import { Label } from '@renderer/components/base/ui/text';
 

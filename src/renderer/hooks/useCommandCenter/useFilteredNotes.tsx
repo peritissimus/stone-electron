@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { FileText } from 'phosphor-react';
+import { FileText } from '@phosphor-icons/react';
 import { useNoteStore } from '@renderer/stores/noteStore';
 import { useUIStore } from '@renderer/stores/uiStore';
 import { useNavigateToNote } from '@renderer/navigation';

@@ -1,4 +1,4 @@
-import { Cpu, Gauge } from 'phosphor-react';
+import { Cpu, Gauge } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { MetricCard } from './MetricCard';

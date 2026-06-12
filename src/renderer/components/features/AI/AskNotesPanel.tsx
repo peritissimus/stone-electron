@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { ArrowRight, Sparkle } from 'phosphor-react';
+import { ArrowRight, Sparkle } from '@phosphor-icons/react';
 import { useUI } from '@renderer/hooks/useUI';
 import { useAskNotes } from '@renderer/hooks/useAskNotes';
 import { useNavigateToNote } from '@renderer/navigation';

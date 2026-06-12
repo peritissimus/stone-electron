@@ -1,4 +1,4 @@
-import { GitBranch, CloudArrowUp, CloudArrowDown, ArrowsClockwise } from 'phosphor-react';
+import { GitBranch, CloudArrowUp, CloudArrowDown, ArrowsClockwise } from '@phosphor-icons/react';
 import { ActionCard } from '../ActionCard';
 import { ContainerStack } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';

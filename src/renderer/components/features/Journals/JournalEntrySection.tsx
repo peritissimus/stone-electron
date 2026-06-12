@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowSquareOut, Circle } from 'phosphor-react';
+import { ArrowSquareOut, Circle } from '@phosphor-icons/react';
 import type { JournalEntry } from '@shared/schemas';
 import { cn } from '@renderer/lib/utils';
 import { JournalDayEditor } from './JournalDayEditor';

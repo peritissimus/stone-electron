@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowClockwise } from 'phosphor-react';
+import { ArrowClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import {
   useShortcuts,

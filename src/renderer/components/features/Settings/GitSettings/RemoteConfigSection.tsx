@@ -1,4 +1,4 @@
-import { Check, X, Plus } from 'phosphor-react';
+import { Check, X, Plus } from '@phosphor-icons/react';
 import { ContainerStack } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';

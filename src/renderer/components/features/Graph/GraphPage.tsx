@@ -3,7 +3,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { GitFork, CaretRight, CirclesThree, RadioButton } from 'phosphor-react';
+import { GitFork, CaretRight, CirclesThree, RadioButton } from '@phosphor-icons/react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
 import { useSidebarUI } from '@renderer/hooks/useUI';

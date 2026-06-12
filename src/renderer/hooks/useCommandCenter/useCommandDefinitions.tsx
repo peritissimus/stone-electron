@@ -23,7 +23,7 @@ import {
   Sparkle,
   Microphone,
   FileText,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { useTemplatesStore } from '@renderer/stores/templatesStore';
 import type { CommandItem } from './types';

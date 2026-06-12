@@ -15,7 +15,7 @@ import {
   CaretDown,
   CaretRight,
   Compass,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { useRelatedNotes } from '@renderer/hooks/useRelatedNotes';
 import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';

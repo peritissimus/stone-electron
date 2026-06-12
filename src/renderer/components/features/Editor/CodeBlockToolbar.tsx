@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check, ArrowsOutSimple, DownloadSimple } from 'phosphor-react';
+import { Copy, Check, ArrowsOutSimple, DownloadSimple } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 
 /**

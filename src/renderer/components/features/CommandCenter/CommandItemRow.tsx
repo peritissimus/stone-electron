@@ -5,7 +5,7 @@
  */
 
 import React, { memo } from 'react';
-import { ArrowRight } from 'phosphor-react';
+import { ArrowRight } from '@phosphor-icons/react';
 
 export interface CommandItem {
   id: string;

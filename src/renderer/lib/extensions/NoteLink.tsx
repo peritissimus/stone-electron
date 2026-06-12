@@ -23,7 +23,7 @@ import {
   NoteLinkItem,
 } from '@renderer/components/features/Editor/NoteLinkMenu';
 import { NodeViewWrapper } from '@tiptap/react';
-import { Link } from 'phosphor-react';
+import { Link } from '@phosphor-icons/react';
 
 // NodeView component for rendering note links
 function NoteLinkNodeView({ node, selected }: { node: any; selected: boolean }) {

@@ -6,7 +6,7 @@ import {
   PencilSimple,
   Trash,
   Plus,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -1,4 +1,4 @@
-import { Activity, Clock, Database, Timer } from 'phosphor-react';
+import { Pulse, Clock, Database, Timer } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { Label } from '@renderer/components/base/ui/text';
@@ -54,7 +54,7 @@ export function DatabaseMetricsSection({ database }: { database: DatabaseMetrics
           }
         />
         <MetricCard
-          icon={<Activity size={18} />}
+          icon={<Pulse size={18} />}
           label="Error Rate"
           value={errorRate.toFixed(1)}
           unit="%"

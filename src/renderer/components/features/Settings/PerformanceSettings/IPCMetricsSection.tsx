@@ -1,4 +1,4 @@
-import { Activity, Clock } from 'phosphor-react';
+import { Pulse, Clock } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { Label } from '@renderer/components/base/ui/text';
@@ -21,7 +21,7 @@ export function IPCMetricsSection({ ipc }: { ipc: IPC }) {
     >
       <div className="grid grid-cols-3 gap-2">
         <MetricCard
-          icon={<Activity size={18} />}
+          icon={<Pulse size={18} />}
           label="Total Calls"
           value={ipc.totalCalls}
           status="good"
@@ -34,7 +34,7 @@ export function IPCMetricsSection({ ipc }: { ipc: IPC }) {
           status={ipc.avgDurationMs < 50 ? 'good' : ipc.avgDurationMs < 200 ? 'warning' : 'critical'}
         />
         <MetricCard
-          icon={<Activity size={18} />}
+          icon={<Pulse size={18} />}
           label="Error Rate"
           value={errorRate.toFixed(1)}
           unit="%"

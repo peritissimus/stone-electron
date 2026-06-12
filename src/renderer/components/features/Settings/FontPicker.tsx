@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Check, CaretDown } from 'phosphor-react';
+import { Check, CaretDown } from '@phosphor-icons/react';
 import { useSystemAPI } from '@renderer/hooks/useSystemAPI';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';

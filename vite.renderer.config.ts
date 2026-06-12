@@ -45,7 +45,7 @@ export default defineConfig({
       '@tiptap/suggestion',
       '@tiptap/pm/state',
       'lowlight',
-      'phosphor-react',
+      '@phosphor-icons/react',
       'lucide-react',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
@@ -85,7 +85,7 @@ export default defineConfig({
           'mermaid': ['mermaid'],
           'highlight': ['highlight.js'],
           // UI libraries
-          'icons': ['phosphor-react', 'lucide-react'],
+          'icons': ['@phosphor-icons/react', 'lucide-react'],
           'radix-ui': [
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',

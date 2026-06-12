@@ -6,7 +6,7 @@ import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heading3 } from '@renderer/components/base/ui/text';
-import { Gear } from 'phosphor-react';
+import { Gear } from '@phosphor-icons/react';
 import { Header, IconButton, ControlGroup } from '@renderer/components/composites';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
 import { toSettings } from '@renderer/navigation/routes';

@@ -13,7 +13,7 @@ import {
   ArrowsClockwise,
   Check,
   Warning,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 
 export function GitSyncButton() {
   const { activeWorkspaceId } = useWorkspaces();

@@ -1,4 +1,4 @@
-import { MagnifyingGlass, FolderOpen, Funnel, Stack } from 'phosphor-react';
+import { MagnifyingGlass, FolderOpen, Funnel, Stack } from '@phosphor-icons/react';
 import { Input } from '@renderer/components/base/ui/input';
 import {
   Select,

@@ -3,7 +3,7 @@
  */
 
 import { useState, memo } from 'react';
-import { CaretRight } from 'phosphor-react';
+import { CaretRight } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import { TaskItem } from './TaskItem';
 

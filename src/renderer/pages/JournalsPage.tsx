@@ -1,4 +1,4 @@
-import { CaretRight } from 'phosphor-react';
+import { CaretRight } from '@phosphor-icons/react';
 import { useJournalTimeline } from '@renderer/hooks/useJournalTimeline';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';

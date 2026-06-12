@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as SelectPrimitive from '@radix-ui/react-select';
-import { Check, CaretDown, CaretUp } from 'phosphor-react';
+import { Check, CaretDown, CaretUp } from '@phosphor-icons/react';
 
 import { cn } from '@renderer/lib/utils';
 

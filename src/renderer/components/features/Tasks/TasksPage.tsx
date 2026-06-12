@@ -3,7 +3,7 @@
  */
 
 import { useCallback } from 'react';
-import { CheckSquare, Funnel } from 'phosphor-react';
+import { CheckSquare, Funnel } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTasks, TASK_STATES } from '@renderer/hooks/useTasks';

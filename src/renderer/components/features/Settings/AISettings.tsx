@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Cloud, Cpu, FloppyDisk, Key, Trash } from 'phosphor-react';
+import { Cloud, Cpu, FloppyDisk, Key, Trash } from '@phosphor-icons/react';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 import { Badge } from '@renderer/components/base/ui/badge';
 import { Button } from '@renderer/components/base/ui/button';

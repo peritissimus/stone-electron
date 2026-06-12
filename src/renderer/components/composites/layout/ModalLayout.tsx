@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { X } from 'phosphor-react';
+import { X } from '@phosphor-icons/react';
 import { Button } from '@renderer/components/base/ui/button';
 
 export interface ModalLayoutProps {

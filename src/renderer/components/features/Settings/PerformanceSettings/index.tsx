@@ -1,4 +1,4 @@
-import { Activity } from 'phosphor-react';
+import { Pulse } from '@phosphor-icons/react';
 import { usePerformance } from '@renderer/hooks/usePerformance';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
@@ -82,7 +82,7 @@ export function PerformanceSettings() {
 
         {loading && !snapshot && (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Activity className="animate-spin" size={20} />
+            <Pulse className="animate-spin" size={20} />
             <span className="ml-2 text-sm">Loading performance data…</span>
           </div>
         )}

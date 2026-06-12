@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '@renderer/components/base/ui/dialog';
 import { Button } from '@renderer/components/base/ui/button';
-import { FileText, X, CheckCircle } from 'phosphor-react';
+import { FileText, X, CheckCircle } from '@phosphor-icons/react';
 import { logger } from '@renderer/lib/logger';
 
 interface DraftRecoveryDialogProps {

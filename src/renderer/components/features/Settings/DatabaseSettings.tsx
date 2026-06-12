@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle, HardDrive } from 'phosphor-react';
+import { CheckCircle, HardDrive } from '@phosphor-icons/react';
 import { useDatabaseAPI } from '@renderer/hooks/useDatabaseAPI';
 import { ContainerStack } from '@renderer/components/base/ui';
 import type { DatabaseStatus } from '@shared/types';

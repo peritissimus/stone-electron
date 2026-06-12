@@ -25,7 +25,7 @@ import {
   FolderOpen,
   Lightning,
   Warning,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';

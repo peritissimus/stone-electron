@@ -24,7 +24,7 @@ import { RawMarkdownEditor } from './RawMarkdownEditor';
 import { EditorStats } from './EditorStats';
 import { BacklinksPanel } from './BacklinksPanel';
 import { RelatedNotesPanel } from './RelatedNotesPanel';
-import { Copy, Check } from 'phosphor-react';
+import { Copy, Check } from '@phosphor-icons/react';
 import { logger } from '@renderer/lib/logger';
 
 interface NoteEditorProps {

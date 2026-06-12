@@ -5,7 +5,7 @@
  */
 
 import { memo } from 'react';
-import { ArrowRight, Circle } from 'phosphor-react';
+import { ArrowRight, Circle } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import {
   DropdownMenu,

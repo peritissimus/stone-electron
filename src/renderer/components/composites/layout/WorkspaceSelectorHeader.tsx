@@ -1,4 +1,4 @@
-import { CaretLeft } from 'phosphor-react';
+import { CaretLeft } from '@phosphor-icons/react';
 import { Text } from '@renderer/components/base/ui/text';
 import { useUI } from '@renderer/hooks/useUI';
 import { useWorkspaces } from '@renderer/hooks/useWorkspaces';

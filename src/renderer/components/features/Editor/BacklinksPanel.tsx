@@ -12,7 +12,7 @@ import {
   ArrowRight,
   CaretRight,
   CaretDown,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { cn } from '@renderer/lib/utils';

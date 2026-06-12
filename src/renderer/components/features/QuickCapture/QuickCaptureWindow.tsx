@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Microphone } from 'phosphor-react';
+import { Microphone } from '@phosphor-icons/react';
 import { useQuickCaptureAPI } from '@renderer/hooks/useQuickCaptureAPI';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { MEETING_CHANNELS } from '@shared/constants/ipcChannels';

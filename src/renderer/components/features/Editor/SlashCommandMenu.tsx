@@ -15,7 +15,7 @@ import {
   Check,
   Clock,
   TreeStructure,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { CommandMenuItem } from '@renderer/components/composites';
 
 export interface SlashCommandItem {

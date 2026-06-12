@@ -3,7 +3,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { X, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsIn, ArrowsOut } from 'phosphor-react';
+import { X, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsIn, ArrowsOut } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogPortal,

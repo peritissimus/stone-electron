@@ -8,7 +8,7 @@ import { Label, Body } from '@renderer/components/base/ui/text';
 import { Slider } from '@renderer/components/base/ui/slider';
 import { Button } from '@renderer/components/base/ui/button';
 import { ContainerStack } from '@renderer/components/base/ui';
-import { ArrowCounterClockwise } from 'phosphor-react';
+import { ArrowCounterClockwise } from '@phosphor-icons/react';
 import { FontPicker } from './FontPicker';
 
 export function FontSettings() {

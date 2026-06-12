@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { ArrowCounterClockwise, CircleNotch, Microphone, Stop, Warning, X } from 'phosphor-react';
+import { ArrowCounterClockwise, CircleNotch, Microphone, Stop, Warning, X } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import { useVoiceCapture } from '@renderer/hooks/useVoiceCapture';
 

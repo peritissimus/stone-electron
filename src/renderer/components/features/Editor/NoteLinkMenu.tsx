@@ -4,7 +4,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useState, useCallback, useRef } from 'react';
 import { Note } from '@shared/types';
-import { Link, MagnifyingGlass, File, ArrowRight } from 'phosphor-react';
+import { Link, MagnifyingGlass, File, ArrowRight } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 
 export interface NoteLinkItem {

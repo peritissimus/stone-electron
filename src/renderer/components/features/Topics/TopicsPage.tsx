@@ -22,7 +22,7 @@ import {
   MagnifyingGlass,
   Plus,
   Sparkle,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { useNavigateToNote } from '@renderer/navigation';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTopicsData } from '@renderer/hooks/useTopicsData';

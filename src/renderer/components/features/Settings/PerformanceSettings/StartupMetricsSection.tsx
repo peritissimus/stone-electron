@@ -1,4 +1,4 @@
-import { Clock } from 'phosphor-react';
+import { Clock } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { MetricCard } from './MetricCard';

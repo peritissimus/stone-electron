@@ -1,7 +1,7 @@
 /**
  * Note Editor Empty State Component
  */
-import { Article, Plus } from 'phosphor-react';
+import { Article, Plus } from '@phosphor-icons/react';
 import { Button } from '@renderer/components/base/ui/button';
 
 interface NoteEditorEmptyStateProps {

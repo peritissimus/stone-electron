@@ -1,4 +1,4 @@
-import { ArrowRight, FileText } from 'phosphor-react';
+import { ArrowRight, FileText } from '@phosphor-icons/react';
 import type { CitationSource } from '@shared/types';
 
 export interface SourceCitationListProps {

@@ -1,4 +1,4 @@
-import { X } from 'phosphor-react';
+import { X } from '@phosphor-icons/react';
 import { IconButton } from '@renderer/components/composites';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import type { TopicWithCount } from '@shared/types';

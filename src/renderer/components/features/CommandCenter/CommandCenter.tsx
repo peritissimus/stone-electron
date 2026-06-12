@@ -9,7 +9,7 @@
  * - Memoized commands and stable callbacks
  */
 
-import { MagnifyingGlass, Command } from 'phosphor-react';
+import { MagnifyingGlass, Command } from '@phosphor-icons/react';
 import { useCommandCenter } from '@renderer/hooks/useCommandCenter';
 import { CommandItemRow } from './CommandItemRow';
 

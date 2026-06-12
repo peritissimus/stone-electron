@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { ArrowLeft, FileText, CircleNotch } from 'phosphor-react';
+import { ArrowLeft, FileText, CircleNotch } from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,

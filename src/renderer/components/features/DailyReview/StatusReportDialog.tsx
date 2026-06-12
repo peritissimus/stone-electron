@@ -12,7 +12,7 @@ import {
   Copy,
   PaperPlaneTilt,
   Warning,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import {
   Dialog,
   DialogContent,

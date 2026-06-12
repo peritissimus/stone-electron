@@ -1,4 +1,4 @@
-import { Plus } from 'phosphor-react';
+import { Plus } from '@phosphor-icons/react';
 import { SettingsSection } from '../SettingsSection';
 import { ActionCard } from '../ActionCard';
 import { Message } from '../Message';

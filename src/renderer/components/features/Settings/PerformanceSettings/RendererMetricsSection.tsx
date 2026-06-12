@@ -1,4 +1,4 @@
-import { Clock, Gauge, HardDrive, Timer } from 'phosphor-react';
+import { Clock, Gauge, HardDrive, Timer } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { Label } from '@renderer/components/base/ui/text';

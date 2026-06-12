@@ -1,4 +1,4 @@
-import { CheckSquare, CaretRight } from 'phosphor-react';
+import { CheckSquare, CaretRight } from '@phosphor-icons/react';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 

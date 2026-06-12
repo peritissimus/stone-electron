@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useModals } from '@renderer/hooks/useUI';
-import { X, MagnifyingGlass, ArrowUp, ArrowDown, TextAa } from 'phosphor-react';
+import { X, MagnifyingGlass, ArrowUp, ArrowDown, TextAa } from '@phosphor-icons/react';
 import type { RichTextEditor } from '@renderer/editor';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';

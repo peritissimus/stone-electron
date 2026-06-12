@@ -1,4 +1,4 @@
-import { CheckCircle, WarningCircle } from 'phosphor-react';
+import { CheckCircle, WarningCircle } from '@phosphor-icons/react';
 import { Text } from '@renderer/components/base/ui/text';
 import { ContainerFlex } from '@renderer/components/base/ui';
 import { cn } from '@renderer/lib/utils';

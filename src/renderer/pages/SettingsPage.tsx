@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, NavLink, useParams } from 'react-router-dom';
 import {
-  Activity,
+  Pulse,
   Brain,
   CaretRight,
   Database,
@@ -10,7 +10,7 @@ import {
   Info,
   Keyboard,
   Palette,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
@@ -74,7 +74,7 @@ const SECTIONS: SettingsSectionDef[] = [
   {
     id: 'performance',
     label: 'Performance',
-    icon: <Activity size={16} />,
+    icon: <Pulse size={16} />,
     element: <PerformanceSettings />,
   },
   {

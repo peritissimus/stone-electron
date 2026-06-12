@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { CaretRight } from 'phosphor-react';
+import { CaretRight } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import type { TopicWithCount } from '@shared/types';
 

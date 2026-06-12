@@ -1,4 +1,4 @@
-import { HardDrive } from 'phosphor-react';
+import { HardDrive } from '@phosphor-icons/react';
 import type { usePerformance } from '@renderer/hooks/usePerformance';
 import { SettingsSection } from '../SettingsSection';
 import { cn } from '@renderer/lib/utils';

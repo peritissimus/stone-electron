@@ -19,7 +19,7 @@ import {
   FileText,
   Code,
   TextAa,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import {
   DropdownMenu,

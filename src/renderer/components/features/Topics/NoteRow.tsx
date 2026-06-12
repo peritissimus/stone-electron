@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { FileText } from 'phosphor-react';
+import { FileText } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 
 export interface TopicNote {

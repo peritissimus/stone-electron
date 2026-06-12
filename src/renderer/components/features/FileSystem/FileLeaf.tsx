@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, DotsThreeVertical, PencilSimple, Trash } from 'phosphor-react';
+import { FileText, DotsThreeVertical, PencilSimple, Trash } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,

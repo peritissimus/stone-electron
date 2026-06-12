@@ -5,7 +5,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { CheckSquare, Square, ArrowRight } from 'phosphor-react';
+import { CheckSquare, Square, ArrowRight } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNavigateToNote } from '@renderer/navigation';

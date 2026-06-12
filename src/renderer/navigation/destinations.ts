@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { House, BookOpen, CheckSquare, Graph, Brain, Microphone, Sun } from 'phosphor-react';
+import { House, BookOpen, CheckSquare, Graph, Brain, Microphone, Sun } from '@phosphor-icons/react';
 import type { NavDescriptor } from './types';
 import { toHome, toJournals, toTasks, toGraph, toTopics, toMeetings, toToday } from './routes';
 

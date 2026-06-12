@@ -18,7 +18,7 @@ import {
   Check,
   CircleNotch,
   ArrowSquareOut,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';

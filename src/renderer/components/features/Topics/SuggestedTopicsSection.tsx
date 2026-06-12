@@ -17,7 +17,7 @@ import {
   Lightbulb,
   Plus,
   X,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';
 import { useSuggestedTopics } from '@renderer/hooks/useSuggestedTopics';

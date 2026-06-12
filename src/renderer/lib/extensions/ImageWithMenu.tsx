@@ -6,7 +6,7 @@
 import { Node, mergeAttributes, CommandProps } from '@tiptap/core';
 import { NodeViewWrapper, NodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
 import { useState, useCallback } from 'react';
-import { Copy, Check } from 'phosphor-react';
+import { Copy, Check } from '@phosphor-icons/react';
 import {
   ContextMenu,
   ContextMenuContent,

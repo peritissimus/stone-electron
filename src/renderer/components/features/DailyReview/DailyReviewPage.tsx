@@ -22,7 +22,7 @@ import {
   ArrowClockwise,
   Calendar,
   Sparkle,
-} from 'phosphor-react';
+} from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';

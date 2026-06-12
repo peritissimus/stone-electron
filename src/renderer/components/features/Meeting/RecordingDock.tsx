@@ -7,7 +7,7 @@
  */
 
 import { useEffect } from 'react';
-import { Microphone, Stop, X, CircleNotch, Check, Warning } from 'phosphor-react';
+import { Microphone, Stop, X, CircleNotch, Check, Warning } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import { useMeetingRecorder, type RecorderPhase } from '@renderer/hooks/useMeetingRecorder';
 import { subscribe } from '@renderer/lib/events';
