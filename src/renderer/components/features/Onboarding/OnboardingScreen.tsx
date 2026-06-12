@@ -24,9 +24,9 @@ import {
   DownloadSimple,
   FolderOpen,
   Lightning,
-  Mountains,
   Warning,
 } from 'phosphor-react';
+import { StoneLogo } from '@renderer/components/base/StoneLogo';
 import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';
@@ -121,9 +121,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 flex-col items-center text-center"
           style={{ animationDuration: '400ms' }}
         >
-          <div className="mb-4 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Mountains size={28} weight="fill" />
-          </div>
+          <StoneLogo size={64} className="mb-4" />
           <Heading2 className="text-balance">
             {step === 'workspace' && 'Welcome to Stone'}
             {step === 'ai' && 'Set up AI'}
