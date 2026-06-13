@@ -98,6 +98,26 @@ mac:
     - from: native/bin
       to: native
 
+dmg:
+  title: ${productName} ${version}
+  # Instructional window: app icon + Applications drop target flank the
+  # arrow, with first-launch "Open Anyway" steps baked into the background.
+  # This is the free way to guide users past the not-notarized Gatekeeper
+  # prompt — we can't render Apple's own "Open Anyway" button.
+  background: build/dmg-background.png
+  window:
+    width: 540
+    height: 400
+  iconSize: 110
+  contents:
+    - x: 130
+      y: 185
+      type: file
+    - x: 410
+      y: 185
+      type: link
+      path: /Applications
+
 win:
   target:
     - nsis
