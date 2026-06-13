@@ -33,19 +33,21 @@ async function getSimpleGit() {
  */
 async function openRepo(path: string) {
   const factory = await getSimpleGit();
-  // simple-git (>=3.x) blocks GIT_SSH_COMMAND supplied through .env() as an
-  // unsafe operation. Use git's core.sshCommand config via the `-c` switch
-  // instead — same effect (make ssh fail fast instead of prompting), but it
-  // doesn't trip the guard, so we keep simple-git's safety check enabled.
-  // Strip any inherited GIT_SSH_COMMAND from the child env so it doesn't
-  // re-trigger the block; HOME/PATH/SSH_AUTH_SOCK etc. are still inherited so
-  // ssh-agent and known_hosts keep working.
-  const { GIT_SSH_COMMAND: _blockedBySimpleGit, ...env } = process.env;
+  // Disable interactive prompts so a missing-credentials remote fails fast
+  // instead of hanging on a TTY that doesn't exist. Set it on the ambient env
+  // that simple-git inherits — do NOT pass process.env through .env(), because
+  // simple-git (>=3.36) scans the .env() *argument* for unsafe variables
+  // (EDITOR, GIT_SSH_COMMAND, GIT_PROXY_COMMAND, …) and rejects the whole call
+  // if any are present. Ambient inheritance is not scanned, so this is safe.
+  process.env.GIT_TERMINAL_PROMPT = '0';
+  // ssh fail-fast via core.sshCommand. simple-git guards this as an injection
+  // vector, so opt in with the narrowly-scoped allowUnsafeSshCommand flag —
+  // safe because the value is a constant we control, and every other unsafe
+  // category stays blocked. An ambient GIT_SSH_COMMAND still wins if the user
+  // set one (git precedence: env > config).
   return factory(path, {
     config: ['core.sshCommand=ssh -oBatchMode=yes'],
-  }).env({
-    ...env,
-    GIT_TERMINAL_PROMPT: '0',
+    unsafe: { allowUnsafeSshCommand: true },
   });
 }
 

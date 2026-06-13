@@ -155,7 +155,16 @@ describe('GitClient', () => {
       pulledCount: 0,
       pushedCount: 0,
     });
-    expect(git.env).toHaveBeenCalledWith(expect.objectContaining({ GIT_TERMINAL_PROMPT: '0' }));
+    // ssh fail-fast must go through core.sshCommand + the allowUnsafeSshCommand
+    // opt-in (not .env(), which simple-git >=3.36 rejects for guarded vars).
+    expect(simpleGitMock.factory).toHaveBeenCalledWith(
+      '/repo',
+      expect.objectContaining({
+        config: ['core.sshCommand=ssh -oBatchMode=yes'],
+        unsafe: { allowUnsafeSshCommand: true },
+      }),
+    );
+    expect(process.env.GIT_TERMINAL_PROMPT).toBe('0');
     expect(git.add).toHaveBeenCalledWith('.');
     expect(git.commit).toHaveBeenCalledWith(expect.stringMatching(/^stone: 1 change/));
   });
