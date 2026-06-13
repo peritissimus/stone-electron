@@ -17,7 +17,7 @@ const ROOT = join(HERE, '..', '..', '..');
 const BINARY = join(ROOT, 'vendor', 'whisper', 'bin', 'whisper-cli');
 const MODEL_DIR = join(ROOT, 'tests', 'e2e', 'fixtures', '.cache');
 const MODEL = join(MODEL_DIR, 'ggml-tiny.en.bin');
-const JFK_WAV = join(ROOT, 'tests', 'e2e', 'fixtures', 'jfk.wav');
+const JFK_WAV = join(ROOT, 'tests', 'e2e', 'fixtures', 'mic-sample.wav');
 
 const ready = existsSync(BINARY) && existsSync(MODEL) && existsSync(JFK_WAV);
 

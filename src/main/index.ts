@@ -43,15 +43,10 @@ if (process.platform === 'darwin') {
   );
 }
 
-// E2E-only: feed a WAV in as the fake microphone so the recording test has
-// deterministic audio. Chromium media switches must be set before app-ready,
-// hence here rather than as launch argv. Gated on an env var the harness sets.
-if (process.env.E2E_FAKE_AUDIO_FILE) {
-  app.commandLine.appendSwitch('use-fake-ui-for-media-stream');
-  app.commandLine.appendSwitch('use-fake-device-for-media-stream');
-  app.commandLine.appendSwitch('use-file-for-fake-audio-capture', process.env.E2E_FAKE_AUDIO_FILE);
-  // No user gesture in automated tests → AudioContexts would start suspended
-  // and the capture graph would output silence.
+// E2E-only: automated tests have no user gesture, so AudioContexts would start
+// suspended and the recording capture graph (including the renderer's mocked
+// media streams) would output silence. Let them run without a gesture.
+if (process.env.E2E_TEST) {
   app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 }
 

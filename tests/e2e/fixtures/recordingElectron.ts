@@ -1,19 +1,24 @@
 /**
- * Electron fixture for the meeting-recording e2e: feeds tests/e2e/fixtures/jfk.wav
- * in as the fake microphone (Chromium --use-file-for-fake-audio-capture), auto-
- * accepts the media prompts, and pre-seeds the tiny.en Whisper model so the run
- * doesn't download anything. System-audio loopback degrades to mic-only in this
- * headless context — which is fine, the fake mic carries the test audio.
+ * Electron fixture for the meeting-recording e2e. Pre-seeds the tiny.en Whisper
+ * model so the run downloads nothing; the test itself mocks getUserMedia /
+ * getDisplayMedia in the renderer with the audio fixtures (see installMediaMock)
+ * for deterministic mic + system sources. main enables a no-gesture autoplay
+ * policy under E2E_TEST so those AudioContexts actually produce sound.
  */
 import { test as base, _electron as electron, type ElectronApplication } from '@playwright/test';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FIXTURES = dirname(fileURLToPath(import.meta.url));
-export const JFK_WAV = join(FIXTURES, 'jfk.wav');
+export const MIC_WAV = join(FIXTURES, 'mic-sample.wav');
+export const SYSTEM_WAV = join(FIXTURES, 'system-sample.wav');
 const TINY_MODEL = join(FIXTURES, '.cache', 'ggml-tiny.en.bin');
+
+/** Base64 of the fixture WAVs, for injecting into the renderer media mock. */
+export const micAudioBase64 = () => readFileSync(MIC_WAV).toString('base64');
+export const systemAudioBase64 = () => readFileSync(SYSTEM_WAV).toString('base64');
 
 type Fixtures = { app: ElectronApplication; userDataDir: string };
 
@@ -37,8 +42,6 @@ export const test = base.extend<Fixtures>({
         NODE_ENV: 'production',
         E2E_TEST: 'true',
         STONE_WHISPER_MODEL: 'tiny.en',
-        // main/index.ts turns these into Chromium media switches before app-ready.
-        E2E_FAKE_AUDIO_FILE: JFK_WAV,
       },
       timeout: 60_000,
     });
