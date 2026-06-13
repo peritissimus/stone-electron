@@ -74,7 +74,12 @@ export const useVoiceCaptureStore = create<VoiceCaptureState>((set) => ({
       }
 
       const text = transcribed.data.text.trim();
-      if (!text) {
+      // Whisper hallucinates filler on silent/near-silent audio: a lone "*" or
+      // "...", or bracketed markers like "[BLANK_AUDIO]". Drop anything without
+      // real alphanumeric content so junk never lands in the journal.
+      const stripped = text.replace(/\[[^\]]*\]|\([^)]*\)/g, '');
+      const hasSpeech = /[\p{L}\p{N}]/u.test(stripped);
+      if (!hasSpeech) {
         set({ phase: 'error', error: "Didn't catch anything — try again closer to the mic." });
         return null;
       }
