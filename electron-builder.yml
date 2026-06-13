@@ -95,6 +95,10 @@ mac:
       participants. Audio is transcribed locally and deleted afterward.
   # Minimize app size
   minimumSystemVersion: "10.15"
+  # whisper.cpp CLI for local transcription (built by scripts/build-whisper.sh).
+  extraResources:
+    - from: vendor/whisper/bin
+      to: whisper
 
 dmg:
   title: ${productName} ${version}

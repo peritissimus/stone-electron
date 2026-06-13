@@ -44,3 +44,4 @@ native/bin/
 
 # Claude Code agent worktrees
 .claude/worktrees/
+vendor/

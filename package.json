@@ -53,7 +53,8 @@
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
     "postinstall": "electron-rebuild",
-    "react-devtools": "react-devtools"
+    "react-devtools": "react-devtools",
+    "build:whisper": "./scripts/build-whisper.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.79",

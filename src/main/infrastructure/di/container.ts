@@ -8,6 +8,7 @@
 // Shared Layer
 import type { Database } from '@main/shared';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
+import { getMLStatusTracker } from '@main/infrastructure/workers/MLStatusTracker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
 
@@ -181,7 +182,7 @@ import {
   FileWatcher,
   AISDKTextGenerator,
   LocalReranker,
-  WhisperTranscriber,
+  WhisperCppTranscriber,
   SingleShotSummarizer,
   // Outbound (Secondary) - Events
   EventPublisher,
@@ -393,8 +394,16 @@ export function createContainer(deps: ContainerDeps): Container {
     workerService: embeddingWorker,
   });
 
-  const transcriber: ITranscriber = new WhisperTranscriber({
-    workerService: embeddingWorker,
+  const transcriber: ITranscriber = new WhisperCppTranscriber({
+    // Reuse the existing model-download progress channel so Settings →
+    // Recording's progress bar lights up while the GGML model downloads.
+    onDownloadProgress: ({ file, loaded, total }) =>
+      getMLStatusTracker().broadcastModelDownloadProgress({
+        model: 'whisper',
+        file,
+        loaded,
+        total,
+      }),
   });
 
   const searchEngine: ISearchEngine = new SearchEngine({

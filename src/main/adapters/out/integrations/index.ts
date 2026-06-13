@@ -23,6 +23,10 @@ export {
   type TranscriberWorkerClient,
 } from './WhisperTranscriber';
 export {
+  WhisperCppTranscriber,
+  type WhisperCppTranscriberDeps,
+} from './WhisperCppTranscriber';
+export {
   SingleShotSummarizer,
   type SingleShotSummarizerDeps,
   DEFAULT_MEETING_SUMMARY_PROMPT,
