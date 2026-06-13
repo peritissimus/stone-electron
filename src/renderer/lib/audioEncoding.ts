@@ -10,6 +10,17 @@ export async function blobToWavArrayBuffer(
   blob: Blob,
   targetSampleRate: number,
 ): Promise<ArrayBuffer> {
+  // A near-empty blob means no audio reached the recorder — the mic produced
+  // nothing (silent input, in use by another app, or a track that ended).
+  // decodeAudioData would throw a cryptic "Unable to decode audio data"; give
+  // the real reason instead. A valid recording is many KB even when short; a
+  // header-only WebM fragment is only a few hundred bytes.
+  if (blob.size < 1024) {
+    throw new Error(
+      'No audio was captured. Check that your microphone is working and not in use by another app, then try again.',
+    );
+  }
+
   const arrayBuffer = await blob.arrayBuffer();
   const AudioCtx =
     window.AudioContext ??
@@ -18,6 +29,10 @@ export async function blobToWavArrayBuffer(
   let decoded: AudioBuffer;
   try {
     decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+  } catch {
+    throw new Error(
+      `Could not decode the recording (${(blob.size / 1024).toFixed(0)} KB, ${blob.type || 'unknown format'}). The audio may be corrupt or in an unsupported format.`,
+    );
   } finally {
     void ctx.close();
   }
