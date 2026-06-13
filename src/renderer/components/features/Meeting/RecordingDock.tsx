@@ -7,7 +7,8 @@
  * audio — so the recording state feels alive.
  */
 
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Microphone, Stop, X, CircleNotch, Check, Warning } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
@@ -16,6 +17,8 @@ import { useSystemAudioPermission } from '@renderer/hooks/useOnboarding';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
+import { toMeetings } from '@renderer/navigation';
+import { WaveRow } from './RecordingWaveform';
 
 export function RecordingDock() {
   const {
@@ -35,6 +38,7 @@ export function RecordingDock() {
     reset,
   } = useMeetingRecorder();
   const systemAudio = useSystemAudioPermission();
+  const location = useLocation();
 
   // Auto-dismiss the success state so the dock isn't stuck on-screen.
   useEffect(() => {
@@ -68,7 +72,10 @@ export function RecordingDock() {
     });
   }, [stop, phase]);
 
-  if (!dock) return null;
+  // On the Meetings page the recorder renders inline (see MeetingsPage), so
+  // suppress the floating dock there. Effects above still run — tray/shortcut
+  // subscriptions and auto-dismiss stay live regardless of presentation.
+  if (!dock || location.pathname === toMeetings()) return null;
 
   const isActive = phase === 'recording';
   const isProcessing = phase === 'uploading' || phase === 'finalizing' || phase === 'preparing';
@@ -358,78 +365,6 @@ function Errored({ visible, message }: { visible: boolean; message: string | nul
           {message ?? 'Recording failed'}
         </div>
       </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// Live scrolling waveforms — one per source. Each keeps a rolling history of
-// peak levels that scrolls right-to-left; the newest sample is on the right.
-// Mic is green ("You"), system audio is teal ("Others").
-// =============================================================================
-
-const WAVE_BARS = 40;
-
-function WaveRow({
-  label,
-  level,
-  tone,
-}: {
-  label: string;
-  level: number;
-  tone: 'mic' | 'system';
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className={cn(
-          'w-9 shrink-0 text-[9px] font-semibold uppercase tracking-wider',
-          tone === 'mic' ? 'text-emerald-600' : 'text-teal-500',
-        )}
-      >
-        {label}
-      </span>
-      <Waveform level={level} tone={tone} />
-    </div>
-  );
-}
-
-function Waveform({ level, tone }: { level: number; tone: 'mic' | 'system' }) {
-  // History is mutated in place each animation frame and a forced re-render
-  // reads it — cheaper than allocating a new array 60×/sec for 40 bars.
-  const historyRef = useRef<number[]>(new Array(WAVE_BARS).fill(0));
-  const levelRef = useRef(level);
-  levelRef.current = level;
-  const [, forceRender] = useReducer((n: number) => (n + 1) % 1_000_000, 0);
-
-  useEffect(() => {
-    let frame = 0;
-    const loop = () => {
-      const h = historyRef.current;
-      h.push(levelRef.current);
-      h.shift();
-      forceRender();
-      frame = requestAnimationFrame(loop);
-    };
-    frame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  const barColor = tone === 'mic' ? 'bg-emerald-500' : 'bg-teal-400';
-  return (
-    <div className="flex h-6 flex-1 items-center gap-px" aria-hidden>
-      {historyRef.current.map((v, i) => {
-        const height = Math.max(0.12, Math.min(1, v * 1.4));
-        // Older samples (left) fade out for a trailing-comet feel.
-        const opacity = 0.35 + (i / WAVE_BARS) * 0.65;
-        return (
-          <span
-            key={i}
-            className={cn('w-full rounded-full', barColor)}
-            style={{ height: `${height * 100}%`, opacity }}
-          />
-        );
-      })}
     </div>
   );
 }

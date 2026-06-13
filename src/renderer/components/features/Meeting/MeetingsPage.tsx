@@ -26,6 +26,7 @@ import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useMeetings } from '@renderer/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
+import { InlineRecordingPanel } from './InlineRecordingPanel';
 import { toNote } from '@renderer/navigation';
 import type { MeetingRecording, MeetingRecordingStatus } from '@shared/types';
 
@@ -44,7 +45,14 @@ export function MeetingsPage() {
     remove,
     isBusy,
   } = useMeetings();
-  const { openDock } = useMeetingRecorder();
+  const { openDock, start } = useMeetingRecorder();
+
+  // On the Meetings page the recorder is inline (InlineRecordingPanel), so a
+  // single click both reveals the panel and starts capturing.
+  const startRecording = useCallback(() => {
+    openDock();
+    void start();
+  }, [openDock, start]);
 
   const handleResummarize = useCallback(
     (id: string) => {
@@ -84,16 +92,18 @@ export function MeetingsPage() {
           </span>
         )}
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={openDock} className="text-xs">
+        <Button variant="ghost" size="sm" onClick={startRecording} className="text-xs">
           <Microphone size={14} />
           New recording
         </Button>
       </header>
 
+      <InlineRecordingPanel />
+
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-border bg-background">
           {!loadedOnce && loading && <ListSkeleton />}
-          {loadedOnce && recordings.length === 0 && <EmptyState onStart={openDock} />}
+          {loadedOnce && recordings.length === 0 && <EmptyState onStart={startRecording} />}
           {recordings.length > 0 && (
             <ul className="p-2">
               {recordings.map((r) => (
