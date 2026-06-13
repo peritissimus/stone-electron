@@ -38,6 +38,10 @@ export interface WhisperCppTranscriberDeps {
   onDownloadProgress?: (info: { file: string; loaded: number; total: number }) => void;
   /** Model name override (test/config); defaults to WHISPER_MODEL. */
   model?: string;
+  /** Directory holding the ggml model files (tests); defaults to userData. */
+  modelDir?: string;
+  /** Path to the whisper-cli binary (tests); defaults to bundled/dev path. */
+  binary?: string;
 }
 
 export class WhisperCppTranscriber implements ITranscriber {
@@ -46,7 +50,9 @@ export class WhisperCppTranscriber implements ITranscriber {
   private initializing: Promise<void> | null = null;
 
   constructor(private readonly deps: WhisperCppTranscriberDeps = {}) {
-    this.model = deps.model ?? WHISPER_MODEL;
+    // STONE_WHISPER_MODEL lets e2e tests pin a small fast model (tiny.en);
+    // production uses the default until the model selector wires AppConfig.
+    this.model = deps.model ?? process.env.STONE_WHISPER_MODEL ?? WHISPER_MODEL;
   }
 
   isReady(): boolean {
@@ -110,6 +116,7 @@ export class WhisperCppTranscriber implements ITranscriber {
   // ===========================================================================
 
   private binaryPath(): string {
+    if (this.deps.binary) return this.deps.binary;
     if (app?.isPackaged) {
       return path.join(process.resourcesPath, 'whisper', 'whisper-cli');
     }
@@ -117,6 +124,7 @@ export class WhisperCppTranscriber implements ITranscriber {
   }
 
   private modelDir(): string {
+    if (this.deps.modelDir) return this.deps.modelDir;
     const base = app?.getPath?.('userData') ?? path.join(os.tmpdir(), 'stone');
     return path.join(base, 'whisper-models');
   }

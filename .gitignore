@@ -45,3 +45,4 @@ native/bin/
 # Claude Code agent worktrees
 .claude/worktrees/
 vendor/
+tests/e2e/fixtures/.cache/
