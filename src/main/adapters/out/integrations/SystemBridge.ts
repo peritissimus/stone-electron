@@ -96,6 +96,23 @@ export class SystemBridge implements ISystemBridge {
     return status === 'granted' || status === 'unknown';
   }
 
+  getScreenCaptureAccessStatus(): 'granted' | 'denied' | 'unsupported' {
+    // 'screen' TCC is macOS-only; on Windows/Linux loopback audio needs no
+    // such grant, so report 'unsupported' (the UI hides the row). There's no
+    // clean programmatic prompt — the grant happens via System Settings or the
+    // first getDisplayMedia call, so this is status-only.
+    if (process.platform !== 'darwin' || !systemPreferences?.getMediaAccessStatus) {
+      return 'unsupported';
+    }
+    try {
+      return systemPreferences.getMediaAccessStatus('screen') === 'granted'
+        ? 'granted'
+        : 'denied';
+    } catch {
+      return 'unsupported';
+    }
+  }
+
   async selectFolder(options?: FolderPickerOptions): Promise<string | null> {
     if (!dialog) {
       throw new Error('Folder selection not available outside Electron');

@@ -11,8 +11,6 @@ import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
 import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
 import { describeMicError } from '@renderer/lib/micErrors';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/lib/logger';
 
 export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
@@ -81,18 +79,6 @@ export function useMeetingRecorder() {
   const openDock = useMeetingRecorderStore((s) => s.openDock);
   const closeDock = useMeetingRecorderStore((s) => s.closeDock);
   const reset = useMeetingRecorderStore((s) => s.reset);
-
-  // Live system-audio levels arrive from the native tap (main process) — the
-  // renderer has no system stream to analyse on macOS. Feed them to the store
-  // so the dock's teal waveform can render them.
-  useEffect(() => {
-    return subscribe(EVENTS.MEETING_SYSTEM_AUDIO_LEVEL, (payload: unknown) => {
-      const level = (payload as { level?: number } | undefined)?.level;
-      if (typeof level === 'number') {
-        useMeetingRecorderStore.getState().setSystemAudioLevel(level);
-      }
-    });
-  }, []);
 
   // Tick the elapsed timer while recording. Reads the shared startedAt from the
   // store so every mounted surface (dock + inline panel) agrees on the time —

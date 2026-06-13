@@ -5,7 +5,12 @@
  */
 
 import type { MicrophoneAccessStatus } from '../out/ISystemBridge';
-import type { SystemAudioPermission } from '../out/ISystemAudioTap';
+
+/**
+ * Screen & System Audio Recording permission state. 'unsupported' on platforms
+ * where the macOS Screen Recording grant doesn't apply (Windows/Linux loopback).
+ */
+export type SystemAudioPermission = 'granted' | 'denied' | 'unsupported';
 
 export interface IGetSystemFontsUseCase {
   execute(): Promise<{ fonts: string[] }>;

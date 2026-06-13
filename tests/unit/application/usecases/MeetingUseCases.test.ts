@@ -6,7 +6,6 @@ import type { IMeetingUseCases } from '../../../../src/main/domain/ports/in/IMee
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMeetingRecordingRepository } from '../../../../src/main/domain/ports/out/IMeetingRecordingRepository';
 import type { ISummarizationStrategy } from '../../../../src/main/domain/ports/out/ISummarizationStrategy';
-import type { ISystemAudioTap } from '../../../../src/main/domain/ports/out/ISystemAudioTap';
 import type { ITranscriber } from '../../../../src/main/domain/ports/out/ITranscriber';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
@@ -67,15 +66,6 @@ function createMockSummarizer(): ISummarizationStrategy {
   };
 }
 
-function createMockSystemAudioTap(): ISystemAudioTap {
-  return {
-    isSupported: vi.fn().mockReturnValue(true),
-    checkPermission: vi.fn(),
-    requestPermission: vi.fn(),
-    start: vi.fn(),
-    stop: vi.fn(),
-  } as unknown as ISystemAudioTap;
-}
 
 function workspace(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
@@ -115,7 +105,6 @@ describe('MeetingUseCases', () => {
   let fileStorage: IFileStorage;
   let transcriber: ITranscriber;
   let summarizer: ISummarizationStrategy;
-  let systemAudioTap: ISystemAudioTap;
   let appendToJournal: (
     content: string,
     workspaceId?: string,
@@ -128,7 +117,6 @@ describe('MeetingUseCases', () => {
     fileStorage = createMockFileStorage();
     transcriber = createMockTranscriber();
     summarizer = createMockSummarizer();
-    systemAudioTap = createMockSystemAudioTap();
     appendToJournal = vi.fn(async () => ({ noteId: 'journal-1', appended: true }));
     useCases = createMeetingUseCases({
       meetingRepository,
@@ -139,12 +127,11 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       appendToJournal,
-      systemAudioTap,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
   });
 
-  it('reserves an audio slot without starting the native tap (renderer loopback owns system audio)', async () => {
+  it('reserves an audio slot (renderer loopback owns system audio)', async () => {
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
 
     const result = await useCases.reserveRecordingSlot.execute({ title: 'Design review' });
@@ -155,7 +142,6 @@ describe('MeetingUseCases', () => {
       systemAudio: false,
     });
     expect(fileStorage.createDirectory).toHaveBeenCalledWith('/workspace/.stone/recordings');
-    expect(systemAudioTap.start).not.toHaveBeenCalled();
     expect(meetingRepository.save).toHaveBeenCalledWith(expect.any(MeetingRecordingEntity));
   });
 
@@ -227,11 +213,7 @@ describe('MeetingUseCases', () => {
 
     await useCases.deleteMeetingRecording.execute({ recordingId: 'rec-1' });
 
-    expect(systemAudioTap.stop).toHaveBeenCalledWith('rec-1');
     expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
-    expect(fileStorage.delete).toHaveBeenCalledWith(
-      '/workspace/.stone/recordings/rec-1.wav.system.pcm',
-    );
     expect(meetingRepository.delete).toHaveBeenCalledWith('rec-1');
   });
 

@@ -13,7 +13,6 @@ import type {
   IFileStorage,
   IIdGenerator,
   IPathService,
-  ISystemAudioTap,
 } from '../../../domain';
 import type {
   IReserveRecordingSlotUseCase,
@@ -30,7 +29,6 @@ export class ReserveRecordingSlotUseCase implements IReserveRecordingSlotUseCase
     private readonly fileStorage: IFileStorage,
     private readonly idGenerator: IIdGenerator,
     private readonly pathService: IPathService,
-    private readonly systemAudioTap?: ISystemAudioTap,
   ) {}
 
   async execute(request: ReserveRecordingSlotRequest): Promise<ReserveRecordingSlotResponse> {
@@ -57,13 +55,10 @@ export class ReserveRecordingSlotUseCase implements IReserveRecordingSlotUseCase
     });
     await this.meetingRepository.save(recording);
 
-    // System audio is now captured in the renderer via getDisplayMedia loopback
-    // (Chromium ScreenCaptureKit / Core Audio tap) and mixed with the mic
-    // before recording — no native helper, and the permission attributes to
-    // the app itself. The renderer reports the actual capture mode, so this
-    // slot no longer needs to pre-start a tap. (systemAudioTap kept injected as
-    // a dormant fallback.)
-    void this.systemAudioTap;
+    // System audio is captured in the renderer via getDisplayMedia loopback
+    // and mixed with the mic before recording — the permission attributes to
+    // the app itself, and the renderer reports the actual capture mode. So this
+    // slot just allocates the id/path; systemAudio is always false here.
     return { recordingId: id, audioAbsolutePath, systemAudio: false };
   }
 }

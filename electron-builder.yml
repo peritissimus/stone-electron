@@ -95,11 +95,6 @@ mac:
       participants. Audio is transcribed locally and deleted afterward.
   # Minimize app size
   minimumSystemVersion: "10.15"
-  # Native helpers (stone-audio-tap: ScreenCaptureKit system-audio capture).
-  # Built by scripts/build-native.sh before packaging.
-  extraResources:
-    - from: native/bin
-      to: native
 
 dmg:
   title: ${productName} ${version}

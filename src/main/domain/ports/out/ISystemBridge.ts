@@ -56,6 +56,13 @@ export interface ISystemBridge {
   askForMicrophoneAccess(): Promise<boolean>;
 
   /**
+   * Current Screen & System Audio Recording permission state (macOS), used by
+   * the meeting recorder's getDisplayMedia loopback path. 'granted' | 'denied'
+   * | 'unsupported' (non-macOS, where loopback needs no such grant).
+   */
+  getScreenCaptureAccessStatus(): 'granted' | 'denied' | 'unsupported';
+
+  /**
    * Resolve the suggested default location for a new notebook workspace.
    * If `configuredPath` is already an absolute path it is returned as-is;
    * otherwise a sensible OS default is used (e.g. ~/Documents/Stone).
