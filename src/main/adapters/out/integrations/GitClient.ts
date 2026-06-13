@@ -33,11 +33,19 @@ async function getSimpleGit() {
  */
 async function openRepo(path: string) {
   const factory = await getSimpleGit();
-  return factory(path).env({
-    ...process.env,
+  // simple-git (>=3.x) blocks GIT_SSH_COMMAND supplied through .env() as an
+  // unsafe operation. Use git's core.sshCommand config via the `-c` switch
+  // instead — same effect (make ssh fail fast instead of prompting), but it
+  // doesn't trip the guard, so we keep simple-git's safety check enabled.
+  // Strip any inherited GIT_SSH_COMMAND from the child env so it doesn't
+  // re-trigger the block; HOME/PATH/SSH_AUTH_SOCK etc. are still inherited so
+  // ssh-agent and known_hosts keep working.
+  const { GIT_SSH_COMMAND: _blockedBySimpleGit, ...env } = process.env;
+  return factory(path, {
+    config: ['core.sshCommand=ssh -oBatchMode=yes'],
+  }).env({
+    ...env,
     GIT_TERMINAL_PROMPT: '0',
-    // Match terminal-prompt behavior for ssh: fail instead of asking.
-    GIT_SSH_COMMAND: process.env.GIT_SSH_COMMAND ?? 'ssh -oBatchMode=yes',
   });
 }
 
