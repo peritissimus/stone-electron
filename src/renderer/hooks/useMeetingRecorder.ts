@@ -8,7 +8,8 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
-import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
+import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
+import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
 import { describeMicError } from '@renderer/lib/micErrors';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
@@ -33,16 +34,17 @@ export function useMeetingRecorder() {
   const closeDock = useMeetingRecorderStore((s) => s.closeDock);
   const reset = useMeetingRecorderStore((s) => s.reset);
 
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  /** Captures mono PCM straight from the recorded stream via Web Audio —
+   *  MediaRecorder yields empty blobs on some Electron/Chromium builds even
+   *  when the mic is live, so we bypass it (and decodeAudioData) entirely. */
+  const pcmRecorderRef = useRef<PcmRecording | null>(null);
   /** Mic stream (always present when recording). */
   const micStreamRef = useRef<MediaStream | null>(null);
   /** System / loopback stream (optional; null when only mic was granted). */
   const systemStreamRef = useRef<MediaStream | null>(null);
-  /** AudioContext that mixes mic + system into one stream for MediaRecorder. */
+  /** AudioContext that mixes mic + system into one stream on Windows. */
   const mixerCtxRef = useRef<AudioContext | null>(null);
   const timerRef = useRef<number | null>(null);
-  const stopResolveRef = useRef<(() => void) | null>(null);
   const analyserCtxRef = useRef<AudioContext | null>(null);
   const analyserFrameRef = useRef<number | null>(null);
 
@@ -87,12 +89,9 @@ export function useMeetingRecorder() {
   }, []);
 
   function releaseHardware() {
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-      try {
-        recorderRef.current.stop();
-      } catch {
-        // already stopping
-      }
+    if (pcmRecorderRef.current) {
+      pcmRecorderRef.current.stop();
+      pcmRecorderRef.current = null;
     }
     if (micStreamRef.current) {
       for (const track of micStreamRef.current.getTracks()) track.stop();
@@ -107,8 +106,7 @@ export function useMeetingRecorder() {
       mixerCtxRef.current = null;
     }
     stopLevelMeter();
-    recorderRef.current = null;
-    chunksRef.current = [];
+    pcmRecorderRef.current = null;
   }
 
   function startLevelMeter(stream: MediaStream) {
@@ -182,19 +180,7 @@ export function useMeetingRecorder() {
       const captureMode: 'mic-only' | 'mic+system' =
         rendererMode === 'mic+system' || slot.systemAudio ? 'mic+system' : 'mic-only';
 
-      const recorder = new MediaRecorder(recordedStream, pickMimeType());
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        stopResolveRef.current?.();
-        stopResolveRef.current = null;
-      };
-
-      recorder.start(1000);
+      pcmRecorderRef.current = startPcmRecording(recordedStream);
       // Level meter watches the mic only — system audio levels would
       // distract from the "is my voice being picked up" question that
       // the dock's meter is really answering.
@@ -212,17 +198,10 @@ export function useMeetingRecorder() {
     if (store.phase !== 'recording') return;
     const durationMs = store.elapsedMs;
 
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      await new Promise<void>((resolve) => {
-        stopResolveRef.current = resolve;
-        try {
-          recorder.stop();
-        } catch {
-          resolve();
-        }
-      });
-    }
+    // Stop PCM capture first so the tail of audio is flushed before the
+    // stream and context are torn down.
+    const captured = pcmRecorderRef.current?.stop() ?? null;
+    pcmRecorderRef.current = null;
 
     // Stop both source streams + the mixer if it was used.
     if (micStreamRef.current) {
@@ -240,23 +219,23 @@ export function useMeetingRecorder() {
     stopLevelMeter();
 
     try {
-      const blob = new Blob(chunksRef.current, {
-        type: chunksRef.current[0]?.type ?? 'audio/webm',
-      });
-      chunksRef.current = [];
-      const wavBuffer = await blobToWavArrayBuffer(blob, WHISPER_SAMPLE_RATE);
+      if (!captured) throw new Error('Recording did not start correctly. Try again.');
+      const wavBuffer = await pcmToWavArrayBuffer(
+        captured.samples,
+        captured.sampleRate,
+        WHISPER_SAMPLE_RATE,
+      );
       await store.uploadAndFinalize(wavBuffer, durationMs);
     } catch (err) {
       logger.error('[useMeetingRecorder] finalize failed', err);
       store.markError(err instanceof Error ? err.message : 'Recording failed');
     } finally {
-      recorderRef.current = null;
+      pcmRecorderRef.current = null;
     }
   }, []);
 
   const cancel = useCallback(async () => {
     releaseHardware();
-    chunksRef.current = [];
     await useMeetingRecorderStore.getState().cancelActive();
   }, []);
 

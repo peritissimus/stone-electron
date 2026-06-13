@@ -1,58 +1,23 @@
 /**
- * Browser-side helpers for converting a MediaRecorder webm Blob into a
- * 16-bit PCM mono WAV at the rate the Whisper worker expects.
+ * Browser-side helper: encode raw mono PCM (captured from Web Audio via
+ * pcmRecorder) into a 16-bit WAV at the rate the Whisper worker expects.
  *
  * Lives in lib/ (not in stores or hooks) because it's pure browser-API
  * plumbing that doesn't own any app state.
  */
 
-export async function blobToWavArrayBuffer(
-  blob: Blob,
+export async function pcmToWavArrayBuffer(
+  samples: Float32Array,
+  fromSampleRate: number,
   targetSampleRate: number,
 ): Promise<ArrayBuffer> {
-  // A near-empty blob means no audio reached the recorder — the mic produced
-  // nothing (silent input, in use by another app, or a track that ended).
-  // decodeAudioData would throw a cryptic "Unable to decode audio data"; give
-  // the real reason instead. A valid recording is many KB even when short; a
-  // header-only WebM fragment is only a few hundred bytes.
-  if (blob.size < 1024) {
+  if (samples.length === 0) {
     throw new Error(
       'No audio was captured. Check that your microphone is working and not in use by another app, then try again.',
     );
   }
-
-  const arrayBuffer = await blob.arrayBuffer();
-  const AudioCtx =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new AudioCtx();
-  let decoded: AudioBuffer;
-  try {
-    decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
-  } catch {
-    throw new Error(
-      `Could not decode the recording (${(blob.size / 1024).toFixed(0)} KB, ${blob.type || 'unknown format'}). The audio may be corrupt or in an unsupported format.`,
-    );
-  } finally {
-    void ctx.close();
-  }
-
-  const mono = downmixToMono(decoded);
-  const resampled = await resamplePcm(mono, decoded.sampleRate, targetSampleRate);
+  const resampled = await resamplePcm(samples, fromSampleRate, targetSampleRate);
   return encodeWav(resampled, targetSampleRate);
-}
-
-function downmixToMono(buffer: AudioBuffer): Float32Array {
-  if (buffer.numberOfChannels === 1) return buffer.getChannelData(0);
-  const length = buffer.length;
-  const out = new Float32Array(length);
-  for (let ch = 0; ch < buffer.numberOfChannels; ch += 1) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i += 1) out[i] += data[i];
-  }
-  const inv = 1 / buffer.numberOfChannels;
-  for (let i = 0; i < length; i += 1) out[i] *= inv;
-  return out;
 }
 
 async function resamplePcm(
@@ -112,14 +77,4 @@ function encodeWav(samples: Float32Array, sampleRate: number): ArrayBuffer {
 
 function writeAscii(view: DataView, offset: number, text: string) {
   for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
-}
-
-export function pickMimeType(): MediaRecorderOptions {
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
-  for (const type of candidates) {
-    if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) {
-      return { mimeType: type };
-    }
-  }
-  return {};
 }

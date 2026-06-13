@@ -9,7 +9,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useVoiceCaptureStore } from '@renderer/stores/voiceCaptureStore';
-import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
+import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
+import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
 import { describeMicError } from '@renderer/lib/micErrors';
 import { toNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
@@ -31,11 +32,9 @@ export function useVoiceCapture() {
 
   const navigate = useNavigate();
 
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const pcmRecorderRef = useRef<PcmRecording | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<number | null>(null);
-  const stopResolveRef = useRef<(() => void) | null>(null);
   const analyserCtxRef = useRef<AudioContext | null>(null);
   const analyserFrameRef = useRef<number | null>(null);
 
@@ -68,20 +67,16 @@ export function useVoiceCapture() {
   }, []);
 
   function releaseHardware() {
-    if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-      try {
-        recorderRef.current.stop();
-      } catch {
-        // already stopping
-      }
+    if (pcmRecorderRef.current) {
+      pcmRecorderRef.current.stop();
+      pcmRecorderRef.current = null;
     }
     if (streamRef.current) {
       for (const track of streamRef.current.getTracks()) track.stop();
       streamRef.current = null;
     }
     stopLevelMeter();
-    recorderRef.current = null;
-    chunksRef.current = [];
+    pcmRecorderRef.current = null;
   }
 
   function startLevelMeter(stream: MediaStream) {
@@ -132,19 +127,7 @@ export function useVoiceCapture() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const recorder = new MediaRecorder(stream, pickMimeType());
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        stopResolveRef.current?.();
-        stopResolveRef.current = null;
-      };
-
-      recorder.start(1000);
+      pcmRecorderRef.current = startPcmRecording(stream);
       startLevelMeter(stream);
       store.markRecordingStarted();
     } catch (err) {
@@ -158,17 +141,8 @@ export function useVoiceCapture() {
     const store = useVoiceCaptureStore.getState();
     if (store.phase !== 'recording') return;
 
-    const recorder = recorderRef.current;
-    if (recorder && recorder.state !== 'inactive') {
-      await new Promise<void>((resolve) => {
-        stopResolveRef.current = resolve;
-        try {
-          recorder.stop();
-        } catch {
-          resolve();
-        }
-      });
-    }
+    const captured = pcmRecorderRef.current?.stop() ?? null;
+    pcmRecorderRef.current = null;
 
     if (streamRef.current) {
       for (const track of streamRef.current.getTracks()) track.stop();
@@ -177,11 +151,12 @@ export function useVoiceCapture() {
     stopLevelMeter();
 
     try {
-      const blob = new Blob(chunksRef.current, {
-        type: chunksRef.current[0]?.type ?? 'audio/webm',
-      });
-      chunksRef.current = [];
-      const wavBuffer = await blobToWavArrayBuffer(blob, WHISPER_SAMPLE_RATE);
+      if (!captured) throw new Error('Recording did not start correctly. Try again.');
+      const wavBuffer = await pcmToWavArrayBuffer(
+        captured.samples,
+        captured.sampleRate,
+        WHISPER_SAMPLE_RATE,
+      );
       const saved = await store.transcribeAndAppend(wavBuffer);
       if (saved) {
         toast.success('Saved to journal', {
@@ -196,13 +171,12 @@ export function useVoiceCapture() {
       logger.error('[useVoiceCapture] transcribe failed', err);
       store.markError(err instanceof Error ? err.message : 'Voice capture failed');
     } finally {
-      recorderRef.current = null;
+      pcmRecorderRef.current = null;
     }
   }, [navigate]);
 
   const cancel = useCallback(() => {
     releaseHardware();
-    chunksRef.current = [];
     useVoiceCaptureStore.getState().close();
   }, []);
 
