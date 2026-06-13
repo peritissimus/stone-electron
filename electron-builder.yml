@@ -19,6 +19,11 @@ fileAssociations:
     rank: Alternate
     mimeType: text/markdown
 
+# Ad-hoc sign the macOS bundle after assembly (we have no Apple Developer ID).
+# Without this, the unsigned bundle's invalid signature makes Gatekeeper
+# reject a quarantined download as "damaged".
+afterPack: ./scripts/afterPack.cjs
+
 directories:
   buildResources: build
   output: dist/build
@@ -64,12 +69,20 @@ mac:
     - dmg
     - zip
   category: public.app-categories.productivity
-  # For development: identity: null (ad-hoc signing)
-  # For distribution: remove this line and set CSC_LINK/CSC_KEY_PASSWORD env vars
+  # Unsigned ad-hoc distribution: no Apple Developer ID, no notarization.
+  # hardenedRuntime is OFF on purpose — a hardened-runtime app that isn't
+  # notarized triggers Gatekeeper's hard "Stone is damaged" block on a
+  # quarantined download. Without it, the same download shows the softer
+  # "unidentified developer" prompt with a right-click → Open escape hatch.
+  # To notarize later: set identity to a "Developer ID Application" cert,
+  # flip hardenedRuntime back to true, and add the notarize block plus
+  # CSC_LINK / APPLE_* credentials.
+  # electron-builder skips its own signing here; scripts/afterPack.js then
+  # ad-hoc signs the assembled bundle so the signature is valid (see hook).
   identity: null
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
   # TCC usage descriptions — a hardened-runtime app that touches the mic
   # without NSMicrophoneUsageDescription is killed by macOS, not prompted.

@@ -104,6 +104,20 @@ Download the latest macOS build from GitHub:
 
 Current release artifacts are macOS DMG and ZIP builds. Windows and Linux packaging targets exist in the project configuration, but release automation currently publishes macOS builds.
 
+### First launch on macOS
+
+Stone isn't notarized by Apple yet, so macOS blocks it the first time. To get past it once:
+
+1. Drag Stone into **Applications**.
+2. Right-click (or Control-click) Stone → **Open** → **Open** again.
+3. If macOS only offers "Move to Trash," go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**.
+
+Or clear the quarantine flag from a terminal and skip the prompts entirely:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Stone.app
+```
+
 ## Development
 
 ### Prerequisites
