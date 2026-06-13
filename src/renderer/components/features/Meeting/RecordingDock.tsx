@@ -18,7 +18,7 @@ import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { toMeetings } from '@renderer/navigation';
-import { WaveRow } from './RecordingWaveform';
+import { WaveRow, InactiveWaveRow } from './RecordingWaveform';
 
 export function RecordingDock() {
   const {
@@ -312,8 +312,10 @@ function Recording({
       </div>
       <div className="mt-2.5 space-y-1.5">
         <WaveRow label="You" level={audioLevel} tone="mic" />
-        {captureMode === 'mic+system' && (
+        {captureMode === 'mic+system' ? (
           <WaveRow label="Others" level={systemAudioLevel} tone="system" />
+        ) : (
+          <InactiveWaveRow label="Others" hint="off" />
         )}
       </div>
     </div>

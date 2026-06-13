@@ -12,7 +12,7 @@ import { cn } from '@renderer/lib/utils';
 import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
 import { useSystemAudioPermission } from '@renderer/hooks/useOnboarding';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
-import { WaveRow } from './RecordingWaveform';
+import { WaveRow, InactiveWaveRow } from './RecordingWaveform';
 
 export function InlineRecordingPanel() {
   const {
@@ -156,7 +156,11 @@ function ActiveRecording({
 
       <div className="mt-4 space-y-2.5">
         <WaveRow label="You" level={audioLevel} tone="mic" size="lg" />
-        {dual && <WaveRow label="Others" level={systemAudioLevel} tone="system" size="lg" />}
+        {dual ? (
+          <WaveRow label="Others" level={systemAudioLevel} tone="system" size="lg" />
+        ) : (
+          <InactiveWaveRow label="Others" hint="System audio off" size="lg" />
+        )}
       </div>
     </div>
   );
