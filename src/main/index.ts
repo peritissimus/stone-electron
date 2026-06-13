@@ -30,15 +30,16 @@ import {
 } from '@main/infrastructure/electron/tray';
 import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
 
-// Enable Chromium's macOS system-audio loopback (ScreenCaptureKit / Core Audio
-// tap). Must be set before app `ready`. With these on, getDisplayMedia + the
+// Enable Chromium's macOS system-audio loopback via ScreenCaptureKit. Must be
+// set before app `ready`. With these on, getDisplayMedia + the
 // setDisplayMediaRequestHandler({ audio: 'loopback' }) below capture system
 // audio in-process — attributed to the app itself, no separate helper binary.
-// macOS 13+; the Catap flag is the macOS 14.2+ Core Audio tap path.
+// macOS 13+. NB: Sck and the Core Audio tap (MacCatapSystemAudioLoopbackCapture)
+// are mutually-exclusive backends — enable exactly one (Sck is the default).
 if (process.platform === 'darwin') {
   app.commandLine.appendSwitch(
     'enable-features',
-    'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride,MacCatapSystemAudioLoopbackCapture',
+    'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride',
   );
 }
 
@@ -396,7 +397,11 @@ app.on('ready', async () => {
           callback({ video: sources[0], audio: 'loopback' });
         })
         .catch((error) => {
-          logger.error('[DisplayMedia] failed to enumerate sources', error);
+          // Surface the real reason — usually Screen Recording not granted to
+          // the *running* process (granting after launch needs a restart).
+          logger.error(
+            `[DisplayMedia] failed to enumerate sources: ${error instanceof Error ? error.message : String(error)}`,
+          );
           callback({});
         });
     });
