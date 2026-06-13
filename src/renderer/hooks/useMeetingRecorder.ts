@@ -6,7 +6,7 @@
  * architecture rules (state hooks go through stores).
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
 import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
@@ -19,6 +19,18 @@ import { logger } from '@renderer/lib/logger';
 export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
 
 const WHISPER_SAMPLE_RATE = 16_000;
+
+// Recording hardware is a SINGLE shared session, not per-component state. The
+// dock and the inline Meetings panel each call useMeetingRecorder(), and
+// start() may fire from one surface while stop() fires from another — so these
+// must be module-level (a useRef would scope them to one component instance and
+// the refs wouldn't line up across start/stop). Mirrors the global store.
+const pcmRecorderRef: { current: PcmRecording | null } = { current: null };
+const micStreamRef: { current: MediaStream | null } = { current: null };
+const systemStreamRef: { current: MediaStream | null } = { current: null };
+const mixerCtxRef: { current: AudioContext | null } = { current: null };
+const analyserCtxRef: { current: AudioContext | null } = { current: null };
+const analyserFrameRef: { current: number | null } = { current: null };
 
 export function useMeetingRecorder() {
   const phase = useMeetingRecorderStore((s) => s.phase);
@@ -34,20 +46,6 @@ export function useMeetingRecorder() {
   const closeDock = useMeetingRecorderStore((s) => s.closeDock);
   const reset = useMeetingRecorderStore((s) => s.reset);
 
-  /** Captures mono PCM straight from the recorded stream via Web Audio —
-   *  MediaRecorder yields empty blobs on some Electron/Chromium builds even
-   *  when the mic is live, so we bypass it (and decodeAudioData) entirely. */
-  const pcmRecorderRef = useRef<PcmRecording | null>(null);
-  /** Mic stream (always present when recording). */
-  const micStreamRef = useRef<MediaStream | null>(null);
-  /** System / loopback stream (optional; null when only mic was granted). */
-  const systemStreamRef = useRef<MediaStream | null>(null);
-  /** AudioContext that mixes mic + system into one stream on Windows. */
-  const mixerCtxRef = useRef<AudioContext | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const analyserCtxRef = useRef<AudioContext | null>(null);
-  const analyserFrameRef = useRef<number | null>(null);
-
   // Live system-audio levels arrive from the native tap (main process) — the
   // renderer has no system stream to analyse on macOS. Feed them to the store
   // so the dock's teal waveform can render them.
@@ -60,33 +58,23 @@ export function useMeetingRecorder() {
     });
   }, []);
 
-  // Tick the elapsed timer while recording.
+  // Tick the elapsed timer while recording. Reads the shared startedAt from the
+  // store so every mounted surface (dock + inline panel) agrees on the time —
+  // and so the timer survives navigation between them.
   useEffect(() => {
-    if (phase !== 'recording') {
-      if (timerRef.current !== null) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
+    if (phase !== 'recording') return;
+    const id = window.setInterval(() => {
+      const startedAt = useMeetingRecorderStore.getState().startedAt;
+      if (startedAt !== null) {
+        useMeetingRecorderStore.getState().tickElapsed(Date.now() - startedAt);
       }
-      return;
-    }
-    const startedAt = Date.now();
-    timerRef.current = window.setInterval(() => {
-      useMeetingRecorderStore.getState().tickElapsed(Date.now() - startedAt);
     }, 200);
-    return () => {
-      if (timerRef.current !== null) {
-        window.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
+    return () => window.clearInterval(id);
   }, [phase]);
 
-  // Safety net: stop hardware on unmount.
-  useEffect(() => {
-    return () => {
-      releaseHardware();
-    };
-  }, []);
+  // NOTE: no unmount cleanup. Hardware is a shared singleton released on
+  // stop()/cancel() — releasing it when a transient surface (the inline panel)
+  // unmounts would kill an in-flight recording the user navigated away from.
 
   function releaseHardware() {
     if (pcmRecorderRef.current) {
