@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.0-blue.svg" alt="Version 0.6.0" />
+  <img src="https://img.shields.io/badge/version-0.6.2-blue.svg" alt="Version 0.6.2" />
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="macOS" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" />
 </p>
@@ -40,9 +40,11 @@ Stone is probably not the right fit if you need multiplayer editing, mobile apps
 
 ## What It Does
 
+Stone is organized around a few places: **Today**, **Journals**, **Tasks**, **Knowledge**, **Graph**, and **Meetings**. A command palette (`Cmd+K`) jumps to any of them, any note, or any action.
+
 ### Today-first workflow
 
-Stone opens on Today: the place for your current journal, meetings, tasks, recent edits, and "on this day" context. It is meant to answer the practical question: what am I working from right now?
+Stone opens on Today: your current journal, meetings, tasks, recent edits, and "on this day" context in one view. It answers the practical question — what am I working from right now? — and can generate a status report from your recent activity when you need to summarize it for someone else.
 
 ### Markdown notes that stay portable
 
@@ -53,38 +55,40 @@ Stone opens on Today: the place for your current journal, meetings, tasks, recen
 ### Fast writing surface
 
 - Rich TipTap editor with headings, lists, quotes, code blocks, links, tables, and images.
-- Slash commands for quick structure.
-- Raw Markdown is still the durable storage format.
+- Slash commands for quick structure, and templates for repeatable note shapes.
 - Mermaid diagrams render directly in notes.
+- Raw Markdown is still the durable storage format.
 
 ### Journals and tasks
 
 - Daily journals are first-class, not an afterthought.
-- Task states support practical flows such as `TODO`, `DOING`, `DONE`, `WAITING`, `HOLD`, `CANCELED`, and `IDEA`.
-- Journal entries, regular notes, and meeting records can all feed the same workspace memory.
+- Tasks are extracted from across your notes into one view, with states for practical flows: `TODO`, `DOING`, `DONE`, `WAITING`, `HOLD`, `CANCELED`, and `IDEA`.
+- Journal entries, regular notes, and meeting records all feed the same workspace memory.
 
 ### Meetings and voice notes
 
-- Record meetings or voice notes from Stone.
-- Transcription runs locally.
-- Audio is treated as temporary capture material and deleted after transcription.
+- Record meetings or capture quick voice notes from Stone, including a floating quick-capture window.
+- Transcription runs locally; on macOS, system audio is mixed with the mic so you capture other participants too.
+- Audio is temporary capture material, deleted after transcription.
 - Meeting summaries can be reviewed and sent into the journal when you are ready.
 
-### Search, graph, and related notes
+### Find and connect your notes
 
-- Full-text search for exact recall.
-- Semantic search and related-note scoring for rediscovering nearby work.
-- Link and tag structure contributes to ranking, so Stone can surface useful context without relying only on embeddings.
+- Full-text search for exact recall, semantic search for rediscovering nearby work.
+- A **Knowledge** view clusters your workspace into topics so you can see what you actually write about.
+- A **Graph** view shows how notes link together.
+- Related-note scoring blends embedding similarity with lexical overlap, shared tags, and link-graph structure — calibrated against your own workspace — so context surfaces without relying on embeddings alone.
+- Smart link suggestions surface notes worth connecting as you write.
 
 ### Git-backed ownership
 
 - Initialize Git for a workspace from inside Stone.
-- Commit, pull, push, and sync notes without leaving the app.
+- Commit, pull, push, and sync notes without leaving the app, with honest conflict and error reporting.
 - The workspace remains a normal repository, so you are not locked into Stone's UI.
 
 ### Optional AI
 
-Stone can use local and provider-backed AI adapters for features such as Ask Notes, summaries, embeddings, and transcription. The architecture keeps providers behind outbound adapters, so the app owns retrieval, ranking, indexing, and persistence.
+Stone uses local and provider-backed AI for features such as **Ask Notes** (answers grounded in your workspace, with citations back to the source notes), summaries, status reports, embeddings, and transcription. Providers sit behind outbound adapters, so the app owns retrieval, ranking, indexing, and persistence — the AI is a leaf, not the foundation.
 
 ## Privacy Model
 
