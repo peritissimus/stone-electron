@@ -11,7 +11,7 @@
 <p align="center">
   <a href="#who-it-is-for">Who it is for</a> |
   <a href="#what-it-does">What it does</a> |
-  <a href="#privacy-model">Privacy</a> |
+  <a href="#privacy-and-security">Privacy</a> |
   <a href="#install">Install</a> |
   <a href="#development">Development</a>
 </p>
@@ -24,9 +24,11 @@
 
 ---
 
-Stone is for people who want their working memory in files they own.
+<!-- TODO: add a product screenshot or short GIF here — it is the single
+     highest-leverage thing this README is missing. Drop it under docs/ and
+     reference it: <p align="center"><img src="docs/screenshot.png" ... /></p> -->
 
-It is a desktop app for Markdown notes, daily journals, task capture, meeting records, and semantic search. Your workspace is a normal folder on disk. Stone adds a fast editor, local indexes, Git-friendly history, and optional AI-assisted workflows around it without turning your notes into a hosted service.
+**Stone keeps your working memory in plain files you own.** It is a desktop app for Markdown notes, daily journals, tasks, meeting records, and semantic search — your workspace is just a folder on disk. Stone wraps it in a fast editor, local search indexes, Git-friendly history, and optional AI, without turning your notes into a hosted service.
 
 ## Who It Is For
 
@@ -36,77 +38,63 @@ Stone is built for:
 - Researchers, founders, and operators who keep a daily work journal and need to recover context quickly.
 - People who like tools such as Obsidian, Logseq, and Notion, but want a native local workspace with stronger file ownership.
 
-Stone is probably not the right fit if you need multiplayer editing, mobile apps, or a hosted team wiki today.
+It is not the right fit if you need multiplayer editing, mobile apps, or a hosted team wiki.
 
 ## What It Does
 
-Stone is organized around a few places: **Today**, **Journals**, **Tasks**, **Knowledge**, **Graph**, and **Meetings**. A command palette (`Cmd+K`) jumps to any of them, any note, or any action.
+Three things set Stone apart:
 
-### Today-first workflow
+- **Your notes are just files.** Plain Markdown in a folder you own. SQLite holds only metadata and indexes, which can be rebuilt from the files at any time.
+- **Capture stays local.** Meetings and voice notes transcribe on-device — on macOS, system audio is mixed with your mic so you catch everyone in the room. Audio is deleted after transcription.
+- **Retrieval you control.** Full-text and semantic search, topic clustering, a link graph, and related-note scoring all run on your machine. AI is optional and sits behind it, never in front of your data.
 
-Stone opens on Today: your current journal, meetings, tasks, recent edits, and "on this day" context in one view. It answers the practical question — what am I working from right now? — and can generate a status report from your recent activity when you need to summarize it for someone else.
+Stone is organized around six places — **Today**, **Journals**, **Tasks**, **Knowledge**, **Graph**, and **Meetings** — and a command palette (`Cmd+K`) that jumps to any of them, any note, or any action.
 
-### Markdown notes that stay portable
+### Today
 
-- Notes live as Markdown files in your workspace.
-- SQLite stores metadata and indexes, not the canonical body of your notes.
-- Workspaces are ordinary folders that can be backed up, searched, synced, or versioned with tools you already use.
+Your landing page: current journal, meetings, tasks, recent edits, and "on this day" context in one view. It answers a single question — what am I working from right now? — and can spin your recent activity into a shareable status report.
 
-### Fast writing surface
+### Notes and editing
 
-- Rich TipTap editor with headings, lists, quotes, code blocks, links, tables, and images.
-- Slash commands for quick structure, and templates for repeatable note shapes.
-- Mermaid diagrams render directly in notes.
-- Raw Markdown is still the durable storage format.
+- Rich TipTap editor: headings, lists, quotes, code blocks, links, tables, images, and Mermaid diagrams that render inline.
+- Slash commands for structure; templates for note shapes you reuse.
+- Raw Markdown remains the durable storage format.
 
 ### Journals and tasks
 
-- Daily journals are first-class, not an afterthought.
-- Tasks are extracted from across your notes into one view, with states for practical flows: `TODO`, `DOING`, `DONE`, `WAITING`, `HOLD`, `CANCELED`, and `IDEA`.
-- Journal entries, regular notes, and meeting records all feed the same workspace memory.
+- Daily journals are a primary surface, not a plugin.
+- Tasks are pulled from across your notes into one view, with states for real workflows: `TODO`, `DOING`, `DONE`, `WAITING`, `HOLD`, `CANCELED`, `IDEA`.
+- Journals, notes, and meeting records all feed the same workspace memory.
 
 ### Meetings and voice notes
 
-- Record meetings or capture quick voice notes from Stone, including a floating quick-capture window.
-- Transcription runs locally; on macOS, system audio is mixed with the mic so you capture other participants too.
-- Audio is temporary capture material, deleted after transcription.
-- Meeting summaries can be reviewed and sent into the journal when you are ready.
+- Record a meeting or grab a quick thought from a floating capture window.
+- Local transcription, with macOS system-audio mixing so remote participants are captured too.
+- Review the summary, then send it into your journal.
 
-### Find and connect your notes
+### Find and connect
 
-- Full-text search for exact recall, semantic search for rediscovering nearby work.
-- A **Knowledge** view clusters your workspace into topics so you can see what you actually write about.
-- A **Graph** view shows how notes link together.
-- Related-note scoring blends embedding similarity with lexical overlap, shared tags, and link-graph structure — calibrated against your own workspace — so context surfaces without relying on embeddings alone.
+- Full-text search for exact recall; semantic search for rediscovering nearby work.
+- **Knowledge** clusters your workspace into topics, so you can see what you actually write about.
+- **Graph** shows how notes link together.
+- Related-note scoring blends embeddings, lexical overlap, shared tags, and link structure — calibrated to your own workspace, so it works without relying on embeddings alone.
 - Smart link suggestions surface notes worth connecting as you write.
 
-### Git-backed ownership
+### Git and AI
 
-- Initialize Git for a workspace from inside Stone.
-- Commit, pull, push, and sync notes without leaving the app, with honest conflict and error reporting.
-- The workspace remains a normal repository, so you are not locked into Stone's UI.
+- Initialize, commit, pull, push, and sync from inside Stone, with honest conflict and error reporting. The workspace stays a normal repository — no lock-in.
+- **Ask Notes** answers questions grounded in your workspace and cites the source notes. Summaries, status reports, embeddings, and transcription use local or provider-backed models you configure.
 
-### Optional AI
+## Privacy and Security
 
-Stone uses local and provider-backed AI for features such as **Ask Notes** (answers grounded in your workspace, with citations back to the source notes), summaries, status reports, embeddings, and transcription. Providers sit behind outbound adapters, so the app owns retrieval, ranking, indexing, and persistence — the AI is a leaf, not the foundation.
+Stone is local-first by default — no account, no Stone cloud backend, no telemetry. Your notes never leave your machine unless you put them somewhere yourself (Git, a backup, a synced folder). External AI providers are opt-in and apply only to the features you configure.
 
-## Privacy Model
-
-Stone is local-first by default:
-
-- Your notes are files on your machine.
-- The app does not require a Stone account.
-- There is no Stone cloud backend.
-- Meeting transcription is local.
-- External AI providers are optional and only apply to features you configure.
-- External links open in the system browser, not inside a privileged Electron window.
-
-Security posture:
+The app is hardened against the usual Electron risks:
 
 - Renderer windows run with `nodeIntegration: false` and `contextIsolation: true`.
 - IPC channels are validated at the app boundary.
-- Foreign navigation and `window.open` are denied for app windows.
-- The production dependency tree currently audits clean with `pnpm audit --prod`.
+- Foreign navigation and `window.open` are denied; external links open in your system browser.
+- The production dependency tree audits clean with `pnpm audit --prod`.
 
 ## Install
 
