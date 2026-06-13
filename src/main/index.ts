@@ -30,6 +30,18 @@ import {
 } from '@main/infrastructure/electron/tray';
 import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
 
+// Enable Chromium's macOS system-audio loopback (ScreenCaptureKit / Core Audio
+// tap). Must be set before app `ready`. With these on, getDisplayMedia + the
+// setDisplayMediaRequestHandler({ audio: 'loopback' }) below capture system
+// audio in-process — attributed to the app itself, no separate helper binary.
+// macOS 13+; the Catap flag is the macOS 14.2+ Core Audio tap path.
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch(
+    'enable-features',
+    'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride,MacCatapSystemAudioLoopbackCapture',
+  );
+}
+
 // Create at module load so the constructor's performance.now() reading
 // captures the earliest possible app start time. Passed into the DI
 // container as a regular dep — no singleton accessor.

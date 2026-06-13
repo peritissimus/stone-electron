@@ -144,7 +144,7 @@ describe('MeetingUseCases', () => {
     });
   });
 
-  it('reserves an audio slot in the active workspace and starts system audio when supported', async () => {
+  it('reserves an audio slot without starting the native tap (renderer loopback owns system audio)', async () => {
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
 
     const result = await useCases.reserveRecordingSlot.execute({ title: 'Design review' });
@@ -152,19 +152,15 @@ describe('MeetingUseCases', () => {
     expect(result).toEqual({
       recordingId: 'generated-id',
       audioAbsolutePath: '/workspace/.stone/recordings/generated-id.wav',
-      systemAudio: true,
+      systemAudio: false,
     });
     expect(fileStorage.createDirectory).toHaveBeenCalledWith('/workspace/.stone/recordings');
-    expect(systemAudioTap.start).toHaveBeenCalledWith(
-      'generated-id',
-      '/workspace/.stone/recordings/generated-id.wav.system.pcm',
-    );
+    expect(systemAudioTap.start).not.toHaveBeenCalled();
     expect(meetingRepository.save).toHaveBeenCalledWith(expect.any(MeetingRecordingEntity));
   });
 
-  it('still reserves the slot when system-audio capture fails', async () => {
+  it('reserves the slot for an explicit workspace id', async () => {
     vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace({ id: 'ws-2' }));
-    vi.mocked(systemAudioTap.start).mockRejectedValue(new Error('permission denied'));
 
     const result = await useCases.reserveRecordingSlot.execute({ workspaceId: 'ws-2' });
 

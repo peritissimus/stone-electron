@@ -90,6 +90,9 @@ mac:
     NSMicrophoneUsageDescription: >-
       Stone uses the microphone to record meetings and voice notes, which
       are transcribed locally on your device.
+    NSAudioCaptureUsageDescription: >-
+      Stone captures system audio so meeting recordings include other
+      participants. Audio is transcribed locally and deleted afterward.
   # Minimize app size
   minimumSystemVersion: "10.15"
   # Native helpers (stone-audio-tap: ScreenCaptureKit system-audio capture).

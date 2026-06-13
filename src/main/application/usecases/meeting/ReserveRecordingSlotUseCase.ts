@@ -57,19 +57,13 @@ export class ReserveRecordingSlotUseCase implements IReserveRecordingSlotUseCase
     });
     await this.meetingRepository.save(recording);
 
-    // Best-effort: start the native system-audio tap (macOS). The mic is
-    // the source of truth; if the helper is missing, unsupported, or the
-    // user denies Screen & System Audio Recording, we record mic-only.
-    let systemAudio = false;
-    if (this.systemAudioTap?.isSupported()) {
-      try {
-        await this.systemAudioTap.start(id, `${audioAbsolutePath}.system.pcm`);
-        systemAudio = true;
-      } catch {
-        systemAudio = false;
-      }
-    }
-
-    return { recordingId: id, audioAbsolutePath, systemAudio };
+    // System audio is now captured in the renderer via getDisplayMedia loopback
+    // (Chromium ScreenCaptureKit / Core Audio tap) and mixed with the mic
+    // before recording — no native helper, and the permission attributes to
+    // the app itself. The renderer reports the actual capture mode, so this
+    // slot no longer needs to pre-start a tap. (systemAudioTap kept injected as
+    // a dormant fallback.)
+    void this.systemAudioTap;
+    return { recordingId: id, audioAbsolutePath, systemAudio: false };
   }
 }

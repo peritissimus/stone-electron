@@ -11,7 +11,6 @@ import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
 import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
 import { describeMicError } from '@renderer/lib/micErrors';
-import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { subscribe } from '@renderer/lib/events';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/lib/logger';
@@ -31,6 +30,43 @@ const systemStreamRef: { current: MediaStream | null } = { current: null };
 const mixerCtxRef: { current: AudioContext | null } = { current: null };
 const analyserCtxRef: { current: AudioContext | null } = { current: null };
 const analyserFrameRef: { current: number | null } = { current: null };
+const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
+const systemAnalyserFrameRef: { current: number | null } = { current: null };
+
+/** Run a smoothed peak-level meter on a stream, writing each frame via setLevel. */
+function runAnalyser(
+  stream: MediaStream,
+  setLevel: (level: number) => void,
+  ctxRef: { current: AudioContext | null },
+  frameRef: { current: number | null },
+): void {
+  const AudioCtx =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.6;
+  source.connect(analyser);
+  ctxRef.current = ctx;
+
+  const buffer = new Uint8Array(analyser.frequencyBinCount);
+  let smoothed = 0;
+  const tick = () => {
+    analyser.getByteTimeDomainData(buffer);
+    // RMS-style peak — deviation from 128 (silence midpoint).
+    let peak = 0;
+    for (let i = 0; i < buffer.length; i += 1) {
+      const v = Math.abs(buffer[i] - 128) / 128;
+      if (v > peak) peak = v;
+    }
+    smoothed = smoothed * 0.7 + peak * 0.3;
+    setLevel(Math.min(1, smoothed));
+    frameRef.current = requestAnimationFrame(tick);
+  };
+  frameRef.current = requestAnimationFrame(tick);
+}
 
 export function useMeetingRecorder() {
   const phase = useMeetingRecorderStore((s) => s.phase);
@@ -97,44 +133,39 @@ export function useMeetingRecorder() {
     pcmRecorderRef.current = null;
   }
 
-  function startLevelMeter(stream: MediaStream) {
-    const AudioCtx =
-      window.AudioContext ??
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new AudioCtx();
-    const source = ctx.createMediaStreamSource(stream);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.6;
-    source.connect(analyser);
-    analyserCtxRef.current = ctx;
-
-    const buffer = new Uint8Array(analyser.frequencyBinCount);
-    let smoothed = 0;
-    const tick = () => {
-      analyser.getByteTimeDomainData(buffer);
-      // RMS-style peak — read deviation from 128 (silence midpoint).
-      let peak = 0;
-      for (let i = 0; i < buffer.length; i += 1) {
-        const v = Math.abs(buffer[i] - 128) / 128;
-        if (v > peak) peak = v;
-      }
-      // Smooth so the bar doesn't twitch at small volumes.
-      smoothed = smoothed * 0.7 + peak * 0.3;
-      useMeetingRecorderStore.getState().setAudioLevel(Math.min(1, smoothed));
-      analyserFrameRef.current = requestAnimationFrame(tick);
-    };
-    analyserFrameRef.current = requestAnimationFrame(tick);
+  // Drive the green (mic) and teal (system) waveforms from the renderer
+  // streams. Both sources are now MediaStreams in the renderer (system audio
+  // via getDisplayMedia loopback), so each gets its own analyser.
+  function startLevelMeter(micStream: MediaStream, systemStream: MediaStream | null) {
+    runAnalyser(
+      micStream,
+      (level) => useMeetingRecorderStore.getState().setAudioLevel(level),
+      analyserCtxRef,
+      analyserFrameRef,
+    );
+    if (systemStream) {
+      runAnalyser(
+        systemStream,
+        (level) => useMeetingRecorderStore.getState().setSystemAudioLevel(level),
+        systemAnalyserCtxRef,
+        systemAnalyserFrameRef,
+      );
+    }
   }
 
   function stopLevelMeter() {
-    if (analyserFrameRef.current !== null) {
-      cancelAnimationFrame(analyserFrameRef.current);
-      analyserFrameRef.current = null;
-    }
-    if (analyserCtxRef.current) {
-      void analyserCtxRef.current.close();
-      analyserCtxRef.current = null;
+    for (const [ctxRef, frameRef] of [
+      [analyserCtxRef, analyserFrameRef],
+      [systemAnalyserCtxRef, systemAnalyserFrameRef],
+    ] as const) {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      if (ctxRef.current) {
+        void ctxRef.current.close();
+        ctxRef.current = null;
+      }
     }
     useMeetingRecorderStore.getState().setAudioLevel(0);
     useMeetingRecorderStore.getState().setSystemAudioLevel(0);
@@ -152,12 +183,12 @@ export function useMeetingRecorder() {
       const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       micStreamRef.current = micStream;
 
-      // System audio: on macOS the native tap (started main-side during
-      // reserveSlot, reported via slot.systemAudio) is the only working
-      // path — Electron's getDisplayMedia loopback is Windows-only, so
-      // don't even ask there (it would just flash a useless screen-share
-      // prompt). On Windows, capture the loopback stream here and mix.
-      const systemStream = isMacOS() ? null : await tryCaptureSystemAudio();
+      // System audio via getDisplayMedia loopback — now enabled on macOS too
+      // (Chromium ScreenCaptureKit/Core Audio tap, gated by the feature flags
+      // set in main). setDisplayMediaRequestHandler auto-grants the request, so
+      // there's no picker. Null when unsupported or the user denied Screen
+      // Recording → we fall back to mic-only.
+      const systemStream = await tryCaptureSystemAudio();
       systemStreamRef.current = systemStream;
 
       const { recordedStream, mixerCtx, captureMode: rendererMode } = buildRecordedStream(
@@ -169,10 +200,8 @@ export function useMeetingRecorder() {
         rendererMode === 'mic+system' || slot.systemAudio ? 'mic+system' : 'mic-only';
 
       pcmRecorderRef.current = startPcmRecording(recordedStream);
-      // Level meter watches the mic only — system audio levels would
-      // distract from the "is my voice being picked up" question that
-      // the dock's meter is really answering.
-      startLevelMeter(micStream);
+      // Green meter follows the mic, teal follows the system stream.
+      startLevelMeter(micStream, systemStream);
       store.markRecordingStarted({ ...slot, captureMode });
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
