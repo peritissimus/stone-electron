@@ -36,6 +36,8 @@ interface MeetingRecorderState {
   elapsedMs: number;
   /** Smoothed peak level in [0, 1], updated by the hook from an AnalyserNode. */
   audioLevel: number;
+  /** Live system-audio peak in [0, 1], pushed from the native tap (macOS). */
+  systemAudioLevel: number;
   /** Which sources we're capturing for the current session. */
   captureMode: CaptureMode;
   error: string | null;
@@ -58,6 +60,7 @@ interface MeetingRecorderState {
   }) => void;
   tickElapsed: (ms: number) => void;
   setAudioLevel: (level: number) => void;
+  setSystemAudioLevel: (level: number) => void;
   uploadAndFinalize: (wav: ArrayBuffer, durationMs: number) => Promise<void>;
   cancelActive: () => Promise<void>;
   markError: (message: string) => void;
@@ -72,6 +75,7 @@ const initial = {
   startedAt: null,
   elapsedMs: 0,
   audioLevel: 0,
+  systemAudioLevel: 0,
   captureMode: 'mic-only' as CaptureMode,
   error: null,
   lastRecording: null,
@@ -119,6 +123,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
 
   tickElapsed: (ms) => set({ elapsedMs: ms }),
   setAudioLevel: (level) => set({ audioLevel: level }),
+  setSystemAudioLevel: (level) => set({ systemAudioLevel: level }),
 
   uploadAndFinalize: async (wav, durationMs) => {
     const recordingId = get().recordingId;

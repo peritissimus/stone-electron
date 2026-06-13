@@ -31,6 +31,13 @@ func printJSON(_ dict: [String: Any]) {
     }
 }
 
+// Write a single line to stdout unbuffered. Used for the readiness signal and
+// the high-frequency level stream during `record`, where stdio buffering would
+// otherwise delay or coalesce lines before the parent process reads them.
+func emitLine(_ str: String) {
+    FileHandle.standardOutput.write(Data((str + "\n").utf8))
+}
+
 func permissionGranted() -> Bool {
     return CGPreflightScreenCaptureAccess()
 }
@@ -40,6 +47,10 @@ func permissionGranted() -> Bool {
 final class AudioWriter: NSObject, SCStreamOutput, SCStreamDelegate {
     private let handle: FileHandle
     private var sampleCount: Int = 0
+    // Throttle the live level stream to ~15 Hz — enough for a smooth waveform,
+    // cheap enough not to flood the IPC bridge.
+    private var lastLevelEmit = CFAbsoluteTimeGetCurrent()
+    private let levelInterval = 0.066
 
     init(handle: FileHandle) {
         self.handle = handle
@@ -55,6 +66,7 @@ final class AudioWriter: NSObject, SCStreamOutput, SCStreamDelegate {
         // SCK delivers float32 PCM at the configured rate/channels. Convert
         // to s16le and append. channelCount=1 in the config keeps this to a
         // single buffer — no interleaving concerns.
+        var framePeak: Float32 = 0
         do {
             try sampleBuffer.withAudioBufferList { audioBufferList, _ in
                 for buffer in audioBufferList {
@@ -65,6 +77,8 @@ final class AudioWriter: NSObject, SCStreamOutput, SCStreamDelegate {
                     for i in 0..<frameCount {
                         let clamped = max(-1.0, min(1.0, floats[i]))
                         out[i] = Int16(clamped * Float32(Int16.max))
+                        let mag = abs(clamped)
+                        if mag > framePeak { framePeak = mag }
                     }
                     out.withUnsafeBufferPointer { ptr in
                         handle.write(Data(buffer: ptr))
@@ -75,6 +89,13 @@ final class AudioWriter: NSObject, SCStreamOutput, SCStreamDelegate {
         } catch {
             // Drop the buffer; transient CMSampleBuffer issues shouldn't kill
             // the recording.
+        }
+
+        // Emit the peak level for the live waveform, throttled.
+        let now = CFAbsoluteTimeGetCurrent()
+        if now - lastLevelEmit >= levelInterval {
+            lastLevelEmit = now
+            emitLine("{\"level\":\(String(format: "%.3f", framePeak))}")
         }
     }
 
@@ -135,8 +156,9 @@ func runRecord(path: String) async {
             writer, type: .audio, sampleHandlerQueue: DispatchQueue(label: "audio-tap"))
         try await stream.startCapture()
 
-        // Signal readiness so the spawner can correlate start time.
-        printJSON(["recording": true])
+        // Signal readiness so the spawner can correlate start time. Use the
+        // unbuffered writer so it interleaves correctly with the level stream.
+        emitLine("{\"recording\":true}")
 
         // Block until SIGTERM/SIGINT, then stop cleanly so buffers flush.
         let semaphore = DispatchSemaphore(value: 0)

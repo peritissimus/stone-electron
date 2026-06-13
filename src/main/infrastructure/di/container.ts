@@ -10,6 +10,8 @@ import type { Database } from '@main/shared';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
+import { broadcastToRenderers } from '@main/infrastructure/electron/broadcast';
+import { EVENTS } from '@shared/constants/ipcChannels';
 
 // Domain Layer - Ports
 import type {
@@ -347,6 +349,10 @@ export function createContainer(deps: ContainerDeps): Container {
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
   const systemAudioTap: ISystemAudioTap = new SystemAudioTap();
+  // Forward the native tap's live levels to the recording dock's waveform.
+  systemAudioTap.onLevel((recordingId, level) =>
+    broadcastToRenderers(EVENTS.MEETING_SYSTEM_AUDIO_LEVEL, { recordingId, level }),
+  );
   const gitClient: IGitClient = new GitClient();
   const idGenerator: IIdGenerator = new CryptoIdGenerator();
   const pathService: IPathService = new NodePathService();

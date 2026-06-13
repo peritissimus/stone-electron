@@ -286,6 +286,10 @@ export const EVENTS = {
   MEETING_START_REQUESTED: 'meetings:startRequested',
   // Tray menu while recording asks the renderer to stop.
   MEETING_STOP_REQUESTED: 'meetings:stopRequested',
+  // Main → renderer: live system-audio peak level for the recording-dock
+  // waveform. Payload: { recordingId: string, level: number }. ~15 Hz while
+  // a recording with system audio is active.
+  MEETING_SYSTEM_AUDIO_LEVEL: 'meetings:systemAudioLevel',
 
   // Notebook events
   NOTEBOOK_CREATED: 'notebooks:created',

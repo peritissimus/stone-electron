@@ -3,10 +3,11 @@
  *
  * Concentric radii (rounded-3xl outer with p-3 → rounded-xl inner,
  * theme tokens throughout, scale-on-press, smooth phase crossfade,
- * and a live audio level meter so the recording state feels alive.
+ * and live scrolling waveforms — green for your mic, teal for system
+ * audio — so the recording state feels alive.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { Microphone, Stop, X, CircleNotch, Check, Warning } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 import { StoneLogo } from '@renderer/components/base/StoneLogo';
@@ -22,6 +23,7 @@ export function RecordingDock() {
     dock,
     elapsedMs,
     audioLevel,
+    systemAudioLevel,
     captureMode,
     error,
     lastRecording,
@@ -107,6 +109,7 @@ export function RecordingDock() {
         phase={phase}
         elapsedMs={elapsedMs}
         audioLevel={audioLevel}
+        systemAudioLevel={systemAudioLevel}
         captureMode={captureMode}
         error={error}
         systemAudioStatus={systemAudio.status}
@@ -164,6 +167,7 @@ function PhaseBody({
   phase,
   elapsedMs,
   audioLevel,
+  systemAudioLevel,
   captureMode,
   error,
   systemAudioStatus,
@@ -173,6 +177,7 @@ function PhaseBody({
   phase: RecorderPhase;
   elapsedMs: number;
   audioLevel: number;
+  systemAudioLevel: number;
   captureMode: 'mic-only' | 'mic+system';
   error: string | null;
   systemAudioStatus: 'granted' | 'denied' | 'unsupported' | null;
@@ -180,7 +185,7 @@ function PhaseBody({
   lastTitle: string | null;
 }) {
   return (
-    <div className="relative mt-3 min-h-[68px] rounded-xl bg-muted/40 p-3">
+    <div className="relative mt-3 min-h-[84px] rounded-xl bg-muted/40 p-3">
       <Idle
         visible={phase === 'idle'}
         systemAudioStatus={systemAudioStatus}
@@ -191,6 +196,7 @@ function PhaseBody({
         visible={phase === 'recording'}
         elapsedMs={elapsedMs}
         audioLevel={audioLevel}
+        systemAudioLevel={systemAudioLevel}
         captureMode={captureMode}
       />
       <Processing
@@ -259,11 +265,13 @@ function Recording({
   visible,
   elapsedMs,
   audioLevel,
+  systemAudioLevel,
   captureMode,
 }: {
   visible: boolean;
   elapsedMs: number;
   audioLevel: number;
+  systemAudioLevel: number;
   captureMode: 'mic-only' | 'mic+system';
 }) {
   return (
@@ -295,7 +303,12 @@ function Recording({
           {captureMode === 'mic+system' ? 'mic + system' : 'mic only'}
         </span>
       </div>
-      <LevelMeter level={audioLevel} />
+      <div className="mt-2.5 space-y-1.5">
+        <WaveRow label="You" level={audioLevel} tone="mic" />
+        {captureMode === 'mic+system' && (
+          <WaveRow label="Others" level={systemAudioLevel} tone="system" />
+        )}
+      </div>
     </div>
   );
 }
@@ -350,26 +363,70 @@ function Errored({ visible, message }: { visible: boolean; message: string | nul
 }
 
 // =============================================================================
-// Live audio level meter — 24 bars, peak hold smoothing
+// Live scrolling waveforms — one per source. Each keeps a rolling history of
+// peak levels that scrolls right-to-left; the newest sample is on the right.
+// Mic is green ("You"), system audio is teal ("Others").
 // =============================================================================
 
-const BAR_COUNT = 24;
+const WAVE_BARS = 40;
 
-function LevelMeter({ level }: { level: number }) {
-  // Stagger bar heights so the meter feels organic — center bars get more
-  // amplitude than edges (typical "EQ" envelope).
+function WaveRow({
+  label,
+  level,
+  tone,
+}: {
+  label: string;
+  level: number;
+  tone: 'mic' | 'system';
+}) {
   return (
-    <div className="mt-3 flex h-7 items-end gap-[2px]" aria-hidden>
-      {Array.from({ length: BAR_COUNT }).map((_, i) => {
-        const center = (BAR_COUNT - 1) / 2;
-        const distance = Math.abs(i - center) / center; // 0 center → 1 edge
-        const envelope = 1 - distance * 0.55;
-        const heightFraction = Math.max(0.08, Math.min(1, level * envelope * 1.35));
+    <div className="flex items-center gap-2">
+      <span
+        className={cn(
+          'w-9 shrink-0 text-[9px] font-semibold uppercase tracking-wider',
+          tone === 'mic' ? 'text-emerald-600' : 'text-teal-500',
+        )}
+      >
+        {label}
+      </span>
+      <Waveform level={level} tone={tone} />
+    </div>
+  );
+}
+
+function Waveform({ level, tone }: { level: number; tone: 'mic' | 'system' }) {
+  // History is mutated in place each animation frame and a forced re-render
+  // reads it — cheaper than allocating a new array 60×/sec for 40 bars.
+  const historyRef = useRef<number[]>(new Array(WAVE_BARS).fill(0));
+  const levelRef = useRef(level);
+  levelRef.current = level;
+  const [, forceRender] = useReducer((n: number) => (n + 1) % 1_000_000, 0);
+
+  useEffect(() => {
+    let frame = 0;
+    const loop = () => {
+      const h = historyRef.current;
+      h.push(levelRef.current);
+      h.shift();
+      forceRender();
+      frame = requestAnimationFrame(loop);
+    };
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const barColor = tone === 'mic' ? 'bg-emerald-500' : 'bg-teal-400';
+  return (
+    <div className="flex h-6 flex-1 items-center gap-px" aria-hidden>
+      {historyRef.current.map((v, i) => {
+        const height = Math.max(0.12, Math.min(1, v * 1.4));
+        // Older samples (left) fade out for a trailing-comet feel.
+        const opacity = 0.35 + (i / WAVE_BARS) * 0.65;
         return (
           <span
             key={i}
-            className="flex-1 rounded-sm bg-primary/80 transition-[height] duration-75 ease-out"
-            style={{ height: `${heightFraction * 100}%` }}
+            className={cn('w-full rounded-full', barColor)}
+            style={{ height: `${height * 100}%`, opacity }}
           />
         );
       })}

@@ -109,7 +109,8 @@ describe('SystemAudioTap', () => {
 
     const start = tap.start('rec-1', '/tmp/audio.raw');
     const child = processMock.children[0];
-    child.stdout.emit('data', '{"recording":true}');
+    // Helper emits newline-delimited JSON; readiness is one line.
+    child.stdout.emit('data', '{"recording":true}\n');
     await start;
 
     await tap.start('rec-1', '/tmp/audio.raw');
@@ -127,6 +128,30 @@ describe('SystemAudioTap', () => {
 
     await tap.stop('rec-1');
     expect(child.kill).toHaveBeenCalledTimes(1);
+  });
+
+  it('parses the helper level stream and forwards peaks to onLevel listeners', async () => {
+    const tap = await loadSystemAudioTap('darwin');
+    const levels: Array<{ id: string; level: number }> = [];
+    tap.onLevel((id, level) => levels.push({ id, level }));
+
+    const start = tap.start('rec-lvl', '/tmp/audio.raw');
+    const child = processMock.children[0];
+    child.stdout.emit('data', '{"recording":true}\n');
+    await start;
+
+    // Multiple level lines may arrive in one chunk, plus a partial line that
+    // completes on the next chunk — the parser must handle both.
+    child.stdout.emit('data', '{"level":0.250}\n{"level":0.5');
+    child.stdout.emit('data', '00}\n');
+    // Session end zeroes the meter.
+    child.emit('exit', 0);
+
+    expect(levels).toEqual([
+      { id: 'rec-lvl', level: 0.25 },
+      { id: 'rec-lvl', level: 0.5 },
+      { id: 'rec-lvl', level: 0 },
+    ]);
   });
 
   it('rejects when the helper exits before reporting readiness', async () => {

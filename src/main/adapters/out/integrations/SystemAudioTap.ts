@@ -28,6 +28,15 @@ const STOP_TIMEOUT_MS = 3000;
 
 export class SystemAudioTap implements ISystemAudioTap {
   private readonly sessions = new Map<string, ChildProcess>();
+  private readonly levelListeners = new Set<(recordingId: string, level: number) => void>();
+
+  onLevel(listener: (recordingId: string, level: number) => void): void {
+    this.levelListeners.add(listener);
+  }
+
+  private emitLevel(recordingId: string, level: number): void {
+    for (const listener of this.levelListeners) listener(recordingId, level);
+  }
 
   private helperPath(): string {
     if (app?.isPackaged) {
@@ -77,37 +86,64 @@ export class SystemAudioTap implements ISystemAudioTap {
       stdio: ['ignore', 'pipe', 'pipe'],
     });
 
+    // The helper emits newline-delimited JSON on stdout: one {"recording":true}
+    // readiness line, then a stream of {"level":x} peaks while capturing. Parse
+    // line-by-line and keep parsing for the whole session — the level stream
+    // drives the live waveform.
     await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        fn();
+      };
       const timeout = setTimeout(() => {
         child.kill('SIGKILL');
-        reject(new Error('system audio helper did not start in time'));
+        settle(() => reject(new Error('system audio helper did not start in time')));
       }, START_TIMEOUT_MS);
 
       let stderr = '';
       child.stderr?.on('data', (d) => {
         stderr += String(d);
       });
-      // Helper prints {"recording":true} once the SCK stream is live.
+
+      let buffer = '';
       child.stdout?.on('data', (d) => {
-        if (String(d).includes('"recording"')) {
-          clearTimeout(timeout);
-          resolve();
+        buffer += String(d);
+        let nl: number;
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          if (!line) continue;
+          if (line.includes('"level"')) {
+            try {
+              const level = JSON.parse(line).level;
+              if (typeof level === 'number') this.emitLevel(recordingId, level);
+            } catch {
+              // ignore malformed level line
+            }
+          } else if (line.includes('"recording"')) {
+            settle(resolve);
+          }
         }
       });
       child.on('exit', (code) => {
-        clearTimeout(timeout);
-        reject(new Error(`system audio helper exited (${code}): ${stderr.trim()}`));
+        settle(() =>
+          reject(new Error(`system audio helper exited (${code}): ${stderr.trim()}`)),
+        );
       });
       child.on('error', (err) => {
-        clearTimeout(timeout);
-        reject(err);
+        settle(() => reject(err));
       });
     });
 
-    // Replace listeners with passive cleanup now that startup is settled.
+    // Startup settled — keep the stdout level parser running, swap exit
+    // handling to passive cleanup, and zero the meter when the session ends.
     child.removeAllListeners('exit');
     child.on('exit', () => {
       this.sessions.delete(recordingId);
+      this.emitLevel(recordingId, 0);
     });
     this.sessions.set(recordingId, child);
     logger.info('[SystemAudioTap] capture started', { recordingId });

@@ -11,6 +11,8 @@ import { useMeetingRecorderStore } from '@renderer/stores/meetingRecorderStore';
 import { blobToWavArrayBuffer, pickMimeType } from '@renderer/lib/audioEncoding';
 import { describeMicError } from '@renderer/lib/micErrors';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
+import { subscribe } from '@renderer/lib/events';
+import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '@renderer/lib/logger';
 
 export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
@@ -22,6 +24,7 @@ export function useMeetingRecorder() {
   const dock = useMeetingRecorderStore((s) => s.dock);
   const elapsedMs = useMeetingRecorderStore((s) => s.elapsedMs);
   const audioLevel = useMeetingRecorderStore((s) => s.audioLevel);
+  const systemAudioLevel = useMeetingRecorderStore((s) => s.systemAudioLevel);
   const captureMode = useMeetingRecorderStore((s) => s.captureMode);
   const error = useMeetingRecorderStore((s) => s.error);
   const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
@@ -42,6 +45,18 @@ export function useMeetingRecorder() {
   const stopResolveRef = useRef<(() => void) | null>(null);
   const analyserCtxRef = useRef<AudioContext | null>(null);
   const analyserFrameRef = useRef<number | null>(null);
+
+  // Live system-audio levels arrive from the native tap (main process) — the
+  // renderer has no system stream to analyse on macOS. Feed them to the store
+  // so the dock's teal waveform can render them.
+  useEffect(() => {
+    return subscribe(EVENTS.MEETING_SYSTEM_AUDIO_LEVEL, (payload: unknown) => {
+      const level = (payload as { level?: number } | undefined)?.level;
+      if (typeof level === 'number') {
+        useMeetingRecorderStore.getState().setSystemAudioLevel(level);
+      }
+    });
+  }, []);
 
   // Tick the elapsed timer while recording.
   useEffect(() => {
@@ -136,6 +151,7 @@ export function useMeetingRecorder() {
       analyserCtxRef.current = null;
     }
     useMeetingRecorderStore.getState().setAudioLevel(0);
+    useMeetingRecorderStore.getState().setSystemAudioLevel(0);
   }
 
   const start = useCallback(async () => {
@@ -249,6 +265,7 @@ export function useMeetingRecorder() {
     dock,
     elapsedMs,
     audioLevel,
+    systemAudioLevel,
     captureMode,
     error,
     lastRecording,

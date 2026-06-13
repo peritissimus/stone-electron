@@ -32,4 +32,11 @@ export interface ISystemAudioTap {
    * if no capture is active (idempotent).
    */
   stop(recordingId: string): Promise<void>;
+
+  /**
+   * Subscribe to live capture levels (peak amplitude in [0, 1]) emitted while
+   * a recording is active, for the system-audio waveform. Fires ~15×/sec per
+   * active session, and once with level 0 when a session ends.
+   */
+  onLevel(listener: (recordingId: string, level: number) => void): void;
 }
