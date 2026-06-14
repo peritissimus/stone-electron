@@ -452,12 +452,12 @@ describe('mergeAI', () => {
     const result = normalizeConfig({
       ai: {
         indexing: { providerMode: 'disabled' },
-        models: { textModel: 'anthropic/claude-sonnet-4.5' },
+        models: { textModel: 'groq/llama-3.3-70b-versatile' },
       },
     });
 
     expect(result.ai.indexing.providerMode).toBe('disabled');
-    expect(result.ai.models.textModel).toBe('anthropic/claude-sonnet-4.5');
+    expect(result.ai.models.textModel).toBe('groq/llama-3.3-70b-versatile');
     expect(result.ai.models.embeddingModel).toBe(DEFAULT_APP_CONFIG.ai.models.embeddingModel);
   });
 });

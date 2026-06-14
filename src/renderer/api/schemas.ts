@@ -191,7 +191,7 @@ export const AIConfigSchema = z.object({
 });
 
 export const AIProviderKeyStatusSchema = z.object({
-  provider: z.enum(['openai', 'cohere', 'anthropic', 'google', 'mistral']),
+  provider: z.enum(['openai', 'google', 'groq']),
   label: z.string(),
   envVar: z.string(),
   hasEnvKey: z.boolean(),

@@ -241,10 +241,8 @@ describe('AISDKTextGenerator', () => {
       path.join(process.cwd(), 'src/main/adapters/out/integrations/AISDKTextGenerator.ts'),
       'utf-8',
     );
-    expect(source).toMatch(/createAnthropic\(\{ apiKey \}\)/);
-    expect(source).toMatch(/createCohere\(\{ apiKey \}\)/);
     expect(source).toMatch(/createGoogleGenerativeAI\(\{ apiKey \}\)/);
-    expect(source).toMatch(/createMistral\(\{ apiKey \}\)/);
+    expect(source).toMatch(/createGroq\(\{ apiKey \}\)/);
     // A custom fetch could redirect content regardless of baseURL — never allow it.
     expect(source).not.toMatch(/fetch\s*:\s*\w/);
   });

@@ -371,7 +371,7 @@ export interface AIConfig {
   privacy: AIPrivacyConfig;
 }
 
-export type AIProviderId = 'openai' | 'cohere' | 'anthropic' | 'google' | 'mistral';
+export type AIProviderId = 'openai' | 'google' | 'groq';
 
 export type AIProviderKeySource = 'env' | 'stored';
 

@@ -578,7 +578,7 @@ describe('function-style IPC adapters', () => {
       resetShortcut: execute(undefined),
       resetAllShortcuts: execute(undefined),
       getAI: execute({ provider: 'openai' }),
-      updateAI: execute({ provider: 'anthropic' }),
+      updateAI: execute({ provider: 'groq' }),
       resetAI: execute({ provider: 'openai' }),
       getAIProviderKeys: execute({ openai: true }),
       setAIProviderKey: execute(undefined),
@@ -611,7 +611,7 @@ describe('function-style IPC adapters', () => {
     });
     await invoke(SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS);
     await invoke(SETTINGS_CHANNELS.GET_AI);
-    await invoke(SETTINGS_CHANNELS.UPDATE_AI, { ai: { provider: 'anthropic' } });
+    await invoke(SETTINGS_CHANNELS.UPDATE_AI, { ai: { provider: 'groq' } });
     await invoke(SETTINGS_CHANNELS.RESET_AI);
     await invoke(SETTINGS_CHANNELS.GET_AI_PROVIDER_KEYS);
     await invoke(SETTINGS_CHANNELS.SET_AI_PROVIDER_KEY, { provider: 'openai', apiKey: 'sk-test' });

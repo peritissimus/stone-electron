@@ -41,7 +41,7 @@ describe('SecureAIProviderKeyStore', () => {
 
     const statuses = await store.listStatuses();
     const openai = statuses.find((status) => status.provider === 'openai');
-    const cohere = statuses.find((status) => status.provider === 'cohere');
+    const groq = statuses.find((status) => status.provider === 'groq');
 
     expect(openai).toMatchObject({
       envVar: 'OPENAI_API_KEY',
@@ -50,7 +50,7 @@ describe('SecureAIProviderKeyStore', () => {
       available: true,
       activeSource: 'env',
     });
-    expect(cohere).toMatchObject({
+    expect(groq).toMatchObject({
       hasEnvKey: false,
       hasStoredKey: false,
       available: false,

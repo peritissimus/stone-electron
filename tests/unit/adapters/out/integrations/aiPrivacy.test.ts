@@ -35,9 +35,9 @@ describe('aiPrivacy', () => {
   });
 
   it('splits provider/model ids with a fallback for bare model names', () => {
-    expect(providerModelId('anthropic/claude-sonnet-4', 'openai')).toEqual({
-      provider: 'anthropic',
-      modelId: 'claude-sonnet-4',
+    expect(providerModelId('groq/llama-3.3-70b-versatile', 'openai')).toEqual({
+      provider: 'groq',
+      modelId: 'llama-3.3-70b-versatile',
     });
     expect(providerModelId('gpt-4.1-mini', 'openai')).toEqual({
       provider: 'openai',

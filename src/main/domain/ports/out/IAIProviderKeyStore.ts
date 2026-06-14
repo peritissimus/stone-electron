@@ -1,4 +1,4 @@
-export type AIProviderId = 'openai' | 'cohere' | 'anthropic' | 'google' | 'mistral';
+export type AIProviderId = 'openai' | 'google' | 'groq';
 
 export type AIProviderKeySource = 'env' | 'stored';
 
@@ -20,10 +20,8 @@ export interface AIProviderKeyStatus {
 
 export const AI_PROVIDER_DEFINITIONS: readonly AIProviderDefinition[] = [
   { id: 'openai', label: 'OpenAI', envVar: 'OPENAI_API_KEY' },
-  { id: 'cohere', label: 'Cohere', envVar: 'COHERE_API_KEY' },
-  { id: 'anthropic', label: 'Anthropic', envVar: 'ANTHROPIC_API_KEY' },
   { id: 'google', label: 'Google', envVar: 'GOOGLE_GENERATIVE_AI_API_KEY' },
-  { id: 'mistral', label: 'Mistral', envVar: 'MISTRAL_API_KEY' },
+  { id: 'groq', label: 'Groq', envVar: 'GROQ_API_KEY' },
 ] as const;
 
 export interface IAIProviderKeyStore {

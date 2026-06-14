@@ -1,8 +1,6 @@
 import { generateText, type LanguageModel } from 'ai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createCohere } from '@ai-sdk/cohere';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createMistral } from '@ai-sdk/mistral';
+import { createGroq } from '@ai-sdk/groq';
 import { createOpenAI } from '@ai-sdk/openai';
 import type {
   AIConfig,
@@ -135,11 +133,11 @@ export class AISDKTextGenerator implements ITextGenerator {
   /**
    * Build a LanguageModel pointing at the provider's API.
    *
-   * **Egress contract (security-relevant):** the anthropic / cohere /
-   * google / mistral factories are called with `{ apiKey }` only — no
-   * `baseURL`, no custom `fetch`, no proxy override — so a note's body
-   * can reach exactly those providers' official URLs and nowhere else,
-   * even under prompt-injection from a malicious note.
+   * **Egress contract (security-relevant):** the google / groq factories
+   * are called with `{ apiKey }` only — no `baseURL`, no custom `fetch`,
+   * no proxy override — so a note's body can reach exactly those
+   * providers' official URLs and nowhere else, even under
+   * prompt-injection from a malicious note.
    *
    * OpenAI is the single exception: it accepts a user-configured
    * `baseURL` (`ai.models.openaiBaseUrl`) so the user can point Stone at
@@ -157,20 +155,10 @@ export class AISDKTextGenerator implements ITextGenerator {
     }
 
     const parsed = providerModelId(model, 'openai');
-    if (parsed.provider === 'cohere') {
-      const apiKey = (await this.deps.aiProviderKeyStore?.getKey('cohere')) ?? undefined;
-      return createCohere({ apiKey })(parsed.modelId as Parameters<ReturnType<typeof createCohere>>[0]);
-    }
     if (parsed.provider === 'openai') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('openai')) ?? undefined;
       const baseURL = ai.models.openaiBaseUrl.trim() || undefined;
       return this.openaiFactory({ apiKey, ...(baseURL ? { baseURL } : {}) })(parsed.modelId);
-    }
-    if (parsed.provider === 'anthropic') {
-      const apiKey = (await this.deps.aiProviderKeyStore?.getKey('anthropic')) ?? undefined;
-      return createAnthropic({ apiKey })(
-        parsed.modelId as Parameters<ReturnType<typeof createAnthropic>>[0],
-      );
     }
     if (parsed.provider === 'google') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('google')) ?? undefined;
@@ -178,10 +166,10 @@ export class AISDKTextGenerator implements ITextGenerator {
         parsed.modelId as Parameters<ReturnType<typeof createGoogleGenerativeAI>>[0],
       );
     }
-    if (parsed.provider === 'mistral') {
-      const apiKey = (await this.deps.aiProviderKeyStore?.getKey('mistral')) ?? undefined;
-      return createMistral({ apiKey })(
-        parsed.modelId as Parameters<ReturnType<typeof createMistral>>[0],
+    if (parsed.provider === 'groq') {
+      const apiKey = (await this.deps.aiProviderKeyStore?.getKey('groq')) ?? undefined;
+      return createGroq({ apiKey })(
+        parsed.modelId as Parameters<ReturnType<typeof createGroq>>[0],
       );
     }
 
