@@ -15,8 +15,16 @@ import type { TranscriptSegment } from '../entities';
 
 export type ConfidenceBand = 'HIGH' | 'MED' | 'LOW';
 
-/** Band cutoffs on whisper's mean per-token probability. LOW < 0.5 ≤ MED < 0.75 ≤ HIGH.
- *  Starting points — worth tuning against real transcript distributions. */
+/**
+ * Band cutoffs on whisper's mean per-token probability. LOW < 0.5 ≤ MED < 0.75 ≤ HIGH.
+ *
+ * Calibrated against real large-v3-turbo output — 2,121 segments from two
+ * multilingual (English + Hindi) recordings: mean 0.78, p50 0.84, mass at
+ * 0.80–0.90. The looped / force-translated garbage ("sell it in a terminal",
+ * "There will not go") all landed ≤ 0.4 and the whole junk cluster sits < 0.5;
+ * coherent-but-shaky lines start right at 0.5; clean speech is ≥ 0.8. So < 0.5
+ * isolates the genuinely-bad ~7% without mis-flagging real speech.
+ */
 export const CONFIDENCE_MED_MIN = 0.5;
 export const CONFIDENCE_HIGH_MIN = 0.75;
 
