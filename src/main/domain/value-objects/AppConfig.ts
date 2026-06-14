@@ -288,6 +288,21 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   },
 };
 
+export interface MeetingsConfig {
+  /**
+   * How long to keep a recording's audio files before auto-deleting them:
+   *   0  → keep until the meeting itself is deleted (never auto-delete),
+   *   -1 → delete right after transcript + summary exist (most private),
+   *   N  → delete N days after the recording was created.
+   * Transcript + summary are always kept; only the audio is removed.
+   */
+  audioRetentionDays: number;
+}
+
+export const DEFAULT_MEETINGS_CONFIG: MeetingsConfig = {
+  audioRetentionDays: 30,
+};
+
 export interface AppConfig {
   appearance: AppearanceSettings;
   workspace: WorkspaceConfig;
@@ -295,6 +310,7 @@ export interface AppConfig {
   shortcuts: ShortcutsConfig;
   notes: NotesConfig;
   ai: AIConfig;
+  meetings: MeetingsConfig;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -306,4 +322,5 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   shortcuts: DEFAULT_SHORTCUTS_CONFIG,
   notes: DEFAULT_NOTES_CONFIG,
   ai: DEFAULT_AI_CONFIG,
+  meetings: DEFAULT_MEETINGS_CONFIG,
 };

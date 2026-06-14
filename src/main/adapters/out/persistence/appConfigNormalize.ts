@@ -430,5 +430,16 @@ export function normalizeConfig(value: unknown): AppConfig {
     shortcuts: mergeShortcuts(value.shortcuts),
     notes: mergeNotes(value.notes),
     ai: mergeAI(value.ai),
+    meetings: mergeMeetings(value.meetings),
+  };
+}
+
+function mergeMeetings(value: unknown): AppConfig['meetings'] {
+  if (!isRecord(value)) return { ...DEFAULT_APP_CONFIG.meetings };
+  return {
+    audioRetentionDays:
+      typeof value.audioRetentionDays === 'number' && Number.isFinite(value.audioRetentionDays)
+        ? value.audioRetentionDays
+        : DEFAULT_APP_CONFIG.meetings.audioRetentionDays,
   };
 }
