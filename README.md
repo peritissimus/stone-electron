@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.2-blue.svg" alt="Version 0.6.2" />
+  <img src="https://img.shields.io/badge/version-0.7.0-blue.svg" alt="Version 0.7.0" />
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="macOS" />
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT license" />
 </p>
@@ -45,7 +45,7 @@ It is not the right fit if you need multiplayer editing, mobile apps, or a hoste
 Three things set Stone apart:
 
 - **Your notes are just files.** Plain Markdown in a folder you own. SQLite holds only metadata and indexes, which can be rebuilt from the files at any time.
-- **Capture stays local.** Meetings and voice notes transcribe on-device — on macOS, system audio is mixed with your mic so you catch everyone in the room. Audio is deleted after transcription.
+- **Capture stays local.** Meetings and voice notes transcribe on-device with Whisper (large-v3-turbo) — on macOS, system audio is captured alongside your mic, with acoustic echo cancellation so the two tracks stay clean. Recording audio is yours: keep it, replay it, re-transcribe it, or set it to auto-delete on your own schedule.
 - **Retrieval you control.** Full-text and semantic search, topic clustering, a link graph, and related-note scoring all run on your machine. AI is optional and sits behind it, never in front of your data.
 
 Stone is organized around six places — **Today**, **Journals**, **Tasks**, **Knowledge**, **Graph**, and **Meetings** — and a command palette (`Cmd+K`) that jumps to any of them, any note, or any action.
@@ -68,9 +68,16 @@ Your landing page: current journal, meetings, tasks, recent edits, and "on this 
 
 ### Meetings and voice notes
 
-- Record a meeting or grab a quick thought from a floating capture window.
-- Local transcription, with macOS system-audio mixing so remote participants are captured too.
-- Review the summary, then send it into your journal.
+- Record a meeting inline, or grab a quick thought from a floating capture window.
+- **Fully local transcription** with Whisper `large-v3-turbo` + Silero VAD — strong on multilingual and code-switched speech.
+- **Two-speaker capture on macOS:** your mic ("You") and system audio ("Others") are recorded as separate tracks and interleaved into one speaker-labelled transcript.
+- **Real acoustic echo cancellation** (DTLN, ONNX) scrubs speaker bleed out of the mic track before transcription, so on speakers your side isn't polluted by the other side.
+- **Live draft** while you record (resident Whisper server), then a clean, speaker-separated transcript when you finalize.
+- **Audio playback** with click-to-seek transcript turns that follow along as it plays.
+- **Confidence-aware summaries:** per-segment transcription confidence and loop/garbage markers are fed to the summary prompt so it discounts shaky lines instead of stating them as fact.
+- **Re-transcribe** from kept audio (e.g. after a model upgrade), **re-summarize**, and **copy** the whole transcript.
+- **Configurable retention:** keep recording audio indefinitely, delete it right after transcription, or auto-delete after N days (default 30) — transcript and summary are always kept.
+- Review the summary, then send it into your journal when you choose.
 
 ### Find and connect
 
@@ -83,7 +90,7 @@ Your landing page: current journal, meetings, tasks, recent edits, and "on this 
 ### Git and AI
 
 - Initialize, commit, pull, push, and sync from inside Stone, with honest conflict and error reporting. The workspace stays a normal repository — no lock-in.
-- **Ask Notes** answers questions grounded in your workspace and cites the source notes. Summaries, status reports, embeddings, and transcription use local or provider-backed models you configure.
+- **Ask Notes** answers questions grounded in your workspace and cites the source notes. Embeddings, reranking, and transcription run locally; text generation (Ask Notes, summaries, status reports, link suggestions) is configurable across **OpenAI, Azure OpenAI, Google, and Groq** — including a custom OpenAI base URL for proxies and self-hosted endpoints. Cloud inference is off by default and gated per privacy setting; note content never leaves the machine unless you opt in.
 
 ## Privacy and Security
 
@@ -124,7 +131,7 @@ xattr -dr com.apple.quarantine /Applications/Stone.app
 
 - Node.js 20+
 - pnpm 10.27.0 via Corepack
-- macOS with Xcode Command Line Tools for the native audio helper
+- macOS with Xcode Command Line Tools (to build the bundled whisper.cpp binary via `pnpm build:whisper`)
 
 ### Run Locally
 
@@ -141,7 +148,8 @@ pnpm dev
 
 ```bash
 pnpm dev              # Start Vite and Electron in development
-pnpm build            # Build native helper, main, worker, preload, and renderer
+pnpm build            # Build main, worker, preload, and renderer
+pnpm build:whisper    # Build the bundled whisper.cpp binaries (one-time, for transcription)
 pnpm package          # Package for the current platform
 pnpm typecheck        # TypeScript type checking
 pnpm lint             # ESLint
@@ -149,6 +157,14 @@ pnpm test             # Unit and integration tests
 pnpm test:e2e         # Build and run Playwright end-to-end tests
 pnpm audit --prod     # Check shipped dependencies for known vulnerabilities
 ```
+
+### Git hooks
+
+`pnpm install` points Git at the tracked `.githooks/` directory. The `pre-commit`
+hook runs [gitleaks](https://github.com/gitleaks/gitleaks) over staged changes and
+blocks commits that contain secrets (API keys, tokens, private keys). Install
+gitleaks (`brew install gitleaks`) to activate it; without it the hook no-ops with
+a warning.
 
 ## Architecture
 
@@ -183,6 +199,8 @@ Core rule: dependencies point inward. Domain code has no external imports, use c
 | State | Zustand |
 | Storage | Markdown files, SQLite/libSQL, Drizzle ORM |
 | Search | Full-text, local embeddings, workspace ranking |
+| Transcription | whisper.cpp (large-v3-turbo) + Silero VAD, DTLN echo cancellation (ONNX Runtime) |
+| AI | Vercel AI SDK — OpenAI, Azure, Google, Groq |
 | Diagrams | Mermaid |
 | Testing | Vitest, Playwright |
 | Packaging | electron-builder |
