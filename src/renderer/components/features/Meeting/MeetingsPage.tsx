@@ -21,6 +21,7 @@ import {
   Waveform,
   Play,
   Pause,
+  Copy,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
@@ -457,23 +458,35 @@ function TranscriptBody({
     }
   }, [activeTurn]);
 
+  // Plain-text rendering of the whole transcript, speaker-labelled when we
+  // have per-turn data, otherwise the raw legacy text.
+  const copyText =
+    turns.length > 0
+      ? turns
+          .map((turn) => `${turn.source === 'system' ? 'Others' : 'You'}: ${turn.text}`)
+          .join('\n\n')
+      : transcriptText;
+
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between">
         <SectionLabel>Transcript</SectionLabel>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-expanded={open}
-          className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          {open ? 'Hide' : 'Show'}
-          <CaretDown
-            size={10}
-            weight="bold"
-            className={cn('transition-transform duration-200 ease-out', open && 'rotate-180')}
-          />
-        </button>
+        <div className="flex items-center gap-3">
+          <CopyButton text={copyText} />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {open ? 'Hide' : 'Show'}
+            <CaretDown
+              size={10}
+              weight="bold"
+              className={cn('transition-transform duration-200 ease-out', open && 'rotate-180')}
+            />
+          </button>
+        </div>
       </div>
       {open &&
         (turns.length > 0 ? (
@@ -527,6 +540,40 @@ function TranscriptBody({
           </pre>
         ))}
     </section>
+  );
+}
+
+// =============================================================================
+// Copy-to-clipboard button (transcript)
+// =============================================================================
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable — nothing useful to do here.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={() => void handleCopy()}
+      disabled={!text}
+      aria-label="Copy transcript"
+      title="Copy entire transcript"
+      className={cn(
+        'inline-flex items-center gap-1 rounded text-[11px] font-medium transition-colors',
+        copied ? 'text-emerald-600' : 'text-muted-foreground hover:text-foreground',
+        'disabled:cursor-not-allowed disabled:opacity-40',
+      )}
+    >
+      {copied ? <Check size={11} weight="bold" /> : <Copy size={11} />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
   );
 }
 
