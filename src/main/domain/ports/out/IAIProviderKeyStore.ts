@@ -1,4 +1,4 @@
-export type AIProviderId = 'openai' | 'google' | 'groq';
+export type AIProviderId = 'openai' | 'azure' | 'google' | 'groq';
 
 export type AIProviderKeySource = 'env' | 'stored';
 
@@ -20,6 +20,7 @@ export interface AIProviderKeyStatus {
 
 export const AI_PROVIDER_DEFINITIONS: readonly AIProviderDefinition[] = [
   { id: 'openai', label: 'OpenAI', envVar: 'OPENAI_API_KEY' },
+  { id: 'azure', label: 'Azure OpenAI', envVar: 'AZURE_API_KEY' },
   { id: 'google', label: 'Google', envVar: 'GOOGLE_GENERATIVE_AI_API_KEY' },
   { id: 'groq', label: 'Groq', envVar: 'GROQ_API_KEY' },
 ] as const;

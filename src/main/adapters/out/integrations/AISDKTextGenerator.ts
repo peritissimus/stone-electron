@@ -1,4 +1,5 @@
 import { generateText, type LanguageModel } from 'ai';
+import { createAzure } from '@ai-sdk/azure';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -133,11 +134,12 @@ export class AISDKTextGenerator implements ITextGenerator {
   /**
    * Build a LanguageModel pointing at the provider's API.
    *
-   * **Egress contract (security-relevant):** the google / groq factories
-   * are called with `{ apiKey }` only — no `baseURL`, no custom `fetch`,
-   * no proxy override — so a note's body can reach exactly those
-   * providers' official URLs and nowhere else, even under
-   * prompt-injection from a malicious note.
+   * **Egress contract (security-relevant):** the azure / google / groq
+   * factories are called with `{ apiKey }` only — no `baseURL`, no custom
+   * `fetch`, no proxy override — so a note's body can reach exactly those
+   * providers' endpoints and nowhere else, even under prompt-injection
+   * from a malicious note. (Azure's resource comes from the
+   * AZURE_RESOURCE_NAME env var, never from request input.)
    *
    * OpenAI is the single exception: it accepts a user-configured
    * `baseURL` (`ai.models.openaiBaseUrl`) so the user can point Stone at
@@ -159,6 +161,15 @@ export class AISDKTextGenerator implements ITextGenerator {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('openai')) ?? undefined;
       const baseURL = ai.models.openaiBaseUrl.trim() || undefined;
       return this.openaiFactory({ apiKey, ...(baseURL ? { baseURL } : {}) })(parsed.modelId);
+    }
+    if (parsed.provider === 'azure') {
+      // Azure OpenAI: deployment id is the modelId (azure/<deployment>). The
+      // resource is taken from the AZURE_RESOURCE_NAME env var (SDK default),
+      // so egress stays apiKey-only here — no request-derived baseURL.
+      const apiKey = (await this.deps.aiProviderKeyStore?.getKey('azure')) ?? undefined;
+      return createAzure({ apiKey })(
+        parsed.modelId as Parameters<ReturnType<typeof createAzure>>[0],
+      );
     }
     if (parsed.provider === 'google') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('google')) ?? undefined;

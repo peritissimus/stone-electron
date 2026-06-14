@@ -88,6 +88,7 @@ function NumberInput({
 const TEXT_MODEL_PRESETS = [
   'openai/gpt-5.4-mini',
   'openai/gpt-5.4',
+  'azure/gpt-4o',
   'google/gemini-2.5-flash',
   'google/gemini-2.5-pro',
   'groq/llama-3.3-70b-versatile',

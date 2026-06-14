@@ -57,6 +57,7 @@
     "build:whisper": "./scripts/build-whisper.sh"
   },
   "dependencies": {
+    "@ai-sdk/azure": "^3.0.74",
     "@ai-sdk/google": "^3.0.79",
     "@ai-sdk/groq": "^3.0.41",
     "@ai-sdk/openai": "^3.0.65",
