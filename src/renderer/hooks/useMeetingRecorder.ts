@@ -162,8 +162,19 @@ export function useMeetingRecorder() {
     if (!slot) return;
 
     try {
-      // Mic is required — fail the whole start if it's denied.
-      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Mic is required — fail the whole start if it's denied. Echo
+      // cancellation is critical for meetings on speakers: the other
+      // participants come out of the speakers and bleed into the mic,
+      // contaminating the "You" track. Chromium's AEC references the system
+      // output and removes it; noise suppression + AGC also clean the mic for
+      // transcription. (On headphones there's no bleed, and this is a no-op.)
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       micStreamRef.current = micStream;
 
       // System audio via getDisplayMedia loopback — now enabled on macOS too

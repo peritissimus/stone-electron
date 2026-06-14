@@ -124,7 +124,10 @@ export function useVoiceCapture() {
     if (store.phase !== 'idle' && store.phase !== 'error') return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Clean the mic for transcription (and cancel any speaker bleed).
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       streamRef.current = stream;
 
       pcmRecorderRef.current = startPcmRecording(stream);
