@@ -202,6 +202,40 @@ describe('SettingsUseCases', () => {
     });
   });
 
+  describe('meetings', () => {
+    it('returns current meetings settings', async () => {
+      const result = await useCases.getMeetings.execute();
+      expect(result).toEqual(DEFAULT_APP_CONFIG.meetings);
+    });
+
+    it('updates the retention window and emits a meetings-scoped event', async () => {
+      const result = await useCases.updateMeetings.execute({ meetings: { audioRetentionDays: 7 } });
+      expect(result.audioRetentionDays).toBe(7);
+      expect(eventPublisher.publish).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'settings:changed', payload: { scope: 'meetings' } }),
+      );
+    });
+
+    it('accepts the -1 "delete after transcribing" sentinel', async () => {
+      const result = await useCases.updateMeetings.execute({ meetings: { audioRetentionDays: -1 } });
+      expect(result.audioRetentionDays).toBe(-1);
+    });
+
+    it('rejects invalid retention values by keeping the current one', async () => {
+      await useCases.updateMeetings.execute({ meetings: { audioRetentionDays: 30 } });
+      const result = await useCases.updateMeetings.execute({
+        meetings: { audioRetentionDays: -5 },
+      });
+      expect(result.audioRetentionDays).toBe(30);
+    });
+
+    it('reset restores the default retention window', async () => {
+      await useCases.updateMeetings.execute({ meetings: { audioRetentionDays: 90 } });
+      const reset = await useCases.resetMeetings.execute();
+      expect(reset).toEqual(DEFAULT_APP_CONFIG.meetings);
+    });
+  });
+
   describe('shortcuts', () => {
     it('returns empty overrides when none set', async () => {
       const result = await useCases.getShortcuts.execute();

@@ -290,7 +290,13 @@ export interface DbVacuumCompleteEvent extends DomainEvent {
 }
 
 // Settings events
-export type SettingsScope = 'appearance' | 'editor' | 'shortcuts' | 'workspace' | 'ai';
+export type SettingsScope =
+  | 'appearance'
+  | 'editor'
+  | 'shortcuts'
+  | 'workspace'
+  | 'ai'
+  | 'meetings';
 
 export interface SettingsChangedEvent extends DomainEvent {
   type: 'settings:changed';

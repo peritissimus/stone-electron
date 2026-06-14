@@ -26,6 +26,9 @@ import type {
   IGetAIProviderKeysUseCase,
   ISetAIProviderKeyUseCase,
   IDeleteAIProviderKeyUseCase,
+  IGetMeetingsSettingsUseCase,
+  IUpdateMeetingsSettingsUseCase,
+  IResetMeetingsSettingsUseCase,
   ShortcutsScope,
 } from '../../../domain';
 import type {
@@ -36,6 +39,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  MeetingsConfig,
 } from '@shared/types/settings';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
@@ -62,6 +66,9 @@ export interface SettingsIPCDeps {
   getAIProviderKeys: IGetAIProviderKeysUseCase;
   setAIProviderKey: ISetAIProviderKeyUseCase;
   deleteAIProviderKey: IDeleteAIProviderKeyUseCase;
+  getMeetings: IGetMeetingsSettingsUseCase;
+  updateMeetings: IUpdateMeetingsSettingsUseCase;
+  resetMeetings: IResetMeetingsSettingsUseCase;
 }
 
 const SHORTCUT_ERROR_MAP: Record<string, string> = {
@@ -91,6 +98,9 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     getAIProviderKeys,
     setAIProviderKey,
     deleteAIProviderKey,
+    getMeetings,
+    updateMeetings,
+    resetMeetings,
   } = deps;
   const handleRequest = <T>(
     fn: () => Promise<T>,
@@ -293,6 +303,32 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       );
     },
   );
+
+  // ----- meetings settings -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_MEETINGS, async () => {
+    return handleRequest(
+      async () => getMeetings.execute(),
+      { channel: SETTINGS_CHANNELS.GET_MEETINGS },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.UPDATE_MEETINGS,
+    async (_event, params: { meetings: Partial<MeetingsConfig> }) => {
+      return handleRequest(
+        async () => updateMeetings.execute({ meetings: params.meetings }),
+        { channel: SETTINGS_CHANNELS.UPDATE_MEETINGS },
+      );
+    },
+  );
+
+  ipcMain.handle(SETTINGS_CHANNELS.RESET_MEETINGS, async () => {
+    return handleRequest(
+      async () => resetMeetings.execute(),
+      { channel: SETTINGS_CHANNELS.RESET_MEETINGS },
+    );
+  });
 
   logger.info('[IPC] Settings handlers registered');
 }

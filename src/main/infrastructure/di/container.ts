@@ -659,6 +659,7 @@ export function createContainer(deps: ContainerDeps): Container {
     pathService,
     transcriber,
     summarizer,
+    appConfigRepository,
     echoCanceller,
     liveTranscriber,
     appendToJournal: (content, workspaceId) =>
@@ -901,6 +902,9 @@ export function registerIPCHandlers(): void {
     getAIProviderKeys: container.settingsUseCases.getAIProviderKeys,
     setAIProviderKey: container.settingsUseCases.setAIProviderKey,
     deleteAIProviderKey: container.settingsUseCases.deleteAIProviderKey,
+    getMeetings: container.settingsUseCases.getMeetings,
+    updateMeetings: container.settingsUseCases.updateMeetings,
+    resetMeetings: container.settingsUseCases.resetMeetings,
   });
   registerAIHandlers({
     aiUseCases: container.aiUseCases,

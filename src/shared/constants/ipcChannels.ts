@@ -203,6 +203,10 @@ export const SETTINGS_CHANNELS = {
   GET_AI_PROVIDER_KEYS: 'settings:getAIProviderKeys',
   SET_AI_PROVIDER_KEY: 'settings:setAIProviderKey',
   DELETE_AI_PROVIDER_KEY: 'settings:deleteAIProviderKey',
+  // Meetings
+  GET_MEETINGS: 'settings:getMeetings',
+  UPDATE_MEETINGS: 'settings:updateMeetings',
+  RESET_MEETINGS: 'settings:resetMeetings',
 } as const;
 
 // System Operations

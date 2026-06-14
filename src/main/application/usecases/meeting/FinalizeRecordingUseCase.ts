@@ -13,6 +13,7 @@
 import {
   DEFAULT_MEETING_SUMMARY_PROMPT,
   MeetingRecordingNotFoundError,
+  type IAppConfigRepository,
   type IEchoCanceller,
   type IFileStorage,
   type IMeetingRecordingRepository,
@@ -27,6 +28,7 @@ import {
   type FinalizeRecordingRequest,
   type FinalizeRecordingResponse,
 } from '../../../domain/ports/in/IMeetingUseCases';
+import { deleteRecordingAudioFiles } from './meetingAudioCleanup';
 import { reprocessRecordingAudio } from './meetingReprocess';
 
 export interface FinalizeRecordingUseCaseDeps {
@@ -36,6 +38,7 @@ export interface FinalizeRecordingUseCaseDeps {
   pathService: IPathService;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  appConfigRepository: IAppConfigRepository;
   /** Optional — cancels speaker bleed from the mic using the system track as
    *  the reference before transcription. Best-effort: skipped on failure. */
   echoCanceller?: IEchoCanceller;
@@ -82,16 +85,21 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
       return { recording: recording.toPersistence() };
     }
 
-    // TEMP: audio deletion disabled so recorded WAVs can be inspected while we
-    // build per-source (mic vs system) transcription. Restore before shipping —
-    // the privacy model deletes audio once transcript + summary exist.
-    // try {
-    //   await this.deps.fileStorage.delete(audioAbsolutePath);
-    //   recording.clearAudio();
-    //   await this.deps.meetingRepository.save(recording);
-    // } catch {
-    //   // intentional swallow — audio cleanup is best-effort.
-    // }
+    // Retention: when the user picks "delete after transcribing" (-1), drop
+    // the audio now that transcript + summary exist. Other settings (0 = keep,
+    // N = keep N days) leave the audio for replay / re-transcribe; the startup
+    // PruneRecordingAudioUseCase enforces the N-day window. Best-effort — a
+    // failed cleanup never fails finalize.
+    const config = await this.deps.appConfigRepository.get();
+    if (config.meetings.audioRetentionDays === -1 && recording.audioPath) {
+      await deleteRecordingAudioFiles(
+        { fileStorage: this.deps.fileStorage, pathService: this.deps.pathService },
+        workspace.folderPath,
+        recording.audioPath,
+      );
+      recording.clearAudio();
+      await this.deps.meetingRepository.save(recording);
+    }
 
     return { recording: recording.toPersistence() };
   }

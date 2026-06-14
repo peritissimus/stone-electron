@@ -16,16 +16,45 @@ import { Check, CircleNotch, DownloadSimple, Warning } from '@phosphor-icons/rea
 import { ContainerStack } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
 import { Progress } from '@renderer/components/base/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@renderer/components/base/ui/select';
 import { Caption } from '@renderer/components/base/ui/text';
 import { DevicePermissions } from '@renderer/components/composites/DevicePermissions';
 import { useOnboarding, useModelDownloadProgress } from '@renderer/hooks/useOnboarding';
+import { useMeetingsSettings } from '@renderer/hooks/useMeetingsSettings';
 import { SettingsSection } from './SettingsSection';
 
 type ModelState = 'idle' | 'running' | 'ready' | 'failed';
 
+interface RetentionOption {
+  value: number;
+  label: string;
+}
+
+const RETENTION_OPTIONS: RetentionOption[] = [
+  { value: -1, label: 'Delete after transcribing' },
+  { value: 0, label: 'Keep until I delete it' },
+  { value: 7, label: 'Keep 7 days' },
+  { value: 30, label: 'Keep 30 days' },
+  { value: 90, label: 'Keep 90 days' },
+];
+
+function retentionHint(days: number): string {
+  if (days === -1) return 'Audio is removed as soon as the transcript is ready — most private.';
+  if (days === 0) return 'Audio is kept until you delete the meeting.';
+  return `Audio is removed ${days} day${days === 1 ? '' : 's'} after it was recorded.`;
+}
+
 export function RecordingSettings() {
   const { warmUpWhisper } = useOnboarding();
   const progress = useModelDownloadProgress();
+  const { meetings, loaded: retentionLoaded, saving: retentionSaving, setAudioRetentionDays } =
+    useMeetingsSettings();
   const [modelState, setModelState] = useState<ModelState>('idle');
 
   const handleVerifyModel = async () => {
@@ -33,6 +62,17 @@ export function RecordingSettings() {
     const ok = await warmUpWhisper();
     setModelState(ok ? 'ready' : 'failed');
   };
+
+  // Keep the dropdown honest if config holds a non-preset day count.
+  const retentionOptions = RETENTION_OPTIONS.some((o) => o.value === meetings.audioRetentionDays)
+    ? RETENTION_OPTIONS
+    : [
+        ...RETENTION_OPTIONS,
+        {
+          value: meetings.audioRetentionDays,
+          label: `Keep ${meetings.audioRetentionDays} days`,
+        },
+      ];
 
   return (
     <ContainerStack gap="xl">
@@ -108,9 +148,35 @@ export function RecordingSettings() {
         title="Privacy"
         description="Audio is transcribed on this device and never uploaded."
       >
-        <Caption className="text-muted-foreground">
-          Recordings keep their audio so you can replay or re-transcribe them. Delete a meeting to
-          remove its audio. (A configurable auto-delete schedule is coming.)
+        <div className="rounded-xl bg-muted/40 p-3">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-foreground">Keep recording audio</div>
+              <Caption className="text-pretty text-muted-foreground">
+                {retentionHint(meetings.audioRetentionDays)}
+              </Caption>
+            </div>
+            <Select
+              value={String(meetings.audioRetentionDays)}
+              disabled={!retentionLoaded || retentionSaving}
+              onValueChange={(value) => void setAudioRetentionDays(Number(value))}
+            >
+              <SelectTrigger className="w-48 shrink-0 tabular-nums">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {retentionOptions.map((option) => (
+                  <SelectItem key={option.value} value={String(option.value)}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <Caption className="mt-2 block text-pretty text-muted-foreground">
+          Transcripts and summaries are always kept — only the audio is removed. You can replay or
+          re-transcribe a meeting only while its audio is still on disk.
         </Caption>
       </SettingsSection>
     </ContainerStack>

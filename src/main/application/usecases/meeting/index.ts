@@ -1,4 +1,5 @@
 import type {
+  IAppConfigRepository,
   IEchoCanceller,
   IFileStorage,
   IIdGenerator,
@@ -11,6 +12,7 @@ import type {
   IWorkspaceRepository,
 } from '../../../domain';
 import { createLiveTranscriptionUseCases } from './LiveTranscriptionUseCases';
+import { PruneRecordingAudioUseCase } from './PruneRecordingAudioUseCase';
 import { RetranscribeMeetingUseCase } from './RetranscribeMeetingUseCase';
 import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
@@ -28,6 +30,7 @@ export { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
 export { GetMeetingRecordingUseCase } from './GetMeetingRecordingUseCase';
 export { GetMeetingAudioUseCase } from './GetMeetingAudioUseCase';
 export { ListMeetingRecordingsUseCase } from './ListMeetingRecordingsUseCase';
+export { PruneRecordingAudioUseCase } from './PruneRecordingAudioUseCase';
 export { ReserveRecordingSlotUseCase, RECORDINGS_DIR } from './ReserveRecordingSlotUseCase';
 export { ResummarizeMeetingUseCase } from './ResummarizeMeetingUseCase';
 export { SendToJournalUseCase } from './SendToJournalUseCase';
@@ -40,6 +43,7 @@ export interface MeetingUseCasesDeps {
   pathService: IPathService;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  appConfigRepository: IAppConfigRepository;
   echoCanceller?: IEchoCanceller;
   liveTranscriber?: ILiveTranscriber;
   appendToJournal: (
@@ -71,6 +75,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       pathService: deps.pathService,
       transcriber: deps.transcriber,
       summarizer: deps.summarizer,
+      appConfigRepository: deps.appConfigRepository,
       echoCanceller: deps.echoCanceller,
       defaultPrompt: deps.defaultPrompt,
     }),
@@ -109,6 +114,13 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
     sendToJournal: new SendToJournalUseCase({
       meetingRepository: deps.meetingRepository,
       appendToJournal: deps.appendToJournal,
+    }),
+    pruneRecordingAudio: new PruneRecordingAudioUseCase({
+      meetingRepository: deps.meetingRepository,
+      workspaceRepository: deps.workspaceRepository,
+      fileStorage: deps.fileStorage,
+      pathService: deps.pathService,
+      appConfigRepository: deps.appConfigRepository,
     }),
     liveTranscription: createLiveTranscriptionUseCases(deps.liveTranscriber),
   };

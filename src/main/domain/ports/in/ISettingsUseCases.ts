@@ -12,6 +12,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  MeetingsConfig,
   ShortcutsConfig,
 } from '../../value-objects/AppConfig';
 import type { AIProviderId, AIProviderKeyStatus } from '../out/IAIProviderKeyStore';
@@ -130,6 +131,20 @@ export interface IDeleteAIProviderKeyUseCase {
   }): Promise<AIProviderKeyStatus[]>;
 }
 
+// ----- meetings -----
+
+export interface IGetMeetingsSettingsUseCase {
+  execute(): Promise<MeetingsConfig>;
+}
+
+export interface IUpdateMeetingsSettingsUseCase {
+  execute(request: { meetings: Partial<MeetingsConfig> }): Promise<MeetingsConfig>;
+}
+
+export interface IResetMeetingsSettingsUseCase {
+  execute(): Promise<MeetingsConfig>;
+}
+
 /**
  * Aggregated settings use cases interface for DI container
  */
@@ -155,4 +170,7 @@ export interface ISettingsUseCases {
   getAIProviderKeys: IGetAIProviderKeysUseCase;
   setAIProviderKey: ISetAIProviderKeyUseCase;
   deleteAIProviderKey: IDeleteAIProviderKeyUseCase;
+  getMeetings: IGetMeetingsSettingsUseCase;
+  updateMeetings: IUpdateMeetingsSettingsUseCase;
+  resetMeetings: IResetMeetingsSettingsUseCase;
 }

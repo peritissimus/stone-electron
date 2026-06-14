@@ -199,6 +199,12 @@ export const AIProviderKeyStatusSchema = z.object({
   activeSource: z.enum(['env', 'stored']).nullable(),
 });
 
+// ----- meetings settings -----
+
+export const MeetingsConfigSchema = z.object({
+  audioRetentionDays: z.number().int(),
+});
+
 // ============================================================================
 // Search Schemas
 // ============================================================================

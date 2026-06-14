@@ -458,6 +458,17 @@ app.on('ready', async () => {
       logger.error('Failed to start file watcher:', e);
     }
 
+    // Audio retention sweep — delete recording audio past the configured
+    // window (transcript + summary are kept). Best-effort, off the hot path.
+    void container.meetingUseCases.pruneRecordingAudio
+      .execute()
+      .then(({ deletedCount }) => {
+        if (deletedCount > 0) {
+          logger.info(`[Retention] Pruned audio for ${deletedCount} recording(s)`);
+        }
+      })
+      .catch((e) => logger.error('[Retention] Audio prune sweep failed:', e));
+
     // Mark startup complete and start continuous monitoring
     perfMonitor.markStartupComplete();
     perfMonitor.startMonitoring();

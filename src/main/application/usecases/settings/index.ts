@@ -34,6 +34,11 @@ import {
   SetAIProviderKeyUseCase,
   UpdateAISettingsUseCase,
 } from './ai';
+import {
+  GetMeetingsSettingsUseCase,
+  ResetMeetingsSettingsUseCase,
+  UpdateMeetingsSettingsUseCase,
+} from './meetings';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
@@ -64,6 +69,11 @@ export {
   SetAIProviderKeyUseCase,
   UpdateAISettingsUseCase,
 } from './ai';
+export {
+  GetMeetingsSettingsUseCase,
+  ResetMeetingsSettingsUseCase,
+  UpdateMeetingsSettingsUseCase,
+} from './meetings';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;
@@ -97,5 +107,8 @@ export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUse
     getAIProviderKeys: new GetAIProviderKeysUseCase(aiProviderKeyStore),
     setAIProviderKey: new SetAIProviderKeyUseCase(aiProviderKeyStore, eventPublisher),
     deleteAIProviderKey: new DeleteAIProviderKeyUseCase(aiProviderKeyStore, eventPublisher),
+    getMeetings: new GetMeetingsSettingsUseCase(appConfigRepository),
+    updateMeetings: new UpdateMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
+    resetMeetings: new ResetMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
   };
 }

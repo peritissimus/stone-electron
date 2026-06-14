@@ -5,6 +5,8 @@ import type { WorkspaceProps } from '../../../../src/main/domain/entities/Worksp
 import type { IMeetingUseCases } from '../../../../src/main/domain/ports/in/IMeetingUseCases';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMeetingRecordingRepository } from '../../../../src/main/domain/ports/out/IMeetingRecordingRepository';
+import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
+import { DEFAULT_APP_CONFIG, type AppConfig } from '../../../../src/main/domain/value-objects/AppConfig';
 import type { ISummarizationStrategy } from '../../../../src/main/domain/ports/out/ISummarizationStrategy';
 import type { ITranscriber } from '../../../../src/main/domain/ports/out/ITranscriber';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -16,7 +18,19 @@ function createMockMeetingRepository(): IMeetingRecordingRepository {
     findById: vi.fn(),
     list: vi.fn(),
     delete: vi.fn(),
+    listWithAudioOlderThan: vi.fn().mockResolvedValue([]),
   };
+}
+
+function createMockAppConfigRepository(audioRetentionDays = 0): IAppConfigRepository {
+  const config: AppConfig = {
+    ...DEFAULT_APP_CONFIG,
+    meetings: { ...DEFAULT_APP_CONFIG.meetings, audioRetentionDays },
+  };
+  return {
+    get: vi.fn().mockResolvedValue(config),
+    update: vi.fn(async (mutate: (config: AppConfig) => AppConfig) => mutate(config)),
+  } as unknown as IAppConfigRepository;
 }
 
 function createMockWorkspaceRepository(): IWorkspaceRepository {
@@ -126,6 +140,7 @@ describe('MeetingUseCases', () => {
       pathService: createMockPathService(),
       transcriber,
       summarizer,
+      appConfigRepository: createMockAppConfigRepository(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -338,6 +353,7 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       echoCanceller,
+      appConfigRepository: createMockAppConfigRepository(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -386,6 +402,7 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       echoCanceller,
+      appConfigRepository: createMockAppConfigRepository(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -441,5 +458,100 @@ describe('MeetingUseCases', () => {
     await expect(useCases.retranscribeMeeting.execute({ recordingId: 'rec-1' })).rejects.toThrow(
       /audio/i,
     );
+  });
+
+  it('deletes audio after finalize when retention is "delete after transcribing" (-1)', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(false); // mic-only
+    vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+
+    const deleteNowUseCases = createMeetingUseCases({
+      meetingRepository,
+      workspaceRepository,
+      fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
+      transcriber,
+      summarizer,
+      appConfigRepository: createMockAppConfigRepository(-1),
+      appendToJournal,
+      defaultPrompt: 'Default prompt {{transcript}}',
+    });
+
+    const result = await deleteNowUseCases.finalizeRecording.execute({
+      recordingId: 'rec-1',
+      durationMs: 2_000,
+    });
+
+    // Both tracks removed; transcript + summary survive, audioPath cleared.
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.system.wav');
+    expect(result.recording.audioPath).toBeNull();
+    expect(result.recording.transcriptText).toBeTruthy();
+  });
+
+  it('keeps audio after finalize when retention keeps it (0)', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(false);
+    vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+
+    const result = await useCases.finalizeRecording.execute({
+      recordingId: 'rec-1',
+      durationMs: 2_000,
+    });
+
+    expect(fileStorage.delete).not.toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
+    expect(result.recording.audioPath).toBe('.stone/recordings/rec-1.wav');
+  });
+
+  it('prunes audio for recordings past the retention window (N days)', async () => {
+    const stale = recording();
+    vi.mocked(meetingRepository.listWithAudioOlderThan).mockResolvedValue([stale]);
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+
+    const pruneUseCases = createMeetingUseCases({
+      meetingRepository,
+      workspaceRepository,
+      fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
+      transcriber,
+      summarizer,
+      appConfigRepository: createMockAppConfigRepository(30),
+      appendToJournal,
+      defaultPrompt: 'Default prompt {{transcript}}',
+    });
+
+    const result = await pruneUseCases.pruneRecordingAudio.execute();
+
+    expect(result.deletedCount).toBe(1);
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.system.wav');
+    // Persisted with audioPath cleared.
+    const saved = vi.mocked(meetingRepository.save).mock.calls.at(-1)?.[0];
+    expect(saved?.audioPath).toBeNull();
+  });
+
+  it('does not prune audio when retention keeps it (0)', async () => {
+    const pruneUseCases = createMeetingUseCases({
+      meetingRepository,
+      workspaceRepository,
+      fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
+      transcriber,
+      summarizer,
+      appConfigRepository: createMockAppConfigRepository(0),
+      appendToJournal,
+      defaultPrompt: 'Default prompt {{transcript}}',
+    });
+
+    const result = await pruneUseCases.pruneRecordingAudio.execute();
+
+    expect(result.deletedCount).toBe(0);
+    expect(meetingRepository.listWithAudioOlderThan).not.toHaveBeenCalled();
   });
 });

@@ -105,6 +105,13 @@ export interface RetranscribeMeetingResponse {
   recording: MeetingRecordingProps;
 }
 
+// ---------- Prune audio (retention sweep) ----------
+
+export interface PruneRecordingAudioResponse {
+  /** How many recordings had their audio deleted in this sweep. */
+  deletedCount: number;
+}
+
 // ---------- Send to journal (always appends fresh) ----------
 
 export interface SendToJournalRequest {
@@ -167,6 +174,15 @@ export interface ISendToJournalUseCase {
   execute(request: SendToJournalRequest): Promise<SendToJournalResponse>;
 }
 
+/**
+ * Deletes audio for recordings older than the configured retention window.
+ * Transcript + summary are preserved; only the audio files are removed.
+ * Internal maintenance task run at startup — not exposed over IPC.
+ */
+export interface IPruneRecordingAudioUseCase {
+  execute(): Promise<PruneRecordingAudioResponse>;
+}
+
 // ---------- Live transcription (fast raw draft while recording) ----------
 
 export interface ILiveTranscriptionUseCases {
@@ -189,5 +205,6 @@ export interface IMeetingUseCases {
   resummarizeMeeting: IResummarizeMeetingUseCase;
   retranscribeMeeting: IRetranscribeMeetingUseCase;
   sendToJournal: ISendToJournalUseCase;
+  pruneRecordingAudio: IPruneRecordingAudioUseCase;
   liveTranscription: ILiveTranscriptionUseCases;
 }

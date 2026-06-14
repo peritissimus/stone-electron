@@ -35,6 +35,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  MeetingsConfig,
   ShortcutsConfig,
 } from '@shared/types/settings';
 import { validateResponse } from './validation';
@@ -44,6 +45,7 @@ import {
   AIConfigSchema,
   AIProviderKeyStatusSchema,
   EditorSettingsSchema,
+  MeetingsConfigSchema,
   ShortcutsConfigSchema,
 } from './schemas';
 
@@ -183,6 +185,25 @@ export const settingsAPI = {
   ): Promise<IpcResponse<AIProviderKeyStatus[]>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.DELETE_AI_PROVIDER_KEY, { provider });
     return validateResponse(response, z.array(AIProviderKeyStatusSchema));
+  },
+
+  // ----- meetings settings -----
+
+  getMeetings: async (): Promise<IpcResponse<MeetingsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_MEETINGS, {});
+    return validateResponse(response, MeetingsConfigSchema);
+  },
+
+  updateMeetings: async (
+    meetings: Partial<MeetingsConfig>,
+  ): Promise<IpcResponse<MeetingsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_MEETINGS, { meetings });
+    return validateResponse(response, MeetingsConfigSchema);
+  },
+
+  resetMeetings: async (): Promise<IpcResponse<MeetingsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_MEETINGS, {});
+    return validateResponse(response, MeetingsConfigSchema);
   },
 };
 

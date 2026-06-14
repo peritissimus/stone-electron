@@ -24,4 +24,10 @@ export interface IMeetingRecordingRepository {
   findById(id: string): Promise<MeetingRecordingEntity | null>;
   list(options: ListMeetingRecordingsOptions): Promise<ListMeetingRecordingsResult>;
   delete(id: string): Promise<void>;
+  /**
+   * Recordings that still have audio on disk (`audioPath` non-null) and were
+   * created strictly before `cutoff`. Spans all workspaces — the audio
+   * retention sweep resolves each recording's workspace folder itself.
+   */
+  listWithAudioOlderThan(cutoff: Date): Promise<MeetingRecordingEntity[]>;
 }

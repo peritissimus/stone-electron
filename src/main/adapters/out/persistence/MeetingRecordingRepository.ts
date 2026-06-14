@@ -4,7 +4,7 @@
  * (they're never queried structurally, only loaded back wholesale).
  */
 
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, lt } from 'drizzle-orm';
 import { meetingRecordings, type Database } from '../../../shared';
 import {
   MeetingRecordingEntity,
@@ -121,6 +121,25 @@ export class MeetingRecordingRepository implements IMeetingRecordingRepository {
         return { recordings, nextCursor };
       },
       { workspaceId: options.workspaceId, limit: options.limit ?? null },
+    );
+  }
+
+  async listWithAudioOlderThan(cutoff: Date): Promise<MeetingRecordingEntity[]> {
+    return this.handle(
+      'listWithAudioOlderThan',
+      async () => {
+        const rows = await this.deps.db
+          .select()
+          .from(meetingRecordings)
+          .where(
+            and(
+              isNotNull(meetingRecordings.audioPath),
+              lt(meetingRecordings.createdAt, cutoff),
+            ),
+          );
+        return rows.map((row) => MeetingRecordingEntity.fromPersistence(this.toProps(row)));
+      },
+      { cutoff: cutoff.toISOString() },
     );
   }
 
