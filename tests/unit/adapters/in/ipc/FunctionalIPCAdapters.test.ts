@@ -155,7 +155,6 @@ describe('function-style IPC adapters', () => {
       askNotes: execute({ answer: 'answer', sources: [] }),
       summarizeNote: execute({ summary: 'summary' }),
       suggestLinks: execute({ suggestions: [] }),
-      warmUpTranscriber: execute({ ready: true }),
     };
 
     registerAIHandlers({ aiUseCases } as any);
@@ -167,10 +166,8 @@ describe('function-style IPC adapters', () => {
     });
     await invoke(AI_CHANNELS.SUMMARIZE_NOTE, { noteId: 'note-1' });
     await invoke(AI_CHANNELS.SUGGEST_LINKS, { noteId: 'note-1' });
-    await invoke(AI_CHANNELS.WARM_TRANSCRIBER);
 
     expect(aiUseCases.askNotes.execute).toHaveBeenCalledWith({ query: 'q', workspaceId: 'ws-1' });
-    expect(aiUseCases.warmUpTranscriber.execute).toHaveBeenCalledWith();
 
     unregisterAIHandlers();
     expectUnregistered(Object.values(AI_CHANNELS));
@@ -419,6 +416,7 @@ describe('function-style IPC adapters', () => {
       deleteMeetingRecording: execute({ deleted: true }),
       resummarizeMeeting: execute({ summary: 'summary' }),
       sendToJournal: execute({ noteId: 'journal-1' }),
+      warmUpTranscriber: execute({ ready: true }),
     };
     const windowRef = { id: 1 } as any;
     const performanceDeps = {
@@ -447,6 +445,7 @@ describe('function-style IPC adapters', () => {
     await invoke(MEETING_CHANNELS.DELETE, { recordingId: 'rec-1' });
     await invoke(MEETING_CHANNELS.RESUMMARIZE, { recordingId: 'rec-1', promptTemplate: 'short' });
     await invoke(MEETING_CHANNELS.SEND_TO_JOURNAL, { recordingId: 'rec-1', journalDate: '2026-04-21' });
+    await invoke(MEETING_CHANNELS.WARM_TRANSCRIBER);
     await expect(invoke(PERFORMANCE_CHANNELS.GET_SNAPSHOT, 500)).resolves.toMatchObject({
       success: true,
       data: { cpu: { usage: 1 }, renderer: { paints: 1 } },

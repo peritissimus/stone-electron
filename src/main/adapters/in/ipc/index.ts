@@ -5,11 +5,19 @@
  */
 
 // Core note operations
-export { NoteIPC, type NoteIPCDeps } from './NoteIPC';
-export { NotebookIPC, type NotebookIPCDeps } from './NotebookIPC';
-export { WorkspaceIPC, type WorkspaceIPCDeps } from './WorkspaceIPC';
-export { TagIPC, type TagIPCDeps } from './TagIPC';
-export { SearchIPC, type SearchIPCDeps } from './SearchIPC';
+export { registerNoteHandlers, unregisterNoteHandlers, type NoteIPCDeps } from './NoteIPC';
+export {
+  registerNotebookHandlers,
+  unregisterNotebookHandlers,
+  type NotebookIPCDeps,
+} from './NotebookIPC';
+export {
+  registerWorkspaceHandlers,
+  unregisterWorkspaceHandlers,
+  type WorkspaceIPCDeps,
+} from './WorkspaceIPC';
+export { registerTagHandlers, unregisterTagHandlers, type TagIPCDeps } from './TagIPC';
+export { registerSearchHandlers, unregisterSearchHandlers, type SearchIPCDeps } from './SearchIPC';
 
 // AI-assisted PKM
 export { registerAIHandlers, unregisterAIHandlers, type AIIPCDeps } from './AIIPC';

@@ -183,6 +183,17 @@ export interface IPruneRecordingAudioUseCase {
   execute(): Promise<PruneRecordingAudioResponse>;
 }
 
+// ---------- Warm up the transcriber (preload the Whisper model) ----------
+
+export interface WarmUpTranscriberResponse {
+  /** True once the Whisper model is loaded and ready to transcribe. */
+  ready: boolean;
+}
+
+export interface IWarmUpTranscriberUseCase {
+  execute(): Promise<WarmUpTranscriberResponse>;
+}
+
 // ---------- Live transcription (fast raw draft while recording) ----------
 
 export interface ILiveTranscriptionUseCases {
@@ -206,5 +217,6 @@ export interface IMeetingUseCases {
   retranscribeMeeting: IRetranscribeMeetingUseCase;
   sendToJournal: ISendToJournalUseCase;
   pruneRecordingAudio: IPruneRecordingAudioUseCase;
+  warmUpTranscriber: IWarmUpTranscriberUseCase;
   liveTranscription: ILiveTranscriptionUseCases;
 }
