@@ -74,6 +74,13 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     ),
   );
 
+  ipcMain.handle(MEETING_CHANNELS.GET_AUDIO, async (_event, request) =>
+    handleRequest(
+      async () => meetingUseCases.getMeetingAudio.execute({ recordingId: request.recordingId }),
+      { channel: MEETING_CHANNELS.GET_AUDIO, recordingId: request?.recordingId },
+    ),
+  );
+
   ipcMain.handle(MEETING_CHANNELS.DELETE, async (_event, request) =>
     handleRequest(
       async () =>

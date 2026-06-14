@@ -18,6 +18,8 @@ import {
   Check,
   CircleNotch,
   ArrowSquareOut,
+  Play,
+  Pause,
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
@@ -26,6 +28,7 @@ import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useMeetings } from '@renderer/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
+import { useMeetingPlayback, type MeetingPlayback } from '@renderer/hooks/useMeetingPlayback';
 import { InlineRecordingPanel } from './InlineRecordingPanel';
 import { toNote } from '@renderer/navigation';
 import type { MeetingRecording, MeetingRecordingStatus } from '@shared/types';
@@ -191,6 +194,7 @@ function DetailPanel({
   onSendToJournal: () => void;
   onDelete: () => void;
 }) {
+  const playback = useMeetingPlayback(recording.id, recording.durationMs);
   return (
     <div className="mx-auto max-w-3xl px-8 py-7">
       <div className="flex items-start gap-3">
@@ -249,6 +253,8 @@ function DetailPanel({
         <DeleteButton onConfirm={onDelete} disabled={busy} />
       </div>
 
+      {playback.available && <AudioPlayer playback={playback} />}
+
       {recording.status === 'failed' && recording.error && (
         <div className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
           <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
@@ -262,9 +268,59 @@ function DetailPanel({
       )}
 
       <SummarySection recording={recording} />
-      <TranscriptSection recording={recording} />
+      <TranscriptSection
+        recording={recording}
+        currentMs={playback.available ? playback.currentMs : null}
+        onSeek={playback.available ? playback.seek : undefined}
+      />
     </div>
   );
+}
+
+// =============================================================================
+// Audio player
+// =============================================================================
+
+function AudioPlayer({ playback }: { playback: MeetingPlayback }) {
+  const { isPlaying, currentMs, durationMs, toggle, seek } = playback;
+  const max = durationMs || 1;
+  return (
+    <div className="mt-5 flex items-center gap-3 rounded-xl border border-border bg-muted/20 px-3 py-2.5">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={isPlaying ? 'Pause' : 'Play'}
+        className={cn(
+          'flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground',
+          'shadow-[0_1px_2px_rgba(0,0,0,0.08)] transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.94]',
+        )}
+      >
+        {isPlaying ? <Pause size={15} weight="fill" /> : <Play size={15} weight="fill" className="ml-0.5" />}
+      </button>
+      <span className="w-10 shrink-0 text-[11px] tabular-nums text-muted-foreground">
+        {formatClock(currentMs)}
+      </span>
+      <input
+        type="range"
+        min={0}
+        max={max}
+        value={Math.min(currentMs, max)}
+        onChange={(e) => seek(Number(e.target.value))}
+        aria-label="Seek"
+        className="h-1 flex-1 cursor-pointer accent-primary"
+      />
+      <span className="w-10 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
+        {formatClock(durationMs)}
+      </span>
+    </div>
+  );
+}
+
+function formatClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 function SummarySection({ recording }: { recording: MeetingRecording }) {
@@ -313,7 +369,17 @@ function formatTimestamp(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function TranscriptSection({ recording }: { recording: MeetingRecording }) {
+function TranscriptSection({
+  recording,
+  currentMs,
+  onSeek,
+}: {
+  recording: MeetingRecording;
+  /** Playback position for highlighting the active turn; null when no audio. */
+  currentMs: number | null;
+  /** Seek the player to a turn's start; absent when audio isn't available. */
+  onSeek?: (ms: number) => void;
+}) {
   // Auto-expand when failed so users can see the transcript that did save
   // even though summarisation didn't — otherwise it looks like nothing
   // was captured.
@@ -328,6 +394,11 @@ function TranscriptSection({ recording }: { recording: MeetingRecording }) {
   }
 
   const turns = groupTurns(recording.transcriptSegments ?? []);
+  // The active turn is the last one whose start is at/just before the cursor.
+  const activeTurn =
+    currentMs === null
+      ? -1
+      : turns.reduce((active, turn, i) => (turn.startMs <= currentMs ? i : active), -1);
 
   return (
     <section className="mt-6">
@@ -346,10 +417,25 @@ function TranscriptSection({ recording }: { recording: MeetingRecording }) {
         (turns.length > 0 ? (
           <div className="mt-3 max-h-[480px] space-y-4 overflow-auto rounded-xl border border-border bg-muted/20 p-4">
             {turns.map((turn, i) => (
-              <div key={i} className="flex gap-3">
-                <span className="w-9 shrink-0 pt-[3px] text-[11px] tabular-nums text-muted-foreground/70">
+              <div
+                key={i}
+                className={cn(
+                  '-mx-1.5 flex gap-3 rounded-lg px-1.5 py-1 transition-colors',
+                  i === activeTurn && 'bg-primary/10',
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => onSeek?.(turn.startMs)}
+                  disabled={!onSeek}
+                  title={onSeek ? 'Play from here' : undefined}
+                  className={cn(
+                    'w-9 shrink-0 pt-[3px] text-left text-[11px] tabular-nums text-muted-foreground/70',
+                    onSeek && 'cursor-pointer hover:text-primary hover:underline',
+                  )}
+                >
                   {formatTimestamp(turn.startMs)}
-                </span>
+                </button>
                 <div className="min-w-0 flex-1">
                   <span
                     className={cn(

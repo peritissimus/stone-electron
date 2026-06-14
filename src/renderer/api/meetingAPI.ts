@@ -106,6 +106,14 @@ export const meetingAPI = {
     return validateResponse(response, FinalizeResponseSchema);
   },
 
+  /** Raw WAV bytes for playback (mic + optional system track). Not zod-validated
+   *  — binary payload from our own main process. */
+  getAudio: async (
+    recordingId: string,
+  ): Promise<IpcResponse<{ mic: Uint8Array | null; system: Uint8Array | null }>> => {
+    return invokeIpc(MEETING_CHANNELS.GET_AUDIO, { recordingId });
+  },
+
   list: async (input?: {
     workspaceId?: string;
     limit?: number;

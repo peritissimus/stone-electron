@@ -123,6 +123,7 @@ export const MEETING_CHANNELS = {
   FINALIZE: 'meetings:finalize',
   LIST: 'meetings:list',
   GET: 'meetings:get',
+  GET_AUDIO: 'meetings:getAudio',
   DELETE: 'meetings:delete',
   RESUMMARIZE: 'meetings:resummarize',
   SEND_TO_JOURNAL: 'meetings:sendToJournal',

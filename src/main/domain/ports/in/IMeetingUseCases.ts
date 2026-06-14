@@ -129,6 +129,17 @@ export interface IGetMeetingRecordingUseCase {
   execute(request: GetMeetingRecordingRequest): Promise<GetMeetingRecordingResponse>;
 }
 
+export interface GetMeetingAudioResponse {
+  /** Mic-track WAV bytes, or null if the recording has no/deleted audio. */
+  mic: Uint8Array | null;
+  /** System-track WAV bytes, or null when mic-only. */
+  system: Uint8Array | null;
+}
+
+export interface IGetMeetingAudioUseCase {
+  execute(request: { recordingId: string }): Promise<GetMeetingAudioResponse>;
+}
+
 export interface IDeleteMeetingRecordingUseCase {
   execute(request: DeleteMeetingRecordingRequest): Promise<void>;
 }
@@ -147,6 +158,7 @@ export interface IMeetingUseCases {
   finalizeRecording: IFinalizeRecordingUseCase;
   listMeetingRecordings: IListMeetingRecordingsUseCase;
   getMeetingRecording: IGetMeetingRecordingUseCase;
+  getMeetingAudio: IGetMeetingAudioUseCase;
   deleteMeetingRecording: IDeleteMeetingRecordingUseCase;
   resummarizeMeeting: IResummarizeMeetingUseCase;
   sendToJournal: ISendToJournalUseCase;

@@ -12,6 +12,7 @@ import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 import { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
 import { GetMeetingRecordingUseCase } from './GetMeetingRecordingUseCase';
+import { GetMeetingAudioUseCase } from './GetMeetingAudioUseCase';
 import { ListMeetingRecordingsUseCase } from './ListMeetingRecordingsUseCase';
 import { ReserveRecordingSlotUseCase } from './ReserveRecordingSlotUseCase';
 import { ResummarizeMeetingUseCase } from './ResummarizeMeetingUseCase';
@@ -21,6 +22,7 @@ export { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 export { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 export { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
 export { GetMeetingRecordingUseCase } from './GetMeetingRecordingUseCase';
+export { GetMeetingAudioUseCase } from './GetMeetingAudioUseCase';
 export { ListMeetingRecordingsUseCase } from './ListMeetingRecordingsUseCase';
 export { ReserveRecordingSlotUseCase, RECORDINGS_DIR } from './ReserveRecordingSlotUseCase';
 export { ResummarizeMeetingUseCase } from './ResummarizeMeetingUseCase';
@@ -70,6 +72,12 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       deps.workspaceRepository,
     ),
     getMeetingRecording: new GetMeetingRecordingUseCase(deps.meetingRepository),
+    getMeetingAudio: new GetMeetingAudioUseCase(
+      deps.meetingRepository,
+      deps.workspaceRepository,
+      deps.fileStorage,
+      deps.pathService,
+    ),
     deleteMeetingRecording: new DeleteMeetingRecordingUseCase(
       deps.meetingRepository,
       deps.workspaceRepository,
