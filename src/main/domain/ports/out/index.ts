@@ -34,6 +34,7 @@ export * from './IIndexRepository';
 export * from './IReranker';
 export * from './IMeetingRecordingRepository';
 export * from './ITranscriber';
+export * from './ILiveTranscriber';
 export * from './IEchoCanceller';
 export * from './ISummarizationStrategy';
 export * from './ITemplateRepository';

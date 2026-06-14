@@ -2,6 +2,7 @@ import type {
   IEchoCanceller,
   IFileStorage,
   IIdGenerator,
+  ILiveTranscriber,
   IMeetingRecordingRepository,
   IMeetingUseCases,
   IPathService,
@@ -9,6 +10,7 @@ import type {
   ITranscriber,
   IWorkspaceRepository,
 } from '../../../domain';
+import { createLiveTranscriptionUseCases } from './LiveTranscriptionUseCases';
 import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 import { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
@@ -38,6 +40,7 @@ export interface MeetingUseCasesDeps {
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
   echoCanceller?: IEchoCanceller;
+  liveTranscriber?: ILiveTranscriber;
   appendToJournal: (
     content: string,
     workspaceId?: string,
@@ -96,5 +99,6 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       meetingRepository: deps.meetingRepository,
       appendToJournal: deps.appendToJournal,
     }),
+    liveTranscription: createLiveTranscriptionUseCases(deps.liveTranscriber),
   };
 }

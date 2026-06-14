@@ -13,6 +13,7 @@ import type {
   IpcResponse,
   MeetingRecording,
   MeetingRecordingStatus,
+  MeetingTranscriptSegment,
   RecordingSlot,
 } from '@shared/types';
 import { validateResponse } from './validation';
@@ -104,6 +105,20 @@ export const meetingAPI = {
   ): Promise<IpcResponse<{ recording: MeetingRecording }>> => {
     const response = await invokeIpc(MEETING_CHANNELS.FINALIZE, { recordingId, durationMs });
     return validateResponse(response, FinalizeResponseSchema);
+  },
+
+  /** Live draft: start/stop the resident model, transcribe raw WAV chunks
+   *  during recording. Not zod-validated — small trusted payloads. */
+  liveStart: async (): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_START, {});
+  },
+  transcribeLiveChunk: async (
+    wav: ArrayBuffer,
+  ): Promise<IpcResponse<{ text: string; segments: MeetingTranscriptSegment[] }>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_CHUNK, { wav });
+  },
+  liveStop: async (): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_STOP, {});
   },
 
   /** Raw WAV bytes for playback (mic + optional system track). Not zod-validated

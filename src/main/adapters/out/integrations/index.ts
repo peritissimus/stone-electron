@@ -27,6 +27,7 @@ export {
   type WhisperCppTranscriberDeps,
 } from './WhisperCppTranscriber';
 export { OnnxEchoCanceller, type OnnxEchoCancellerDeps } from './OnnxEchoCanceller';
+export { WhisperServer, type WhisperServerDeps } from './WhisperServer';
 export {
   SingleShotSummarizer,
   type SingleShotSummarizerDeps,

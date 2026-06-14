@@ -100,6 +100,25 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     ),
   );
 
+  ipcMain.handle(MEETING_CHANNELS.LIVE_START, async () =>
+    handleRequest(async () => meetingUseCases.liveTranscription.start(), {
+      channel: MEETING_CHANNELS.LIVE_START,
+    }),
+  );
+
+  ipcMain.handle(MEETING_CHANNELS.LIVE_CHUNK, async (_event, request) =>
+    handleRequest(
+      async () => meetingUseCases.liveTranscription.transcribeChunk({ wav: request.wav }),
+      { channel: MEETING_CHANNELS.LIVE_CHUNK },
+    ),
+  );
+
+  ipcMain.handle(MEETING_CHANNELS.LIVE_STOP, async () =>
+    handleRequest(async () => meetingUseCases.liveTranscription.stop(), {
+      channel: MEETING_CHANNELS.LIVE_STOP,
+    }),
+  );
+
   ipcMain.handle(MEETING_CHANNELS.SEND_TO_JOURNAL, async (_event, request) =>
     handleRequest(
       async () =>

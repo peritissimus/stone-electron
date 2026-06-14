@@ -183,6 +183,7 @@ import {
   AISDKTextGenerator,
   LocalReranker,
   WhisperCppTranscriber,
+  WhisperServer,
   OnnxEchoCanceller,
   SingleShotSummarizer,
   // Outbound (Secondary) - Events
@@ -414,6 +415,11 @@ export function createContainer(deps: ContainerDeps): Container {
   // Pre-warm in the background so the first meeting finalizes without a cold
   // model load stalling the pipeline (loads onnxruntime + the DTLN models).
   void echoCanceller.initialize().catch(() => {});
+
+  // Resident whisper-server for the live (raw) draft while recording. Started
+  // on demand when a recording begins; the clean transcript is still the batch
+  // finalize pass.
+  const liveTranscriber = new WhisperServer();
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
@@ -654,6 +660,7 @@ export function createContainer(deps: ContainerDeps): Container {
     transcriber,
     summarizer,
     echoCanceller,
+    liveTranscriber,
     appendToJournal: (content, workspaceId) =>
       quickCaptureUseCases.appendToJournal(content, workspaceId),
   });

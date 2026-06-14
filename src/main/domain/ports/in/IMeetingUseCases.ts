@@ -13,6 +13,7 @@
  */
 
 import type { MeetingRecordingProps } from '../../entities';
+import type { LiveChunkResult } from '../out/ILiveTranscriber';
 
 // ---------- Reserve recording slot (renderer prepares to capture) ----------
 
@@ -152,6 +153,17 @@ export interface ISendToJournalUseCase {
   execute(request: SendToJournalRequest): Promise<SendToJournalResponse>;
 }
 
+// ---------- Live transcription (fast raw draft while recording) ----------
+
+export interface ILiveTranscriptionUseCases {
+  /** Spawn/warm the resident model so chunks transcribe without a reload. */
+  start(): Promise<void>;
+  /** Transcribe one 16 kHz mono WAV chunk for the live draft. */
+  transcribeChunk(request: { wav: ArrayBuffer }): Promise<LiveChunkResult>;
+  /** Tear down the resident model (frees memory after recording). */
+  stop(): Promise<void>;
+}
+
 export interface IMeetingUseCases {
   reserveRecordingSlot: IReserveRecordingSlotUseCase;
   appendRecordingAudio: IAppendRecordingAudioUseCase;
@@ -162,4 +174,5 @@ export interface IMeetingUseCases {
   deleteMeetingRecording: IDeleteMeetingRecordingUseCase;
   resummarizeMeeting: IResummarizeMeetingUseCase;
   sendToJournal: ISendToJournalUseCase;
+  liveTranscription: ILiveTranscriptionUseCases;
 }

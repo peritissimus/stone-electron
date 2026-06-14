@@ -127,6 +127,10 @@ export const MEETING_CHANNELS = {
   DELETE: 'meetings:delete',
   RESUMMARIZE: 'meetings:resummarize',
   SEND_TO_JOURNAL: 'meetings:sendToJournal',
+  // Live (raw) draft while recording — resident model server.
+  LIVE_START: 'meetings:liveStart',
+  LIVE_CHUNK: 'meetings:liveChunk',
+  LIVE_STOP: 'meetings:liveStop',
   // Cross-window: Quick Capture sends this so the main window opens
   // the recording dock and focuses itself.
   REQUEST_RECORDING: 'meetings:requestRecording',
