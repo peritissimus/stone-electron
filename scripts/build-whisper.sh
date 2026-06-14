@@ -1,11 +1,13 @@
 #!/bin/bash
 #
-# build-whisper — compile the whisper.cpp CLI that powers local transcription.
+# build-whisper — compile the whisper.cpp binaries that power transcription.
 #
-# Clones a pinned whisper.cpp, builds a self-contained `whisper-cli` (static
-# libs so there are no .dylib siblings to bundle; Metal shaders embedded on
-# macOS), and drops the binary at vendor/whisper/bin/whisper-cli. The
-# WhisperCppTranscriber adapter spawns it; electron-builder bundles it.
+# Clones a pinned whisper.cpp, builds self-contained `whisper-cli` (batch) and
+# `whisper-server` (keeps the model resident for low-latency live/streaming
+# transcription) — static libs so there are no .dylib siblings to bundle; Metal
+# shaders embedded on macOS. Drops both at vendor/whisper/bin/. The
+# WhisperCppTranscriber adapter spawns whisper-cli; the live path uses the
+# server. electron-builder bundles both.
 #
 # Models are NOT downloaded here — the app fetches the GGML model on first use.
 set -e
@@ -35,18 +37,19 @@ cmake -S "$SRC_DIR" -B "$SRC_DIR/build" \
   -DBUILD_SHARED_LIBS=OFF \
   -DGGML_METAL_EMBED_LIBRARY=ON \
   -DWHISPER_BUILD_TESTS=OFF \
-  -DWHISPER_BUILD_SERVER=OFF \
+  -DWHISPER_BUILD_SERVER=ON \
   -DWHISPER_BUILD_EXAMPLES=ON
 
-echo "build-whisper: building whisper-cli…"
-cmake --build "$SRC_DIR/build" --config Release -j --target whisper-cli
-
-BIN="$SRC_DIR/build/bin/whisper-cli"
-if [ ! -f "$BIN" ]; then
-  echo "build-whisper: expected binary not found at $BIN" >&2
-  exit 1
-fi
+echo "build-whisper: building whisper-cli + whisper-server…"
+cmake --build "$SRC_DIR/build" --config Release -j --target whisper-cli whisper-server
 
 mkdir -p "$OUT_DIR"
-cp "$BIN" "$OUT_DIR/whisper-cli"
-echo "build-whisper: ✓ $OUT_DIR/whisper-cli"
+for name in whisper-cli whisper-server; do
+  BIN="$SRC_DIR/build/bin/$name"
+  if [ ! -f "$BIN" ]; then
+    echo "build-whisper: expected binary not found at $BIN" >&2
+    exit 1
+  fi
+  cp "$BIN" "$OUT_DIR/$name"
+  echo "build-whisper: ✓ $OUT_DIR/$name"
+done
