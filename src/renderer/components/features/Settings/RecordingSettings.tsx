@@ -45,13 +45,15 @@ export function RecordingSettings() {
 
       <SettingsSection
         title="Speech-to-text model"
-        description="Runs on this device. ~80 MB, downloaded once."
+        description="Runs on this device. Downloaded once on first use."
       >
         <div className="rounded-xl bg-muted/40 p-3">
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-foreground">Whisper base</div>
-              <Caption className="text-muted-foreground">Transcribes your recordings.</Caption>
+              <div className="text-sm font-medium text-foreground">Whisper large-v3-turbo</div>
+              <Caption className="text-muted-foreground">
+                Transcribes your recordings — strong multilingual accuracy.
+              </Caption>
             </div>
             {modelState === 'ready' && (
               <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
@@ -104,9 +106,12 @@ export function RecordingSettings() {
 
       <SettingsSection
         title="Privacy"
-        description="Audio never leaves this device. It's deleted after transcription."
+        description="Audio is transcribed on this device and never uploaded."
       >
-        <></>
+        <Caption className="text-muted-foreground">
+          Recordings keep their audio so you can replay or re-transcribe them. Delete a meeting to
+          remove its audio. (A configurable auto-delete schedule is coming.)
+        </Caption>
       </SettingsSection>
     </ContainerStack>
   );
