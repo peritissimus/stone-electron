@@ -18,6 +18,7 @@ import type {
   TranscribeResult,
   TranscriptSegment,
 } from '../../../domain';
+import { collapseRepeatedSegments } from '../../../domain';
 import { logger } from '../../../shared/utils';
 
 let app: { isPackaged?: boolean; getPath?: (n: string) => string } | null = null;
@@ -113,11 +114,15 @@ export class WhisperCppTranscriber implements ITranscriber {
       ]);
 
       const parsed = JSON.parse(await fs.readFile(jsonPath, 'utf8')) as WhisperJson;
-      const segments: TranscriptSegment[] = (parsed.transcription ?? []).map((s) => ({
+      const rawSegments: TranscriptSegment[] = (parsed.transcription ?? []).map((s) => ({
         text: s.text.trim(),
         startMs: s.offsets?.from ?? 0,
         endMs: s.offsets?.to ?? 0,
       }));
+      // Collapse consecutive-duplicate runs — whisper's repetition-loop
+      // hallucination on long/continuous audio (e.g. a phrase echoed once a
+      // second for minutes).
+      const segments = collapseRepeatedSegments(rawSegments);
       const text = segments
         .map((s) => s.text)
         .join(' ')

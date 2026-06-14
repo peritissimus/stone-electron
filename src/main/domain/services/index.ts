@@ -61,6 +61,7 @@ export type {
 
 export { NoteGraphBuilder } from './NoteGraphBuilder';
 export { stripFirstHeading } from './MarkdownTitle';
+export { collapseRepeatedSegments } from './transcriptRepeats';
 export {
   canonicalizeChord,
   detectConflicts,
