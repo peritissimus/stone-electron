@@ -411,6 +411,9 @@ export function createContainer(deps: ContainerDeps): Container {
   // track before transcription so the "You" transcript isn't polluted on
   // speakers. Best-effort; finalize falls back to the raw mic if it fails.
   const echoCanceller = new OnnxEchoCanceller();
+  // Pre-warm in the background so the first meeting finalizes without a cold
+  // model load stalling the pipeline (loads onnxruntime + the DTLN models).
+  void echoCanceller.initialize().catch(() => {});
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,

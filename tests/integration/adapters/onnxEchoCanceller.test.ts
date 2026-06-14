@@ -1,12 +1,12 @@
 /**
- * Integration test for OnnxEchoCanceller against the real ICASSP-2022 AEC model
- * via onnxruntime-node. Validates the full pipeline (WAV I/O, DFT-STFT,
- * streaming inference, overlap-add) on two fronts:
+ * Integration test for OnnxEchoCanceller against the real DTLN-aec models via
+ * onnxruntime-node. Validates the full pipeline (WAV I/O, FFT, delay estimation,
+ * two-stage streaming inference, overlap-add) on two fronts:
  *   1. pass-through — clean speech with a silent reference is preserved.
  *   2. cancellation — simulated speaker bleed is reduced relative to the mic.
  *
- * Skips unless the bundled model resource exists, so it never blocks plain unit
- * runs without the model present.
+ * Skips unless the bundled models exist, so it never blocks plain unit runs
+ * without them present.
  */
 import { existsSync, promises as fs } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -17,11 +17,15 @@ import { OnnxEchoCanceller } from '../../../src/main/adapters/out/integrations/O
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
-const MODEL = join(ROOT, 'resources', 'aec', 'dec-baseline-icassp2022.onnx');
+const MODEL_DIR = join(ROOT, 'resources', 'aec');
 const NEAR_WAV = join(ROOT, 'tests', 'e2e', 'fixtures', 'mic-sample.wav');
 const FAR_WAV = join(ROOT, 'tests', 'e2e', 'fixtures', 'system-sample.wav');
 
-const ready = existsSync(MODEL) && existsSync(NEAR_WAV) && existsSync(FAR_WAV);
+const ready =
+  existsSync(join(MODEL_DIR, 'dtln_aec_512_1.onnx')) &&
+  existsSync(join(MODEL_DIR, 'dtln_aec_512_2.onnx')) &&
+  existsSync(NEAR_WAV) &&
+  existsSync(FAR_WAV);
 
 function readWav(buf: Buffer): Float32Array {
   let off = 12;
@@ -119,7 +123,7 @@ describe.skipIf(!ready)('OnnxEchoCanceller (real model)', () => {
     const outPath = join(os.tmpdir(), `stone-aec-test-passthrough.wav`);
     tmpFiles.push(outPath);
 
-    const aec = new OnnxEchoCanceller({ modelPath: MODEL });
+    const aec = new OnnxEchoCanceller({ modelDir: MODEL_DIR });
     await aec.cancel({ micPath, referencePath: refPath, outputPath: outPath });
 
     const out = readWav(await fs.readFile(outPath));
@@ -141,7 +145,7 @@ describe.skipIf(!ready)('OnnxEchoCanceller (real model)', () => {
     const outPath = join(os.tmpdir(), `stone-aec-test-cancel.wav`);
     tmpFiles.push(outPath);
 
-    const aec = new OnnxEchoCanceller({ modelPath: MODEL });
+    const aec = new OnnxEchoCanceller({ modelDir: MODEL_DIR });
     await aec.cancel({ micPath, referencePath: refPath, outputPath: outPath });
     const out = readWav(await fs.readFile(outPath));
 
