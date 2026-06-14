@@ -7,9 +7,10 @@
  * Self-hides when the recorder is idle and the dock is closed.
  */
 
+import { useEffect, useRef } from 'react';
 import { Microphone, Stop, CircleNotch, Check, Warning, GearSix } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
-import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
+import { useMeetingRecorder, type LiveLine } from '@renderer/hooks/useMeetingRecorder';
 import { useSystemAudioPermission } from '@renderer/hooks/useOnboarding';
 import { isMacOS } from '@renderer/hooks/useKeyboardShortcuts';
 import { WaveRow, InactiveWaveRow } from './RecordingWaveform';
@@ -24,6 +25,7 @@ export function InlineRecordingPanel() {
     captureMode,
     error,
     lastRecording,
+    liveLines,
     start,
     stop,
     cancel,
@@ -47,6 +49,7 @@ export function InlineRecordingPanel() {
           audioLevel={audioLevel}
           systemAudioLevel={systemAudioLevel}
           captureMode={captureMode}
+          liveLines={liveLines}
           onStop={() => void stop()}
           onCancel={() => void cancel()}
         />
@@ -55,7 +58,7 @@ export function InlineRecordingPanel() {
       ) : phase === 'uploading' ? (
         <Status icon={<CircleNotch size={18} className="animate-spin text-primary" />} title="Saving audio" detail="Storing the recording locally." />
       ) : phase === 'finalizing' ? (
-        <Status icon={<CircleNotch size={18} className="animate-spin text-primary" />} title="Transcribing & summarising" detail="Runs on this device. First time downloads Whisper (~80 MB)." />
+        <Status icon={<CircleNotch size={18} className="animate-spin text-primary" />} title="Transcribing & summarising" detail="Runs on this device. The speech model downloads once on first use." />
       ) : phase === 'done' ? (
         <Status
           icon={
@@ -96,6 +99,7 @@ function ActiveRecording({
   audioLevel,
   systemAudioLevel,
   captureMode,
+  liveLines,
   onStop,
   onCancel,
 }: {
@@ -103,6 +107,7 @@ function ActiveRecording({
   audioLevel: number;
   systemAudioLevel: number;
   captureMode: 'mic-only' | 'mic+system';
+  liveLines: LiveLine[];
   onStop: () => void;
   onCancel: () => void;
 }) {
@@ -162,6 +167,56 @@ function ActiveRecording({
           <InactiveWaveRow label="Others" hint="System audio off" size="lg" />
         )}
       </div>
+
+      <LiveTranscript lines={liveLines} />
+    </div>
+  );
+}
+
+/**
+ * Live (raw) draft of the conversation, streamed in while recording. It's a
+ * rough preview — the accurate, speaker-separated transcript is produced when
+ * the recording is processed.
+ */
+function LiveTranscript({ lines }: { lines: LiveLine[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length]);
+
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Live transcript
+        </span>
+        <span className="rounded bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+          draft
+        </span>
+      </div>
+      {lines.length === 0 ? (
+        <p className="py-2 text-xs text-muted-foreground">
+          <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary align-middle" />
+          Listening… text appears as you speak.
+        </p>
+      ) : (
+        <div ref={scrollRef} className="max-h-44 space-y-2 overflow-y-auto pr-1">
+          {lines.map((line) => (
+            <p key={line.id} className="text-pretty text-[13px] leading-relaxed text-foreground/85">
+              <span
+                className={cn(
+                  'mr-1.5 text-[10px] font-semibold uppercase tracking-wider',
+                  line.source === 'system' ? 'text-teal-600' : 'text-emerald-600',
+                )}
+              >
+                {line.source === 'system' ? 'Others' : 'You'}
+              </span>
+              {line.text}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

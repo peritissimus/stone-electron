@@ -27,6 +27,13 @@ export type RecorderPhase =
 
 export type CaptureMode = 'mic-only' | 'mic+system';
 
+/** One line of the live (raw) draft shown while recording. */
+export interface LiveLine {
+  id: number;
+  source: 'mic' | 'system';
+  text: string;
+}
+
 interface MeetingRecorderState {
   dock: boolean;
   phase: RecorderPhase;
@@ -42,6 +49,8 @@ interface MeetingRecorderState {
   captureMode: CaptureMode;
   error: string | null;
   lastRecording: MeetingRecording | null;
+  /** Live (raw) draft lines, appended as chunks transcribe during recording. */
+  liveLines: LiveLine[];
 
   // Dock visibility
   openDock: () => void;
@@ -68,6 +77,14 @@ interface MeetingRecorderState {
   ) => Promise<void>;
   cancelActive: () => Promise<void>;
   markError: (message: string) => void;
+  appendLiveLine: (source: 'mic' | 'system', text: string) => void;
+  clearLive: () => void;
+  /** Warm the resident live model and reset the draft (recording start). */
+  startLive: () => void;
+  /** Tear down the resident live model (recording stop). */
+  stopLive: () => void;
+  /** Transcribe one live WAV chunk and append the result to the draft. */
+  pushLiveChunk: (source: 'mic' | 'system', wav: ArrayBuffer) => Promise<void>;
   reset: () => void;
 }
 
@@ -83,6 +100,7 @@ const initial = {
   captureMode: 'mic-only' as CaptureMode,
   error: null,
   lastRecording: null,
+  liveLines: [] as LiveLine[],
 };
 
 export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) => ({
@@ -188,6 +206,25 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   },
 
   markError: (message) => set({ phase: 'error', error: message }),
+  appendLiveLine: (source, text) =>
+    set((s) => ({ liveLines: [...s.liveLines, { id: s.liveLines.length, source, text }] })),
+  clearLive: () => set({ liveLines: [] }),
+  startLive: () => {
+    get().clearLive();
+    void meetingAPI.liveStart();
+  },
+  stopLive: () => {
+    void meetingAPI.liveStop();
+  },
+  pushLiveChunk: async (source, wav) => {
+    try {
+      const res = await meetingAPI.transcribeLiveChunk(wav);
+      const text = res.success && res.data ? res.data.text.trim() : '';
+      if (text) get().appendLiveLine(source, text);
+    } catch {
+      // Live draft is best-effort; the clean transcript comes from finalize.
+    }
+  },
   reset: () => set({ ...initial, dock: false }),
 }));
 

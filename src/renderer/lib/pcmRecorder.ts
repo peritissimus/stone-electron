@@ -11,6 +11,12 @@
 export interface PcmRecording {
   /** Stop capture and return the accumulated mono PCM + the context's rate. */
   stop(): { samples: Float32Array; sampleRate: number };
+  /**
+   * Return the samples captured since the last drain (for live streaming),
+   * without disturbing the full buffer that stop() returns. Empty until new
+   * audio arrives.
+   */
+  drain(): { samples: Float32Array; sampleRate: number };
 }
 
 export function startPcmRecording(stream: MediaStream): PcmRecording {
@@ -26,13 +32,11 @@ export function startPcmRecording(stream: MediaStream): PcmRecording {
   sink.gain.value = 0;
 
   const chunks: Float32Array[] = [];
-  let length = 0;
   processor.onaudioprocess = (event) => {
     const input = event.inputBuffer.getChannelData(0);
     const copy = new Float32Array(input.length);
     copy.set(input);
     chunks.push(copy);
-    length += copy.length;
   };
 
   source.connect(processor);
@@ -40,7 +44,24 @@ export function startPcmRecording(stream: MediaStream): PcmRecording {
   sink.connect(ctx.destination);
 
   let stopped = false;
+  let drainedChunks = 0;
+  const concat = (from: number): Float32Array => {
+    let n = 0;
+    for (let i = from; i < chunks.length; i += 1) n += chunks[i].length;
+    const out = new Float32Array(n);
+    let offset = 0;
+    for (let i = from; i < chunks.length; i += 1) {
+      out.set(chunks[i], offset);
+      offset += chunks[i].length;
+    }
+    return out;
+  };
   return {
+    drain() {
+      const samples = concat(drainedChunks);
+      drainedChunks = chunks.length;
+      return { samples, sampleRate: ctx.sampleRate };
+    },
     stop() {
       const sampleRate = ctx.sampleRate;
       if (!stopped) {
@@ -55,13 +76,7 @@ export function startPcmRecording(stream: MediaStream): PcmRecording {
         processor.onaudioprocess = null;
         void ctx.close();
       }
-      const samples = new Float32Array(length);
-      let offset = 0;
-      for (const chunk of chunks) {
-        samples.set(chunk, offset);
-        offset += chunk.length;
-      }
-      return { samples, sampleRate };
+      return { samples: concat(0), sampleRate };
     },
   };
 }

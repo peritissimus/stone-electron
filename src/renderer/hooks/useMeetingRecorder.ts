@@ -13,7 +13,7 @@ import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder'
 import { describeMicError } from '@renderer/lib/micErrors';
 import { logger } from '@renderer/lib/logger';
 
-export type { RecorderPhase } from '@renderer/stores/meetingRecorderStore';
+export type { RecorderPhase, LiveLine } from '@renderer/stores/meetingRecorderStore';
 
 const WHISPER_SAMPLE_RATE = 16_000;
 
@@ -32,6 +32,47 @@ const analyserCtxRef: { current: AudioContext | null } = { current: null };
 const analyserFrameRef: { current: number | null } = { current: null };
 const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
 const systemAnalyserFrameRef: { current: number | null } = { current: null };
+const liveTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
+
+/** Cadence for the live (raw) draft — long enough that each chunk is a few
+ *  utterances of context, short enough to feel live. */
+const LIVE_INTERVAL_MS = 6_000;
+const MIN_LIVE_CHUNK_S = 0.6;
+
+/** Drain new audio from each track (hook owns the hardware), encode it, and
+ *  hand it to the store to transcribe + append. Best-effort. */
+async function streamLiveChunk(): Promise<void> {
+  const store = useMeetingRecorderStore.getState();
+  const recorders: Array<['mic' | 'system', PcmRecording | null]> = [
+    ['mic', micPcmRecorderRef.current],
+    ['system', systemPcmRecorderRef.current],
+  ];
+  for (const [source, recorder] of recorders) {
+    if (!recorder) continue;
+    const { samples, sampleRate } = recorder.drain();
+    if (samples.length < sampleRate * MIN_LIVE_CHUNK_S) continue;
+    try {
+      const wav = await pcmToWavArrayBuffer(samples, sampleRate, WHISPER_SAMPLE_RATE);
+      await store.pushLiveChunk(source, wav);
+    } catch {
+      // Live draft is best-effort; the clean transcript comes from finalize.
+    }
+  }
+}
+
+function startLiveStreaming(): void {
+  if (liveTimerRef.current) return;
+  useMeetingRecorderStore.getState().startLive(); // warm model + reset draft
+  liveTimerRef.current = setInterval(() => void streamLiveChunk(), LIVE_INTERVAL_MS);
+}
+
+function stopLiveStreaming(): void {
+  if (liveTimerRef.current) {
+    clearInterval(liveTimerRef.current);
+    liveTimerRef.current = null;
+  }
+  useMeetingRecorderStore.getState().stopLive();
+}
 
 /** Run a smoothed peak-level meter on a stream, writing each frame via setLevel. */
 function runAnalyser(
@@ -77,6 +118,7 @@ export function useMeetingRecorder() {
   const captureMode = useMeetingRecorderStore((s) => s.captureMode);
   const error = useMeetingRecorderStore((s) => s.error);
   const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
+  const liveLines = useMeetingRecorderStore((s) => s.liveLines);
 
   const openDock = useMeetingRecorderStore((s) => s.openDock);
   const closeDock = useMeetingRecorderStore((s) => s.closeDock);
@@ -101,6 +143,7 @@ export function useMeetingRecorder() {
   // unmounts would kill an in-flight recording the user navigated away from.
 
   function releaseHardware() {
+    stopLiveStreaming();
     micPcmRecorderRef.current?.stop();
     micPcmRecorderRef.current = null;
     systemPcmRecorderRef.current?.stop();
@@ -194,6 +237,8 @@ export function useMeetingRecorder() {
       // Green meter follows the mic, teal follows the system stream.
       startLevelMeter(micStream, systemStream);
       store.markRecordingStarted({ ...slot, captureMode });
+      // Live (raw) draft: stream chunks to the resident model while recording.
+      startLiveStreaming();
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
       releaseHardware();
@@ -205,6 +250,9 @@ export function useMeetingRecorder() {
     const store = useMeetingRecorderStore.getState();
     if (store.phase !== 'recording') return;
     const durationMs = store.elapsedMs;
+
+    // Stop the live draft loop + free the resident model.
+    stopLiveStreaming();
 
     // Stop PCM capture first so the tail of audio is flushed before the
     // streams are torn down.
@@ -263,6 +311,7 @@ export function useMeetingRecorder() {
     captureMode,
     error,
     lastRecording,
+    liveLines,
     start,
     stop,
     cancel,
