@@ -203,7 +203,10 @@ function LiveTranscript({ lines }: { lines: LiveLine[] }) {
       ) : (
         <div ref={scrollRef} className="max-h-44 space-y-2 overflow-y-auto pr-1">
           {lines.map((line) => (
-            <p key={line.id} className="text-pretty text-[13px] leading-relaxed text-foreground/85">
+            <p
+              key={line.id}
+              className="text-pretty text-[13px] leading-relaxed text-foreground/85 animate-in fade-in slide-in-from-bottom-1 duration-300"
+            >
               <span
                 className={cn(
                   'mr-1.5 text-[10px] font-semibold uppercase tracking-wider',
@@ -238,11 +241,11 @@ function IdleStart({
       </div>
       <div>
         <p className="text-sm font-semibold text-foreground">Record this meeting</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-pretty text-xs text-muted-foreground">
           {isMacOS() && systemAudioStatus !== 'granted'
             ? 'Your mic, transcribed on this device.'
             : 'Mic + system audio, transcribed on this device.'}{' '}
-          Audio is deleted after.
+          Stays private on your device.
         </p>
       </div>
       <button

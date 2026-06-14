@@ -7,17 +7,17 @@
  * inline action to avoid the native window.confirm popup.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Microphone,
   CaretRight,
+  CaretDown,
   ArrowsClockwise,
   PaperPlaneTilt,
   Trash,
   Warning,
   Check,
   CircleNotch,
-  ArrowSquareOut,
   Waveform,
   Play,
   Pause,
@@ -430,16 +430,49 @@ function TranscriptSection({
       : turns.reduce((active, turn, i) => (turn.startMs <= currentMs ? i : active), -1);
 
   return (
+    <TranscriptBody open={open} setOpen={setOpen} turns={turns} activeTurn={activeTurn} onSeek={onSeek} transcriptText={recording.transcriptText} />
+  );
+}
+
+function TranscriptBody({
+  open,
+  setOpen,
+  turns,
+  activeTurn,
+  onSeek,
+  transcriptText,
+}: {
+  open: boolean;
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  turns: TranscriptTurn[];
+  activeTurn: number;
+  onSeek?: (ms: number) => void;
+  transcriptText: string;
+}) {
+  // Keep the playing turn in view as the cursor advances.
+  const activeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (activeTurn >= 0) {
+      activeRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeTurn]);
+
+  return (
     <section className="mt-6">
       <div className="flex items-center justify-between">
         <SectionLabel>Transcript</SectionLabel>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
           className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           {open ? 'Hide' : 'Show'}
-          <ArrowSquareOut size={10} />
+          <CaretDown
+            size={10}
+            weight="bold"
+            className={cn('transition-transform duration-200 ease-out', open && 'rotate-180')}
+          />
         </button>
       </div>
       {open &&
@@ -448,8 +481,9 @@ function TranscriptSection({
             {turns.map((turn, i) => (
               <div
                 key={i}
+                ref={i === activeTurn ? activeRef : undefined}
                 className={cn(
-                  '-mx-1.5 flex gap-3 rounded-lg px-1.5 py-1 transition-colors',
+                  '-mx-1.5 flex scroll-mt-2 gap-3 rounded-lg px-1.5 py-1 transition-colors',
                   i === activeTurn && 'bg-primary/10',
                 )}
               >
@@ -489,7 +523,7 @@ function TranscriptSection({
               'border border-border bg-muted/30 p-4 font-mono text-[12px] leading-relaxed text-foreground/80',
             )}
           >
-            {recording.transcriptText}
+            {transcriptText}
           </pre>
         ))}
     </section>
