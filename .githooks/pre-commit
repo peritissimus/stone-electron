@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+#
+# Pre-commit secret scan via gitleaks — blocks commits that contain secrets
+# (API keys, tokens, private keys, etc.) in the staged changes.
+#
+# Bypass only for a confirmed false positive:  git commit --no-verify
+#
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "⚠️  gitleaks not installed — staged changes were NOT scanned for secrets."
+  echo "    Enable the guard with:  brew install gitleaks"
+  exit 0
+fi
+
+if ! gitleaks git --staged --redact --no-banner; then
+  echo
+  echo "❌ gitleaks found potential secrets in your staged changes — commit blocked."
+  echo "   Remove the secret. If it is a genuine false positive, add an allowlist"
+  echo "   entry to .gitleaks.toml. Last resort: git commit --no-verify"
+  exit 1
+fi

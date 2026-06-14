@@ -53,6 +53,7 @@
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
     "postinstall": "electron-rebuild",
+    "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "react-devtools": "react-devtools",
     "build:whisper": "./scripts/build-whisper.sh"
   },

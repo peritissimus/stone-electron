@@ -1,0 +1,20 @@
+# gitleaks configuration — used by the .githooks/pre-commit secret scan.
+# Starts from gitleaks' built-in rule set and adds project-specific allowlisting.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known-safe placeholders used in tests and docs (not real secrets)"
+# Generated / vendored trees — never our own committed source.
+paths = [
+  '''node_modules/''',
+  '''dist/''',
+  '''vendor/''',
+]
+# Obvious fake/sample credentials that appear in unit tests.
+regexes = [
+  '''sk-test''',
+  '''env-openai-key''',
+  '''(?i)your[-_]?api[-_]?key''',
+]
