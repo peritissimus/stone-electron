@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   assertCloudInferenceAllowed,
   assertCloudNoteContentAllowed,
-  providerModelId,
-} from '../../../../../src/main/adapters/out/integrations/aiPrivacy';
+} from '../../../../../src/main/domain/services/aiPrivacyPolicy';
+import { providerModelId } from '../../../../../src/main/adapters/out/integrations/AISDKTextGenerator';
 import {
   DEFAULT_AI_CONFIG,
   type AIConfig,

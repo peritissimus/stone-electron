@@ -5,10 +5,10 @@ import type {
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { INotebookRepository } from '../../../domain/ports/out/INotebookRepository';
 import type { ITagRepository } from '../../../domain/ports/out/ITagRepository';
-import type { DatabaseManager } from './types';
+import type { IDatabaseManager } from '../../../domain/ports/out/IDatabaseManager';
 
 export interface GetDatabaseStatusDeps {
-  getDatabaseManager: () => DatabaseManager;
+  getDatabaseManager: () => IDatabaseManager;
   noteRepository: INoteRepository;
   notebookRepository: INotebookRepository;
   tagRepository: ITagRepository;

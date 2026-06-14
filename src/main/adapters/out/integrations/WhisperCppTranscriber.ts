@@ -20,32 +20,16 @@ import type {
 } from '../../../domain';
 import { collapseRepeatedSegments } from '../../../domain';
 import { logger } from '../../../shared/utils';
-
-let app: { isPackaged?: boolean; getPath?: (n: string) => string } | null = null;
-try {
-  app = require('electron').app;
-} catch {
-  // Outside Electron (tests/standalone) — paths fall back to cwd/tmp.
-}
-
-/**
- * Default model: large-v3-turbo, quantized q5_0 (~574 MB) — near-full quality,
- * fast, and far stronger at multilingual / code-switching than `base`, which
- * mangled mixed Hindi/English speech. Downloaded once to userData on first use.
- */
-const WHISPER_MODEL = 'large-v3-turbo-q5_0';
-const MODEL_URL = (model: string) =>
-  `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${model}.bin`;
-
-/**
- * Silero VAD model. With VAD enabled, whisper transcribes only speech regions
- * and skips silence — which prevents the repetition/hallucination loops the
- * decoder falls into on long quiet stretches (made worse by echo cancellation,
- * which leaves the "You" track mostly silent while the user is listening).
- */
-const VAD_MODEL_FILE = 'ggml-silero-v5.1.2.bin';
-const VAD_MODEL_URL =
-  'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin';
+import {
+  WHISPER_MODEL,
+  WHISPER_MODEL_URL,
+  VAD_MODEL_FILE,
+  VAD_MODEL_URL,
+  vadModelPath,
+  whisperBinaryPath,
+  whisperModelDir,
+  whisperModelPath,
+} from './whisperPaths';
 
 export interface WhisperCppTranscriberDeps {
   /** Broadcast model-download progress to the renderer (wired in DI). */
@@ -88,7 +72,7 @@ export class WhisperCppTranscriber implements ITranscriber {
   async transcribe(request: TranscribeRequest): Promise<TranscribeResult> {
     if (!this.ready) await this.initialize();
 
-    const binary = this.binaryPath();
+    const binary = whisperBinaryPath('whisper-cli', this.deps.binary);
     const outBase = path.join(
       os.tmpdir(),
       `stone-whisper-${path.basename(request.audioPath)}`,
@@ -97,11 +81,11 @@ export class WhisperCppTranscriber implements ITranscriber {
 
     try {
       // Use VAD only when the model is present — graceful for offline/tests.
-      const vadPath = this.vadModelPath();
+      const vadPath = vadModelPath(this.deps.modelDir);
       const vadArgs = (await fileExists(vadPath)) ? ['--vad', '-vm', vadPath] : [];
       await execFileAsync(binary, [
         '-m',
-        await this.modelPath(),
+        whisperModelPath(this.model, this.deps.modelDir),
         '-f',
         request.audioPath,
         '-l',
@@ -142,37 +126,25 @@ export class WhisperCppTranscriber implements ITranscriber {
 
   // ===========================================================================
 
-  private binaryPath(): string {
-    if (this.deps.binary) return this.deps.binary;
-    if (app?.isPackaged) {
-      return path.join(process.resourcesPath, 'whisper', 'whisper-cli');
-    }
-    return path.join(process.cwd(), 'vendor', 'whisper', 'bin', 'whisper-cli');
-  }
-
-  private modelDir(): string {
-    if (this.deps.modelDir) return this.deps.modelDir;
-    const base = app?.getPath?.('userData') ?? path.join(os.tmpdir(), 'stone');
-    return path.join(base, 'whisper-models');
-  }
-
-  private async modelPath(): Promise<string> {
-    return path.join(this.modelDir(), `ggml-${this.model}.bin`);
-  }
-
-  private vadModelPath(): string {
-    return path.join(this.modelDir(), VAD_MODEL_FILE);
-  }
-
   /** Ensure both the transcription model and the VAD model are present. */
   private async ensureModels(): Promise<void> {
-    await fs.mkdir(this.modelDir(), { recursive: true });
+    await fs.mkdir(whisperModelDir(this.deps.modelDir), { recursive: true });
     // VAD model is tiny — download silently and best-effort: if it fails,
     // transcription still runs (without silence-skipping) rather than breaking.
-    await this.download(VAD_MODEL_URL, this.vadModelPath(), VAD_MODEL_FILE, false).catch((err) =>
+    await this.download(
+      VAD_MODEL_URL,
+      vadModelPath(this.deps.modelDir),
+      VAD_MODEL_FILE,
+      false,
+    ).catch((err) =>
       logger.warn(`[WhisperCpp] VAD model unavailable, continuing without it: ${err}`),
     );
-    await this.download(MODEL_URL(this.model), await this.modelPath(), `ggml-${this.model}.bin`, true);
+    await this.download(
+      WHISPER_MODEL_URL(this.model),
+      whisperModelPath(this.model, this.deps.modelDir),
+      `ggml-${this.model}.bin`,
+      true,
+    );
   }
 
   /** Download `url` to `dest` if missing, optionally broadcasting progress. */

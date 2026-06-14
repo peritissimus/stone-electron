@@ -7,7 +7,7 @@ import type { IIdGenerator } from '../../../domain/ports/out/IIdGenerator';
 import type { IPathService } from '../../../domain/ports/out/IPathService';
 import { NoteEntity } from '../../../domain/entities/Note';
 import { DOMAIN_EVENT_TYPES } from '../../../domain';
-import { formatJournalDate, parseJournalDate } from './journalDate';
+import { formatJournalDate, parseJournalDate } from '../../../domain/services';
 
 export class OpenOrCreateJournalForDateUseCase {
   constructor(

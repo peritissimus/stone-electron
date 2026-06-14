@@ -2,18 +2,17 @@ import type { IDatabaseUseCases } from '../../../domain/ports/in/IDatabaseUseCas
 import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
 import type { INotebookRepository } from '../../../domain/ports/out/INotebookRepository';
 import type { ITagRepository } from '../../../domain/ports/out/ITagRepository';
-import type { DatabaseManager } from './types';
+import type { IDatabaseManager } from '../../../domain/ports/out/IDatabaseManager';
 import { GetDatabaseStatusUseCase } from './GetDatabaseStatusUseCase';
 import { VacuumDatabaseUseCase } from './VacuumDatabaseUseCase';
 import { CheckDatabaseIntegrityUseCase } from './CheckDatabaseIntegrityUseCase';
 
-export type { DatabaseManager } from './types';
 export { GetDatabaseStatusUseCase } from './GetDatabaseStatusUseCase';
 export { VacuumDatabaseUseCase } from './VacuumDatabaseUseCase';
 export { CheckDatabaseIntegrityUseCase } from './CheckDatabaseIntegrityUseCase';
 
 export interface DatabaseUseCasesDeps {
-  getDatabaseManager: () => DatabaseManager;
+  getDatabaseManager: () => IDatabaseManager;
   noteRepository: INoteRepository;
   notebookRepository: INotebookRepository;
   tagRepository: ITagRepository;

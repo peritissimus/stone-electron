@@ -151,7 +151,6 @@ export {
   CheckDatabaseIntegrityUseCase,
   createDatabaseUseCases,
   type DatabaseUseCasesDeps,
-  type DatabaseManager,
 } from './database';
 
 // Quick Capture Use Cases

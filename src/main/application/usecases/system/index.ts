@@ -5,22 +5,20 @@ import { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
 import { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
 import { OpenInFolderUseCase } from './OpenInFolderUseCase';
 import { OpenExternalUseCase } from './OpenExternalUseCase';
-import { GetMicAccessStatusUseCase, RequestMicAccessUseCase } from './MicAccessUseCases';
-import {
-  GetSystemAudioAccessUseCase,
-  RequestSystemAudioAccessUseCase,
-} from './SystemAudioAccessUseCases';
+import { GetMicAccessStatusUseCase } from './GetMicAccessStatusUseCase';
+import { RequestMicAccessUseCase } from './RequestMicAccessUseCase';
+import { GetSystemAudioAccessUseCase } from './GetSystemAudioAccessUseCase';
+import { RequestSystemAudioAccessUseCase } from './RequestSystemAudioAccessUseCase';
 
 export { GetSystemFontsUseCase } from './GetSystemFontsUseCase';
 export { ShowFolderPickerUseCase } from './ShowFolderPickerUseCase';
 export { ValidateSystemPathUseCase } from './ValidateSystemPathUseCase';
 export { OpenInFolderUseCase } from './OpenInFolderUseCase';
 export { OpenExternalUseCase } from './OpenExternalUseCase';
-export { GetMicAccessStatusUseCase, RequestMicAccessUseCase } from './MicAccessUseCases';
-export {
-  GetSystemAudioAccessUseCase,
-  RequestSystemAudioAccessUseCase,
-} from './SystemAudioAccessUseCases';
+export { GetMicAccessStatusUseCase } from './GetMicAccessStatusUseCase';
+export { RequestMicAccessUseCase } from './RequestMicAccessUseCase';
+export { GetSystemAudioAccessUseCase } from './GetSystemAudioAccessUseCase';
+export { RequestSystemAudioAccessUseCase } from './RequestSystemAudioAccessUseCase';
 
 export interface SystemUseCasesDeps {
   systemBridge: ISystemBridge;

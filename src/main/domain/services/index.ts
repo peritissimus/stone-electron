@@ -61,6 +61,8 @@ export type {
 
 export { NoteGraphBuilder } from './NoteGraphBuilder';
 export { stripFirstHeading } from './MarkdownTitle';
+export { formatJournalDate, parseJournalDate, addCalendarDays } from './journalDate';
+export { assertCloudInferenceAllowed, assertCloudNoteContentAllowed } from './aiPrivacyPolicy';
 export { collapseRepeatedSegments } from './transcriptRepeats';
 export {
   buildTranscriptText,

@@ -2,10 +2,10 @@ import type {
   IVacuumDatabaseUseCase,
   VacuumDatabaseResponse,
 } from '../../../domain/ports/in/IDatabaseUseCases';
-import type { DatabaseManager } from './types';
+import type { IDatabaseManager } from '../../../domain/ports/out/IDatabaseManager';
 
 export class VacuumDatabaseUseCase implements IVacuumDatabaseUseCase {
-  constructor(private readonly getDatabaseManager: () => DatabaseManager) {}
+  constructor(private readonly getDatabaseManager: () => IDatabaseManager) {}
 
   async execute(): Promise<VacuumDatabaseResponse> {
     const db = this.getDatabaseManager();

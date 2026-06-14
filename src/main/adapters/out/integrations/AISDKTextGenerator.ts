@@ -14,7 +14,23 @@ import type {
   IAppConfigRepository,
   ITextGenerator,
 } from '../../../domain';
-import { assertCloudNoteContentAllowed, providerModelId } from './aiPrivacy';
+import { assertCloudNoteContentAllowed } from '../../../domain';
+
+/**
+ * Split a "provider/model" id into its parts (e.g. "openai/gpt-5.4-mini" →
+ * { provider: 'openai', modelId: 'gpt-5.4-mini' }). A bare model name falls
+ * back to the given provider. Adapter concern — used only here.
+ */
+export function providerModelId(
+  model: string,
+  fallbackProvider: string,
+): { provider: string; modelId: string } {
+  const slashIndex = model.indexOf('/');
+  if (slashIndex <= 0) {
+    return { provider: fallbackProvider, modelId: model };
+  }
+  return { provider: model.slice(0, slashIndex), modelId: model.slice(slashIndex + 1) };
+}
 
 export type GenerateTextFn = (request: {
   model: LanguageModel;
