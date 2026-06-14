@@ -288,9 +288,10 @@ describe('MeetingUseCases', () => {
     expect(transcriber.transcribe).toHaveBeenCalledWith({
       audioPath: '/workspace/.stone/recordings/rec-1.wav',
     });
-    // Mic segments are labeled "You"; the summary receives the labeled transcript.
+    // The summary receives the structured transcript: [mm:ss] (Speaker) text.
+    // No confidence on these mock segments, so no <BAND>.
     expect(summarizer.summarize).toHaveBeenCalledWith({
-      transcript: 'You: Transcript text',
+      transcript: '[00:00] (You) Transcript text',
       promptTemplate: 'Default prompt {{transcript}}',
     });
     expect(result.recording.status).toBe('ready');
@@ -324,7 +325,7 @@ describe('MeetingUseCases', () => {
     });
     // Interleaved by start time, labeled You (mic @0) then Others (system @500).
     expect(summarizer.summarize).toHaveBeenCalledWith({
-      transcript: 'You: hello team\nOthers: hi there',
+      transcript: '[00:00] (You) hello team\n[00:00] (Others) hi there',
       promptTemplate: 'Default prompt {{transcript}}',
     });
   });

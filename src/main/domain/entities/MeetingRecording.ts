@@ -30,6 +30,9 @@ export interface TranscriptSegment {
    *  a transcription-confidence signal. Absent on legacy transcripts and when
    *  the decoder gave no usable token probabilities. */
   confidence?: number;
+  /** Number of near-identical consecutive segments collapsed into this one
+   *  (whisper's repetition-loop artifact). Absent/1 means no collapsing. */
+  repeatCount?: number;
 }
 
 export interface MeetingRecordingProps {

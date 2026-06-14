@@ -65,8 +65,10 @@ export { collapseRepeatedSegments } from './transcriptRepeats';
 export {
   buildTranscriptText,
   buildSummaryTranscript,
-  LOW_CONFIDENCE_THRESHOLD,
-  LOW_CONFIDENCE_TAG,
+  confidenceBand,
+  CONFIDENCE_MED_MIN,
+  CONFIDENCE_HIGH_MIN,
+  type ConfidenceBand,
 } from './transcriptFormat';
 export {
   canonicalizeChord,

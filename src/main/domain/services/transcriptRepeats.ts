@@ -28,6 +28,7 @@ export function collapseRepeatedSegments(segments: TranscriptSegment[]): Transcr
     if (prev && normalize(prev.text) === normalize(seg.text)) {
       // Same phrase again back-to-back — extend the run instead of duplicating.
       prev.endMs = Math.max(prev.endMs, seg.endMs);
+      prev.repeatCount = (prev.repeatCount ?? 1) + 1;
       // Keep the most conservative confidence across the merged run.
       if (typeof seg.confidence === 'number') {
         prev.confidence =

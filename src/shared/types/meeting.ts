@@ -19,6 +19,8 @@ export interface MeetingTranscriptSegment {
   source?: 'mic' | 'system';
   /** Mean per-token transcription confidence (0-1), when whisper reported it. */
   confidence?: number;
+  /** Count of consecutive near-identical segments collapsed into this one. */
+  repeatCount?: number;
 }
 
 export interface MeetingRecording {
