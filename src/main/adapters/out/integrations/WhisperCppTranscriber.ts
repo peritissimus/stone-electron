@@ -27,11 +27,24 @@ try {
   // Outside Electron (tests/standalone) — paths fall back to cwd/tmp.
 }
 
-/** Default model: multilingual `base` (~142 MB). Swap to small/medium for
- *  higher accuracy once the model selector lands. */
-const WHISPER_MODEL = 'base';
+/**
+ * Default model: large-v3-turbo, quantized q5_0 (~574 MB) — near-full quality,
+ * fast, and far stronger at multilingual / code-switching than `base`, which
+ * mangled mixed Hindi/English speech. Downloaded once to userData on first use.
+ */
+const WHISPER_MODEL = 'large-v3-turbo-q5_0';
 const MODEL_URL = (model: string) =>
   `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${model}.bin`;
+
+/**
+ * Silero VAD model. With VAD enabled, whisper transcribes only speech regions
+ * and skips silence — which prevents the repetition/hallucination loops the
+ * decoder falls into on long quiet stretches (made worse by echo cancellation,
+ * which leaves the "You" track mostly silent while the user is listening).
+ */
+const VAD_MODEL_FILE = 'ggml-silero-v5.1.2.bin';
+const VAD_MODEL_URL =
+  'https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v5.1.2.bin';
 
 export interface WhisperCppTranscriberDeps {
   /** Broadcast model-download progress to the renderer (wired in DI). */
@@ -62,7 +75,7 @@ export class WhisperCppTranscriber implements ITranscriber {
   async initialize(): Promise<void> {
     if (this.ready) return;
     // Single-flight so concurrent transcribe() calls share one download.
-    this.initializing ??= this.ensureModel();
+    this.initializing ??= this.ensureModels();
     try {
       await this.initializing;
       this.ready = true;
@@ -82,6 +95,9 @@ export class WhisperCppTranscriber implements ITranscriber {
     const jsonPath = `${outBase}.json`;
 
     try {
+      // Use VAD only when the model is present — graceful for offline/tests.
+      const vadPath = this.vadModelPath();
+      const vadArgs = (await fileExists(vadPath)) ? ['--vad', '-vm', vadPath] : [];
       await execFileAsync(binary, [
         '-m',
         await this.modelPath(),
@@ -89,6 +105,7 @@ export class WhisperCppTranscriber implements ITranscriber {
         request.audioPath,
         '-l',
         'auto', // multilingual auto-detect
+        ...vadArgs, // skip silence — prevents decoder repetition loops
         '-oj', // output JSON
         '-of',
         outBase,
@@ -133,10 +150,28 @@ export class WhisperCppTranscriber implements ITranscriber {
     return path.join(this.modelDir(), `ggml-${this.model}.bin`);
   }
 
-  /** Download the GGML model to userData if it isn't already there. */
-  private async ensureModel(): Promise<void> {
-    const dir = this.modelDir();
-    const dest = await this.modelPath();
+  private vadModelPath(): string {
+    return path.join(this.modelDir(), VAD_MODEL_FILE);
+  }
+
+  /** Ensure both the transcription model and the VAD model are present. */
+  private async ensureModels(): Promise<void> {
+    await fs.mkdir(this.modelDir(), { recursive: true });
+    // VAD model is tiny — download silently and best-effort: if it fails,
+    // transcription still runs (without silence-skipping) rather than breaking.
+    await this.download(VAD_MODEL_URL, this.vadModelPath(), VAD_MODEL_FILE, false).catch((err) =>
+      logger.warn(`[WhisperCpp] VAD model unavailable, continuing without it: ${err}`),
+    );
+    await this.download(MODEL_URL(this.model), await this.modelPath(), `ggml-${this.model}.bin`, true);
+  }
+
+  /** Download `url` to `dest` if missing, optionally broadcasting progress. */
+  private async download(
+    url: string,
+    dest: string,
+    file: string,
+    withProgress: boolean,
+  ): Promise<void> {
     try {
       const stat = await fs.stat(dest);
       if (stat.size > 0) return; // already downloaded
@@ -144,17 +179,14 @@ export class WhisperCppTranscriber implements ITranscriber {
       // missing — download below
     }
 
-    await fs.mkdir(dir, { recursive: true });
-    const url = MODEL_URL(this.model);
     const tmp = `${dest}.download`;
-    logger.info(`[WhisperCpp] downloading model ggml-${this.model}.bin`);
+    logger.info(`[WhisperCpp] downloading ${file}`);
 
     const res = await fetch(url);
     if (!res.ok || !res.body) {
-      throw new Error(`Failed to download Whisper model (${res.status})`);
+      throw new Error(`Failed to download ${file} (${res.status})`);
     }
     const total = Number(res.headers.get('content-length')) || 0;
-    const file = `ggml-${this.model}.bin`;
     const reader = res.body.getReader();
     const handle = await fs.open(tmp, 'w');
     try {
@@ -164,13 +196,13 @@ export class WhisperCppTranscriber implements ITranscriber {
         if (done) break;
         await handle.write(value);
         loaded += value.length;
-        this.deps.onDownloadProgress?.({ file, loaded, total });
+        if (withProgress) this.deps.onDownloadProgress?.({ file, loaded, total });
       }
     } finally {
       await handle.close();
     }
     await fs.rename(tmp, dest);
-    logger.info(`[WhisperCpp] model ready: ${dest}`);
+    logger.info(`[WhisperCpp] ready: ${dest}`);
   }
 }
 
@@ -179,6 +211,15 @@ interface WhisperJson {
     text: string;
     offsets?: { from: number; to: number };
   }>;
+}
+
+async function fileExists(p: string): Promise<boolean> {
+  try {
+    const stat = await fs.stat(p);
+    return stat.size > 0;
+  } catch {
+    return false;
+  }
 }
 
 function execFileAsync(file: string, args: string[]): Promise<void> {

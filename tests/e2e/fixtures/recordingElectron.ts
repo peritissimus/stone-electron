@@ -15,6 +15,7 @@ const FIXTURES = dirname(fileURLToPath(import.meta.url));
 export const MIC_WAV = join(FIXTURES, 'mic-sample.wav');
 export const SYSTEM_WAV = join(FIXTURES, 'system-sample.wav');
 const TINY_MODEL = join(FIXTURES, '.cache', 'ggml-tiny.en.bin');
+const VAD_MODEL = join(FIXTURES, '.cache', 'ggml-silero-v5.1.2.bin');
 
 /** Base64 of the fixture WAVs, for injecting into the renderer media mock. */
 export const micAudioBase64 = () => readFileSync(MIC_WAV).toString('base64');
@@ -30,6 +31,9 @@ export const test = base.extend<Fixtures>({
     mkdirSync(modelDir, { recursive: true });
     if (existsSync(TINY_MODEL)) {
       copyFileSync(TINY_MODEL, join(modelDir, 'ggml-tiny.en.bin'));
+    }
+    if (existsSync(VAD_MODEL)) {
+      copyFileSync(VAD_MODEL, join(modelDir, 'ggml-silero-v5.1.2.bin'));
     }
     await use(dir);
     if (!process.env.STONE_E2E_KEEP_USERDATA) rmSync(dir, { recursive: true, force: true });
