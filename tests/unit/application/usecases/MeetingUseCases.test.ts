@@ -413,4 +413,33 @@ describe('MeetingUseCases', () => {
     expect(result.recording.audioPath).toBe('.stone/recordings/rec-1.wav');
     expect(fileStorage.delete).not.toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
   });
+
+  it('re-transcribes a recording from its kept audio', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    // Mic audio present; no system track.
+    vi.mocked(fileStorage.exists).mockImplementation(
+      async (p) => p === '/workspace/.stone/recordings/rec-1.wav',
+    );
+    vi.mocked(transcriber.transcribe).mockResolvedValue({
+      text: 'redone',
+      segments: [{ text: 'redone', startMs: 0, endMs: 1_000 }],
+      durationMs: 1_000,
+    });
+
+    const result = await useCases.retranscribeMeeting.execute({ recordingId: 'rec-1' });
+
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.wav',
+    });
+    expect(result.recording.transcriptText).toBe('You: redone');
+  });
+
+  it('refuses to re-transcribe when the audio is gone', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording({ audioPath: null }));
+
+    await expect(useCases.retranscribeMeeting.execute({ recordingId: 'rec-1' })).rejects.toThrow(
+      /audio/i,
+    );
+  });
 });

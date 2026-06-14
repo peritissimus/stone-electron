@@ -100,6 +100,14 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     ),
   );
 
+  ipcMain.handle(MEETING_CHANNELS.RETRANSCRIBE, async (_event, request) =>
+    handleRequest(
+      async () =>
+        meetingUseCases.retranscribeMeeting.execute({ recordingId: request.recordingId }),
+      { channel: MEETING_CHANNELS.RETRANSCRIBE, recordingId: request?.recordingId },
+    ),
+  );
+
   ipcMain.handle(MEETING_CHANNELS.LIVE_START, async () =>
     handleRequest(async () => meetingUseCases.liveTranscription.start(), {
       channel: MEETING_CHANNELS.LIVE_START,

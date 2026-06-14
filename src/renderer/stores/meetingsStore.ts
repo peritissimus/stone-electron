@@ -25,6 +25,7 @@ interface MeetingsState {
   upsertLocal: (recording: MeetingRecording) => void;
   removeLocal: (id: string) => void;
   resummarize: (id: string, promptTemplate?: string) => Promise<void>;
+  retranscribe: (id: string) => Promise<void>;
   sendToJournal: (id: string) => Promise<{ journalNoteId: string } | null>;
   remove: (id: string) => Promise<void>;
 }
@@ -93,6 +94,26 @@ export const useMeetingsStore = create<MeetingsState>((set, get) => ({
     } catch (err) {
       logger.error('[meetingsStore] resummarize failed', err);
       set({ error: err instanceof Error ? err.message : 'Failed to re-summarize' });
+    } finally {
+      markBusy(set, id, false);
+    }
+  },
+
+  retranscribe: async (id) => {
+    markBusy(set, id, true);
+    try {
+      const result = handleIpcResponse(
+        await meetingAPI.retranscribe(id),
+        'Failed to re-transcribe',
+      );
+      if (result.success) {
+        get().upsertLocal(result.data.recording);
+      } else {
+        set({ error: result.error });
+      }
+    } catch (err) {
+      logger.error('[meetingsStore] retranscribe failed', err);
+      set({ error: err instanceof Error ? err.message : 'Failed to re-transcribe' });
     } finally {
       markBusy(set, id, false);
     }

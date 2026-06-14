@@ -18,6 +18,7 @@ import {
   Check,
   CircleNotch,
   ArrowSquareOut,
+  Waveform,
   Play,
   Pause,
 } from '@phosphor-icons/react';
@@ -45,6 +46,7 @@ export function MeetingsPage() {
     selected,
     select,
     resummarize,
+    retranscribe,
     sendToJournal,
     remove,
     isBusy,
@@ -63,6 +65,12 @@ export function MeetingsPage() {
       void resummarize(id);
     },
     [resummarize],
+  );
+  const handleRetranscribe = useCallback(
+    (id: string) => {
+      void retranscribe(id);
+    },
+    [retranscribe],
   );
   const handleSendToJournal = useCallback(
     async (id: string) => {
@@ -168,6 +176,7 @@ export function MeetingsPage() {
               recording={selected}
               busy={isBusy(selected.id)}
               onResummarize={() => handleResummarize(selected.id)}
+              onRetranscribe={() => handleRetranscribe(selected.id)}
               onSendToJournal={() => handleSendToJournal(selected.id)}
               onDelete={() => void remove(selected.id)}
             />
@@ -186,12 +195,14 @@ function DetailPanel({
   recording,
   busy,
   onResummarize,
+  onRetranscribe,
   onSendToJournal,
   onDelete,
 }: {
   recording: MeetingRecording;
   busy: boolean;
   onResummarize: () => void;
+  onRetranscribe: () => void;
   onSendToJournal: () => void;
   onDelete: () => void;
 }) {
@@ -250,6 +261,23 @@ function DetailPanel({
           <ArrowsClockwise size={12} weight={busy ? 'fill' : 'regular'} className={cn(busy && 'animate-spin')} />
           Re-summarize
         </button>
+        {recording.audioPath && (
+          <button
+            type="button"
+            onClick={onRetranscribe}
+            disabled={busy}
+            title="Re-run transcription on the saved audio (e.g. after a model upgrade)"
+            className={cn(
+              'inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3',
+              'text-xs font-medium text-foreground transition-[transform,background-color] duration-150',
+              'hover:bg-muted active:scale-[0.96]',
+              'disabled:cursor-not-allowed disabled:opacity-50',
+            )}
+          >
+            <Waveform size={12} weight={busy ? 'fill' : 'regular'} />
+            Re-transcribe
+          </button>
+        )}
         <div className="flex-1" />
         <DeleteButton onConfirm={onDelete} disabled={busy} />
       </div>

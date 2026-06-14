@@ -126,6 +126,7 @@ export const MEETING_CHANNELS = {
   GET_AUDIO: 'meetings:getAudio',
   DELETE: 'meetings:delete',
   RESUMMARIZE: 'meetings:resummarize',
+  RETRANSCRIBE: 'meetings:retranscribe',
   SEND_TO_JOURNAL: 'meetings:sendToJournal',
   // Live (raw) draft while recording — resident model server.
   LIVE_START: 'meetings:liveStart',

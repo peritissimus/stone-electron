@@ -20,6 +20,7 @@ export function useMeetings() {
   const load = useMeetingsStore((s) => s.load);
   const select = useMeetingsStore((s) => s.select);
   const resummarize = useMeetingsStore((s) => s.resummarize);
+  const retranscribe = useMeetingsStore((s) => s.retranscribe);
   const sendToJournal = useMeetingsStore((s) => s.sendToJournal);
   const remove = useMeetingsStore((s) => s.remove);
   const upsertLocal = useMeetingsStore((s) => s.upsertLocal);
@@ -45,6 +46,7 @@ export function useMeetings() {
     selected,
     select,
     resummarize,
+    retranscribe,
     sendToJournal,
     remove,
     isBusy: (id: string) => busyIds.has(id),

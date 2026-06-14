@@ -11,6 +11,7 @@ import type {
   IWorkspaceRepository,
 } from '../../../domain';
 import { createLiveTranscriptionUseCases } from './LiveTranscriptionUseCases';
+import { RetranscribeMeetingUseCase } from './RetranscribeMeetingUseCase';
 import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 import { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
@@ -93,6 +94,16 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
     resummarizeMeeting: new ResummarizeMeetingUseCase({
       meetingRepository: deps.meetingRepository,
       summarizer: deps.summarizer,
+      defaultPrompt: deps.defaultPrompt,
+    }),
+    retranscribeMeeting: new RetranscribeMeetingUseCase({
+      meetingRepository: deps.meetingRepository,
+      workspaceRepository: deps.workspaceRepository,
+      fileStorage: deps.fileStorage,
+      pathService: deps.pathService,
+      transcriber: deps.transcriber,
+      summarizer: deps.summarizer,
+      echoCanceller: deps.echoCanceller,
       defaultPrompt: deps.defaultPrompt,
     }),
     sendToJournal: new SendToJournalUseCase({

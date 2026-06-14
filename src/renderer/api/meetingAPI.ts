@@ -160,6 +160,13 @@ export const meetingAPI = {
     return validateResponse(response, ResummarizeResponseSchema);
   },
 
+  retranscribe: async (
+    recordingId: string,
+  ): Promise<IpcResponse<{ recording: MeetingRecording }>> => {
+    const response = await invokeIpc(MEETING_CHANNELS.RETRANSCRIBE, { recordingId });
+    return validateResponse(response, FinalizeResponseSchema);
+  },
+
   sendToJournal: async (
     recordingId: string,
     journalDate?: string,

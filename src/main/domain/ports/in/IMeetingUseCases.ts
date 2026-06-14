@@ -95,6 +95,16 @@ export interface ResummarizeMeetingResponse {
   recording: MeetingRecordingProps;
 }
 
+// ---------- Re-transcribe (re-run the pipeline on kept audio) ----------
+
+export interface RetranscribeMeetingRequest {
+  recordingId: string;
+}
+
+export interface RetranscribeMeetingResponse {
+  recording: MeetingRecordingProps;
+}
+
 // ---------- Send to journal (always appends fresh) ----------
 
 export interface SendToJournalRequest {
@@ -149,6 +159,10 @@ export interface IResummarizeMeetingUseCase {
   execute(request: ResummarizeMeetingRequest): Promise<ResummarizeMeetingResponse>;
 }
 
+export interface IRetranscribeMeetingUseCase {
+  execute(request: RetranscribeMeetingRequest): Promise<RetranscribeMeetingResponse>;
+}
+
 export interface ISendToJournalUseCase {
   execute(request: SendToJournalRequest): Promise<SendToJournalResponse>;
 }
@@ -173,6 +187,7 @@ export interface IMeetingUseCases {
   getMeetingAudio: IGetMeetingAudioUseCase;
   deleteMeetingRecording: IDeleteMeetingRecordingUseCase;
   resummarizeMeeting: IResummarizeMeetingUseCase;
+  retranscribeMeeting: IRetranscribeMeetingUseCase;
   sendToJournal: ISendToJournalUseCase;
   liveTranscription: ILiveTranscriptionUseCases;
 }
