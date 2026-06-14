@@ -1,9 +1,10 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Cloud, Cpu, FloppyDisk, Key, Trash } from '@phosphor-icons/react';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 import { Badge } from '@renderer/components/base/ui/badge';
 import { Button } from '@renderer/components/base/ui/button';
+import { Combobox } from '@renderer/components/base/ui/combobox';
 import { Input } from '@renderer/components/base/ui/input';
 import {
   Select,
@@ -82,54 +83,6 @@ function NumberInput({
  * so typing a model id like `openai/gpt-5.4-mini` doesn't spam a write
  * to disk on every character.
  */
-/**
- * Free-text field with an optional preset dropdown (native datalist combobox):
- * pick a common value or type any custom one. Used for model ids + base URL.
- */
-function ModelInput({
-  defaultValue,
-  disabled,
-  onCommit,
-  placeholder = 'provider/model',
-  presets,
-}: {
-  defaultValue: string;
-  disabled?: boolean;
-  onCommit: (value: string) => void;
-  placeholder?: string;
-  presets?: string[];
-}) {
-  const [draft, setDraft] = useState(defaultValue);
-  const listId = useId();
-  const hasPresets = presets && presets.length > 0;
-  return (
-    <>
-      <Input
-        value={draft}
-        disabled={disabled}
-        placeholder={placeholder}
-        spellCheck={false}
-        list={hasPresets ? listId : undefined}
-        className="w-72 font-mono text-xs"
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => onCommit(draft)}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.currentTarget.blur();
-          }
-        }}
-      />
-      {hasPresets && (
-        <datalist id={listId}>
-          {presets.map((preset) => (
-            <option key={preset} value={preset} />
-          ))}
-        </datalist>
-      )}
-    </>
-  );
-}
-
 // Common model ids per provider (OpenAI + Google + Groq). Free text still
 // works — these are just quick-pick suggestions in the dropdown.
 const TEXT_MODEL_PRESETS = [
@@ -395,12 +348,15 @@ export function AISettings() {
             title="Text generation"
             description="provider/model — pick or type"
           >
-            <ModelInput
-              key={`text-${ai.models.textModel}`}
-              defaultValue={ai.models.textModel}
+            <Combobox
+              value={ai.models.textModel}
+              onChange={(value) => commitModel('textModel', value, 'Text model updated')}
+              options={TEXT_MODEL_PRESETS}
               disabled={saving}
-              presets={TEXT_MODEL_PRESETS}
-              onCommit={(value) => commitModel('textModel', value, 'Text model updated')}
+              mono
+              className="w-72"
+              placeholder="provider/model"
+              searchPlaceholder="Pick or type provider/model…"
             />
           </SettingRow>
           <SettingRow
@@ -423,13 +379,15 @@ export function AISettings() {
             title="OpenAI base URL"
             description="Optional. Blank uses api.openai.com"
           >
-            <ModelInput
-              key={`openai-base-${ai.models.openaiBaseUrl}`}
-              defaultValue={ai.models.openaiBaseUrl}
+            <Combobox
+              value={ai.models.openaiBaseUrl}
+              onChange={commitOpenaiBaseUrl}
+              options={OPENAI_BASE_URL_PRESETS}
               disabled={saving}
+              mono
+              className="w-72"
               placeholder="https://api.openai.com/v1"
-              presets={OPENAI_BASE_URL_PRESETS}
-              onCommit={commitOpenaiBaseUrl}
+              searchPlaceholder="Pick or type a base URL…"
             />
           </SettingRow>
         </ContainerStack>
