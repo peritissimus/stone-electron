@@ -99,6 +99,9 @@ mac:
   extraResources:
     - from: vendor/whisper/bin
       to: whisper
+    # AEC model (ICASSP-2022 baseline) for offline echo cancellation.
+    - from: resources/aec
+      to: aec
 
 dmg:
   title: ${productName} ${version}

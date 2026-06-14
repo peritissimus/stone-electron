@@ -80,6 +80,7 @@
     "glob": "^13.0.0",
     "html-to-image": "^1.11.11",
     "nanoid": "3.3.8",
+    "onnxruntime-node": "1.14.0",
     "react-force-graph-2d": "^1.29.0",
     "react-router-dom": "^7.15.0",
     "simple-git": "^3.36.0",

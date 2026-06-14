@@ -183,6 +183,7 @@ import {
   AISDKTextGenerator,
   LocalReranker,
   WhisperCppTranscriber,
+  OnnxEchoCanceller,
   SingleShotSummarizer,
   // Outbound (Secondary) - Events
   EventPublisher,
@@ -405,6 +406,11 @@ export function createContainer(deps: ContainerDeps): Container {
         total,
       }),
   });
+
+  // Offline acoustic echo canceller — scrubs system-audio bleed from the mic
+  // track before transcription so the "You" transcript isn't polluted on
+  // speakers. Best-effort; finalize falls back to the raw mic if it fails.
+  const echoCanceller = new OnnxEchoCanceller();
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
@@ -644,6 +650,7 @@ export function createContainer(deps: ContainerDeps): Container {
     pathService,
     transcriber,
     summarizer,
+    echoCanceller,
     appendToJournal: (content, workspaceId) =>
       quickCaptureUseCases.appendToJournal(content, workspaceId),
   });

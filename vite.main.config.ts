@@ -92,6 +92,9 @@ export default defineConfig({
         // Note: @xenova/transformers is loaded in a worker thread, not in main process
         // The worker has `self` defined, so no polyfill needed
         'sharp',
+        // onnxruntime-node is a native (N-API) module — never bundle it.
+        // Used by OnnxEchoCanceller via dynamic import in the main process.
+        'onnxruntime-node',
       ],
     },
   },

@@ -314,6 +314,90 @@ describe('MeetingUseCases', () => {
     });
   });
 
+  it('echo-cancels the mic against the system reference before transcription', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(true); // system track present
+    vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+    vi.mocked(transcriber.transcribe).mockResolvedValue({
+      text: 'hello',
+      segments: [{ text: 'hello', startMs: 0, endMs: 1_000 }],
+      durationMs: 1_000,
+    });
+    const echoCanceller = {
+      isReady: vi.fn(() => true),
+      initialize: vi.fn(async () => {}),
+      cancel: vi.fn(async () => {}),
+    };
+    const aecUseCases = createMeetingUseCases({
+      meetingRepository,
+      workspaceRepository,
+      fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
+      transcriber,
+      summarizer,
+      echoCanceller,
+      appendToJournal,
+      defaultPrompt: 'Default prompt {{transcript}}',
+    });
+
+    await aecUseCases.finalizeRecording.execute({ recordingId: 'rec-1', durationMs: 2_000 });
+
+    expect(echoCanceller.cancel).toHaveBeenCalledWith({
+      micPath: '/workspace/.stone/recordings/rec-1.wav',
+      referencePath: '/workspace/.stone/recordings/rec-1.system.wav',
+      outputPath: '/workspace/.stone/recordings/rec-1.wav.aec.wav',
+    });
+    // Mic transcribed from the cleaned file; system from the raw reference.
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.wav.aec.wav',
+    });
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.system.wav',
+    });
+    // The temp cleaned file is removed after transcription.
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav.aec.wav');
+  });
+
+  it('falls back to the raw mic when echo cancellation fails', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(true);
+    vi.mocked(fileStorage.delete).mockResolvedValue(undefined);
+    vi.mocked(transcriber.transcribe).mockResolvedValue({
+      text: 'hello',
+      segments: [{ text: 'hello', startMs: 0, endMs: 1_000 }],
+      durationMs: 1_000,
+    });
+    const echoCanceller = {
+      isReady: vi.fn(() => false),
+      initialize: vi.fn(async () => {}),
+      cancel: vi.fn(async () => {
+        throw new Error('model missing');
+      }),
+    };
+    const aecUseCases = createMeetingUseCases({
+      meetingRepository,
+      workspaceRepository,
+      fileStorage,
+      idGenerator: createMockIdGenerator(),
+      pathService: createMockPathService(),
+      transcriber,
+      summarizer,
+      echoCanceller,
+      appendToJournal,
+      defaultPrompt: 'Default prompt {{transcript}}',
+    });
+
+    await aecUseCases.finalizeRecording.execute({ recordingId: 'rec-1', durationMs: 2_000 });
+
+    // Mic transcribed from the RAW file — cancellation failure must not block it.
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.wav',
+    });
+  });
+
   it('marks the recording failed and keeps audio when the finalize pipeline fails', async () => {
     vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
     vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());

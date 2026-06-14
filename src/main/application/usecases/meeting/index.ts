@@ -1,4 +1,5 @@
 import type {
+  IEchoCanceller,
   IFileStorage,
   IIdGenerator,
   IMeetingRecordingRepository,
@@ -36,6 +37,7 @@ export interface MeetingUseCasesDeps {
   pathService: IPathService;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  echoCanceller?: IEchoCanceller;
   appendToJournal: (
     content: string,
     workspaceId?: string,
@@ -65,6 +67,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       pathService: deps.pathService,
       transcriber: deps.transcriber,
       summarizer: deps.summarizer,
+      echoCanceller: deps.echoCanceller,
       defaultPrompt: deps.defaultPrompt,
     }),
     listMeetingRecordings: new ListMeetingRecordingsUseCase(

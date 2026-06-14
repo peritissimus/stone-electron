@@ -13,6 +13,7 @@
 import {
   DEFAULT_MEETING_SUMMARY_PROMPT,
   MeetingRecordingNotFoundError,
+  type IEchoCanceller,
   type IFileStorage,
   type IMeetingRecordingRepository,
   type IPathService,
@@ -35,6 +36,9 @@ export interface FinalizeRecordingUseCaseDeps {
   pathService: IPathService;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  /** Optional — cancels speaker bleed from the mic using the system track as
+   *  the reference before transcription. Best-effort: skipped on failure. */
+  echoCanceller?: IEchoCanceller;
   /** Override for tests / future settings. */
   defaultPrompt?: string;
 }
@@ -66,16 +70,30 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
       recording.markTranscribing();
       await this.deps.meetingRepository.save(recording);
 
+      const hasSystemTrack = await this.deps.fileStorage.exists(systemAbsolutePath);
+
+      // Cancel speaker echo from the mic before transcription: on speakers the
+      // system audio bleeds into the mic and pollutes the "You" track. The
+      // system track is the clean reference, so AEC subtracts it. Best-effort —
+      // on any failure we fall back to the raw mic.
+      const micForTranscription = hasSystemTrack
+        ? await this.cancelEcho(audioAbsolutePath, systemAbsolutePath)
+        : audioAbsolutePath;
+
       // Transcribe mic and system tracks separately so each segment keeps its
       // source — clean "You" vs "Others" attribution without acoustic guessing.
-      const micResult = await this.deps.transcriber.transcribe({ audioPath: audioAbsolutePath });
+      const micResult = await this.deps.transcriber.transcribe({ audioPath: micForTranscription });
       const segments: TranscriptSegment[] = micResult.segments.map((s) => ({
         ...s,
         source: 'mic' as const,
       }));
       let maxDurationMs = micResult.durationMs;
 
-      if (await this.deps.fileStorage.exists(systemAbsolutePath)) {
+      if (micForTranscription !== audioAbsolutePath) {
+        await this.deps.fileStorage.delete(micForTranscription).catch(() => {});
+      }
+
+      if (hasSystemTrack) {
         const sysResult = await this.deps.transcriber.transcribe({ audioPath: systemAbsolutePath });
         for (const s of sysResult.segments) segments.push({ ...s, source: 'system' as const });
         maxDurationMs = Math.max(maxDurationMs, sysResult.durationMs);
@@ -115,5 +133,22 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
     // }
 
     return { recording: recording.toPersistence() };
+  }
+
+  /**
+   * Echo-cancel the mic against the system reference, returning a path to a
+   * cleaned temp WAV. Falls back to the raw mic path on any failure so a flaky
+   * canceller never blocks transcription.
+   */
+  private async cancelEcho(micPath: string, referencePath: string): Promise<string> {
+    if (!this.deps.echoCanceller) return micPath;
+    const outputPath = `${micPath}.aec.wav`;
+    try {
+      await this.deps.echoCanceller.cancel({ micPath, referencePath, outputPath });
+      return outputPath;
+    } catch {
+      await this.deps.fileStorage.delete(outputPath).catch(() => {});
+      return micPath;
+    }
   }
 }
