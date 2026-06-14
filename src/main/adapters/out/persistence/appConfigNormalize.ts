@@ -350,6 +350,25 @@ function mergeAIIndexing(value: unknown): AIIndexingConfig {
   };
 }
 
+/**
+ * Sanitize an OpenAI base-URL override. Empty/whitespace → '' (official API).
+ * Anything else must parse as an http(s) URL, otherwise we drop back to ''
+ * rather than persist a value that could send note content somewhere
+ * unintended. Returns the trimmed URL with no trailing slash.
+ */
+function sanitizeOpenAIBaseUrl(value: unknown): string {
+  if (typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return '';
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    return trimmed.replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+
 function mergeAIModels(value: unknown): AIModelConfig {
   const defaults = DEFAULT_APP_CONFIG.ai.models;
   if (!isRecord(value)) {
@@ -365,6 +384,7 @@ function mergeAIModels(value: unknown): AIModelConfig {
       typeof value.embeddingModel === 'string' && value.embeddingModel.trim().length > 0
         ? value.embeddingModel
         : defaults.embeddingModel,
+    openaiBaseUrl: sanitizeOpenAIBaseUrl(value.openaiBaseUrl),
   };
 }
 

@@ -181,6 +181,7 @@ export const AIConfigSchema = z.object({
   models: z.object({
     textModel: z.string(),
     embeddingModel: z.string(),
+    openaiBaseUrl: z.string(),
   }),
   privacy: z.object({
     allowCloudInference: z.boolean(),

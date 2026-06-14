@@ -341,6 +341,13 @@ export type AIProviderMode = 'local' | 'cloud' | 'disabled';
 export interface AIModelConfig {
   textModel: string;
   embeddingModel: string;
+  /**
+   * Optional override for the OpenAI-compatible API base URL (e.g. an
+   * Azure OpenAI gateway, a local LiteLLM/Ollama proxy, or a self-hosted
+   * endpoint). Empty string → use the official api.openai.com. Applies
+   * only to OpenAI text generation.
+   */
+  openaiBaseUrl: string;
 }
 
 export interface AIPrivacyConfig {
@@ -390,6 +397,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
   models: {
     textModel: 'openai/gpt-5.4-mini',
     embeddingModel: 'openai/text-embedding-3-small',
+    openaiBaseUrl: '',
   },
   privacy: {
     allowCloudInference: false,

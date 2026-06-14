@@ -19,4 +19,7 @@ export type {
   NotesConfig,
   NoteLocationPolicy,
   QuickNoteSlotFolders,
+  AIConfig,
+  AIModelConfig,
+  MeetingsConfig,
 } from './AppConfig';

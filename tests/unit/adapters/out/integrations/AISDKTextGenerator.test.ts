@@ -4,7 +4,7 @@ import {
   type GenerateTextFn,
   AISDKTextGenerator,
 } from '../../../../../src/main/adapters/out/integrations/AISDKTextGenerator';
-import type { IAppConfigRepository } from '../../../../../src/main/domain';
+import type { IAIProviderKeyStore, IAppConfigRepository } from '../../../../../src/main/domain';
 import {
   DEFAULT_APP_CONFIG,
   type AppConfig,
@@ -167,25 +167,85 @@ describe('AISDKTextGenerator', () => {
     expect(generateTextFn).not.toHaveBeenCalled();
   });
 
-  // Egress-contract regression test. AISDKTextGenerator must call each
-  // provider factory with `{ apiKey }` only — never with a baseURL, a
-  // custom fetch, or anything else that could redirect note content to
-  // an unintended endpoint. A simple source-text scan catches the
-  // typical regression: someone adding `baseURL: ...` to one of the
-  // provider factory calls.
-  it('does not override the provider baseURL (egress is locked to defaults)', async () => {
+  // Egress contract: OpenAI may use a user-configured baseURL (sourced
+  // only from config.json, never from note content), and all OTHER
+  // providers must remain locked to their official endpoints.
+  it('passes the configured OpenAI base URL to the provider factory', async () => {
+    const generateTextFn = vi.fn(async () => ({ text: 'ok' }));
+    const openaiFactory = vi.fn(() => () => ({}) as LanguageModel);
+    const config = createConfig({
+      models: { ...DEFAULT_APP_CONFIG.ai.models, openaiBaseUrl: 'https://proxy.local/v1' },
+      privacy: {
+        allowCloudInference: true,
+        allowSendingNoteContent: true,
+        allowSendingMetadata: false,
+      },
+    });
+    const generator = new AISDKTextGenerator({
+      appConfigRepository: createAppConfigRepository(config),
+      aiProviderKeyStore: {
+        getKey: vi.fn(async () => 'sk-test'),
+        setKey: vi.fn(),
+        deleteKey: vi.fn(),
+        listStatuses: vi.fn(async () => []),
+      } as unknown as IAIProviderKeyStore,
+      generateTextFn,
+      openaiFactory,
+    });
+
+    await generator.generateMarkdown({ prompt: 'hi' });
+
+    expect(openaiFactory).toHaveBeenCalledWith({
+      apiKey: 'sk-test',
+      baseURL: 'https://proxy.local/v1',
+    });
+  });
+
+  it('omits baseURL when no OpenAI override is configured', async () => {
+    const generateTextFn = vi.fn(async () => ({ text: 'ok' }));
+    const openaiFactory = vi.fn(() => () => ({}) as LanguageModel);
+    const config = createConfig({
+      models: { ...DEFAULT_APP_CONFIG.ai.models, openaiBaseUrl: '' },
+      privacy: {
+        allowCloudInference: true,
+        allowSendingNoteContent: true,
+        allowSendingMetadata: false,
+      },
+    });
+    const generator = new AISDKTextGenerator({
+      appConfigRepository: createAppConfigRepository(config),
+      aiProviderKeyStore: {
+        getKey: vi.fn(async () => 'sk-test'),
+        setKey: vi.fn(),
+        deleteKey: vi.fn(),
+        listStatuses: vi.fn(async () => []),
+      } as unknown as IAIProviderKeyStore,
+      generateTextFn,
+      openaiFactory,
+    });
+
+    await generator.generateMarkdown({ prompt: 'hi' });
+
+    expect(openaiFactory).toHaveBeenCalledWith({ apiKey: 'sk-test' });
+    expect(openaiFactory).not.toHaveBeenCalledWith(
+      expect.objectContaining({ baseURL: expect.anything() }),
+    );
+  });
+
+  // Source-scan regression: only OpenAI may take a baseURL, the other
+  // providers stay apiKey-only, and no custom fetch is ever injected.
+  it('locks egress for non-OpenAI providers (apiKey only, no custom fetch)', async () => {
     const fs = await import('node:fs/promises');
     const path = await import('node:path');
     const source = await fs.readFile(
-      path.join(
-        process.cwd(),
-        'src/main/adapters/out/integrations/AISDKTextGenerator.ts',
-      ),
+      path.join(process.cwd(), 'src/main/adapters/out/integrations/AISDKTextGenerator.ts'),
       'utf-8',
     );
-    expect(source).not.toMatch(/baseURL\s*:/);
-    expect(source).not.toMatch(/baseUrl\s*:/);
-    // Custom fetch could also redirect; ensure no opt-in there either.
+    expect(source).toMatch(/createAnthropic\(\{ apiKey \}\)/);
+    expect(source).toMatch(/createCohere\(\{ apiKey \}\)/);
+    expect(source).toMatch(/createGoogleGenerativeAI\(\{ apiKey \}\)/);
+    expect(source).toMatch(/createMistral\(\{ apiKey \}\)/);
+    // A custom fetch could redirect content regardless of baseURL — never allow it.
     expect(source).not.toMatch(/fetch\s*:\s*\w/);
   });
 });

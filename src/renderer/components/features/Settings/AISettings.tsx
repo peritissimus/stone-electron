@@ -86,17 +86,19 @@ function ModelInput({
   defaultValue,
   disabled,
   onCommit,
+  placeholder = 'provider/model',
 }: {
   defaultValue: string;
   disabled?: boolean;
   onCommit: (value: string) => void;
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState(defaultValue);
   return (
     <Input
       value={draft}
       disabled={disabled}
-      placeholder="provider/model"
+      placeholder={placeholder}
       spellCheck={false}
       className="w-72 font-mono text-xs"
       onChange={(event) => setDraft(event.target.value)}
@@ -144,6 +146,17 @@ export function AISettings() {
     const trimmed = nextValue.trim();
     if (!trimmed || trimmed === ai.models[field]) return;
     void run(async () => updateModels({ [field]: trimmed } as Partial<AIModelConfig>), label);
+  };
+
+  // Base URL is allowed to be cleared (empty → official api.openai.com),
+  // so it can't reuse commitModel's "non-empty only" guard.
+  const commitOpenaiBaseUrl = (nextValue: string) => {
+    const trimmed = nextValue.trim();
+    if (trimmed === ai.models.openaiBaseUrl) return;
+    void run(
+      async () => updateModels({ openaiBaseUrl: trimmed }),
+      trimmed ? 'OpenAI base URL updated' : 'OpenAI base URL reset to default',
+    );
   };
 
   const saveProviderKey = (provider: AIProviderId, label: string) =>
@@ -378,6 +391,18 @@ export function AISettings() {
             <Badge variant="secondary" className="font-mono text-[10px]">
               Local
             </Badge>
+          </SettingRow>
+          <SettingRow
+            title="OpenAI base URL"
+            description="Override the OpenAI-compatible endpoint (Azure, LiteLLM/Ollama proxy, self-hosted). Leave blank for the official api.openai.com."
+          >
+            <ModelInput
+              key={`openai-base-${ai.models.openaiBaseUrl}`}
+              defaultValue={ai.models.openaiBaseUrl}
+              disabled={saving}
+              placeholder="https://api.openai.com/v1"
+              onCommit={commitOpenaiBaseUrl}
+            />
           </SettingRow>
         </ContainerStack>
       </ContainerStack>

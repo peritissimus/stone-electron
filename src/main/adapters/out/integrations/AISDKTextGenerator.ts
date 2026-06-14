@@ -5,6 +5,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createMistral } from '@ai-sdk/mistral';
 import { createOpenAI } from '@ai-sdk/openai';
 import type {
+  AIConfig,
   CitationSource,
   GenerateAnswerRequest,
   GenerateAnswerResponse,
@@ -30,17 +31,28 @@ export type GenerateTextFn = (request: {
   };
 }>;
 
+/** Factory shape for the OpenAI provider — injectable so the base-URL
+ *  behaviour can be tested without hitting the network. */
+export type OpenAIFactory = (settings: {
+  apiKey?: string;
+  baseURL?: string;
+}) => (modelId: string) => LanguageModel;
+
 export interface AISDKTextGeneratorDeps {
   appConfigRepository: IAppConfigRepository;
   aiProviderKeyStore?: IAIProviderKeyStore;
   generateTextFn?: GenerateTextFn;
   modelFactory?: (model: string) => LanguageModel;
+  /** Override the OpenAI provider factory (tests). Defaults to createOpenAI. */
+  openaiFactory?: OpenAIFactory;
 }
 
 export class AISDKTextGenerator implements ITextGenerator {
   private readonly generateTextFn: GenerateTextFn;
+  private readonly openaiFactory: OpenAIFactory;
 
   constructor(private readonly deps: AISDKTextGeneratorDeps) {
+    this.openaiFactory = deps.openaiFactory ?? (createOpenAI as unknown as OpenAIFactory);
     this.generateTextFn =
       deps.generateTextFn ??
       ((request) =>
@@ -65,7 +77,7 @@ export class AISDKTextGenerator implements ITextGenerator {
     }
 
     const result = await this.generateTextFn({
-      model: await this.createLanguageModel(request.model ?? config.ai.models.textModel),
+      model: await this.createLanguageModel(request.model ?? config.ai.models.textModel, config.ai),
       system: this.systemPrompt(),
       prompt: this.userPrompt(request, config.ai.privacy.allowSendingMetadata),
       temperature: 0.2,
@@ -83,7 +95,7 @@ export class AISDKTextGenerator implements ITextGenerator {
     assertCloudNoteContentAllowed(config.ai);
 
     const result = await this.generateTextFn({
-      model: await this.createLanguageModel(request.model ?? config.ai.models.textModel),
+      model: await this.createLanguageModel(request.model ?? config.ai.models.textModel, config.ai),
       system: request.system ?? 'You produce concise markdown. Use bullet lists and headings where useful.',
       prompt: request.prompt,
       // Only pass temperature when explicitly requested — reasoning
@@ -121,19 +133,25 @@ export class AISDKTextGenerator implements ITextGenerator {
   }
 
   /**
-   * Build a LanguageModel pointing at the provider's official API.
+   * Build a LanguageModel pointing at the provider's API.
    *
-   * **Egress contract (security-relevant):** every provider factory
-   * below is called with `{ apiKey }` only — no `baseURL`, no custom
-   * `fetch`, no proxy override. That means a note's body can reach
-   * exactly the configured provider's URL (api.openai.com,
-   * api.anthropic.com, etc.) and nowhere else, even under
-   * prompt-injection from a malicious note. If you ever add a
-   * `baseURL` to one of these factories, you must also justify it in
-   * a comment + update the egress contract test in
+   * **Egress contract (security-relevant):** the anthropic / cohere /
+   * google / mistral factories are called with `{ apiKey }` only — no
+   * `baseURL`, no custom `fetch`, no proxy override — so a note's body
+   * can reach exactly those providers' official URLs and nowhere else,
+   * even under prompt-injection from a malicious note.
+   *
+   * OpenAI is the single exception: it accepts a user-configured
+   * `baseURL` (`ai.models.openaiBaseUrl`) so the user can point Stone at
+   * an OpenAI-compatible endpoint (Azure gateway, LiteLLM/Ollama proxy,
+   * self-hosted). This is safe because the value comes ONLY from the
+   * user's own config.json via the Settings UI — it is never derived
+   * from request input or note content, so it is not prompt-injectable.
+   * No `fetch:` override is ever passed. If you change this, update the
+   * egress contract test in
    * tests/unit/adapters/out/integrations/AISDKTextGenerator.test.ts.
    */
-  private async createLanguageModel(model: string): Promise<LanguageModel> {
+  private async createLanguageModel(model: string, ai: AIConfig): Promise<LanguageModel> {
     if (this.deps.modelFactory) {
       return this.deps.modelFactory(model);
     }
@@ -145,7 +163,8 @@ export class AISDKTextGenerator implements ITextGenerator {
     }
     if (parsed.provider === 'openai') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('openai')) ?? undefined;
-      return createOpenAI({ apiKey })(parsed.modelId as Parameters<ReturnType<typeof createOpenAI>>[0]);
+      const baseURL = ai.models.openaiBaseUrl.trim() || undefined;
+      return this.openaiFactory({ apiKey, ...(baseURL ? { baseURL } : {}) })(parsed.modelId);
     }
     if (parsed.provider === 'anthropic') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('anthropic')) ?? undefined;
