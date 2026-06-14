@@ -17,6 +17,8 @@ export interface MeetingTranscriptSegment {
   /** Capture source: the user's mic ('mic') or system audio / other
    *  participants ('system'). Absent on legacy single-track transcripts. */
   source?: 'mic' | 'system';
+  /** Mean per-token transcription confidence (0-1), when whisper reported it. */
+  confidence?: number;
 }
 
 export interface MeetingRecording {

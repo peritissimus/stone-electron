@@ -49,4 +49,15 @@ describe('collapseRepeatedSegments', () => {
   it('returns an empty array unchanged', () => {
     expect(collapseRepeatedSegments([])).toEqual([]);
   });
+
+  it('keeps the most conservative confidence across a merged run', () => {
+    const out = collapseRepeatedSegments([
+      { text: 'um yeah', startMs: 0, endMs: 1000, confidence: 0.8 },
+      { text: 'um yeah', startMs: 1000, endMs: 2000, confidence: 0.4 },
+      { text: 'um yeah', startMs: 2000, endMs: 3000, confidence: 0.6 },
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0].confidence).toBe(0.4);
+    expect(out[0]).toMatchObject({ startMs: 0, endMs: 3000 });
+  });
 });

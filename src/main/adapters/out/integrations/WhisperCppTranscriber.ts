@@ -107,18 +107,23 @@ export class WhisperCppTranscriber implements ITranscriber {
         '-l',
         'auto', // multilingual auto-detect
         ...vadArgs, // skip silence — prevents decoder repetition loops
-        '-oj', // output JSON
+        '-ojf', // full JSON: includes per-token probabilities for confidence
         '-of',
         outBase,
         '--no-prints',
       ]);
 
       const parsed = JSON.parse(await fs.readFile(jsonPath, 'utf8')) as WhisperJson;
-      const rawSegments: TranscriptSegment[] = (parsed.transcription ?? []).map((s) => ({
-        text: s.text.trim(),
-        startMs: s.offsets?.from ?? 0,
-        endMs: s.offsets?.to ?? 0,
-      }));
+      const rawSegments: TranscriptSegment[] = (parsed.transcription ?? []).map((s) => {
+        const seg: TranscriptSegment = {
+          text: s.text.trim(),
+          startMs: s.offsets?.from ?? 0,
+          endMs: s.offsets?.to ?? 0,
+        };
+        const confidence = segmentConfidence(s.tokens);
+        if (confidence !== null) seg.confidence = confidence;
+        return seg;
+      });
       // Collapse consecutive-duplicate runs — whisper's repetition-loop
       // hallucination on long/continuous audio (e.g. a phrase echoed once a
       // second for minutes).
@@ -211,11 +216,38 @@ export class WhisperCppTranscriber implements ITranscriber {
   }
 }
 
+interface WhisperToken {
+  text: string;
+  /** Probability of the token (0-1) — present in --output-json-full. */
+  p?: number;
+}
+
 interface WhisperJson {
   transcription?: Array<{
     text: string;
     offsets?: { from: number; to: number };
+    tokens?: WhisperToken[];
   }>;
+}
+
+/**
+ * Mean probability across a segment's real (non-special) tokens. Whisper's
+ * full JSON includes timestamp/control tokens (text like "[_TT_60]",
+ * "[_BEG_]") whose probabilities are not meaningful for speech confidence, so
+ * we skip them. Returns null when no usable token probabilities are present.
+ */
+function segmentConfidence(tokens: WhisperToken[] | undefined): number | null {
+  if (!tokens || tokens.length === 0) return null;
+  const probs: number[] = [];
+  for (const token of tokens) {
+    if (typeof token.p !== 'number' || !Number.isFinite(token.p)) continue;
+    const text = token.text.trim();
+    if (text.length === 0 || text.startsWith('[_')) continue; // special/control token
+    probs.push(token.p);
+  }
+  if (probs.length === 0) return null;
+  const mean = probs.reduce((sum, p) => sum + p, 0) / probs.length;
+  return Math.round(mean * 1000) / 1000;
 }
 
 async function fileExists(p: string): Promise<boolean> {

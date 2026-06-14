@@ -39,6 +39,10 @@ describe.skipIf(!ready)('WhisperCppTranscriber (real binary)', () => {
       startMs: expect.any(Number),
       endMs: expect.any(Number),
     });
+    // Per-segment confidence is derived from full-JSON token probabilities.
+    expect(result.segments[0].confidence).toBeTypeOf('number');
+    expect(result.segments[0].confidence).toBeGreaterThan(0);
+    expect(result.segments[0].confidence).toBeLessThanOrEqual(1);
     expect(result.durationMs).toBeGreaterThan(0);
   }, 60_000);
 });

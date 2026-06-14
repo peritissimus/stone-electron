@@ -63,6 +63,12 @@ export { NoteGraphBuilder } from './NoteGraphBuilder';
 export { stripFirstHeading } from './MarkdownTitle';
 export { collapseRepeatedSegments } from './transcriptRepeats';
 export {
+  buildTranscriptText,
+  buildSummaryTranscript,
+  LOW_CONFIDENCE_THRESHOLD,
+  LOW_CONFIDENCE_TAG,
+} from './transcriptFormat';
+export {
   canonicalizeChord,
   detectConflicts,
   formatChord,

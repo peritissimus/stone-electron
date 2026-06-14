@@ -6,6 +6,7 @@
  */
 
 import {
+  buildSummaryTranscript,
   DEFAULT_MEETING_SUMMARY_PROMPT,
   MeetingRecordingNotFoundError,
   type IMeetingRecordingRepository,
@@ -36,8 +37,16 @@ export class ResummarizeMeetingUseCase implements IResummarizeMeetingUseCase {
     const prompt =
       request.promptTemplate ?? this.deps.defaultPrompt ?? DEFAULT_MEETING_SUMMARY_PROMPT;
 
+    // Rebuild a confidence-tagged transcript from the stored segments so the
+    // summarizer gets the same low-confidence hints as the first pass. Legacy
+    // recordings without segments fall back to the plain stored text.
+    const transcript =
+      recording.transcriptSegments.length > 0
+        ? buildSummaryTranscript(recording.transcriptSegments)
+        : recording.transcriptText;
+
     const result = await this.deps.summarizer.summarize({
-      transcript: recording.transcriptText,
+      transcript,
       promptTemplate: prompt,
     });
 

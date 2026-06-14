@@ -26,6 +26,10 @@ export interface TranscriptSegment {
    *  system audio / other participants ('system'). Absent on legacy single-
    *  track transcripts. */
   source?: 'mic' | 'system';
+  /** Mean per-token probability (0-1) reported by whisper for this segment —
+   *  a transcription-confidence signal. Absent on legacy transcripts and when
+   *  the decoder gave no usable token probabilities. */
+  confidence?: number;
 }
 
 export interface MeetingRecordingProps {

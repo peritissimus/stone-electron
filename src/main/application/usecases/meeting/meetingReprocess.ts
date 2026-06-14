@@ -6,6 +6,8 @@
  */
 
 import {
+  buildSummaryTranscript,
+  buildTranscriptText,
   type IEchoCanceller,
   type IFileStorage,
   type IMeetingRecordingRepository,
@@ -65,16 +67,19 @@ export async function reprocessRecordingAudio(
     maxDurationMs = Math.max(maxDurationMs, sysResult.durationMs);
   }
 
-  // Interleave by start time and label each line by speaker.
+  // Interleave by start time; store the clean labelled transcript but feed the
+  // summarizer a copy that flags low-confidence lines so it can discount shaky
+  // transcription rather than asserting it as fact.
   segments.sort((a, b) => a.startMs - b.startMs);
-  const text = segments
-    .map((s) => `${s.source === 'system' ? 'Others' : 'You'}: ${s.text}`)
-    .join('\n');
+  const text = buildTranscriptText(segments);
   const durationMs = Math.max(maxDurationMs, requestDurationMs);
   recording.attachTranscript(text, segments, durationMs);
   await deps.meetingRepository.save(recording);
 
-  const summary = await deps.summarizer.summarize({ transcript: text, promptTemplate });
+  const summary = await deps.summarizer.summarize({
+    transcript: buildSummaryTranscript(segments),
+    promptTemplate,
+  });
   recording.attachSummary(summary.summary, summary.promptUsed);
   await deps.meetingRepository.save(recording);
 }
