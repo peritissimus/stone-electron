@@ -61,7 +61,11 @@ interface MeetingRecorderState {
   tickElapsed: (ms: number) => void;
   setAudioLevel: (level: number) => void;
   setSystemAudioLevel: (level: number) => void;
-  uploadAndFinalize: (wav: ArrayBuffer, durationMs: number) => Promise<void>;
+  uploadAndFinalize: (
+    micWav: ArrayBuffer,
+    systemWav: ArrayBuffer | null,
+    durationMs: number,
+  ) => Promise<void>;
   cancelActive: () => Promise<void>;
   markError: (message: string) => void;
   reset: () => void;
@@ -125,7 +129,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   setAudioLevel: (level) => set({ audioLevel: level }),
   setSystemAudioLevel: (level) => set({ systemAudioLevel: level }),
 
-  uploadAndFinalize: async (wav, durationMs) => {
+  uploadAndFinalize: async (micWav, systemWav, durationMs) => {
     const recordingId = get().recordingId;
     if (!recordingId) {
       set({ phase: 'error', error: 'Recording id is missing' });
@@ -134,10 +138,17 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
 
     set({ phase: 'uploading' });
     try {
-      const writeRes = await meetingAPI.appendAudio(recordingId, wav);
+      const writeRes = await meetingAPI.appendAudio(recordingId, micWav, 'mic');
       if (!writeRes.success) {
         set({ phase: 'error', error: writeRes.error?.message ?? 'Failed to upload audio' });
         return;
+      }
+      if (systemWav) {
+        const sysRes = await meetingAPI.appendAudio(recordingId, systemWav, 'system');
+        if (!sysRes.success) {
+          set({ phase: 'error', error: sysRes.error?.message ?? 'Failed to upload system audio' });
+          return;
+        }
       }
 
       set({ phase: 'finalizing' });

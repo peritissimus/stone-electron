@@ -255,9 +255,10 @@ describe('MeetingUseCases', () => {
     expect(meetingRepository.save).toHaveBeenCalledWith(expect.any(MeetingRecordingEntity));
   });
 
-  it('finalizes by transcribing, summarizing, saving state, and clearing audio', async () => {
+  it('finalizes by transcribing the mic track and labeling it by source', async () => {
     vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
     vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(false); // no system track
     vi.mocked(transcriber.transcribe).mockResolvedValue({
       text: 'Transcript text',
       segments: [{ text: 'Transcript text', startMs: 0, endMs: 1_000 }],
@@ -272,14 +273,45 @@ describe('MeetingUseCases', () => {
     expect(transcriber.transcribe).toHaveBeenCalledWith({
       audioPath: '/workspace/.stone/recordings/rec-1.wav',
     });
+    // Mic segments are labeled "You"; the summary receives the labeled transcript.
     expect(summarizer.summarize).toHaveBeenCalledWith({
-      transcript: 'Transcript text',
+      transcript: 'You: Transcript text',
       promptTemplate: 'Default prompt {{transcript}}',
     });
-    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
     expect(result.recording.status).toBe('ready');
     expect(result.recording.durationMs).toBe(2_000);
-    expect(result.recording.audioPath).toBeNull();
+    // NOTE: audio deletion is temporarily disabled (per-source transcription work).
+  });
+
+  it('transcribes mic + system tracks separately when a system track exists', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(true); // system track present
+    vi.mocked(transcriber.transcribe)
+      .mockResolvedValueOnce({
+        text: 'hello team',
+        segments: [{ text: 'hello team', startMs: 0, endMs: 1_000 }],
+        durationMs: 1_000,
+      })
+      .mockResolvedValueOnce({
+        text: 'hi there',
+        segments: [{ text: 'hi there', startMs: 500, endMs: 1_500 }],
+        durationMs: 1_500,
+      });
+
+    await useCases.finalizeRecording.execute({ recordingId: 'rec-1', durationMs: 2_000 });
+
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.wav',
+    });
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.system.wav',
+    });
+    // Interleaved by start time, labeled You (mic @0) then Others (system @500).
+    expect(summarizer.summarize).toHaveBeenCalledWith({
+      transcript: 'You: hello team\nOthers: hi there',
+      promptTemplate: 'Default prompt {{transcript}}',
+    });
   });
 
   it('marks the recording failed and keeps audio when the finalize pipeline fails', async () => {

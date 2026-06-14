@@ -46,8 +46,15 @@ export interface FinalizeRecordingResponse {
 
 export interface AppendRecordingAudioRequest {
   recordingId: string;
-  /** ArrayBuffer chunk produced by MediaRecorder.dataavailable. */
+  /** Complete WAV bytes for one capture source. */
   chunk: ArrayBuffer;
+  /** Which track: the mic (default) or the system-audio sibling file. */
+  channel?: 'mic' | 'system';
+}
+
+/** Relative path of the system-audio track, derived from the mic audioPath. */
+export function systemTrackPath(micAudioPath: string): string {
+  return micAudioPath.replace(/\.wav$/i, '.system.wav');
 }
 
 // ---------- List + get + delete (management surface) ----------

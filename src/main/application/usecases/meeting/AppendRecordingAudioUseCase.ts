@@ -12,9 +12,10 @@ import {
   type IPathService,
   type IWorkspaceRepository,
 } from '../../../domain';
-import type {
-  IAppendRecordingAudioUseCase,
-  AppendRecordingAudioRequest,
+import {
+  systemTrackPath,
+  type IAppendRecordingAudioUseCase,
+  type AppendRecordingAudioRequest,
 } from '../../../domain/ports/in/IMeetingUseCases';
 
 export class AppendRecordingAudioUseCase implements IAppendRecordingAudioUseCase {
@@ -35,7 +36,9 @@ export class AppendRecordingAudioUseCase implements IAppendRecordingAudioUseCase
     const workspace = await this.workspaceRepository.findById(recording.workspaceId);
     if (!workspace) throw new Error(`Workspace ${recording.workspaceId} no longer exists`);
 
-    const absolutePath = this.pathService.join(workspace.folderPath, recording.audioPath);
+    const relativePath =
+      request.channel === 'system' ? systemTrackPath(recording.audioPath) : recording.audioPath;
+    const absolutePath = this.pathService.join(workspace.folderPath, relativePath);
     await this.fileStorage.writeBytes(absolutePath, new Uint8Array(request.chunk), {
       append: false,
     });

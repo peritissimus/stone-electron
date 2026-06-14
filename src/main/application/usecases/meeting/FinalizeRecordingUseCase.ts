@@ -19,11 +19,13 @@ import {
   type ISummarizationStrategy,
   type ITranscriber,
   type IWorkspaceRepository,
+  type TranscriptSegment,
 } from '../../../domain';
-import type {
-  IFinalizeRecordingUseCase,
-  FinalizeRecordingRequest,
-  FinalizeRecordingResponse,
+import {
+  systemTrackPath,
+  type IFinalizeRecordingUseCase,
+  type FinalizeRecordingRequest,
+  type FinalizeRecordingResponse,
 } from '../../../domain/ports/in/IMeetingUseCases';
 
 export interface FinalizeRecordingUseCaseDeps {
@@ -55,23 +57,41 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
     );
 
     const prompt = this.deps.defaultPrompt ?? DEFAULT_MEETING_SUMMARY_PROMPT;
-
-    // The recorded WAV already contains mic + system audio — the renderer
-    // mixes the getDisplayMedia loopback stream before capture, so there's no
-    // separate system track to merge here.
+    const systemAbsolutePath = this.deps.pathService.join(
+      workspace.folderPath,
+      systemTrackPath(recording.audioPath),
+    );
 
     try {
       recording.markTranscribing();
       await this.deps.meetingRepository.save(recording);
 
-      const transcript = await this.deps.transcriber.transcribe({ audioPath: audioAbsolutePath });
-      // Use the captured duration if Whisper's report is suspiciously low.
-      const durationMs = Math.max(transcript.durationMs, request.durationMs);
-      recording.attachTranscript(transcript.text, transcript.segments, durationMs);
+      // Transcribe mic and system tracks separately so each segment keeps its
+      // source — clean "You" vs "Others" attribution without acoustic guessing.
+      const micResult = await this.deps.transcriber.transcribe({ audioPath: audioAbsolutePath });
+      const segments: TranscriptSegment[] = micResult.segments.map((s) => ({
+        ...s,
+        source: 'mic' as const,
+      }));
+      let maxDurationMs = micResult.durationMs;
+
+      if (await this.deps.fileStorage.exists(systemAbsolutePath)) {
+        const sysResult = await this.deps.transcriber.transcribe({ audioPath: systemAbsolutePath });
+        for (const s of sysResult.segments) segments.push({ ...s, source: 'system' as const });
+        maxDurationMs = Math.max(maxDurationMs, sysResult.durationMs);
+      }
+
+      // Interleave by start time and label each line by speaker.
+      segments.sort((a, b) => a.startMs - b.startMs);
+      const text = segments
+        .map((s) => `${s.source === 'system' ? 'Others' : 'You'}: ${s.text}`)
+        .join('\n');
+      const durationMs = Math.max(maxDurationMs, request.durationMs);
+      recording.attachTranscript(text, segments, durationMs);
       await this.deps.meetingRepository.save(recording);
 
       const summary = await this.deps.summarizer.summarize({
-        transcript: transcript.text,
+        transcript: text,
         promptTemplate: prompt,
       });
       recording.attachSummary(summary.summary, summary.promptUsed);
@@ -83,15 +103,16 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
       return { recording: recording.toPersistence() };
     }
 
-    // Pipeline succeeded — delete the audio file and drop the path.
-    // Failure here is non-fatal: the orphan can be cleaned up later.
-    try {
-      await this.deps.fileStorage.delete(audioAbsolutePath);
-      recording.clearAudio();
-      await this.deps.meetingRepository.save(recording);
-    } catch {
-      // intentional swallow — audio cleanup is best-effort.
-    }
+    // TEMP: audio deletion disabled so recorded WAVs can be inspected while we
+    // build per-source (mic vs system) transcription. Restore before shipping —
+    // the privacy model deletes audio once transcript + summary exist.
+    // try {
+    //   await this.deps.fileStorage.delete(audioAbsolutePath);
+    //   recording.clearAudio();
+    //   await this.deps.meetingRepository.save(recording);
+    // } catch {
+    //   // intentional swallow — audio cleanup is best-effort.
+    // }
 
     return { recording: recording.toPersistence() };
   }

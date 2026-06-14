@@ -22,6 +22,10 @@ export interface TranscriptSegment {
   text: string;
   startMs: number;
   endMs: number;
+  /** Which captured source this segment came from: the user's mic ('mic') or
+   *  system audio / other participants ('system'). Absent on legacy single-
+   *  track transcripts. */
+  source?: 'mic' | 'system';
 }
 
 export interface MeetingRecordingProps {

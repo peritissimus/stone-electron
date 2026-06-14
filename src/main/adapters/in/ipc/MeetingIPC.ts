@@ -37,6 +37,7 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
         meetingUseCases.appendRecordingAudio.execute({
           recordingId: request.recordingId,
           chunk: request.chunk,
+          channel: request.channel,
         }),
       { channel: MEETING_CHANNELS.APPEND_AUDIO, recordingId: request?.recordingId },
     ),

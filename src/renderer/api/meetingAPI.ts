@@ -92,8 +92,9 @@ export const meetingAPI = {
   appendAudio: async (
     recordingId: string,
     chunk: ArrayBuffer,
+    channel: 'mic' | 'system' = 'mic',
   ): Promise<IpcResponse<void>> => {
-    return invokeIpc(MEETING_CHANNELS.APPEND_AUDIO, { recordingId, chunk });
+    return invokeIpc(MEETING_CHANNELS.APPEND_AUDIO, { recordingId, chunk, channel });
   },
 
   finalize: async (

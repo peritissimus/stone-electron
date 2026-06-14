@@ -74,6 +74,8 @@ test('records simulated mic + system audio and transcribes it', async ({ app }) 
   await expect(window.getByText(/Recording failed|Added to Meetings/i)).toBeVisible({
     timeout: 60_000,
   });
+  // Let the list merge the finalized recording before selecting it.
+  await window.waitForTimeout(1_500);
 
   // Open the recording and assert the real transcribed speech. Overlapping mic
   // + system streams mean we can't pin one source's text until per-source

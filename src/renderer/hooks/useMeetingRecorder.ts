@@ -22,10 +22,12 @@ const WHISPER_SAMPLE_RATE = 16_000;
 // start() may fire from one surface while stop() fires from another — so these
 // must be module-level (a useRef would scope them to one component instance and
 // the refs wouldn't line up across start/stop). Mirrors the global store.
-const pcmRecorderRef: { current: PcmRecording | null } = { current: null };
+// Mic and system audio are captured as SEPARATE PCM tracks (not mixed) so each
+// can be transcribed on its own for "You" vs "Others" attribution.
+const micPcmRecorderRef: { current: PcmRecording | null } = { current: null };
+const systemPcmRecorderRef: { current: PcmRecording | null } = { current: null };
 const micStreamRef: { current: MediaStream | null } = { current: null };
 const systemStreamRef: { current: MediaStream | null } = { current: null };
-const mixerCtxRef: { current: AudioContext | null } = { current: null };
 const analyserCtxRef: { current: AudioContext | null } = { current: null };
 const analyserFrameRef: { current: number | null } = { current: null };
 const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
@@ -99,10 +101,10 @@ export function useMeetingRecorder() {
   // unmounts would kill an in-flight recording the user navigated away from.
 
   function releaseHardware() {
-    if (pcmRecorderRef.current) {
-      pcmRecorderRef.current.stop();
-      pcmRecorderRef.current = null;
-    }
+    micPcmRecorderRef.current?.stop();
+    micPcmRecorderRef.current = null;
+    systemPcmRecorderRef.current?.stop();
+    systemPcmRecorderRef.current = null;
     if (micStreamRef.current) {
       for (const track of micStreamRef.current.getTracks()) track.stop();
       micStreamRef.current = null;
@@ -111,12 +113,7 @@ export function useMeetingRecorder() {
       for (const track of systemStreamRef.current.getTracks()) track.stop();
       systemStreamRef.current = null;
     }
-    if (mixerCtxRef.current) {
-      void mixerCtxRef.current.close();
-      mixerCtxRef.current = null;
-    }
     stopLevelMeter();
-    pcmRecorderRef.current = null;
   }
 
   // Drive the green (mic) and teal (system) waveforms from the renderer
@@ -176,16 +173,13 @@ export function useMeetingRecorder() {
       // Recording → we fall back to mic-only.
       const systemStream = await tryCaptureSystemAudio();
       systemStreamRef.current = systemStream;
-
-      const { recordedStream, mixerCtx, captureMode: rendererMode } = buildRecordedStream(
-        micStream,
-        systemStream,
-      );
-      if (mixerCtx) mixerCtxRef.current = mixerCtx;
       const captureMode: 'mic-only' | 'mic+system' =
-        rendererMode === 'mic+system' || slot.systemAudio ? 'mic+system' : 'mic-only';
+        systemStream || slot.systemAudio ? 'mic+system' : 'mic-only';
 
-      pcmRecorderRef.current = startPcmRecording(recordedStream);
+      // Capture each source as its own PCM track — transcribed separately for
+      // speaker attribution. No mixing.
+      micPcmRecorderRef.current = startPcmRecording(micStream);
+      systemPcmRecorderRef.current = systemStream ? startPcmRecording(systemStream) : null;
       // Green meter follows the mic, teal follows the system stream.
       startLevelMeter(micStream, systemStream);
       store.markRecordingStarted({ ...slot, captureMode });
@@ -202,11 +196,13 @@ export function useMeetingRecorder() {
     const durationMs = store.elapsedMs;
 
     // Stop PCM capture first so the tail of audio is flushed before the
-    // stream and context are torn down.
-    const captured = pcmRecorderRef.current?.stop() ?? null;
-    pcmRecorderRef.current = null;
+    // streams are torn down.
+    const micCaptured = micPcmRecorderRef.current?.stop() ?? null;
+    const systemCaptured = systemPcmRecorderRef.current?.stop() ?? null;
+    micPcmRecorderRef.current = null;
+    systemPcmRecorderRef.current = null;
 
-    // Stop both source streams + the mixer if it was used.
+    // Stop both source streams.
     if (micStreamRef.current) {
       for (const track of micStreamRef.current.getTracks()) track.stop();
       micStreamRef.current = null;
@@ -215,25 +211,30 @@ export function useMeetingRecorder() {
       for (const track of systemStreamRef.current.getTracks()) track.stop();
       systemStreamRef.current = null;
     }
-    if (mixerCtxRef.current) {
-      void mixerCtxRef.current.close();
-      mixerCtxRef.current = null;
-    }
     stopLevelMeter();
 
     try {
-      if (!captured) throw new Error('Recording did not start correctly. Try again.');
-      const wavBuffer = await pcmToWavArrayBuffer(
-        captured.samples,
-        captured.sampleRate,
+      if (!micCaptured) throw new Error('Recording did not start correctly. Try again.');
+      const micWav = await pcmToWavArrayBuffer(
+        micCaptured.samples,
+        micCaptured.sampleRate,
         WHISPER_SAMPLE_RATE,
       );
-      await store.uploadAndFinalize(wavBuffer, durationMs);
+      const systemWav =
+        systemCaptured && systemCaptured.samples.length > 0
+          ? await pcmToWavArrayBuffer(
+              systemCaptured.samples,
+              systemCaptured.sampleRate,
+              WHISPER_SAMPLE_RATE,
+            )
+          : null;
+      await store.uploadAndFinalize(micWav, systemWav, durationMs);
     } catch (err) {
       logger.error('[useMeetingRecorder] finalize failed', err);
       store.markError(err instanceof Error ? err.message : 'Recording failed');
     } finally {
-      pcmRecorderRef.current = null;
+      micPcmRecorderRef.current = null;
+      systemPcmRecorderRef.current = null;
     }
   }, []);
 
@@ -295,35 +296,4 @@ async function tryCaptureSystemAudio(): Promise<MediaStream | null> {
     logger.warn('[useMeetingRecorder] system audio unavailable; falling back to mic-only', err);
     return null;
   }
-}
-
-/**
- * Builds the MediaStream MediaRecorder will record from. When only mic
- * is present we just hand the mic stream straight through (no extra
- * AudioContext, no overhead). When system audio is also present we mix
- * both via Web Audio's createMediaStreamSource + a shared destination.
- */
-function buildRecordedStream(
-  micStream: MediaStream,
-  systemStream: MediaStream | null,
-): {
-  recordedStream: MediaStream;
-  mixerCtx: AudioContext | null;
-  captureMode: 'mic-only' | 'mic+system';
-} {
-  if (!systemStream) {
-    return { recordedStream: micStream, mixerCtx: null, captureMode: 'mic-only' };
-  }
-  const AudioCtx =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new AudioCtx();
-  const destination = ctx.createMediaStreamDestination();
-  ctx.createMediaStreamSource(micStream).connect(destination);
-  ctx.createMediaStreamSource(systemStream).connect(destination);
-  return {
-    recordedStream: destination.stream,
-    mixerCtx: ctx,
-    captureMode: 'mic+system',
-  };
 }
