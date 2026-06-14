@@ -362,7 +362,7 @@ export function AISettings() {
           </Label>
           <SettingRow
             title="Text generation"
-            description="Used by AskNotes, meeting summaries, link suggestions. Format: provider/model — e.g. openai/gpt-5.4-mini, anthropic/claude-sonnet-4.5"
+            description="provider/model — e.g. openai/gpt-5.4-mini"
           >
             <ModelInput
               key={`text-${ai.models.textModel}`}
@@ -373,7 +373,7 @@ export function AISettings() {
           </SettingRow>
           <SettingRow
             title="Embeddings"
-            description="Used to chunk + index notes for semantic search. Local default: bge-small-en-v1.5 runs in-process — changing this requires cloud inference"
+            description="Local by default; changing requires cloud inference"
           >
             <ModelInput
               key={`embed-${ai.models.embeddingModel}`}
@@ -386,7 +386,7 @@ export function AISettings() {
           </SettingRow>
           <SettingRow
             title="Reranker"
-            description="Local cross-encoder (Xenova/ms-marco-MiniLM-L-6-v2), no configuration"
+            description="Runs locally, no setup"
           >
             <Badge variant="secondary" className="font-mono text-[10px]">
               Local
@@ -394,7 +394,7 @@ export function AISettings() {
           </SettingRow>
           <SettingRow
             title="OpenAI base URL"
-            description="Override the OpenAI-compatible endpoint (Azure, LiteLLM/Ollama proxy, self-hosted). Leave blank for the official api.openai.com."
+            description="Optional. Blank uses api.openai.com"
           >
             <ModelInput
               key={`openai-base-${ai.models.openaiBaseUrl}`}
