@@ -284,6 +284,35 @@ function SummarySection({ recording }: { recording: MeetingRecording }) {
   );
 }
 
+interface TranscriptTurn {
+  source: 'mic' | 'system' | undefined;
+  startMs: number;
+  text: string;
+}
+
+/** Group consecutive same-speaker segments into turns (Granola-style). */
+function groupTurns(segments: MeetingRecording['transcriptSegments']): TranscriptTurn[] {
+  const turns: TranscriptTurn[] = [];
+  for (const seg of segments) {
+    const text = seg.text.trim();
+    if (!text) continue;
+    const last = turns[turns.length - 1];
+    if (last && last.source === seg.source) {
+      last.text = `${last.text} ${text}`;
+    } else {
+      turns.push({ source: seg.source, startMs: seg.startMs, text });
+    }
+  }
+  return turns;
+}
+
+function formatTimestamp(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function TranscriptSection({ recording }: { recording: MeetingRecording }) {
   // Auto-expand when failed so users can see the transcript that did save
   // even though summarisation didn't — otherwise it looks like nothing
@@ -297,6 +326,9 @@ function TranscriptSection({ recording }: { recording: MeetingRecording }) {
       </section>
     );
   }
+
+  const turns = groupTurns(recording.transcriptSegments ?? []);
+
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between">
@@ -310,16 +342,41 @@ function TranscriptSection({ recording }: { recording: MeetingRecording }) {
           <ArrowSquareOut size={10} />
         </button>
       </div>
-      {open && (
-        <pre
-          className={cn(
-            'mt-2 max-h-[480px] overflow-auto whitespace-pre-wrap rounded-xl',
-            'border border-border bg-muted/30 p-4 font-mono text-[12px] leading-relaxed text-foreground/80',
-          )}
-        >
-          {recording.transcriptText}
-        </pre>
-      )}
+      {open &&
+        (turns.length > 0 ? (
+          <div className="mt-3 max-h-[480px] space-y-4 overflow-auto rounded-xl border border-border bg-muted/20 p-4">
+            {turns.map((turn, i) => (
+              <div key={i} className="flex gap-3">
+                <span className="w-9 shrink-0 pt-[3px] text-[11px] tabular-nums text-muted-foreground/70">
+                  {formatTimestamp(turn.startMs)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span
+                    className={cn(
+                      'text-[10px] font-semibold uppercase tracking-wider',
+                      turn.source === 'system' ? 'text-teal-600' : 'text-emerald-600',
+                    )}
+                  >
+                    {turn.source === 'system' ? 'Others' : 'You'}
+                  </span>
+                  <p className="mt-0.5 text-pretty text-[13px] leading-relaxed text-foreground/85">
+                    {turn.text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Legacy single-track transcript without per-segment data.
+          <pre
+            className={cn(
+              'mt-2 max-h-[480px] overflow-auto whitespace-pre-wrap rounded-xl',
+              'border border-border bg-muted/30 p-4 font-mono text-[12px] leading-relaxed text-foreground/80',
+            )}
+          >
+            {recording.transcriptText}
+          </pre>
+        ))}
     </section>
   );
 }

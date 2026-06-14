@@ -29,6 +29,7 @@ const TranscriptSegmentSchema = z.object({
   text: z.string(),
   startMs: z.number(),
   endMs: z.number(),
+  source: z.enum(['mic', 'system']).optional(),
 });
 
 // Drizzle gives Date instances for createdAt/updatedAt; the IPC bridge

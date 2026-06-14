@@ -14,6 +14,9 @@ export interface MeetingTranscriptSegment {
   text: string;
   startMs: number;
   endMs: number;
+  /** Capture source: the user's mic ('mic') or system audio / other
+   *  participants ('system'). Absent on legacy single-track transcripts. */
+  source?: 'mic' | 'system';
 }
 
 export interface MeetingRecording {
