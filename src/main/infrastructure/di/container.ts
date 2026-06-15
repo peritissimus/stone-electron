@@ -105,11 +105,16 @@ import {
 // Adapters Layer
 import {
   // Inbound (Primary) - IPC
-  NoteIPC,
-  NotebookIPC,
-  WorkspaceIPC,
-  TagIPC,
-  SearchIPC,
+  registerNoteHandlers,
+  unregisterNoteHandlers,
+  registerNotebookHandlers,
+  unregisterNotebookHandlers,
+  registerWorkspaceHandlers,
+  unregisterWorkspaceHandlers,
+  registerTagHandlers,
+  unregisterTagHandlers,
+  registerSearchHandlers,
+  unregisterSearchHandlers,
   registerTaskHandlers,
   unregisterTaskHandlers,
   registerTopicHandlers,
@@ -279,13 +284,6 @@ export interface Container {
   dailyReviewUseCases: IDailyReviewUseCases;
   statusReportUseCases: IStatusReportUseCases;
   indexRepository: IIndexRepository;
-
-  // IPC Adapters (class-based)
-  noteIPC: NoteIPC;
-  notebookIPC: NotebookIPC;
-  workspaceIPC: WorkspaceIPC;
-  tagIPC: TagIPC;
-  searchIPC: SearchIPC;
 
   // Helpers
   getWorkspacePath: () => string | null;
@@ -651,7 +649,6 @@ export function createContainer(deps: ContainerDeps): Container {
     markdownProcessor,
     textGenerator,
     indexRepository,
-    transcriber,
     journalReader,
     workspaceRepository,
     appConfigRepository,
@@ -706,13 +703,9 @@ export function createContainer(deps: ContainerDeps): Container {
   });
 
   // ---------------------------------------------------------------------------
-  // Layer 5: IPC Adapters (depend on use cases)
+  // IPC adapters are registered as functions in registerIPCHandlers() below —
+  // they have no per-instance state, so the container exposes use cases only.
   // ---------------------------------------------------------------------------
-  const noteIPC = new NoteIPC({ noteUseCases: noteUseCases });
-  const notebookIPC = new NotebookIPC({ notebookUseCases: notebookUseCases });
-  const workspaceIPC = new WorkspaceIPC({ workspaceUseCases: workspaceUseCases });
-  const tagIPC = new TagIPC({ tagUseCases: tagUseCases });
-  const searchIPC = new SearchIPC({ searchUseCases: searchUseCases });
 
   // ---------------------------------------------------------------------------
   // Return Container
@@ -782,13 +775,6 @@ export function createContainer(deps: ContainerDeps): Container {
     dailyReviewUseCases,
     statusReportUseCases,
 
-    // IPC Adapters
-    noteIPC,
-    notebookIPC,
-    workspaceIPC,
-    tagIPC,
-    searchIPC,
-
     // Helpers
     getWorkspacePath,
     getDatabaseManager,
@@ -833,14 +819,12 @@ export function registerIPCHandlers(): void {
     container.perfMonitor.recordIPCCall(channel, durationMs, success),
   );
 
-  // Class-based IPC handlers
-  container.noteIPC.registerHandlers();
-  container.notebookIPC.registerHandlers();
-  container.workspaceIPC.registerHandlers();
-  container.tagIPC.registerHandlers();
-  container.searchIPC.registerHandlers();
-
   // Function-based IPC handlers
+  registerNoteHandlers({ noteUseCases: container.noteUseCases });
+  registerNotebookHandlers({ notebookUseCases: container.notebookUseCases });
+  registerWorkspaceHandlers({ workspaceUseCases: container.workspaceUseCases });
+  registerTagHandlers({ tagUseCases: container.tagUseCases });
+  registerSearchHandlers({ searchUseCases: container.searchUseCases });
   registerTaskHandlers({ taskUseCases: container.taskUseCases });
   registerTopicHandlers({ topicUseCases: container.topicUseCases });
   registerGraphHandlers({ graphUseCases: container.graphUseCases });
@@ -943,16 +927,12 @@ export function registerIPCHandlers(): void {
 }
 
 export function unregisterIPCHandlers(): void {
-  const container = getContainer();
-
-  // Class-based IPC handlers
-  container.noteIPC.unregisterHandlers();
-  container.notebookIPC.unregisterHandlers();
-  container.workspaceIPC.unregisterHandlers();
-  container.tagIPC.unregisterHandlers();
-  container.searchIPC.unregisterHandlers();
-
   // Function-based IPC handlers
+  unregisterNoteHandlers();
+  unregisterNotebookHandlers();
+  unregisterWorkspaceHandlers();
+  unregisterTagHandlers();
+  unregisterSearchHandlers();
   unregisterTaskHandlers();
   unregisterTopicHandlers();
   unregisterGraphHandlers();

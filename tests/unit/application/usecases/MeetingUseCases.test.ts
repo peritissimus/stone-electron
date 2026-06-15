@@ -536,6 +536,20 @@ describe('MeetingUseCases', () => {
     expect(saved?.audioPath).toBeNull();
   });
 
+  it('warms up the transcriber, initializing it when not ready', async () => {
+    vi.mocked(transcriber.isReady).mockReturnValueOnce(false).mockReturnValueOnce(true);
+
+    await expect(useCases.warmUpTranscriber.execute()).resolves.toEqual({ ready: true });
+    expect(transcriber.initialize).toHaveBeenCalled();
+  });
+
+  it('reports the transcriber not ready when warm-up fails', async () => {
+    vi.mocked(transcriber.isReady).mockReturnValue(false);
+    vi.mocked(transcriber.initialize).mockRejectedValue(new Error('download failed'));
+
+    await expect(useCases.warmUpTranscriber.execute()).resolves.toEqual({ ready: false });
+  });
+
   it('does not prune audio when retention keeps it (0)', async () => {
     const pruneUseCases = createMeetingUseCases({
       meetingRepository,

@@ -137,6 +137,12 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
       { channel: MEETING_CHANNELS.SEND_TO_JOURNAL, recordingId: request?.recordingId },
     ),
   );
+
+  ipcMain.handle(MEETING_CHANNELS.WARM_TRANSCRIBER, async () =>
+    handleRequest(async () => meetingUseCases.warmUpTranscriber.execute(), {
+      channel: MEETING_CHANNELS.WARM_TRANSCRIBER,
+    }),
+  );
 }
 
 export function unregisterMeetingHandlers(): void {

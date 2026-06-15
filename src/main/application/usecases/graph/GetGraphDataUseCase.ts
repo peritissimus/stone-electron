@@ -1,6 +1,6 @@
 import type { IGetGraphDataUseCase, GraphData } from '../../../domain/ports/in/IGraphUseCases';
 import { NoteGraphBuilder } from '../../../domain/services/NoteGraphBuilder';
-import type { GraphUseCasesDeps } from './types';
+import type { GraphUseCasesDeps } from './index';
 
 /**
  * Get graph data for visualization

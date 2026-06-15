@@ -104,7 +104,6 @@ export const SEARCH_CHANNELS = {
 // AI Operations
 export const AI_CHANNELS = {
   ASK_NOTES: 'ai:askNotes',
-  WARM_TRANSCRIBER: 'ai:warmTranscriber',
   SUMMARIZE_NOTE: 'ai:summarizeNote',
   SUGGEST_LINKS: 'ai:suggestLinks',
 } as const;
@@ -128,6 +127,9 @@ export const MEETING_CHANNELS = {
   RESUMMARIZE: 'meetings:resummarize',
   RETRANSCRIBE: 'meetings:retranscribe',
   SEND_TO_JOURNAL: 'meetings:sendToJournal',
+  // Preload the Whisper model so the first transcription doesn't pay the
+  // download/load cost (onboarding "download local models" step).
+  WARM_TRANSCRIBER: 'meetings:warmTranscriber',
   // Live (raw) draft while recording — resident model server.
   LIVE_START: 'meetings:liveStart',
   LIVE_CHUNK: 'meetings:liveChunk',
