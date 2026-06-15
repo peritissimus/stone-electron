@@ -33,11 +33,15 @@ import type {
   TaskItem,
 } from '../../../domain';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
+import type { ICalendarSource } from '../../../domain/ports/out/ICalendarSource';
+import type { IMailSource } from '../../../domain/ports/out/IMailSource';
+import type { ILinearSource } from '../../../domain/ports/out/ILinearSource';
 
 const PREVIEW_CHARS = 240;
 const RECENT_NOTES_LIMIT = 8;
 const RECENT_NOTES_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ON_THIS_DAY_LIMIT = 5;
+const UNREAD_MAIL_LIMIT = 10;
 
 export interface GetDailyReviewUseCaseDeps {
   noteRepository: INoteRepository;
@@ -46,6 +50,10 @@ export interface GetDailyReviewUseCaseDeps {
   journalUseCases: IJournalUseCases;
   taskUseCases: ITaskUseCases;
   appConfigRepository: IAppConfigRepository;
+  /** Optional external sources — omitted when unavailable on the platform. */
+  calendarSource?: ICalendarSource;
+  mailSource?: IMailSource;
+  linearSource?: ILinearSource;
 }
 
 export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
@@ -64,15 +72,66 @@ export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
     const dayStart = startOfDay(target);
     const dayEnd = endOfDay(target);
 
-    const [todayJournal, todayMeetings, openTasks, recentNotes, onThisDay] = await Promise.all([
+    const [
+      todayJournal,
+      todayMeetings,
+      openTasks,
+      recentNotes,
+      onThisDay,
+      calendarEvents,
+      mailMessages,
+      linearIssues,
+    ] = await Promise.all([
       this.loadTodayJournal(workspaceId, date),
       this.loadTodayMeetings(workspaceId, dayStart, dayEnd),
       this.loadOpenTasks(),
       this.loadRecentNotes(workspaceId, target),
       this.loadOnThisDay(workspaceId, target),
+      this.loadCalendar(date),
+      this.loadMail(),
+      this.loadLinear(),
     ]);
 
-    return { date, todayJournal, todayMeetings, openTasks, recentNotes, onThisDay };
+    return {
+      date,
+      todayJournal,
+      todayMeetings,
+      openTasks,
+      recentNotes,
+      onThisDay,
+      ...(calendarEvents ? { calendarEvents } : {}),
+      ...(mailMessages ? { mailMessages } : {}),
+      ...(linearIssues ? { linearIssues } : {}),
+    };
+  }
+
+  /** Each external source is optional and self-isolating: absent dep or any
+   *  failure yields `undefined`, so the field is simply omitted from the page. */
+  private async loadCalendar(date: string) {
+    if (!this.deps.calendarSource) return undefined;
+    try {
+      return await this.deps.calendarSource.getEventsForDate(date);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async loadMail() {
+    if (!this.deps.mailSource) return undefined;
+    try {
+      return await this.deps.mailSource.getUnreadMessages(UNREAD_MAIL_LIMIT);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async loadLinear() {
+    if (!this.deps.linearSource) return undefined;
+    try {
+      return await this.deps.linearSource.getAssignedIssues();
+    } catch {
+      return undefined;
+    }
   }
 
   private async loadTodayJournal(

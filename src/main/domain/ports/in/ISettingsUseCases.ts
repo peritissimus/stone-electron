@@ -12,6 +12,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  IntegrationsConfig,
   MeetingsConfig,
   OnboardingConfig,
   OnboardingStepState,
@@ -148,6 +149,14 @@ export interface IResetMeetingsSettingsUseCase {
   execute(): Promise<MeetingsConfig>;
 }
 
+export interface IGetIntegrationsSettingsUseCase {
+  execute(): Promise<IntegrationsConfig>;
+}
+
+export interface IUpdateIntegrationsSettingsUseCase {
+  execute(request: { integrations: Partial<IntegrationsConfig> }): Promise<IntegrationsConfig>;
+}
+
 // ----- onboarding -----
 
 export interface IGetOnboardingUseCase {
@@ -202,6 +211,8 @@ export interface ISettingsUseCases {
   getMeetings: IGetMeetingsSettingsUseCase;
   updateMeetings: IUpdateMeetingsSettingsUseCase;
   resetMeetings: IResetMeetingsSettingsUseCase;
+  getIntegrations: IGetIntegrationsSettingsUseCase;
+  updateIntegrations: IUpdateIntegrationsSettingsUseCase;
   getOnboarding: IGetOnboardingUseCase;
   updateOnboarding: IUpdateOnboardingUseCase;
   resetOnboarding: IResetOnboardingUseCase;

@@ -29,6 +29,8 @@ import type {
   IGetMeetingsSettingsUseCase,
   IUpdateMeetingsSettingsUseCase,
   IResetMeetingsSettingsUseCase,
+  IGetIntegrationsSettingsUseCase,
+  IUpdateIntegrationsSettingsUseCase,
   IGetOnboardingUseCase,
   IUpdateOnboardingUseCase,
   IResetOnboardingUseCase,
@@ -44,6 +46,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  IntegrationsConfig,
   MeetingsConfig,
   OnboardingStepState,
 } from '@shared/types/settings';
@@ -75,6 +78,8 @@ export interface SettingsIPCDeps {
   getMeetings: IGetMeetingsSettingsUseCase;
   updateMeetings: IUpdateMeetingsSettingsUseCase;
   resetMeetings: IResetMeetingsSettingsUseCase;
+  getIntegrations: IGetIntegrationsSettingsUseCase;
+  updateIntegrations: IUpdateIntegrationsSettingsUseCase;
   getOnboarding: IGetOnboardingUseCase;
   updateOnboarding: IUpdateOnboardingUseCase;
   resetOnboarding: IResetOnboardingUseCase;
@@ -112,6 +117,8 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     getMeetings,
     updateMeetings,
     resetMeetings,
+    getIntegrations,
+    updateIntegrations,
     getOnboarding,
     updateOnboarding,
     resetOnboarding,
@@ -345,6 +352,25 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       { channel: SETTINGS_CHANNELS.RESET_MEETINGS },
     );
   });
+
+  // ----- integrations settings -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_INTEGRATIONS, async () => {
+    return handleRequest(
+      async () => getIntegrations.execute(),
+      { channel: SETTINGS_CHANNELS.GET_INTEGRATIONS },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.UPDATE_INTEGRATIONS,
+    async (_event, params: { integrations: Partial<IntegrationsConfig> }) => {
+      return handleRequest(
+        async () => updateIntegrations.execute({ integrations: params.integrations }),
+        { channel: SETTINGS_CHANNELS.UPDATE_INTEGRATIONS },
+      );
+    },
+  );
 
   // ----- onboarding -----
 

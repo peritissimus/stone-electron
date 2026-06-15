@@ -361,6 +361,18 @@ export const DEFAULT_QUICK_CAPTURE_CONFIG: QuickCaptureConfig = {
   shortcut: 'Alt+Space',
 };
 
+/**
+ * Third-party integrations the Today page can pull from. The Linear key is a
+ * personal API key, stored locally in config (single-user, local app-data).
+ */
+export interface IntegrationsConfig {
+  linearApiKey: string;
+}
+
+export const DEFAULT_INTEGRATIONS_CONFIG: IntegrationsConfig = {
+  linearApiKey: '',
+};
+
 export interface AppConfig {
   appearance: AppearanceSettings;
   workspace: WorkspaceConfig;
@@ -371,6 +383,7 @@ export interface AppConfig {
   meetings: MeetingsConfig;
   onboarding: OnboardingConfig;
   quickCapture: QuickCaptureConfig;
+  integrations: IntegrationsConfig;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -385,4 +398,5 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   meetings: DEFAULT_MEETINGS_CONFIG,
   onboarding: DEFAULT_ONBOARDING_CONFIG,
   quickCapture: DEFAULT_QUICK_CAPTURE_CONFIG,
+  integrations: DEFAULT_INTEGRATIONS_CONFIG,
 };

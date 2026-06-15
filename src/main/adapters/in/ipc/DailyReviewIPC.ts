@@ -30,6 +30,18 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
       { channel: DAILY_REVIEW_CHANNELS.GET, date: request?.date },
     ),
   );
+
+  ipcMain.handle(DAILY_REVIEW_CHANNELS.SUMMARIZE, async (_event, request) =>
+    handleRequest(
+      async () =>
+        dailyReviewUseCases.summarizeDailyReview.execute({
+          workspaceId: request?.workspaceId,
+          date: request?.date,
+          saveToJournal: request?.saveToJournal,
+        }),
+      { channel: DAILY_REVIEW_CHANNELS.SUMMARIZE, date: request?.date },
+    ),
+  );
 }
 
 export function unregisterDailyReviewHandlers(): void {

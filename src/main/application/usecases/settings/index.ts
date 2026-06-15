@@ -41,6 +41,10 @@ import {
   UpdateMeetingsSettingsUseCase,
 } from './meetings';
 import {
+  GetIntegrationsSettingsUseCase,
+  UpdateIntegrationsSettingsUseCase,
+} from './integrations';
+import {
   GetOnboardingUseCase,
   ResetOnboardingUseCase,
   UpdateOnboardingUseCase,
@@ -84,6 +88,10 @@ export {
   ResetMeetingsSettingsUseCase,
   UpdateMeetingsSettingsUseCase,
 } from './meetings';
+export {
+  GetIntegrationsSettingsUseCase,
+  UpdateIntegrationsSettingsUseCase,
+} from './integrations';
 export {
   GetOnboardingUseCase,
   ResetOnboardingUseCase,
@@ -137,6 +145,8 @@ export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUse
     getMeetings: new GetMeetingsSettingsUseCase(appConfigRepository),
     updateMeetings: new UpdateMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
     resetMeetings: new ResetMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
+    getIntegrations: new GetIntegrationsSettingsUseCase(appConfigRepository),
+    updateIntegrations: new UpdateIntegrationsSettingsUseCase(appConfigRepository, eventPublisher),
     getOnboarding: new GetOnboardingUseCase(appConfigRepository),
     updateOnboarding: new UpdateOnboardingUseCase(appConfigRepository, eventPublisher),
     resetOnboarding: new ResetOnboardingUseCase(appConfigRepository, eventPublisher),

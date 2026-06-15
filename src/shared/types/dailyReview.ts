@@ -28,6 +28,30 @@ export interface DailyReviewOnThisDayEntry {
   note: Note;
 }
 
+export interface CalendarEvent {
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  calendar: string;
+  location: string | null;
+}
+
+export interface MailMessage {
+  subject: string;
+  sender: string;
+  receivedAt: string;
+}
+
+export interface LinearIssue {
+  identifier: string;
+  title: string;
+  state: string;
+  priority: number;
+  url: string;
+  dueDate: string | null;
+}
+
 export interface DailyReviewSnapshot {
   date: string;
   todayJournal: DailyReviewTodayJournal;
@@ -35,4 +59,8 @@ export interface DailyReviewSnapshot {
   openTasks: TodoItem[];
   recentNotes: Note[];
   onThisDay: DailyReviewOnThisDayEntry[];
+  /** External integrations — present only when the source is available. */
+  calendarEvents?: CalendarEvent[];
+  mailMessages?: MailMessage[];
+  linearIssues?: LinearIssue[];
 }

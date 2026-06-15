@@ -34,3 +34,6 @@ export {
   type SingleShotSummarizerDeps,
   DEFAULT_MEETING_SUMMARY_PROMPT,
 } from './SingleShotSummarizer';
+export { LinearSource, type LinearSourceDeps } from './LinearSource';
+export { AppleCalendarSource } from './AppleCalendarSource';
+export { AppleMailSource } from './AppleMailSource';

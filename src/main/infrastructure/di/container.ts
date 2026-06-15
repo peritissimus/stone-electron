@@ -192,6 +192,9 @@ import {
   WhisperServer,
   OnnxEchoCanceller,
   SingleShotSummarizer,
+  LinearSource,
+  AppleCalendarSource,
+  AppleMailSource,
   // Outbound (Secondary) - Events
   EventPublisher,
 } from '@adapters';
@@ -681,6 +684,13 @@ export function createContainer(deps: ContainerDeps): Container {
 
   // Daily Review use cases — pure read aggregation over journal +
   // meetings + tasks + notes for the /today page.
+  // Today-page external sources. Apple Calendar/Mail are macOS-only and
+  // self-guard (return [] off-platform or without Automation permission);
+  // Linear reads its key from config and returns [] when unset.
+  const calendarSource = new AppleCalendarSource();
+  const mailSource = new AppleMailSource();
+  const linearSource = new LinearSource({ appConfigRepository });
+
   const dailyReviewUseCases = createDailyReviewUseCases({
     noteRepository,
     workspaceRepository,
@@ -688,6 +698,12 @@ export function createContainer(deps: ContainerDeps): Container {
     journalUseCases,
     taskUseCases,
     appConfigRepository,
+    textGenerator,
+    appendToJournal: (content, workspaceId) =>
+      quickCaptureUseCases.appendToJournal(content, workspaceId),
+    calendarSource,
+    mailSource,
+    linearSource,
   });
 
   // Status Report use cases — aggregate the past week's evidence and
@@ -897,6 +913,8 @@ export function registerIPCHandlers(): void {
     getMeetings: container.settingsUseCases.getMeetings,
     updateMeetings: container.settingsUseCases.updateMeetings,
     resetMeetings: container.settingsUseCases.resetMeetings,
+    getIntegrations: container.settingsUseCases.getIntegrations,
+    updateIntegrations: container.settingsUseCases.updateIntegrations,
     getOnboarding: container.settingsUseCases.getOnboarding,
     updateOnboarding: container.settingsUseCases.updateOnboarding,
     resetOnboarding: container.settingsUseCases.resetOnboarding,

@@ -298,7 +298,8 @@ export type SettingsScope =
   | 'ai'
   | 'meetings'
   | 'onboarding'
-  | 'quickCapture';
+  | 'quickCapture'
+  | 'integrations';
 
 export interface SettingsChangedEvent extends DomainEvent {
   type: 'settings:changed';
