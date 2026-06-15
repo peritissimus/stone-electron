@@ -5,10 +5,22 @@ import {
   TAG_CHANNELS,
   WORKSPACE_CHANNELS,
 } from '../../../../../src/shared/constants/ipcChannels';
-import { NotebookIPC } from '../../../../../src/main/adapters/in/ipc/NotebookIPC';
-import { SearchIPC } from '../../../../../src/main/adapters/in/ipc/SearchIPC';
-import { TagIPC } from '../../../../../src/main/adapters/in/ipc/TagIPC';
-import { WorkspaceIPC } from '../../../../../src/main/adapters/in/ipc/WorkspaceIPC';
+import {
+  registerNotebookHandlers,
+  unregisterNotebookHandlers,
+} from '../../../../../src/main/adapters/in/ipc/NotebookIPC';
+import {
+  registerSearchHandlers,
+  unregisterSearchHandlers,
+} from '../../../../../src/main/adapters/in/ipc/SearchIPC';
+import {
+  registerTagHandlers,
+  unregisterTagHandlers,
+} from '../../../../../src/main/adapters/in/ipc/TagIPC';
+import {
+  registerWorkspaceHandlers,
+  unregisterWorkspaceHandlers,
+} from '../../../../../src/main/adapters/in/ipc/WorkspaceIPC';
 
 const electronMock = vi.hoisted(() => {
   const handlers = new Map<string, (...args: unknown[]) => Promise<unknown>>();
@@ -46,7 +58,7 @@ function expectUnregistered(channels: readonly string[]) {
   }
 }
 
-describe('class-based IPC adapters', () => {
+describe('note/notebook/workspace/tag/search IPC adapters', () => {
   beforeEach(() => {
     electronMock.handlers.clear();
     vi.clearAllMocks();
@@ -61,9 +73,7 @@ describe('class-based IPC adapters', () => {
       searchByDateRange: execute({ results: [{ id: 'dated' }] }),
       getRelatedNotes: execute({ notes: [{ id: 'related' }] }),
     };
-    const adapter = new SearchIPC({ searchUseCases } as any);
-
-    adapter.registerHandlers();
+    registerSearchHandlers({ searchUseCases } as any);
 
     expectRegistered(Object.values(SEARCH_CHANNELS));
     await expect(invoke(SEARCH_CHANNELS.FULL_TEXT, { query: 'stone', workspaceId: 'ws-1' })).resolves.toEqual({
@@ -85,7 +95,7 @@ describe('class-based IPC adapters', () => {
       limit: 5,
     });
 
-    adapter.unregisterHandlers();
+    unregisterSearchHandlers();
     expectUnregistered(Object.values(SEARCH_CHANNELS));
   });
 
@@ -109,9 +119,7 @@ describe('class-based IPC adapters', () => {
       listNotebooks: execute({ notebooks: [{ ...notebook, note_count: 1 }] }),
       moveNotebook: execute(undefined),
     };
-    const adapter = new NotebookIPC({ notebookUseCases } as any);
-
-    adapter.registerHandlers();
+    registerNotebookHandlers({ notebookUseCases } as any);
 
     await expect(
       invoke(NOTEBOOK_CHANNELS.CREATE, {
@@ -144,7 +152,7 @@ describe('class-based IPC adapters', () => {
       targetParentId: 'parent-2',
     });
 
-    adapter.unregisterHandlers();
+    unregisterNotebookHandlers();
     expectUnregistered(Object.values(NOTEBOOK_CHANNELS));
   });
 
@@ -164,9 +172,7 @@ describe('class-based IPC adapters', () => {
       addTagToNote: execute(undefined),
       removeTagFromNote: execute(undefined),
     };
-    const adapter = new TagIPC({ tagUseCases } as any);
-
-    adapter.registerHandlers();
+    registerTagHandlers({ tagUseCases } as any);
 
     await expect(invoke(TAG_CHANNELS.CREATE, { name: 'AI', color: '#ffffff' })).resolves.toEqual({
       success: true,
@@ -190,7 +196,7 @@ describe('class-based IPC adapters', () => {
       tagId: 'tag-2',
     });
 
-    adapter.unregisterHandlers();
+    unregisterTagHandlers();
     expectUnregistered(Object.values(TAG_CHANNELS));
   });
 
@@ -225,9 +231,7 @@ describe('class-based IPC adapters', () => {
       scanWorkspace: execute({ files: [], structure: [], total: 0 }),
       syncWorkspace: execute(syncResponse),
     };
-    const adapter = new WorkspaceIPC({ workspaceUseCases } as any);
-
-    adapter.registerHandlers();
+    registerWorkspaceHandlers({ workspaceUseCases } as any);
 
     expectRegistered(Object.values(WORKSPACE_CHANNELS));
     await expect(invoke(WORKSPACE_CHANNELS.CREATE, { name: 'Stone', path: '/tmp/stone' })).resolves.toEqual({
@@ -273,7 +277,7 @@ describe('class-based IPC adapters', () => {
       destinationPath: '/tmp/stone/Archive',
     });
 
-    adapter.unregisterHandlers();
+    unregisterWorkspaceHandlers();
     expectUnregistered(Object.values(WORKSPACE_CHANNELS));
   });
 });

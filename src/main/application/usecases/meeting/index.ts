@@ -14,6 +14,7 @@ import type {
 import { createLiveTranscriptionUseCases } from './LiveTranscriptionUseCases';
 import { PruneRecordingAudioUseCase } from './PruneRecordingAudioUseCase';
 import { RetranscribeMeetingUseCase } from './RetranscribeMeetingUseCase';
+import { WarmUpTranscriberUseCase } from './WarmUpTranscriberUseCase';
 import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 import { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
@@ -34,6 +35,7 @@ export { PruneRecordingAudioUseCase } from './PruneRecordingAudioUseCase';
 export { ReserveRecordingSlotUseCase, RECORDINGS_DIR } from './ReserveRecordingSlotUseCase';
 export { ResummarizeMeetingUseCase } from './ResummarizeMeetingUseCase';
 export { SendToJournalUseCase } from './SendToJournalUseCase';
+export { WarmUpTranscriberUseCase } from './WarmUpTranscriberUseCase';
 
 export interface MeetingUseCasesDeps {
   meetingRepository: IMeetingRecordingRepository;
@@ -122,6 +124,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       pathService: deps.pathService,
       appConfigRepository: deps.appConfigRepository,
     }),
+    warmUpTranscriber: new WarmUpTranscriberUseCase(deps.transcriber),
     liveTranscription: createLiveTranscriptionUseCases(deps.liveTranscriber),
   };
 }

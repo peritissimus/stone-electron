@@ -88,8 +88,6 @@ describe('DI container', () => {
     expect(container.noteUseCases).toBeTruthy();
     expect(container.searchUseCases).toBeTruthy();
     expect(container.meetingUseCases).toBeTruthy();
-    expect(container.noteIPC).toBeTruthy();
-    expect(container.searchIPC).toBeTruthy();
 
     await expect(container.getDatabaseManager().getStatus()).resolves.toEqual({
       path: '',

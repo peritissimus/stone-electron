@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
-import { AI_CHANNELS } from '@shared/constants/ipcChannels';
+import { AI_CHANNELS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
 import type {
   AskNotesResponse,
   CitationSource,
@@ -79,7 +79,9 @@ export const aiAPI = {
    * Idempotent; resolves when the model is ready (or failed: ready=false).
    */
   warmTranscriber: async (): Promise<IpcResponse<{ ready: boolean }>> => {
-    const response = await invokeIpc(AI_CHANNELS.WARM_TRANSCRIBER, {});
+    // Whisper warmup is a meeting/transcriber concern (handler lives in
+    // MeetingIPC); kept on aiAPI so onboarding's call site is unchanged.
+    const response = await invokeIpc(MEETING_CHANNELS.WARM_TRANSCRIBER, {});
     return validateResponse(response, z.object({ ready: z.boolean() }));
   },
 };

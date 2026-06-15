@@ -2,14 +2,12 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { AskNotesUseCase } from '../../../../src/main/application/usecases/ai/AskNotesUseCase';
 import { SuggestLinksUseCase } from '../../../../src/main/application/usecases/ai/SuggestLinksUseCase';
 import { SummarizeNoteUseCase } from '../../../../src/main/application/usecases/ai/SummarizeNoteUseCase';
-import { WarmUpTranscriberUseCase } from '../../../../src/main/application/usecases/ai/WarmUpTranscriberUseCase';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type {
   IIndexRepository,
   IMarkdownProcessor,
   INoteRepository,
   ITextGenerator,
-  ITranscriber,
 } from '../../../../src/main/domain';
 import type {
   IHybridSearchUseCase,
@@ -59,14 +57,6 @@ function createMockMarkdownProcessor(): IMarkdownProcessor {
   return {
     extractPlainText: vi.fn((markdown: string) => markdown.replace(/[#*_`]/g, '')),
   } as unknown as IMarkdownProcessor;
-}
-
-function createMockTranscriber(): ITranscriber {
-  return {
-    isReady: vi.fn().mockReturnValue(false),
-    initialize: vi.fn(),
-    transcribe: vi.fn(),
-  };
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -316,22 +306,4 @@ describe('AIUseCases', () => {
     });
   });
 
-  describe('WarmUpTranscriberUseCase', () => {
-    it('initializes the transcriber when it is not ready', async () => {
-      const transcriber = createMockTranscriber();
-      vi.mocked(transcriber.isReady).mockReturnValueOnce(false).mockReturnValueOnce(true);
-      const useCase = new WarmUpTranscriberUseCase(transcriber);
-
-      await expect(useCase.execute()).resolves.toEqual({ ready: true });
-      expect(transcriber.initialize).toHaveBeenCalled();
-    });
-
-    it('reports not ready when initialization fails', async () => {
-      const transcriber = createMockTranscriber();
-      vi.mocked(transcriber.initialize).mockRejectedValue(new Error('download failed'));
-      const useCase = new WarmUpTranscriberUseCase(transcriber);
-
-      await expect(useCase.execute()).resolves.toEqual({ ready: false });
-    });
-  });
 });

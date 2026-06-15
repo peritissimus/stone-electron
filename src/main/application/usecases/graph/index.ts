@@ -1,11 +1,21 @@
 import type { IGraphUseCases } from '../../../domain/ports/in/IGraphUseCases';
-import type { GraphUseCasesDeps } from './types';
+import type { INoteRepository } from '../../../domain/ports/out/INoteRepository';
+import type { INoteLinkRepository } from '../../../domain/ports/out/INoteLinkRepository';
+import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
+import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
 import { GetBacklinksUseCase } from './GetBacklinksUseCase';
 import { GetForwardLinksUseCase } from './GetForwardLinksUseCase';
 import { GetGraphDataUseCase } from './GetGraphDataUseCase';
 import { UpdateNoteLinksUseCase } from './UpdateNoteLinksUseCase';
 
-export type { GraphUseCasesDeps } from './types';
+/** Shared dependency bundle for the graph use cases. */
+export interface GraphUseCasesDeps {
+  noteRepository: INoteRepository;
+  noteLinkRepository: INoteLinkRepository;
+  workspaceRepository: IWorkspaceRepository;
+  fileStorage: IFileStorage;
+}
+
 export { GetBacklinksUseCase } from './GetBacklinksUseCase';
 export { GetForwardLinksUseCase } from './GetForwardLinksUseCase';
 export { GetGraphDataUseCase } from './GetGraphDataUseCase';

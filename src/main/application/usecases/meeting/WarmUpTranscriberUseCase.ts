@@ -1,7 +1,7 @@
 import type {
   IWarmUpTranscriberUseCase,
   WarmUpTranscriberResponse,
-} from '../../../domain/ports/in/IAIUseCases';
+} from '../../../domain/ports/in/IMeetingUseCases';
 import type { ITranscriber } from '../../../domain/ports/out/ITranscriber';
 
 /**

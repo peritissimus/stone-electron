@@ -52,13 +52,6 @@ export function registerAIHandlers(deps: AIIPCDeps): void {
       { channel: AI_CHANNELS.SUGGEST_LINKS, noteId: request?.noteId },
     ),
   );
-
-  ipcMain.handle(AI_CHANNELS.WARM_TRANSCRIBER, async () =>
-    handleRequest(
-      async () => aiUseCases.warmUpTranscriber.execute(),
-      { channel: AI_CHANNELS.WARM_TRANSCRIBER },
-    ),
-  );
 }
 
 export function unregisterAIHandlers(): void {

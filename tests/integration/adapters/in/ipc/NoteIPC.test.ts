@@ -6,7 +6,10 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { NoteIPC } from '../../../../../src/main/adapters/in/ipc/NoteIPC';
+import {
+  registerNoteHandlers,
+  unregisterNoteHandlers,
+} from '../../../../../src/main/adapters/in/ipc/NoteIPC';
 import type { INoteUseCases } from '../../../../../src/main/domain/ports/in/INoteUseCases';
 import type { NoteProps } from '../../../../../src/main/domain/entities/Note';
 
@@ -70,7 +73,6 @@ function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
 
 describe('NoteIPC', () => {
   let noteUseCases: INoteUseCases;
-  let noteIPC: NoteIPC;
   let handlers: Map<string, Function>;
 
   beforeEach(() => {
@@ -83,16 +85,15 @@ describe('NoteIPC', () => {
     });
 
     noteUseCases = createMockNoteUseCases();
-    noteIPC = new NoteIPC({ noteUseCases });
   });
 
   afterEach(() => {
-    noteIPC.unregisterHandlers();
+    unregisterNoteHandlers();
   });
 
   describe('registerHandlers', () => {
     it('registers all note handlers', () => {
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       expect(ipcMain.handle).toHaveBeenCalledWith('notes:create', expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith('notes:get', expect.any(Function));
@@ -110,8 +111,8 @@ describe('NoteIPC', () => {
 
   describe('unregisterHandlers', () => {
     it('removes all note handlers', () => {
-      noteIPC.registerHandlers();
-      noteIPC.unregisterHandlers();
+      registerNoteHandlers({ noteUseCases });
+      unregisterNoteHandlers();
 
       expect(ipcMain.removeHandler).toHaveBeenCalledWith('notes:create');
       expect(ipcMain.removeHandler).toHaveBeenCalledWith('notes:get');
@@ -125,7 +126,7 @@ describe('NoteIPC', () => {
     it('returns success with note data', async () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.createNote.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:create')!;
       const result = await handler({}, { title: 'Test', workspaceId: 'ws-1' });
@@ -140,7 +141,7 @@ describe('NoteIPC', () => {
 
     it('returns error on failure', async () => {
       vi.mocked(noteUseCases.createNote.execute).mockRejectedValue(new Error('Creation failed'));
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:create')!;
       const result = await handler({}, { title: 'Test' });
@@ -155,7 +156,7 @@ describe('NoteIPC', () => {
     it('returns note by id', async () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.getNote.execute).mockResolvedValue({ note, content: undefined });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:get')!;
       const result = await handler({}, { id: 'note-1' });
@@ -172,7 +173,7 @@ describe('NoteIPC', () => {
       const error = new Error('Note not found');
       error.name = 'NoteNotFoundError';
       vi.mocked(noteUseCases.getNote.execute).mockRejectedValue(error);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:get')!;
       const result = await handler({}, { id: 'nonexistent' });
@@ -187,7 +188,7 @@ describe('NoteIPC', () => {
       vi.mocked(noteUseCases.getNoteContent.execute).mockResolvedValue({
         content: '<h1>Hello</h1>',
       });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:getContent')!;
       const result = await handler({}, { id: 'note-1' });
@@ -201,7 +202,7 @@ describe('NoteIPC', () => {
     it('updates note without content', async () => {
       const note = createNoteProps({ title: 'Updated Title' });
       vi.mocked(noteUseCases.updateNote.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:update')!;
       const result = await handler({}, { id: 'note-1', title: 'Updated Title' });
@@ -215,7 +216,7 @@ describe('NoteIPC', () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.updateNote.execute).mockResolvedValue({ note });
       vi.mocked(noteUseCases.saveNoteContent.execute).mockResolvedValue(undefined);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:update')!;
       await handler({}, { id: 'note-1', content: '# New content' });
@@ -230,7 +231,7 @@ describe('NoteIPC', () => {
   describe('notes:delete handler', () => {
     it('soft deletes note by default', async () => {
       vi.mocked(noteUseCases.deleteNote.execute).mockResolvedValue(undefined);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:delete')!;
       const result = await handler({}, { id: 'note-1' });
@@ -244,7 +245,7 @@ describe('NoteIPC', () => {
 
     it('permanently deletes when specified', async () => {
       vi.mocked(noteUseCases.deleteNote.execute).mockResolvedValue(undefined);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:delete')!;
       await handler({}, { id: 'note-1', permanent: true });
@@ -260,7 +261,7 @@ describe('NoteIPC', () => {
     it('returns list of notes', async () => {
       const notes = [createNoteProps({ id: 'note-1' }), createNoteProps({ id: 'note-2' })];
       vi.mocked(noteUseCases.listNotes.execute).mockResolvedValue({ notes, total: 2 });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:getAll')!;
       const result = await handler({}, { workspaceId: 'ws-1' });
@@ -271,7 +272,7 @@ describe('NoteIPC', () => {
 
     it('handles empty request', async () => {
       vi.mocked(noteUseCases.listNotes.execute).mockResolvedValue({ notes: [], total: 0 });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:getAll')!;
       await handler({}, null);
@@ -284,7 +285,7 @@ describe('NoteIPC', () => {
     it('toggles favorite status', async () => {
       const note = createNoteProps({ isFavorite: true });
       vi.mocked(noteUseCases.toggleFavorite.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:favorite')!;
       const result = await handler({}, { id: 'note-1' });
@@ -298,7 +299,7 @@ describe('NoteIPC', () => {
     it('toggles pin status', async () => {
       const note = createNoteProps({ isPinned: true });
       vi.mocked(noteUseCases.togglePin.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:pin')!;
       const result = await handler({}, { id: 'note-1' });
@@ -312,7 +313,7 @@ describe('NoteIPC', () => {
     it('toggles archive status', async () => {
       const note = createNoteProps({ isArchived: true });
       vi.mocked(noteUseCases.toggleArchive.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:archive')!;
       const result = await handler({}, { id: 'note-1' });
@@ -327,7 +328,7 @@ describe('NoteIPC', () => {
       const note = createNoteProps({ notebookId: 'nb-2' });
       vi.mocked(noteUseCases.moveNote.execute).mockResolvedValue(undefined);
       vi.mocked(noteUseCases.getNote.execute).mockResolvedValue({ note, content: undefined });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:move')!;
       const result = await handler({}, { id: 'note-1', targetNotebookId: 'nb-2' });
@@ -343,7 +344,7 @@ describe('NoteIPC', () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.moveNote.execute).mockResolvedValue(undefined);
       vi.mocked(noteUseCases.getNote.execute).mockResolvedValue({ note, content: undefined });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:move')!;
       await handler({}, { id: 'note-1', targetPath: 'nb-3' });
@@ -359,7 +360,7 @@ describe('NoteIPC', () => {
     it('finds note by file path', async () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.getNoteByPath.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:getByPath')!;
       const result = await handler({}, { filePath: 'notes/test.md' });
@@ -374,7 +375,7 @@ describe('NoteIPC', () => {
     it('uses path as fallback for filePath', async () => {
       const note = createNoteProps();
       vi.mocked(noteUseCases.getNoteByPath.execute).mockResolvedValue({ note });
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:getByPath')!;
       await handler({}, { path: 'notes/test.md' });
@@ -390,7 +391,7 @@ describe('NoteIPC', () => {
       const error = new Error('Invalid note');
       error.name = 'NoteValidationError';
       vi.mocked(noteUseCases.createNote.execute).mockRejectedValue(error);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:create')!;
       const result = await handler({}, {});
@@ -402,7 +403,7 @@ describe('NoteIPC', () => {
       const error = new Error('Note is deleted');
       error.name = 'NoteNotEditableError';
       vi.mocked(noteUseCases.updateNote.execute).mockRejectedValue(error);
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:update')!;
       const result = await handler({}, { id: 'note-1' });
@@ -412,7 +413,7 @@ describe('NoteIPC', () => {
 
     it('handles unknown errors', async () => {
       vi.mocked(noteUseCases.createNote.execute).mockRejectedValue('string error');
-      noteIPC.registerHandlers();
+      registerNoteHandlers({ noteUseCases });
 
       const handler = handlers.get('notes:create')!;
       const result = await handler({}, {});
