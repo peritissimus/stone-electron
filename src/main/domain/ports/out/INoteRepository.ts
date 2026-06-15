@@ -4,8 +4,8 @@
  * Defines the contract for note persistence operations.
  * Implementations can be SQLite, PostgreSQL, in-memory, etc.
  *
- * Note: This port includes content and embedding operations for now.
- * In a stricter design, these would be separate ports (IFileStorage, IEmbeddingStore).
+ * Note: This port also includes content and embedding operations; a stricter
+ * design would split these into separate ports (IFileStorage, IEmbeddingStore).
  */
 
 import type { NoteEntity, NoteProps } from '../../entities';
@@ -106,7 +106,7 @@ export interface INoteRepository {
   findDeleted(workspaceId?: string): Promise<NoteProps[]>;
 
   // ============================================================================
-  // Content Operations (TODO: Consider moving to IFileStorage)
+  // Content Operations
   // ============================================================================
 
   /**

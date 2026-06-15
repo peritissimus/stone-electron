@@ -9,8 +9,8 @@ export class SearchByTagsUseCase implements ISearchByTagsUseCase {
   constructor(private readonly noteRepository: INoteRepository) {}
 
   async execute(request: SearchByTagsRequest): Promise<SearchByTagsResponse> {
-    // NOTE: Tag filtering requires a tag repository - for now return empty
-    // TODO: Implement when ITagRepository is available in use case deps
+    // Tag filtering needs a tag repository, which this use case isn't wired
+    // with, so it returns no matches.
     const notes: SearchByTagsResponse['notes'] = [];
 
     // Apply pagination

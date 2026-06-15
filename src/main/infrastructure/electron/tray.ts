@@ -10,8 +10,7 @@
  *      "Stop and process" + "Cancel" while recording, just "Show Stone"
  *      while processing (so the user can't fire a fresh recording into
  *      a busy worker).
- *   3. **Icon** — phase 2 keeps the same Stone glyph; phase 3 will swap
- *      to a record-indicator template image during active capture.
+ *   3. **Icon** — the app's Stone glyph in every state.
  *
  * The renderer pushes its recorder phase to main via the
  * MEETING_CHANNELS.TRAY_SET_STATE channel; the tray tracks the

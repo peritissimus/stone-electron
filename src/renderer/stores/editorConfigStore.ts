@@ -5,9 +5,9 @@
  * (config.json). Hydrated on boot via IPC; re-syncs on settings:changed
  * events with scope === 'editor'.
  *
- * Consumers (Step 6): useRichTextEditor / buildEditorExtensions reads from
- * this store at editor mount time. Live updates while a document is open
- * surface a "reload to apply" banner rather than re-creating the editor.
+ * Consumers (useRichTextEditor / buildEditorExtensions) read from this store
+ * at editor mount time. Live updates while a document is open surface a
+ * "reload to apply" banner rather than re-creating the editor.
  */
 
 import { create } from 'zustand';
@@ -23,8 +23,7 @@ interface EditorConfigState {
   loaded: boolean;
   /**
    * True when the in-memory settings have changed from what the live editor
-   * was constructed with. UI uses this to surface a "reload to apply"
-   * banner — see Step 6.
+   * was constructed with. UI uses this to surface a "reload to apply" banner.
    */
   staleForOpenEditor: boolean;
 

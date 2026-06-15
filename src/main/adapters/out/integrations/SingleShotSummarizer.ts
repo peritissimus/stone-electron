@@ -2,9 +2,8 @@
  * SingleShotSummarizer — feeds the full transcript to the LLM in one call.
  *
  * Good for meetings up to ~30 min where the transcript fits in a normal
- * context window. Longer meetings should swap to MapReduceSummarizer
- * (phase 2) without touching the use case — they both implement
- * ISummarizationStrategy.
+ * context window. Longer meetings can swap to a map-reduce strategy without
+ * touching the use case — both implement ISummarizationStrategy.
  */
 
 import type {
