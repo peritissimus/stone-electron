@@ -247,4 +247,63 @@ describe('AISDKTextGenerator', () => {
     // A custom fetch could redirect content regardless of baseURL — never allow it.
     expect(source).not.toMatch(/fetch\s*:\s*\w/);
   });
+
+  describe('planQuery', () => {
+    it('does not contact the cloud when cloud inference is disabled', async () => {
+      const generateTextFn = vi.fn(async () => ({ text: '{}' }));
+      // DEFAULT_APP_CONFIG has allowCloudInference: false.
+      const { generator } = createGenerator(DEFAULT_APP_CONFIG, generateTextFn);
+
+      const plan = await generator.planQuery({
+        query: 'what did I do yesterday',
+        today: '2026-06-16',
+      });
+
+      expect(generateTextFn).not.toHaveBeenCalled();
+      expect(plan).toEqual({
+        searchQuery: 'what did I do yesterday',
+        dateStart: null,
+        dateEnd: null,
+      });
+    });
+
+    it('resolves a date range when cloud inference is enabled', async () => {
+      const generateTextFn = vi.fn(async () => ({
+        text: '{"searchQuery":"standup","dateStart":"2026-06-15","dateEnd":"2026-06-15"}',
+      }));
+      const { generator } = createGenerator(
+        createConfig({
+          privacy: {
+            allowCloudInference: true,
+            allowSendingNoteContent: true,
+            allowSendingMetadata: false,
+          },
+        }),
+        generateTextFn,
+      );
+
+      const plan = await generator.planQuery({ query: 'standup on the 15th', today: '2026-06-16' });
+
+      expect(generateTextFn).toHaveBeenCalled();
+      expect(plan).toEqual({ searchQuery: 'standup', dateStart: '2026-06-15', dateEnd: '2026-06-15' });
+    });
+
+    it('falls back to the literal query on malformed model output', async () => {
+      const generateTextFn = vi.fn(async () => ({ text: 'not json at all' }));
+      const { generator } = createGenerator(
+        createConfig({
+          privacy: {
+            allowCloudInference: true,
+            allowSendingNoteContent: true,
+            allowSendingMetadata: false,
+          },
+        }),
+        generateTextFn,
+      );
+
+      const plan = await generator.planQuery({ query: 'anything', today: '2026-06-16' });
+
+      expect(plan).toEqual({ searchQuery: 'anything', dateStart: null, dateEnd: null });
+    });
+  });
 });

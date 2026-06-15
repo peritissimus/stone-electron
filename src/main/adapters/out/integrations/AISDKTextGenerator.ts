@@ -16,7 +16,7 @@ import type {
   PlanQueryRequest,
   QueryPlan,
 } from '../../../domain';
-import { assertCloudNoteContentAllowed } from '../../../domain';
+import { assertCloudInferenceAllowed, assertCloudNoteContentAllowed } from '../../../domain';
 
 /**
  * Split a "provider/model" id into its parts (e.g. "openai/gpt-5.4-mini" →
@@ -108,13 +108,15 @@ export class AISDKTextGenerator implements ITextGenerator {
   }
 
   async planQuery(request: PlanQueryRequest): Promise<QueryPlan> {
-    // Planning sends only the user's question (never note content) to the
-    // model, so it isn't gated by allowCloudNoteContent. Any failure (no key,
-    // cloud disabled, bad JSON) degrades to a literal, date-less plan so Ask
-    // still works.
+    // Planning sends only the user's question (never note content), so it is
+    // not gated by allowCloudNoteContent — but it IS gated by the master
+    // allowCloudInference switch: "cloud off" must mean no cloud calls at all,
+    // including this one. Any failure (cloud off, no key, bad JSON) degrades to
+    // a literal, date-less plan so Ask still works locally.
     const fallback: QueryPlan = { searchQuery: request.query, dateStart: null, dateEnd: null };
     try {
       const config = await this.deps.appConfigRepository.get();
+      assertCloudInferenceAllowed(config.ai);
       const result = await this.generateTextFn({
         model: await this.createLanguageModel(
           request.model ?? config.ai.models.textModel,
