@@ -50,6 +50,7 @@ function createMockTaskUseCases(): ITaskUseCases {
 function createMockTextGenerator(): ITextGenerator {
   return {
     generateAnswer: vi.fn(),
+    planQuery: vi.fn(),
     generateMarkdown: vi.fn().mockResolvedValue({ text: '  ## Report\n\n- shipped work  ' }),
   };
 }

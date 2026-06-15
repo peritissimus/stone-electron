@@ -32,11 +32,11 @@ import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useMeetings } from '@renderer/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
 import { useMeetingPlayback, type MeetingPlayback } from '@renderer/hooks/useMeetingPlayback';
-import { InlineRecordingPanel } from './InlineRecordingPanel';
+import { InlineRecordingPanel } from '@renderer/components/features/Meeting/InlineRecordingPanel';
 import { toNote } from '@renderer/navigation';
 import type { MeetingRecording, MeetingRecordingStatus } from '@shared/types';
 
-export function MeetingsPage() {
+export default function MeetingsPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const navigate = useNavigate();
   const {
@@ -213,7 +213,7 @@ function DetailPanel({
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-balance text-xl font-semibold leading-tight">{recording.title}</h2>
-          <div className="mt-1.5 flex items-center gap-2 text-[12px] text-muted-foreground">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
             <span className="tabular-nums">{formatAbsolute(recording.createdAt)}</span>
             <Dot />
             <span className="tabular-nums">{formatDuration(recording.durationMs)}</span>

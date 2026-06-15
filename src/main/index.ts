@@ -29,6 +29,13 @@ import {
   type TrayRecorderPhase,
 } from '@main/infrastructure/electron/tray';
 import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
+import { relocateUserData } from '@main/infrastructure/electron/appPaths';
+
+// Pin the app-data dir to ~/.config/stone (config, DB, keys, logs) on every
+// platform, migrating any existing data once. MUST run before the DI container,
+// database manager, repositories, or first file-log write read userData — so it
+// is the very first thing the main process does.
+relocateUserData();
 
 // Enable Chromium's macOS system-audio loopback via ScreenCaptureKit. Must be
 // set before app `ready`. With these on, getDisplayMedia + the

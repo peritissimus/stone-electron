@@ -10,8 +10,9 @@ export function useOnboardingState() {
   const config = useOnboardingStore((s) => s.config);
   const loaded = useOnboardingStore((s) => s.loaded);
   const hydrate = useOnboardingStore((s) => s.hydrate);
+  const markSteps = useOnboardingStore((s) => s.markSteps);
   const complete = useOnboardingStore((s) => s.complete);
   const reset = useOnboardingStore((s) => s.reset);
 
-  return { config, loaded, hydrate, complete, reset };
+  return { config, loaded, hydrate, markSteps, complete, reset };
 }

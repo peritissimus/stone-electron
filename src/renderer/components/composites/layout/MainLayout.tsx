@@ -30,27 +30,11 @@ const ScratchEditor = lazy(() =>
   })),
 );
 const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
-const TasksPage = lazy(() =>
-  import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
-);
-const GraphPage = lazy(() =>
-  import('@renderer/components/features/Graph/GraphPage').then((m) => ({ default: m.GraphPage })),
-);
-const TopicsPage = lazy(() =>
-  import('@renderer/components/features/Topics/TopicsPage').then((m) => ({
-    default: m.TopicsPage,
-  })),
-);
-const MeetingsPage = lazy(() =>
-  import('@renderer/components/features/Meeting').then((m) => ({
-    default: m.MeetingsPage,
-  })),
-);
-const DailyReviewPage = lazy(() =>
-  import('@renderer/components/features/DailyReview').then((m) => ({
-    default: m.DailyReviewPage,
-  })),
-);
+const TasksPage = lazy(() => import('@renderer/pages/TasksPage'));
+const GraphPage = lazy(() => import('@renderer/pages/GraphPage'));
+const TopicsPage = lazy(() => import('@renderer/pages/TopicsPage'));
+const MeetingsPage = lazy(() => import('@renderer/pages/MeetingsPage'));
+const DailyReviewPage = lazy(() => import('@renderer/pages/DailyReviewPage'));
 const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
 const OnboardingScreen = lazy(() =>
   import('@renderer/components/features/Onboarding').then((m) => ({
@@ -59,7 +43,6 @@ const OnboardingScreen = lazy(() =>
 );
 
 import { useUI } from '@renderer/hooks/useUI';
-import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
 import { useOnboardingState } from '@renderer/hooks/useOnboardingState';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
@@ -162,12 +145,10 @@ export function MainLayout() {
   const initialPathRef = useRef(location.pathname);
   const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
-  const { workspaces } = useWorkspaces();
   const {
     config: onboardingConfig,
     loaded: onboardingLoaded,
     hydrate: hydrateOnboarding,
-    complete: completeOnboardingState,
   } = useOnboardingState();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
@@ -372,31 +353,10 @@ export function MainLayout() {
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
   // Load persisted onboarding state up front so the first-launch gate decides
-  // off real config rather than the workspace-count proxy.
+  // off the real `onboarding.completed` flag.
   useEffect(() => {
     void hydrateOnboarding();
   }, [hydrateOnboarding]);
-
-  // One-time migration: a user who already has a workspace but no persisted
-  // `onboarding.completed` flag (upgraded from a build before onboarding was
-  // tracked) is implicitly done — backfill the flag so they're never forced
-  // back into the wizard and the workspace-count fallback can retire.
-  useEffect(() => {
-    if (
-      bootstrapComplete &&
-      onboardingLoaded &&
-      !onboardingConfig.completed &&
-      workspaces.length > 0
-    ) {
-      void completeOnboardingState();
-    }
-  }, [
-    bootstrapComplete,
-    onboardingLoaded,
-    onboardingConfig.completed,
-    workspaces.length,
-    completeOnboardingState,
-  ]);
 
   // Keyboard shortcuts
   useAppShortcuts({
@@ -427,25 +387,26 @@ export function MainLayout() {
     }
   };
 
-  // First-launch gate: once bootstrap has confirmed there are no workspaces,
-  // show onboarding instead of the app shell. The shell would otherwise have
-  // no active workspace to render against (empty tree, journals with nowhere
-  // to write). Creating + activating a workspace flips this off.
+  // First-launch gate: show onboarding until the user has completed the setup
+  // wizard (`onboarding.completed` in AppConfig). Onboarding covers the whole
+  // first-run setup — workspace, permissions, quick-capture hotkey, AI, local
+  // models — so it is NOT inferred from workspace existence. Finishing the
+  // wizard (or marking it incomplete again) flips this.
   //
-  // Dev-only override: VITE_FORCE_ONBOARDING=true forces the screen even when
-  // workspaces exist, so the onboarding UI can be iterated with a normal
-  // `pnpm dev`. Completing onboarding once clears the override (onboardingDone)
-  // so you're not stuck on it.
+  // Dev-only override: VITE_FORCE_ONBOARDING=true forces the screen, so the
+  // onboarding UI can be iterated with a normal `pnpm dev`. Completing it once
+  // clears the override (onboardingDone) so you're not stuck on it.
   const devForceOnboarding =
     import.meta.env.DEV && import.meta.env.VITE_FORCE_ONBOARDING === 'true';
-  // Onboarding completion now lives in AppConfig (`onboarding.completed`),
-  // not inferred from workspace count. `workspaces.length > 0` is kept only as
-  // a legacy fallback for users who onboarded before the flag existed — the
-  // self-heal effect below backfills the flag for them so the fallback fades.
-  const onboarded = onboardingConfig.completed || workspaces.length > 0;
+  // Onboarding is the whole first-run setup (workspace + permissions + quick
+  // capture + AI + local models), so completion is its own persisted flag in
+  // AppConfig — NOT inferred from whether a workspace exists. Re-running the
+  // wizard is non-destructive: the workspace step prefills the existing
+  // workspace and reuses it instead of recreating.
   const showOnboarding =
     !onboardingDone &&
-    ((bootstrapComplete && onboardingLoaded && !onboarded) || devForceOnboarding);
+    ((bootstrapComplete && onboardingLoaded && !onboardingConfig.completed) ||
+      devForceOnboarding);
   if (showOnboarding) {
     return (
       <Suspense fallback={<PageSkeleton />}>

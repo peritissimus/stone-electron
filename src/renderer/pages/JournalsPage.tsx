@@ -20,7 +20,7 @@ function JournalSkeleton() {
   );
 }
 
-export function JournalsPage() {
+export default function JournalsPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { entries, loading, loadedOnce, error, handleEntryOpen, handleMaterialize } =
     useJournalTimeline();
@@ -75,5 +75,3 @@ export function JournalsPage() {
     </div>
   );
 }
-
-export default JournalsPage;

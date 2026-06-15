@@ -31,7 +31,7 @@ import { useDailyReview } from '@renderer/hooks/useDailyReview';
 import { useStatusReport } from '@renderer/hooks/useStatusReport';
 import { useVoiceCaptureTrigger } from '@renderer/hooks/useVoiceCapture';
 import { toNote } from '@renderer/navigation';
-import { StatusReportDialog } from './StatusReportDialog';
+import { StatusReportDialog } from '@renderer/components/features/DailyReview/StatusReportDialog';
 import type {
   DailyReviewMeetingSummary,
   DailyReviewOnThisDayEntry,
@@ -40,7 +40,7 @@ import type {
   TodoItem,
 } from '@shared/types';
 
-export function DailyReviewPage() {
+export default function DailyReviewPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { snapshot, loading, loadedOnce, refreshing, error, reload } = useDailyReview();
   const { openAndGenerate: openStatusReport } = useStatusReport();
@@ -66,20 +66,20 @@ export function DailyReviewPage() {
             onClick={toggleSidebar}
           />
         )}
-        <Sun size={16} className="text-muted-foreground" />
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-sm font-semibold">Today</h1>
-          <span className="text-xs text-muted-foreground tabular-nums">{headerDate}</span>
+        <Sun size={16} className="shrink-0 text-muted-foreground" />
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h1 className="shrink-0 text-sm font-semibold">Today</h1>
+          <span className="truncate text-xs text-muted-foreground tabular-nums">{headerDate}</span>
         </div>
         <div className="flex-1" />
         {refreshing && (
-          <span className="text-[11px] text-muted-foreground">Refreshing…</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
         )}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => void reload()}
-          className="text-xs"
+          className="shrink-0 text-xs"
         >
           <ArrowClockwise size={14} />
           Refresh
@@ -88,7 +88,7 @@ export function DailyReviewPage() {
           variant="ghost"
           size="sm"
           onClick={openVoiceCapture}
-          className="text-xs"
+          className="shrink-0 text-xs"
           title="Record a voice note — transcribed locally and saved to today's journal"
         >
           <Microphone size={14} weight="fill" />
@@ -98,7 +98,7 @@ export function DailyReviewPage() {
           variant="ghost"
           size="sm"
           onClick={() => void openStatusReport()}
-          className="text-xs"
+          className="shrink-0 text-xs"
           title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
         >
           <Sparkle size={14} weight="fill" />

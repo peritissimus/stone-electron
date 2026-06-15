@@ -127,19 +127,19 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const stepIndex = STEPS.indexOf(step);
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background p-6">
+    <div className="flex h-full w-full justify-center overflow-y-auto bg-background px-6 py-14">
       <div className="w-full max-w-md">
-        {/* Brand mark */}
-        <div
-          className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 flex-col items-center text-center"
-          style={{ animationDuration: '400ms' }}
-        >
+        {/* Brand mark — pinned. The logo lives OUTSIDE the per-step animation
+            and the whole header is top-anchored (no vertical centering), so it
+            never moves as steps change height. */}
+        <div className="flex flex-col items-center text-center">
           <StoneLogo size={64} className="mb-4" />
-          {/* Keyed on step so the copy crossfades when navigating. */}
+          {/* Title + subtitle. Reserved min-height keeps the card from shifting
+              when the copy changes between steps; fade only, no slide. */}
           <div
             key={step}
-            className="animate-in fade-in slide-in-from-bottom-1 flex flex-col items-center"
-            style={{ animationDuration: '250ms' }}
+            className="flex min-h-[66px] animate-in fade-in flex-col items-center"
+            style={{ animationDuration: '200ms' }}
           >
             <Heading2 className="text-balance">
               {step === 'workspace' && 'Welcome to Stone'}
@@ -148,26 +148,23 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               {step === 'ai' && 'Set up AI'}
               {step === 'models' && 'Local models'}
             </Heading2>
-            <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
-              {step === 'workspace' && 'Your notes live in a folder on this computer. Plain Markdown, fully local.'}
-              {step === 'permissions' && 'For recording meetings and voice notes. Optional.'}
-              {step === 'shortcuts' && 'A global hotkey to capture a thought from anywhere — even when Stone is in the background.'}
-              {step === 'ai' && 'Optional. Powers summaries and weekly reports. Stone works fully offline without it.'}
-              {step === 'models' && 'Search and transcription run on-device. Download now, or on first use.'}
+            <Body size="sm" className="mt-1.5 text-muted-foreground">
+              {step === 'workspace' && 'Where your notes live.'}
+              {step === 'permissions' && 'For meetings & voice notes.'}
+              {step === 'shortcuts' && 'Capture from anywhere.'}
+              {step === 'ai' && 'Optional. Summaries & reports.'}
+              {step === 'models' && 'On-device search & transcription.'}
             </Body>
           </div>
         </div>
 
         {/* Step card */}
-        <div
-          className="animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]"
-          style={{ animationDuration: '400ms', animationDelay: '120ms', animationFillMode: 'both' }}
-        >
-          {/* Keyed on step so each step's form slides in instead of snapping. */}
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
+          {/* Keyed on step so each step's form crossfades instead of snapping. */}
           <div
             key={step}
-            className="animate-in fade-in slide-in-from-bottom-1"
-            style={{ animationDuration: '250ms' }}
+            className="animate-in fade-in"
+            style={{ animationDuration: '200ms' }}
           >
           {step === 'workspace' && (
             <WorkspaceStep

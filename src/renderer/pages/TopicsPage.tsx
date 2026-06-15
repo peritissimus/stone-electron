@@ -33,11 +33,11 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { Checkbox } from '@renderer/components/base/ui/checkbox';
 import { cn } from '@renderer/lib/utils';
-import { TopicRow } from './TopicRow';
-import { NoteRow } from './NoteRow';
-import { TopicNotesPanel } from './TopicNotesPanel';
-import { CreateTopicDialog } from './CreateTopicDialog';
-import { SuggestedTopicsSection } from './SuggestedTopicsSection';
+import { TopicRow } from '@renderer/components/features/Topics/TopicRow';
+import { NoteRow } from '@renderer/components/features/Topics/NoteRow';
+import { TopicNotesPanel } from '@renderer/components/features/Topics/TopicNotesPanel';
+import { CreateTopicDialog } from '@renderer/components/features/Topics/CreateTopicDialog';
+import { SuggestedTopicsSection } from '@renderer/components/features/Topics/SuggestedTopicsSection';
 
 interface IndexStatusCardProps {
   stats: {
@@ -126,7 +126,7 @@ function IndexStatusCard({ stats, rebuilding, onReindex }: IndexStatusCardProps)
   );
 }
 
-export function TopicsPage() {
+export default function TopicsPage() {
   const navigateToNote = useNavigateToNote();
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const syncWorkspace = useWorkspaceSync();

@@ -5,12 +5,15 @@ import { SummarizeNoteUseCase } from '../../../../src/main/application/usecases/
 import { WarmUpTranscriberUseCase } from '../../../../src/main/application/usecases/ai/WarmUpTranscriberUseCase';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type {
+  IAppConfigRepository,
   IIndexRepository,
+  IJournalReader,
   IMarkdownProcessor,
   INoteRepository,
   ITextGenerator,
   ITranscriber,
 } from '../../../../src/main/domain';
+import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type {
   IHybridSearchUseCase,
   HybridSearchResultRow,
@@ -45,7 +48,36 @@ function createMockHybridSearch(): IHybridSearchUseCase {
 }
 
 function createMockTextGenerator(): ITextGenerator {
-  return { generateAnswer: vi.fn() } as unknown as ITextGenerator;
+  return {
+    generateAnswer: vi.fn(),
+    // Echo the query, no date scope — keeps retrieval on the literal query so
+    // the existing citation assertions hold; date-scoped behaviour is covered
+    // separately.
+    planQuery: vi.fn(async ({ query }: { query: string }) => ({
+      searchQuery: query,
+      dateStart: null,
+      dateEnd: null,
+    })),
+  } as unknown as ITextGenerator;
+}
+
+function createMockJournalReader() {
+  return { findRecent: vi.fn().mockResolvedValue([]) } as unknown as IJournalReader;
+}
+
+function createMockWorkspaceRepository() {
+  return {
+    findById: vi.fn().mockResolvedValue(null),
+    findActive: vi.fn().mockResolvedValue(null),
+  } as unknown as IWorkspaceRepository;
+}
+
+function createMockAppConfigRepository() {
+  return {
+    get: vi.fn().mockResolvedValue({
+      notes: { locationPolicy: { journalFolder: 'Journal' } },
+    }),
+  } as unknown as IAppConfigRepository;
 }
 
 function createMockIndexRepository(): IIndexRepository {
@@ -98,7 +130,14 @@ describe('AIUseCases', () => {
       noteRepository = createMockNoteRepository();
       hybridSearch = createMockHybridSearch();
       textGenerator = createMockTextGenerator();
-      useCase = new AskNotesUseCase(hybridSearch, noteRepository, textGenerator);
+      useCase = new AskNotesUseCase(
+        hybridSearch,
+        noteRepository,
+        textGenerator,
+        createMockJournalReader(),
+        createMockWorkspaceRepository(),
+        createMockAppConfigRepository(),
+      );
     });
 
     it('builds chunk-level citations from hybrid search results', async () => {
@@ -143,6 +182,7 @@ describe('AIUseCases', () => {
       });
       expect(textGenerator.generateAnswer).toHaveBeenCalledWith({
         query: 'How should the LLM answer questions?',
+        today: expect.any(String),
         sources: [
           {
             chunkId: 'note-1:2',
@@ -204,6 +244,7 @@ describe('AIUseCases', () => {
 
       expect(textGenerator.generateAnswer).toHaveBeenCalledWith({
         query: 'anything?',
+        today: expect.any(String),
         sources: [],
       });
       expect(result).toEqual({

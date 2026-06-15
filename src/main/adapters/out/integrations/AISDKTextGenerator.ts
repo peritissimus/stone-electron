@@ -13,6 +13,8 @@ import type {
   IAIProviderKeyStore,
   IAppConfigRepository,
   ITextGenerator,
+  PlanQueryRequest,
+  QueryPlan,
 } from '../../../domain';
 import { assertCloudNoteContentAllowed } from '../../../domain';
 
@@ -93,7 +95,7 @@ export class AISDKTextGenerator implements ITextGenerator {
 
     const result = await this.generateTextFn({
       model: await this.createLanguageModel(request.model ?? config.ai.models.textModel, config.ai),
-      system: this.systemPrompt(),
+      system: this.systemPrompt(request.today),
       prompt: this.userPrompt(request, config.ai.privacy.allowSendingMetadata),
       temperature: 0.2,
     });
@@ -103,6 +105,29 @@ export class AISDKTextGenerator implements ITextGenerator {
       usedSources: request.sources,
       usage: result.usage,
     };
+  }
+
+  async planQuery(request: PlanQueryRequest): Promise<QueryPlan> {
+    // Planning sends only the user's question (never note content) to the
+    // model, so it isn't gated by allowCloudNoteContent. Any failure (no key,
+    // cloud disabled, bad JSON) degrades to a literal, date-less plan so Ask
+    // still works.
+    const fallback: QueryPlan = { searchQuery: request.query, dateStart: null, dateEnd: null };
+    try {
+      const config = await this.deps.appConfigRepository.get();
+      const result = await this.generateTextFn({
+        model: await this.createLanguageModel(
+          request.model ?? config.ai.models.textModel,
+          config.ai,
+        ),
+        system: this.planSystemPrompt(),
+        prompt: `TODAY is ${request.today}.\nQuestion: ${request.query}\nJSON:`,
+        temperature: 0,
+      });
+      return this.parseQueryPlan(result.text, request.query);
+    } catch {
+      return fallback;
+    }
   }
 
   async generateMarkdown(request: GenerateMarkdownRequest): Promise<GenerateMarkdownResponse> {
@@ -121,9 +146,15 @@ export class AISDKTextGenerator implements ITextGenerator {
     return { text: result.text, usage: result.usage };
   }
 
-  private systemPrompt(): string {
+  private systemPrompt(today?: string): string {
     return [
       'You answer questions using only the provided note excerpts.',
+      ...(today
+        ? [
+            `Today's date is ${today}. Resolve relative dates ("yesterday", "the 13th", "last week") against it.`,
+          ]
+        : []),
+      'Some sources carry a Date — use it to answer time-based questions accurately.',
       'If the excerpts do not contain enough information, say that clearly.',
       'Cite sources inline using their source numbers, for example [1] or [2].',
       'Do not invent citations or facts that are not present in the excerpts.',
@@ -139,12 +170,53 @@ export class AISDKTextGenerator implements ITextGenerator {
   }
 
   private formatSource(source: CitationSource, index: number, includeMetadata: boolean): string {
+    // A bare date is metadata, so it's gated the same way title/heading are.
+    const dateLine = includeMetadata && source.date ? `\nDate: ${source.date}` : '';
     if (!includeMetadata) {
       return `[${index}]\n${source.excerpt}`;
     }
 
     const heading = source.headingPath?.length ? `\nHeading: ${source.headingPath.join(' > ')}` : '';
-    return `[${index}]\nTitle: ${source.title}${heading}\nExcerpt:\n${source.excerpt}`;
+    return `[${index}]\nTitle: ${source.title}${dateLine}${heading}\nExcerpt:\n${source.excerpt}`;
+  }
+
+  private planSystemPrompt(): string {
+    return [
+      "You convert a user's question about their personal notes into a JSON retrieval plan.",
+      'Resolve every time reference relative to TODAY into absolute calendar dates (YYYY-MM-DD):',
+      '- "today" = TODAY; "yesterday" = TODAY-1; "day before yesterday" = TODAY-2;',
+      '- "the 13th" = the 13th of the current month, or the most recent past 13th if that is in the future;',
+      '- "last week" = Monday–Sunday of the previous week; a weekday name = the most recent past such day.',
+      'Output ONLY minified JSON with exactly these keys:',
+      '  searchQuery: string — concise keywords for full-text/semantic search, with date words removed;',
+      '  dateStart: string|null — YYYY-MM-DD, or null if the question has no time reference;',
+      '  dateEnd: string|null — YYYY-MM-DD; equal to dateStart for a single day, null when not date-scoped.',
+      'No prose, no code fences — JSON only.',
+    ].join('\n');
+  }
+
+  private parseQueryPlan(text: string, originalQuery: string): QueryPlan {
+    try {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if (start === -1 || end <= start) {
+        return { searchQuery: originalQuery, dateStart: null, dateEnd: null };
+      }
+      const obj = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+
+      const searchQuery =
+        typeof obj.searchQuery === 'string' && obj.searchQuery.trim()
+          ? obj.searchQuery.trim()
+          : originalQuery;
+      const isIso = (v: unknown): v is string =>
+        typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+      const dateStart = isIso(obj.dateStart) ? obj.dateStart : null;
+      const dateEnd = dateStart ? (isIso(obj.dateEnd) ? obj.dateEnd : dateStart) : null;
+
+      return { searchQuery, dateStart, dateEnd };
+    } catch {
+      return { searchQuery: originalQuery, dateStart: null, dateEnd: null };
+    }
   }
 
   /**

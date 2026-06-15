@@ -652,6 +652,9 @@ export function createContainer(deps: ContainerDeps): Container {
     textGenerator,
     indexRepository,
     transcriber,
+    journalReader,
+    workspaceRepository,
+    appConfigRepository,
   });
 
   // Meeting recorder use cases

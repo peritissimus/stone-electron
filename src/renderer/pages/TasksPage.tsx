@@ -11,11 +11,11 @@ import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { Button } from '@renderer/components/base/ui/button';
-import { TaskSection } from './TaskSection';
-import { TasksHeader } from './TasksHeader';
-import { TasksFilterBar } from './TasksFilterBar';
+import { TaskSection } from '@renderer/components/features/Tasks/TaskSection';
+import { TasksHeader } from '@renderer/components/features/Tasks/TasksHeader';
+import { TasksFilterBar } from '@renderer/components/features/Tasks/TasksFilterBar';
 
-export function TasksPage() {
+export default function TasksPage() {
   const navigateToNote = useNavigateToNote();
   const {
     loading,

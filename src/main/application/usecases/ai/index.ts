@@ -1,11 +1,14 @@
 import type {
   IAIUseCases,
+  IAppConfigRepository,
   IIndexRepository,
+  IJournalReader,
   IMarkdownProcessor,
   INoteRepository,
   ITextGenerator,
 } from '../../../domain';
 import type { ITranscriber } from '../../../domain/ports/out/ITranscriber';
+import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type { IHybridSearchUseCase } from '../../../domain/ports/in/ISearchUseCases';
 import { AskNotesUseCase } from './AskNotesUseCase';
 import { SummarizeNoteUseCase } from './SummarizeNoteUseCase';
@@ -24,11 +27,21 @@ export interface AIUseCasesDeps {
   textGenerator: ITextGenerator;
   indexRepository: IIndexRepository;
   transcriber: ITranscriber;
+  journalReader: IJournalReader;
+  workspaceRepository: IWorkspaceRepository;
+  appConfigRepository: IAppConfigRepository;
 }
 
 export function createAIUseCases(deps: AIUseCasesDeps): IAIUseCases {
   return {
-    askNotes: new AskNotesUseCase(deps.hybridSearch, deps.noteRepository, deps.textGenerator),
+    askNotes: new AskNotesUseCase(
+      deps.hybridSearch,
+      deps.noteRepository,
+      deps.textGenerator,
+      deps.journalReader,
+      deps.workspaceRepository,
+      deps.appConfigRepository,
+    ),
     summarizeNote: new SummarizeNoteUseCase(
       deps.noteRepository,
       deps.markdownProcessor,
