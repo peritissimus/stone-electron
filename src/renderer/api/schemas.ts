@@ -181,7 +181,7 @@ export const AIConfigSchema = z.object({
   models: z.object({
     textModel: z.string(),
     embeddingModel: z.string(),
-    openaiBaseUrl: z.string(),
+    openaiBaseUrl: z.string().optional().default(''),
   }),
   privacy: z.object({
     allowCloudInference: z.boolean(),
@@ -204,6 +204,27 @@ export const AIProviderKeyStatusSchema = z.object({
 
 export const MeetingsConfigSchema = z.object({
   audioRetentionDays: z.number().int(),
+});
+
+// ----- onboarding -----
+
+export const OnboardingConfigSchema = z.object({
+  completed: z.boolean(),
+  completedAt: z.string().nullable(),
+  steps: z.object({
+    workspace: z.boolean(),
+    permissions: z.boolean(),
+    ai: z.boolean(),
+    models: z.boolean(),
+    shortcuts: z.boolean(),
+  }),
+});
+
+// ----- quick capture global hotkey -----
+
+export const QuickCaptureShortcutStatusSchema = z.object({
+  shortcut: z.string(),
+  registered: z.boolean(),
 });
 
 // ============================================================================

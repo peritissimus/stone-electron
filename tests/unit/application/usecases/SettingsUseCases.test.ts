@@ -9,6 +9,7 @@ import { createSettingsUseCases } from '../../../../src/main/application/usecase
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { ISettingsRepository } from '../../../../src/main/domain/ports/out/ISettingsRepository';
 import type { IAIProviderKeyStore } from '../../../../src/main/domain/ports/out/IAIProviderKeyStore';
+import type { IGlobalShortcutRegistrar } from '../../../../src/main/domain/ports/out/IGlobalShortcutRegistrar';
 import type { ISettingsUseCases } from '../../../../src/main/domain/ports/in/ISettingsUseCases';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { ShortcutConflictError } from '../../../../src/main/domain/errors';
@@ -60,10 +61,18 @@ function createMockAIProviderKeyStore(): IAIProviderKeyStore {
   };
 }
 
+function createMockGlobalShortcutRegistrar(): IGlobalShortcutRegistrar {
+  return {
+    bindQuickCapture: vi.fn((shortcut: string) => ({ shortcut, registered: Boolean(shortcut) })),
+    getQuickCaptureStatus: vi.fn(() => ({ shortcut: '', registered: false })),
+  };
+}
+
 describe('SettingsUseCases', () => {
   let settingsRepository: ISettingsRepository;
   let appConfigRepository: IAppConfigRepository;
   let aiProviderKeyStore: IAIProviderKeyStore;
+  let globalShortcutRegistrar: IGlobalShortcutRegistrar;
   let eventPublisher: IEventPublisher;
   let useCases: ISettingsUseCases;
 
@@ -71,11 +80,13 @@ describe('SettingsUseCases', () => {
     settingsRepository = createMockSettingsRepository();
     appConfigRepository = createMockAppConfigRepository();
     aiProviderKeyStore = createMockAIProviderKeyStore();
+    globalShortcutRegistrar = createMockGlobalShortcutRegistrar();
     eventPublisher = createMockEventPublisher();
     useCases = createSettingsUseCases({
       settingsRepository,
       appConfigRepository,
       aiProviderKeyStore,
+      globalShortcutRegistrar,
       eventPublisher,
     });
   });

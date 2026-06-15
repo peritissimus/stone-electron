@@ -29,6 +29,11 @@ import type {
   IGetMeetingsSettingsUseCase,
   IUpdateMeetingsSettingsUseCase,
   IResetMeetingsSettingsUseCase,
+  IGetOnboardingUseCase,
+  IUpdateOnboardingUseCase,
+  IResetOnboardingUseCase,
+  IGetQuickCaptureShortcutUseCase,
+  ISetQuickCaptureShortcutUseCase,
   ShortcutsScope,
 } from '../../../domain';
 import type {
@@ -40,6 +45,7 @@ import type {
   EditorSettings,
   FontSettings,
   MeetingsConfig,
+  OnboardingStepState,
 } from '@shared/types/settings';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
@@ -69,6 +75,11 @@ export interface SettingsIPCDeps {
   getMeetings: IGetMeetingsSettingsUseCase;
   updateMeetings: IUpdateMeetingsSettingsUseCase;
   resetMeetings: IResetMeetingsSettingsUseCase;
+  getOnboarding: IGetOnboardingUseCase;
+  updateOnboarding: IUpdateOnboardingUseCase;
+  resetOnboarding: IResetOnboardingUseCase;
+  getQuickCaptureShortcut: IGetQuickCaptureShortcutUseCase;
+  setQuickCaptureShortcut: ISetQuickCaptureShortcutUseCase;
 }
 
 const SHORTCUT_ERROR_MAP: Record<string, string> = {
@@ -101,6 +112,11 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
     getMeetings,
     updateMeetings,
     resetMeetings,
+    getOnboarding,
+    updateOnboarding,
+    resetOnboarding,
+    getQuickCaptureShortcut,
+    setQuickCaptureShortcut,
   } = deps;
   const handleRequest = <T>(
     fn: () => Promise<T>,
@@ -329,6 +345,54 @@ export function registerSettingsHandlers(deps: SettingsIPCDeps): void {
       { channel: SETTINGS_CHANNELS.RESET_MEETINGS },
     );
   });
+
+  // ----- onboarding -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_ONBOARDING, async () => {
+    return handleRequest(
+      async () => getOnboarding.execute(),
+      { channel: SETTINGS_CHANNELS.GET_ONBOARDING },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.UPDATE_ONBOARDING,
+    async (
+      _event,
+      params: { onboarding: { completed?: boolean; steps?: Partial<OnboardingStepState> } },
+    ) => {
+      return handleRequest(
+        async () => updateOnboarding.execute({ onboarding: params.onboarding }),
+        { channel: SETTINGS_CHANNELS.UPDATE_ONBOARDING },
+      );
+    },
+  );
+
+  ipcMain.handle(SETTINGS_CHANNELS.RESET_ONBOARDING, async () => {
+    return handleRequest(
+      async () => resetOnboarding.execute(),
+      { channel: SETTINGS_CHANNELS.RESET_ONBOARDING },
+    );
+  });
+
+  // ----- quick capture global hotkey -----
+
+  ipcMain.handle(SETTINGS_CHANNELS.GET_QUICK_CAPTURE_SHORTCUT, async () => {
+    return handleRequest(
+      async () => getQuickCaptureShortcut.execute(),
+      { channel: SETTINGS_CHANNELS.GET_QUICK_CAPTURE_SHORTCUT },
+    );
+  });
+
+  ipcMain.handle(
+    SETTINGS_CHANNELS.SET_QUICK_CAPTURE_SHORTCUT,
+    async (_event, params: { shortcut: string }) => {
+      return handleRequest(
+        async () => setQuickCaptureShortcut.execute({ shortcut: params.shortcut }),
+        { channel: SETTINGS_CHANNELS.SET_QUICK_CAPTURE_SHORTCUT },
+      );
+    },
+  );
 
   logger.info('[IPC] Settings handlers registered');
 }

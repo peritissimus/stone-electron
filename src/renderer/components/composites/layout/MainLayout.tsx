@@ -60,6 +60,7 @@ const OnboardingScreen = lazy(() =>
 
 import { useUI } from '@renderer/hooks/useUI';
 import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
+import { useOnboardingState } from '@renderer/hooks/useOnboardingState';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -162,6 +163,12 @@ export function MainLayout() {
   const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
   const { workspaces } = useWorkspaces();
+  const {
+    config: onboardingConfig,
+    loaded: onboardingLoaded,
+    hydrate: hydrateOnboarding,
+    complete: completeOnboardingState,
+  } = useOnboardingState();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
   // These used to live inside <Sidebar>; kept here so <Sidebar> is pure
@@ -364,6 +371,33 @@ export function MainLayout() {
     };
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
+  // Load persisted onboarding state up front so the first-launch gate decides
+  // off real config rather than the workspace-count proxy.
+  useEffect(() => {
+    void hydrateOnboarding();
+  }, [hydrateOnboarding]);
+
+  // One-time migration: a user who already has a workspace but no persisted
+  // `onboarding.completed` flag (upgraded from a build before onboarding was
+  // tracked) is implicitly done — backfill the flag so they're never forced
+  // back into the wizard and the workspace-count fallback can retire.
+  useEffect(() => {
+    if (
+      bootstrapComplete &&
+      onboardingLoaded &&
+      !onboardingConfig.completed &&
+      workspaces.length > 0
+    ) {
+      void completeOnboardingState();
+    }
+  }, [
+    bootstrapComplete,
+    onboardingLoaded,
+    onboardingConfig.completed,
+    workspaces.length,
+    completeOnboardingState,
+  ]);
+
   // Keyboard shortcuts
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
@@ -404,8 +438,14 @@ export function MainLayout() {
   // so you're not stuck on it.
   const devForceOnboarding =
     import.meta.env.DEV && import.meta.env.VITE_FORCE_ONBOARDING === 'true';
+  // Onboarding completion now lives in AppConfig (`onboarding.completed`),
+  // not inferred from workspace count. `workspaces.length > 0` is kept only as
+  // a legacy fallback for users who onboarded before the flag existed — the
+  // self-heal effect below backfills the flag for them so the fallback fades.
+  const onboarded = onboardingConfig.completed || workspaces.length > 0;
   const showOnboarding =
-    !onboardingDone && ((bootstrapComplete && workspaces.length === 0) || devForceOnboarding);
+    !onboardingDone &&
+    ((bootstrapComplete && onboardingLoaded && !onboarded) || devForceOnboarding);
   if (showOnboarding) {
     return (
       <Suspense fallback={<PageSkeleton />}>

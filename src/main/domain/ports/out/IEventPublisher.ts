@@ -296,7 +296,9 @@ export type SettingsScope =
   | 'shortcuts'
   | 'workspace'
   | 'ai'
-  | 'meetings';
+  | 'meetings'
+  | 'onboarding'
+  | 'quickCapture';
 
 export interface SettingsChangedEvent extends DomainEvent {
   type: 'settings:changed';

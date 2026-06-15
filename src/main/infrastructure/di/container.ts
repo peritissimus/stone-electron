@@ -176,6 +176,7 @@ import {
   Embedder,
   Exporter,
   SystemBridge,
+  GlobalShortcutRegistrar,
   GitClient,
   CryptoIdGenerator,
   NodePathService,
@@ -242,6 +243,7 @@ export interface Container {
   templateRepository: ITemplateRepository;
   exporter: IExporter;
   systemBridge: ISystemBridge;
+  globalShortcutRegistrar: GlobalShortcutRegistrar;
   gitClient: IGitClient;
   idGenerator: IIdGenerator;
   pathService: IPathService;
@@ -347,6 +349,7 @@ export function createContainer(deps: ContainerDeps): Container {
   const eventPublisher: IEventPublisher = new EventPublisher();
   const exporter: IExporter = new Exporter();
   const systemBridge: ISystemBridge = new SystemBridge();
+  const globalShortcutRegistrar = new GlobalShortcutRegistrar();
   const gitClient: IGitClient = new GitClient();
   const idGenerator: IIdGenerator = new CryptoIdGenerator();
   const pathService: IPathService = new NodePathService();
@@ -637,6 +640,7 @@ export function createContainer(deps: ContainerDeps): Container {
     settingsRepository,
     appConfigRepository,
     aiProviderKeyStore,
+    globalShortcutRegistrar,
     eventPublisher,
   });
 
@@ -739,6 +743,7 @@ export function createContainer(deps: ContainerDeps): Container {
     indexRepository,
     exporter,
     systemBridge,
+    globalShortcutRegistrar,
     gitClient,
     idGenerator,
     pathService,
@@ -905,6 +910,11 @@ export function registerIPCHandlers(): void {
     getMeetings: container.settingsUseCases.getMeetings,
     updateMeetings: container.settingsUseCases.updateMeetings,
     resetMeetings: container.settingsUseCases.resetMeetings,
+    getOnboarding: container.settingsUseCases.getOnboarding,
+    updateOnboarding: container.settingsUseCases.updateOnboarding,
+    resetOnboarding: container.settingsUseCases.resetOnboarding,
+    getQuickCaptureShortcut: container.settingsUseCases.getQuickCaptureShortcut,
+    setQuickCaptureShortcut: container.settingsUseCases.setQuickCaptureShortcut,
   });
   registerAIHandlers({
     aiUseCases: container.aiUseCases,

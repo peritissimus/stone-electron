@@ -36,6 +36,9 @@ import type {
   EditorSettings,
   FontSettings,
   MeetingsConfig,
+  OnboardingConfig,
+  OnboardingStepState,
+  QuickCaptureShortcutStatus,
   ShortcutsConfig,
 } from '@shared/types/settings';
 import { validateResponse } from './validation';
@@ -46,6 +49,8 @@ import {
   AIProviderKeyStatusSchema,
   EditorSettingsSchema,
   MeetingsConfigSchema,
+  OnboardingConfigSchema,
+  QuickCaptureShortcutStatusSchema,
   ShortcutsConfigSchema,
 } from './schemas';
 
@@ -204,6 +209,40 @@ export const settingsAPI = {
   resetMeetings: async (): Promise<IpcResponse<MeetingsConfig>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.RESET_MEETINGS, {});
     return validateResponse(response, MeetingsConfigSchema);
+  },
+
+  // ----- onboarding -----
+
+  getOnboarding: async (): Promise<IpcResponse<OnboardingConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_ONBOARDING, {});
+    return validateResponse(response, OnboardingConfigSchema);
+  },
+
+  updateOnboarding: async (onboarding: {
+    completed?: boolean;
+    steps?: Partial<OnboardingStepState>;
+  }): Promise<IpcResponse<OnboardingConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_ONBOARDING, { onboarding });
+    return validateResponse(response, OnboardingConfigSchema);
+  },
+
+  resetOnboarding: async (): Promise<IpcResponse<OnboardingConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.RESET_ONBOARDING, {});
+    return validateResponse(response, OnboardingConfigSchema);
+  },
+
+  // ----- quick capture global hotkey -----
+
+  getQuickCaptureShortcut: async (): Promise<IpcResponse<QuickCaptureShortcutStatus>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_QUICK_CAPTURE_SHORTCUT, {});
+    return validateResponse(response, QuickCaptureShortcutStatusSchema);
+  },
+
+  setQuickCaptureShortcut: async (
+    shortcut: string,
+  ): Promise<IpcResponse<QuickCaptureShortcutStatus>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.SET_QUICK_CAPTURE_SHORTCUT, { shortcut });
+    return validateResponse(response, QuickCaptureShortcutStatusSchema);
   },
 };
 

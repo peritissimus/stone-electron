@@ -451,6 +451,8 @@ export function normalizeConfig(value: unknown): AppConfig {
     notes: mergeNotes(value.notes),
     ai: mergeAI(value.ai),
     meetings: mergeMeetings(value.meetings),
+    onboarding: mergeOnboarding(value.onboarding),
+    quickCapture: mergeQuickCapture(value.quickCapture),
   };
 }
 
@@ -461,5 +463,39 @@ function mergeMeetings(value: unknown): AppConfig['meetings'] {
       typeof value.audioRetentionDays === 'number' && Number.isFinite(value.audioRetentionDays)
         ? value.audioRetentionDays
         : DEFAULT_APP_CONFIG.meetings.audioRetentionDays,
+  };
+}
+
+function mergeOnboarding(value: unknown): AppConfig['onboarding'] {
+  const defaults = DEFAULT_APP_CONFIG.onboarding;
+  if (!isRecord(value)) return { completed: false, completedAt: null, steps: { ...defaults.steps } };
+
+  const stepsValue = isRecord(value.steps) ? value.steps : {};
+  const bool = (v: unknown, fallback: boolean): boolean =>
+    typeof v === 'boolean' ? v : fallback;
+
+  return {
+    completed: bool(value.completed, defaults.completed),
+    completedAt:
+      typeof value.completedAt === 'string' && value.completedAt.trim().length > 0
+        ? value.completedAt
+        : null,
+    steps: {
+      workspace: bool(stepsValue.workspace, defaults.steps.workspace),
+      permissions: bool(stepsValue.permissions, defaults.steps.permissions),
+      ai: bool(stepsValue.ai, defaults.steps.ai),
+      models: bool(stepsValue.models, defaults.steps.models),
+      shortcuts: bool(stepsValue.shortcuts, defaults.steps.shortcuts),
+    },
+  };
+}
+
+function mergeQuickCapture(value: unknown): AppConfig['quickCapture'] {
+  const defaults = DEFAULT_APP_CONFIG.quickCapture;
+  if (!isRecord(value)) return { ...defaults };
+  // An explicitly-empty string is valid (means "no global hotkey"). Only fall
+  // back to the default when the field is missing or not a string.
+  return {
+    shortcut: typeof value.shortcut === 'string' ? value.shortcut.trim() : defaults.shortcut,
   };
 }

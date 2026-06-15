@@ -7,6 +7,7 @@ export { SearchEngine, type SearchEngineDeps } from './SearchEngine';
 export { Embedder, type EmbedderDeps } from './Embedder';
 export { Exporter } from './Exporter';
 export { SystemBridge } from './SystemBridge';
+export { GlobalShortcutRegistrar } from './GlobalShortcutRegistrar';
 export { GitClient } from './GitClient';
 export { FileWatcher } from './FileWatcher';
 export { PerformanceMonitor } from './PerformanceMonitor';

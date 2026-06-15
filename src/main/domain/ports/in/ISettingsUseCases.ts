@@ -13,9 +13,12 @@ import type {
   EditorSettings,
   FontSettings,
   MeetingsConfig,
+  OnboardingConfig,
+  OnboardingStepState,
   ShortcutsConfig,
 } from '../../value-objects/AppConfig';
 import type { AIProviderId, AIProviderKeyStatus } from '../out/IAIProviderKeyStore';
+import type { QuickCaptureShortcutStatus } from '../out/IGlobalShortcutRegistrar';
 
 export interface SettingDTO {
   key: string;
@@ -145,6 +148,32 @@ export interface IResetMeetingsSettingsUseCase {
   execute(): Promise<MeetingsConfig>;
 }
 
+// ----- onboarding -----
+
+export interface IGetOnboardingUseCase {
+  execute(): Promise<OnboardingConfig>;
+}
+
+export interface IUpdateOnboardingUseCase {
+  execute(request: {
+    onboarding: { completed?: boolean; steps?: Partial<OnboardingStepState> };
+  }): Promise<OnboardingConfig>;
+}
+
+export interface IResetOnboardingUseCase {
+  execute(): Promise<OnboardingConfig>;
+}
+
+// ----- quick capture (global hotkey) -----
+
+export interface IGetQuickCaptureShortcutUseCase {
+  execute(): Promise<QuickCaptureShortcutStatus>;
+}
+
+export interface ISetQuickCaptureShortcutUseCase {
+  execute(request: { shortcut: string }): Promise<QuickCaptureShortcutStatus>;
+}
+
 /**
  * Aggregated settings use cases interface for DI container
  */
@@ -173,4 +202,9 @@ export interface ISettingsUseCases {
   getMeetings: IGetMeetingsSettingsUseCase;
   updateMeetings: IUpdateMeetingsSettingsUseCase;
   resetMeetings: IResetMeetingsSettingsUseCase;
+  getOnboarding: IGetOnboardingUseCase;
+  updateOnboarding: IUpdateOnboardingUseCase;
+  resetOnboarding: IResetOnboardingUseCase;
+  getQuickCaptureShortcut: IGetQuickCaptureShortcutUseCase;
+  setQuickCaptureShortcut: ISetQuickCaptureShortcutUseCase;
 }
