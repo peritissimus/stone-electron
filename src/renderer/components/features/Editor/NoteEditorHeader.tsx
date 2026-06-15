@@ -3,7 +3,7 @@
  *
  * Implements: specs/components.ts#NoteHeaderProps
  */
-import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import {
   Star,
   PushPin,
@@ -83,21 +83,23 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
   }, [onModeToggle, toggleEditorMode]);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(title);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync editValue when the title prop changes (e.g., switching notes),
   // but never while the user is mid-edit — that would clobber their input.
-  useEffect(() => {
+  // Render-time prev-prop sync, so external changes land before paint.
+  const [prevTitle, setPrevTitle] = useState(title);
+  if (title !== prevTitle) {
+    setPrevTitle(title);
     if (!isEditing) setEditValue(title);
-  }, [title, isEditing]);
+  }
 
-  // Focus and select all when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+  // Focus and select all when the edit input mounts (entering edit mode).
+  const focusInputOnMount = useCallback((node: HTMLInputElement | null) => {
+    if (node) {
+      node.focus();
+      node.select();
     }
-  }, [isEditing]);
+  }, []);
 
   const handleStartEditing = useCallback(() => {
     setIsEditing(true);
@@ -150,7 +152,7 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <input
-            ref={inputRef}
+            ref={focusInputOnMount}
             type="text"
             aria-label="Note title"
             value={editValue}

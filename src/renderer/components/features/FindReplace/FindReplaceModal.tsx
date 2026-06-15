@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { useModals } from '@renderer/hooks/useUI';
 import { X, MagnifyingGlass, ArrowUp, ArrowDown, TextAa } from '@phosphor-icons/react';
 import type { RichTextEditor } from '@renderer/editor';
@@ -21,50 +22,56 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [replaceTerm, setReplaceTerm] = useState('');
   const [caseSensitive, setCaseSensitive] = useState(false);
-  const [matchCount, setMatchCount] = useState(0);
-  const [currentMatch, setCurrentMatch] = useState(0);
+  const [matchInfo, setMatchInfo] = useState({ count: 0, current: 0 });
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus search input when modal opens
-  useEffect(() => {
-    if (findReplaceOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-      searchInputRef.current.select();
-    }
-  }, [findReplaceOpen]);
+  const updateMatchInfo = useCallback((activeEditor: RichTextEditor) => {
+    const storage = activeEditor.storage.searchAndReplace;
+    if (!storage) return;
+    const count = storage.results?.length || 0;
+    setMatchInfo({ count, current: count > 0 ? storage.currentIndex + 1 : 0 });
+  }, []);
 
-  // Update search when term or case sensitivity changes
+  // Re-apply search state to the editor when the panel opens or the editor
+  // instance changes. Per-keystroke updates happen in the change handlers, so
+  // this intentionally only re-runs on those two deps.
   useEffect(() => {
     if (!editor || !findReplaceOpen) return;
-
     editor.commands.setSearchTerm(searchTerm);
-
-    // Get match info from storage
-    const storage = editor.storage.searchAndReplace;
-    if (storage) {
-      setMatchCount(storage.results?.length || 0);
-      setCurrentMatch(storage.results?.length > 0 ? storage.currentIndex + 1 : 0);
-    }
-  }, [editor, searchTerm, findReplaceOpen]);
-
-  // Update case sensitivity
-  useEffect(() => {
-    if (!editor || !findReplaceOpen) return;
     editor.commands.setCaseSensitive(caseSensitive);
-
-    const storage = editor.storage.searchAndReplace;
-    if (storage) {
-      setMatchCount(storage.results?.length || 0);
-      setCurrentMatch(storage.results?.length > 0 ? storage.currentIndex + 1 : 0);
-    }
-  }, [editor, caseSensitive, findReplaceOpen]);
-
-  // Update replace term
-  useEffect(() => {
-    if (!editor || !findReplaceOpen) return;
     editor.commands.setReplaceTerm(replaceTerm);
-  }, [editor, replaceTerm, findReplaceOpen]);
+    updateMatchInfo(editor);
+  }, [editor, findReplaceOpen, updateMatchInfo]);
+
+  const handleSearchTermChange = useCallback(
+    (term: string) => {
+      setSearchTerm(term);
+      if (!editor) return;
+      editor.commands.setSearchTerm(term);
+      updateMatchInfo(editor);
+    },
+    [editor, updateMatchInfo],
+  );
+
+  const handleCaseSensitiveChange = useCallback(
+    (pressed: boolean) => {
+      setCaseSensitive(pressed);
+      if (!editor) return;
+      editor.commands.setCaseSensitive(pressed);
+      updateMatchInfo(editor);
+    },
+    [editor, updateMatchInfo],
+  );
+
+  const handleReplaceTermChange = useCallback(
+    (term: string) => {
+      setReplaceTerm(term);
+      if (!editor) return;
+      editor.commands.setReplaceTerm(term);
+    },
+    [editor],
+  );
 
   const handleClose = useCallback(() => {
     if (editor) {
@@ -76,37 +83,42 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
   const handleFindNext = useCallback(() => {
     if (!editor) return;
     editor.commands.findNext();
-    const storage = editor.storage.searchAndReplace;
-    if (storage) {
-      setCurrentMatch(storage.results?.length > 0 ? storage.currentIndex + 1 : 0);
-    }
-  }, [editor]);
+    updateMatchInfo(editor);
+  }, [editor, updateMatchInfo]);
 
   const handleFindPrevious = useCallback(() => {
     if (!editor) return;
     editor.commands.findPrevious();
-    const storage = editor.storage.searchAndReplace;
-    if (storage) {
-      setCurrentMatch(storage.results?.length > 0 ? storage.currentIndex + 1 : 0);
-    }
-  }, [editor]);
+    updateMatchInfo(editor);
+  }, [editor, updateMatchInfo]);
 
   const handleReplace = useCallback(() => {
     if (!editor) return;
     editor.commands.replaceCurrent();
-    const storage = editor.storage.searchAndReplace;
-    if (storage) {
-      setMatchCount(storage.results?.length || 0);
-      setCurrentMatch(storage.results?.length > 0 ? storage.currentIndex + 1 : 0);
-    }
-  }, [editor]);
+    updateMatchInfo(editor);
+  }, [editor, updateMatchInfo]);
 
   const handleReplaceAll = useCallback(() => {
     if (!editor) return;
     editor.commands.replaceAll();
-    setMatchCount(0);
-    setCurrentMatch(0);
+    setMatchInfo({ count: 0, current: 0 });
   }, [editor]);
+
+  // Focus search input when modal opens (instead of Radix's default autofocus)
+  const handleOpenAutoFocus = useCallback((e: Event) => {
+    e.preventDefault();
+    if (searchInputRef.current) {
+      searchInputRef.current.focus();
+      searchInputRef.current.select();
+    }
+  }, []);
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) handleClose();
+    },
+    [handleClose],
+  );
 
   // Keyboard handlers
   const handleKeyDown = useCallback(
@@ -134,145 +146,134 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
   if (!findReplaceOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      {/* Backdrop */}
-      <div
-        role="button"
-        tabIndex={-1}
-        aria-label="Close find and replace"
-        className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-md"
-        onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleClose();
-          }
-        }}
-      />
+    <DialogPrimitive.Root open={findReplaceOpen} onOpenChange={handleOpenChange}>
+      <DialogPrimitive.Portal>
+        {/* Backdrop */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-foreground/40 dark:bg-black/60 backdrop-blur-md" />
 
-      {/* Modal */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Find and replace"
-        className={cn(
-          'relative w-full max-w-md mx-4 flex flex-col gap-3 rounded-xl border border-border bg-popover p-4',
-          'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
-        )}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <Text as="span" className="text-sm font-medium text-foreground">
-            Find & Replace
-          </Text>
-          <Button
-            type="button"
-            onClick={handleClose}
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            title="Close (Escape)"
-          >
-            <X size={16} />
-          </Button>
-        </div>
-
-        {/* Search Input */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <MagnifyingGlass
-              size={16}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              ref={searchInputRef}
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Find..."
-              className="h-9 pl-9 pr-3"
-            />
+        {/* Modal */}
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          onOpenAutoFocus={handleOpenAutoFocus}
+          className={cn(
+            'fixed left-1/2 top-[15vh] z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex flex-col gap-3 rounded-xl border border-border bg-popover p-4',
+            'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
+          )}
+          onKeyDown={handleKeyDown}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <DialogPrimitive.Title className="text-sm font-medium text-foreground">
+              Find & Replace
+            </DialogPrimitive.Title>
+            <Button
+              type="button"
+              onClick={handleClose}
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              title="Close (Escape)"
+            >
+              <X size={16} />
+            </Button>
           </div>
-          <Toggle
-            pressed={caseSensitive}
-            onPressedChange={(pressed) => setCaseSensitive(pressed)}
-            size="sm"
-            className="rounded-lg"
-            title="Case sensitive"
-          >
-            <TextAa size={18} weight={caseSensitive ? 'bold' : 'regular'} />
-          </Toggle>
-          <Button
-            type="button"
-            onClick={handleFindPrevious}
-            disabled={matchCount === 0}
-            variant="ghost"
-            size="icon"
-            className="size-9 rounded-lg text-muted-foreground"
-            title="Previous (Shift+Enter)"
-          >
-            <ArrowUp size={18} />
-          </Button>
-          <Button
-            type="button"
-            onClick={handleFindNext}
-            disabled={matchCount === 0}
-            variant="ghost"
-            size="icon"
-            className="size-9 rounded-lg text-muted-foreground"
-            title="Next (Enter)"
-          >
-            <ArrowDown size={18} />
-          </Button>
-        </div>
 
-        {/* Match Counter */}
-        {searchTerm && (
-          <Text size="xs" variant="muted">
-            {matchCount === 0 ? (
-              'No results'
-            ) : (
-              <>
-                {currentMatch} of {matchCount} matches
-              </>
-            )}
-          </Text>
-        )}
+          {/* Search Input */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <MagnifyingGlass
+                size={16}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                value={searchTerm}
+                onChange={(e) => handleSearchTermChange(e.target.value)}
+                placeholder="Find..."
+                className="h-9 pl-9 pr-3"
+              />
+            </div>
+            <Toggle
+              pressed={caseSensitive}
+              onPressedChange={handleCaseSensitiveChange}
+              size="sm"
+              className="rounded-lg"
+              title="Case sensitive"
+            >
+              <TextAa size={18} weight={caseSensitive ? 'bold' : 'regular'} />
+            </Toggle>
+            <Button
+              type="button"
+              onClick={handleFindPrevious}
+              disabled={matchInfo.count === 0}
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-lg text-muted-foreground"
+              title="Previous (Shift+Enter)"
+            >
+              <ArrowUp size={18} />
+            </Button>
+            <Button
+              type="button"
+              onClick={handleFindNext}
+              disabled={matchInfo.count === 0}
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-lg text-muted-foreground"
+              title="Next (Enter)"
+            >
+              <ArrowDown size={18} />
+            </Button>
+          </div>
 
-        {/* Replace Input */}
-        <div className="flex items-center gap-2">
-          <Input
-            type="text"
-            value={replaceTerm}
-            onChange={(e) => setReplaceTerm(e.target.value)}
-            placeholder="Replace with..."
-            className="h-9 flex-1"
-          />
-          <Button
-            type="button"
-            onClick={handleReplace}
-            disabled={matchCount === 0}
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-lg"
-            title="Replace current (Cmd+Enter)"
-          >
-            Replace
-          </Button>
-          <Button
-            type="button"
-            onClick={handleReplaceAll}
-            disabled={matchCount === 0}
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-lg"
-            title="Replace all (Cmd+Shift+Enter)"
-          >
-            All
-          </Button>
-        </div>
-      </div>
-    </div>
+          {/* Match Counter */}
+          {searchTerm && (
+            <Text size="xs" variant="muted">
+              {matchInfo.count === 0 ? (
+                'No results'
+              ) : (
+                <>
+                  {matchInfo.current} of {matchInfo.count} matches
+                </>
+              )}
+            </Text>
+          )}
+
+          {/* Replace Input */}
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              value={replaceTerm}
+              onChange={(e) => handleReplaceTermChange(e.target.value)}
+              placeholder="Replace with..."
+              className="h-9 flex-1"
+            />
+            <Button
+              type="button"
+              onClick={handleReplace}
+              disabled={matchInfo.count === 0}
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg"
+              title="Replace current (Cmd+Enter)"
+            >
+              Replace
+            </Button>
+            <Button
+              type="button"
+              onClick={handleReplaceAll}
+              disabled={matchInfo.count === 0}
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-lg"
+              title="Replace all (Cmd+Shift+Enter)"
+            >
+              All
+            </Button>
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

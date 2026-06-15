@@ -25,6 +25,10 @@ interface FileLeafProps {
   onMove: (noteId: string, destinationPath: string | null) => Promise<void>;
 }
 
+const handleDragEnd = (e: React.DragEvent) => {
+  (e.target as HTMLElement).style.opacity = '';
+};
+
 export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDelete }) => {
   const normalizedPath = normalizePath(node.path);
 
@@ -79,10 +83,6 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
       }),
     );
     (e.target as HTMLElement).style.opacity = '0.4';
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    (e.target as HTMLElement).style.opacity = '';
   };
 
   return (

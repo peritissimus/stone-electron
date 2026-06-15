@@ -16,7 +16,7 @@
  * and the gate flips to the normal app shell.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Check,
   CircleNotch,
@@ -63,7 +63,9 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [step, setStep] = useState<StepId>('workspace');
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
-  const [nameTouched, setNameTouched] = useState(false);
+  // Never rendered — only consulted inside handlers, so a ref avoids a
+  // pointless re-render when the user first types a custom name.
+  const nameTouchedRef = useRef(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,13 +91,10 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   }, [getDefaultWorkspacePath, existingWorkspace]);
 
   // Keep the name in sync with the folder until the user types their own.
-  const applyPath = useCallback(
-    (next: string) => {
-      setPath(next);
-      if (!nameTouched) setName(basename(next));
-    },
-    [nameTouched],
-  );
+  const applyPath = useCallback((next: string) => {
+    setPath(next);
+    if (!nameTouchedRef.current) setName(basename(next));
+  }, []);
 
   const handleBrowse = useCallback(async () => {
     const result = await selectFolder();
@@ -173,7 +172,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
               onPathChange={applyPath}
               onBrowse={() => void handleBrowse()}
               onNameChange={(value) => {
-                setNameTouched(true);
+                nameTouchedRef.current = true;
                 setName(value);
               }}
               canContinue={workspaceValid}
@@ -412,7 +411,11 @@ function ProviderKeyRow({
 }) {
   const [value, setValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(stored);
+  // Derived, not copied: `stored` refreshes after a save round-trips through
+  // the store, so copying it into state would go stale. The local flag only
+  // bridges the gap between a successful save and that refresh.
+  const [savedLocally, setSavedLocally] = useState(false);
+  const saved = stored || savedLocally;
 
   const handleSave = async () => {
     const key = value.trim();
@@ -420,7 +423,7 @@ function ProviderKeyRow({
     setSaving(true);
     try {
       await onSave(key);
-      setSaved(true);
+      setSavedLocally(true);
       setValue('');
     } finally {
       setSaving(false);

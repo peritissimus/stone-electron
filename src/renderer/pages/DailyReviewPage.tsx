@@ -368,15 +368,16 @@ function SectionLabel({
   );
 }
 
+const MEETING_STATUS_TONE: Record<DailyReviewMeetingSummary['status'], string> = {
+  ready: 'bg-emerald-500/15 text-emerald-600',
+  failed: 'bg-destructive/15 text-destructive',
+  recording: 'bg-primary/15 text-primary animate-pulse',
+  transcribing: 'bg-primary/15 text-primary animate-pulse',
+  summarizing: 'bg-primary/15 text-primary animate-pulse',
+};
+
 function MeetingStatusDot({ status }: { status: DailyReviewMeetingSummary['status'] }) {
-  const tone: Record<DailyReviewMeetingSummary['status'], string> = {
-    ready: 'bg-emerald-500/15 text-emerald-600',
-    failed: 'bg-destructive/15 text-destructive',
-    recording: 'bg-primary/15 text-primary animate-pulse',
-    transcribing: 'bg-primary/15 text-primary animate-pulse',
-    summarizing: 'bg-primary/15 text-primary animate-pulse',
-  };
-  return <span className={cn('size-2 shrink-0 rounded-full', tone[status])} />;
+  return <span className={cn('size-2 shrink-0 rounded-full', MEETING_STATUS_TONE[status])} />;
 }
 
 function stateChip(state: TodoItem['state']): string {

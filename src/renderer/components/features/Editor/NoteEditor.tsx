@@ -98,16 +98,25 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
     editor.commands.focus(isEmpty ? 'start' : 'end', { scrollIntoView: false });
   }, [editor]);
 
+  // Keep the latest consumeAutofocus in a ref so the listeners below attach
+  // once (per editor instance / per mount) instead of re-subscribing whenever
+  // the handler identity changes.
+  const consumeAutofocusRef = useRef(consumeAutofocus);
+  useEffect(() => {
+    consumeAutofocusRef.current = consumeAutofocus;
+  });
+
   // Primary path: fires when useDocumentBuffer flushes new content into the
   // editor. Registered above useDocumentBuffer so the listener is attached
   // before its sync setContent for cached notes.
   useEffect(() => {
     if (!editor) return;
-    editor.on('update', consumeAutofocus);
+    const handleUpdate = () => consumeAutofocusRef.current();
+    editor.on('update', handleUpdate);
     return () => {
-      editor.off('update', consumeAutofocus);
+      editor.off('update', handleUpdate);
     };
-  }, [editor, consumeAutofocus]);
+  }, [editor]);
 
   // Secondary path: fires when the editor transitions from the empty-state
   // render (no DOM) to NoteEditorContent (DOM mounted) because activeNote
@@ -130,12 +139,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
       queueMicrotask(() => {
         const active = document.activeElement as HTMLElement | null;
         if (active?.closest?.('[data-sidebar-root]')) return;
-        consumeAutofocus();
+        consumeAutofocusRef.current();
       });
     };
     document.addEventListener('focusout', handleFocusOut);
     return () => document.removeEventListener('focusout', handleFocusOut);
-  }, [consumeAutofocus]);
+  }, []);
 
   const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
     saveFn: async ({ noteId, title: nextTitle }) => {

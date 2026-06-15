@@ -153,18 +153,20 @@ function TasksContent({
   if (groupBy === 'state') {
     return (
       <>
-        {TASK_STATES.filter((s) => visibleStates.has(s.key)).map((state) => (
-          <TaskSection
-            key={state.key}
-            state={state.key}
-            label={state.label}
-            todos={groupedTodos[state.key] || []}
-            onTodoClick={onTodoClick}
-            onToggle={onToggle}
-            togglingTodoId={togglingTodoId}
-            defaultExpanded={!state.done}
-          />
-        ))}
+        {TASK_STATES.map((state) =>
+          visibleStates.has(state.key) ? (
+            <TaskSection
+              key={state.key}
+              state={state.key}
+              label={state.label}
+              todos={groupedTodos[state.key] || []}
+              onTodoClick={onTodoClick}
+              onToggle={onToggle}
+              togglingTodoId={togglingTodoId}
+              defaultExpanded={!state.done}
+            />
+          ) : null,
+        )}
       </>
     );
   }

@@ -1,10 +1,8 @@
 /**
- * Custom Image Extension with Context Menu
- * Adds right-click menu to copy image path
+ * Image NodeView component with context menu to copy image paths
  */
 
-import { Node, mergeAttributes, CommandProps } from '@tiptap/core';
-import { NodeViewWrapper, NodeViewProps, ReactNodeViewRenderer } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewProps } from '@tiptap/react';
 import { useState, useCallback } from 'react';
 import { Copy, Check } from '@phosphor-icons/react';
 import {
@@ -15,19 +13,7 @@ import {
 } from '@renderer/components/base/ui/context-menu';
 import { logger } from '@renderer/lib/logger';
 
-// Extend TipTap's Commands interface to include setImage
-declare module '@tiptap/core' {
-  interface Commands<ReturnType> {
-    imageWithMenu: {
-      setImage: (options: { src: string; alt?: string; title?: string }) => ReturnType;
-    };
-  }
-}
-
-/**
- * Image component with context menu
- */
-function ImageComponent({ node, selected }: NodeViewProps) {
+export function ImageComponent({ node, selected }: NodeViewProps) {
   const { src, alt, title } = node.attrs;
   const [copied, setCopied] = useState(false);
 
@@ -100,57 +86,3 @@ function ImageComponent({ node, selected }: NodeViewProps) {
     </NodeViewWrapper>
   );
 }
-
-/**
- * Custom Image extension with context menu support
- */
-export const ImageWithMenu = Node.create({
-  name: 'image',
-
-  group: 'block',
-
-  draggable: true,
-
-  addAttributes() {
-    return {
-      src: {
-        default: null,
-      },
-      alt: {
-        default: null,
-      },
-      title: {
-        default: null,
-      },
-    };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: 'img[src]',
-      },
-    ];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return ['img', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)];
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(ImageComponent);
-  },
-
-  addCommands() {
-    return {
-      setImage:
-        (options: { src: string; alt?: string; title?: string }) =>
-        ({ commands }: CommandProps) => {
-          return commands.insertContent({
-            type: this.name,
-            attrs: options,
-          });
-        },
-    };
-  },
-});

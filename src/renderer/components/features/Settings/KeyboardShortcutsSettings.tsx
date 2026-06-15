@@ -21,6 +21,12 @@ import { Label } from '@renderer/components/base/ui/text';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { cn } from '@renderer/lib/utils';
 
+const CATEGORY_LABELS: Record<string, string> = {
+  general: 'General',
+  navigation: 'Navigation',
+  editor: 'Editor',
+};
+
 /**
  * Quick-capture global (OS-level) hotkey row. Unlike the in-app chords below,
  * this is an Electron accelerator and may fail to register if another app owns
@@ -170,33 +176,30 @@ function ShortcutEditor({ shortcut, onSave, onCancel }: ShortcutEditorProps) {
     altKey: shortcut.altKey,
   });
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!recording) return;
+  // Stable — the listener is only attached while recording, so the handler
+  // doesn't need to re-check (or re-subscribe on) the recording flag.
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-      e.preventDefault();
-      e.stopPropagation();
+    // Ignore modifier-only presses
+    if (['Meta', 'Control', 'Shift', 'Alt'].includes(e.key)) {
+      return;
+    }
 
-      // Ignore modifier-only presses
-      if (['Meta', 'Control', 'Shift', 'Alt'].includes(e.key)) {
-        return;
-      }
+    // Must have at least Cmd/Ctrl
+    if (!e.metaKey && !e.ctrlKey) {
+      return;
+    }
 
-      // Must have at least Cmd/Ctrl
-      if (!e.metaKey && !e.ctrlKey) {
-        return;
-      }
-
-      setCurrentBinding({
-        key: e.key.toLowerCase(),
-        metaKey: e.metaKey || e.ctrlKey,
-        shiftKey: e.shiftKey,
-        altKey: e.altKey,
-      });
-      setRecording(false);
-    },
-    [recording],
-  );
+    setCurrentBinding({
+      key: e.key.toLowerCase(),
+      metaKey: e.metaKey || e.ctrlKey,
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
+    });
+    setRecording(false);
+  }, []);
 
   useEffect(() => {
     if (recording) {
@@ -295,12 +298,6 @@ export function KeyboardShortcutsSettings() {
     }
   };
 
-  const categoryLabels: Record<string, string> = {
-    general: 'General',
-    navigation: 'Navigation',
-    editor: 'Editor',
-  };
-
   return (
     <SettingsSection
       title="Keyboard Shortcuts"
@@ -326,7 +323,7 @@ export function KeyboardShortcutsSettings() {
         {Object.entries(categories).map(([category, shortcuts]) => (
           <div key={category}>
             <Label className="text-xs text-muted-foreground uppercase tracking-wider mb-2 block">
-              {categoryLabels[category]}
+              {CATEGORY_LABELS[category]}
             </Label>
             <div className="space-y-1">
               {shortcuts.map((defaultShortcut) => {

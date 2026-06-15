@@ -34,6 +34,10 @@ interface FolderNodeProps {
   onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
 }
 
+const handleDragEnd = (e: React.DragEvent) => {
+  (e.target as HTMLElement).style.opacity = '';
+};
+
 export const FolderNode = React.memo<FolderNodeProps>(
   ({
     node,
@@ -83,10 +87,6 @@ export const FolderNode = React.memo<FolderNodeProps>(
         }),
       );
       (e.target as HTMLElement).style.opacity = '0.4';
-    };
-
-    const handleDragEnd = (e: React.DragEvent) => {
-      (e.target as HTMLElement).style.opacity = '';
     };
 
     const handleDragOver = (e: React.DragEvent) => {

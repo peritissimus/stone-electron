@@ -13,8 +13,8 @@ const slashCommandPluginKey = new PluginKey('slashCommand');
 import {
   SlashCommandMenu,
   SlashCommandMenuRef,
-  defaultSlashCommands,
 } from '@renderer/components/features/Editor/SlashCommandMenu';
+import { defaultSlashCommands } from '@renderer/components/features/Editor/slashCommands';
 
 export const SlashCommand = Extension.create({
   name: 'slashCommand',

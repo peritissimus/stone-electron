@@ -41,20 +41,25 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [editingReady, setEditingReady] = useState(false);
+  const editingReadyRef = useRef(false);
   const diagramRef = useRef<HTMLDivElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   const isFlowDSL = language === 'flowdsl';
   const isStateDiagram = /(^|\n)\s*stateDiagram(-v2)?/i.test(code);
 
-  // Render diagram
-  useEffect(() => {
+  const [prevCode, setPrevCode] = useState(code);
+  if (code !== prevCode) {
+    setPrevCode(code);
     if (!code.trim()) {
       setRenderedSvg('');
       setError(null);
-      return;
     }
+  }
+
+  // Render diagram
+  useEffect(() => {
+    if (!code.trim()) return;
 
     const renderDiagram = async () => {
       try {
@@ -98,10 +103,12 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
     if (editing && editInputRef.current) {
       editInputRef.current.focus();
       editInputRef.current.select();
-      const timeout = setTimeout(() => setEditingReady(true), 100);
+      const timeout = setTimeout(() => {
+        editingReadyRef.current = true;
+      }, 100);
       return () => clearTimeout(timeout);
     } else {
-      setEditingReady(false);
+      editingReadyRef.current = false;
     }
   }, [editing]);
 
@@ -287,7 +294,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
               }
             }}
             onBlur={(e) => {
-              if (editingReady) {
+              if (editingReadyRef.current) {
                 handleEditComplete(e.target.value);
               }
             }}
