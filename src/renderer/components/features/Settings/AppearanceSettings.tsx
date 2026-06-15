@@ -1,9 +1,4 @@
-import {
-  useTheme,
-  useEditorUI,
-  ACCENT_COLORS,
-  type AccentColor,
-} from '@renderer/hooks/useUI';
+import { useTheme, ACCENT_COLORS, type AccentColor } from '@renderer/hooks/useUI';
 import {
   Select,
   SelectContent,
@@ -11,8 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@renderer/components/base/ui/select';
-import { Switch } from '@renderer/components/base/ui/switch';
-import { Label, Body } from '@renderer/components/base/ui/text';
+import { Label } from '@renderer/components/base/ui/text';
 import { ContainerStack, Separator } from '@renderer/components/base/ui';
 import { SettingsSection } from './SettingsSection';
 import { FontSettings } from './FontSettings';
@@ -20,13 +14,10 @@ import { FontPreview } from './FontPreview';
 
 export function AppearanceSettings() {
   const { theme, setTheme, accentColor, setAccentColor } = useTheme();
-  const { showBlockIndicators, toggleBlockIndicators } = useEditorUI();
 
   return (
-    <SettingsSection
-      title="Appearance"
-      description="Theme, accent color, fonts, and editor visual options."
-    >
+    <SettingsSection title="Appearance" description="Theme, accent color, and fonts.">
+
       <ContainerStack gap="lg">
         <ContainerStack gap="sm">
           <Label>Theme</Label>
@@ -45,21 +36,6 @@ export function AppearanceSettings() {
         <ContainerStack gap="sm">
           <Label>Accent Color</Label>
           <AccentColorPicker value={accentColor} onChange={setAccentColor} />
-        </ContainerStack>
-
-        <Separator />
-
-        <ContainerStack gap="sm">
-          <Label>Editor</Label>
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col gap-0.5">
-              <Body size="sm">Block Indicators</Body>
-              <Body size="xs" variant="muted">
-                Show bullet markers on the left of blocks
-              </Body>
-            </div>
-            <Switch checked={showBlockIndicators} onCheckedChange={toggleBlockIndicators} />
-          </div>
         </ContainerStack>
 
         <Separator />

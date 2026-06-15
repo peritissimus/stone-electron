@@ -11,6 +11,7 @@ import {
   Keyboard,
   Microphone,
   Palette,
+  PencilSimple,
 } from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
@@ -20,6 +21,7 @@ import { toSettings } from '@renderer/navigation/routes';
 import { AboutSettings } from '@renderer/components/features/Settings/AboutSettings';
 import { AISettings } from '@renderer/components/features/Settings/AISettings';
 import { AppearanceSettings } from '@renderer/components/features/Settings/AppearanceSettings';
+import { EditorSettings } from '@renderer/components/features/Settings/EditorSettings';
 import { DatabaseSettings } from '@renderer/components/features/Settings/DatabaseSettings';
 import { GitSettings } from '@renderer/components/features/Settings/GitSettings';
 import { KeyboardShortcutsSettings } from '@renderer/components/features/Settings/KeyboardShortcutsSettings';
@@ -28,9 +30,10 @@ import { RecordingSettings } from '@renderer/components/features/Settings/Record
 
 type SettingsSectionId =
   | 'appearance'
-  | 'ai'
-  | 'recording'
+  | 'editor'
   | 'shortcuts'
+  | 'recording'
+  | 'ai'
   | 'git'
   | 'database'
   | 'performance'
@@ -43,56 +46,44 @@ interface SettingsSectionDef {
   element: ReactNode;
 }
 
-const SECTIONS: SettingsSectionDef[] = [
+interface SettingsGroup {
+  label: string;
+  items: SettingsSectionDef[];
+}
+
+const GROUPS: SettingsGroup[] = [
   {
-    id: 'appearance',
-    label: 'Appearance',
-    icon: <Palette size={16} />,
-    element: <AppearanceSettings />,
+    label: 'General',
+    items: [
+      { id: 'appearance', label: 'Appearance', icon: <Palette size={16} />, element: <AppearanceSettings /> },
+      { id: 'editor', label: 'Editor', icon: <PencilSimple size={16} />, element: <EditorSettings /> },
+      { id: 'shortcuts', label: 'Shortcuts', icon: <Keyboard size={16} />, element: <KeyboardShortcutsSettings /> },
+    ],
   },
   {
-    id: 'ai',
-    label: 'AI',
-    icon: <Brain size={16} />,
-    element: <AISettings />,
+    label: 'Capture & AI',
+    items: [
+      { id: 'recording', label: 'Recording', icon: <Microphone size={16} />, element: <RecordingSettings /> },
+      { id: 'ai', label: 'AI', icon: <Brain size={16} />, element: <AISettings /> },
+    ],
   },
   {
-    id: 'recording',
-    label: 'Recording',
-    icon: <Microphone size={16} />,
-    element: <RecordingSettings />,
+    label: 'Data & Sync',
+    items: [
+      { id: 'git', label: 'Sync', icon: <GitBranch size={16} />, element: <GitSettings /> },
+      { id: 'database', label: 'Database', icon: <Database size={16} />, element: <DatabaseSettings /> },
+    ],
   },
   {
-    id: 'shortcuts',
-    label: 'Shortcuts',
-    icon: <Keyboard size={16} />,
-    element: <KeyboardShortcutsSettings />,
-  },
-  {
-    id: 'git',
-    label: 'Git Sync',
-    icon: <GitBranch size={16} />,
-    element: <GitSettings />,
-  },
-  {
-    id: 'database',
-    label: 'Database',
-    icon: <Database size={16} />,
-    element: <DatabaseSettings />,
-  },
-  {
-    id: 'performance',
-    label: 'Performance',
-    icon: <Pulse size={16} />,
-    element: <PerformanceSettings />,
-  },
-  {
-    id: 'about',
-    label: 'About',
-    icon: <Info size={16} />,
-    element: <AboutSettings />,
+    label: 'System',
+    items: [
+      { id: 'performance', label: 'Performance', icon: <Pulse size={16} />, element: <PerformanceSettings /> },
+      { id: 'about', label: 'About', icon: <Info size={16} />, element: <AboutSettings /> },
+    ],
   },
 ];
+
+const SECTIONS: SettingsSectionDef[] = GROUPS.flatMap((group) => group.items);
 
 function isSettingsSectionId(value: string | undefined): value is SettingsSectionId {
   return SECTIONS.some((section) => section.id === value);
@@ -134,44 +125,51 @@ export default function SettingsPage() {
 
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-56 shrink-0 border-r border-border bg-muted/10 md:flex md:flex-col">
-          <nav className="flex flex-col gap-0.5 p-2">
-            {SECTIONS.map((item) => (
-              <NavLink
-                key={item.id}
-                to={toSettings(item.id)}
-                className={({ isActive }) =>
-                  cn(
-                    'group relative flex h-9 items-center gap-2.5 rounded-md pl-3 pr-2 text-sm',
-                    'transition-[background-color,color,transform] duration-150 ease-out',
-                    'active:scale-[0.98]',
-                    isActive
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary',
-                        'transition-opacity duration-150 ease-out',
-                        isActive ? 'opacity-100' : 'opacity-0',
-                      )}
-                    />
-                    <span
-                      className={cn(
-                        'flex h-5 w-5 items-center justify-center',
-                        isActive ? 'text-primary' : 'text-muted-foreground/80',
-                      )}
-                    >
-                      {item.icon}
-                    </span>
-                    <span className="truncate">{item.label}</span>
-                  </>
-                )}
-              </NavLink>
+          <nav className="flex flex-col gap-4 p-2 py-3">
+            {GROUPS.map((group) => (
+              <div key={group.label} className="flex flex-col gap-0.5">
+                <span className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                  {group.label}
+                </span>
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.id}
+                    to={toSettings(item.id)}
+                    className={({ isActive }) =>
+                      cn(
+                        'group relative flex h-9 items-center gap-2.5 rounded-md pl-3 pr-2 text-sm',
+                        'transition-[background-color,color,transform] duration-150 ease-out',
+                        'active:scale-[0.98]',
+                        isActive
+                          ? 'bg-secondary text-foreground'
+                          : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary',
+                            'transition-opacity duration-150 ease-out',
+                            isActive ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            'flex h-5 w-5 items-center justify-center',
+                            isActive ? 'text-primary' : 'text-muted-foreground/80',
+                          )}
+                        >
+                          {item.icon}
+                        </span>
+                        <span className="truncate">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
         </aside>
