@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { useModals } from '@renderer/hooks/useUI';
 import { useCommandDefinitions } from './useCommandDefinitions';
 import { useFilteredNotes } from './useFilteredNotes';
@@ -10,7 +10,7 @@ export type { CommandItem } from './types';
 export function useCommandCenter() {
   const { commandCenterOpen } = useModals();
 
-  const [query, setQuery] = useState('');
+  const [query, setQueryState] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -23,12 +23,21 @@ export function useCommandCenter() {
     [commandItems, noteItems],
   );
 
-  useEffect(() => {
+  // Reset selection when the item list changes outside of a query change
+  // (e.g. notes loading in asynchronously)
+  const [prevItemsLength, setPrevItemsLength] = useState(items.length);
+  if (items.length !== prevItemsLength) {
+    setPrevItemsLength(items.length);
     setSelectedIndex(0);
-  }, [items.length, query]);
+  }
+
+  const setQuery = useCallback((value: string) => {
+    setQueryState(value);
+    setSelectedIndex(0);
+  }, []);
 
   const handleOpen = useCallback(() => {
-    setQuery('');
+    setQueryState('');
     setSelectedIndex(0);
   }, []);
 

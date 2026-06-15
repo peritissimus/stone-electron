@@ -31,9 +31,11 @@ export const NoteLinkMenu = forwardRef<NoteLinkMenuRef, NoteLinkMenuProps>(
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     // Reset selection when items change
-    useEffect(() => {
+    const [prevItems, setPrevItems] = useState(items);
+    if (items !== prevItems) {
+      setPrevItems(items);
       setSelectedIndex(0);
-    }, [items]);
+    }
 
     // Scroll selected item into view
     useEffect(() => {

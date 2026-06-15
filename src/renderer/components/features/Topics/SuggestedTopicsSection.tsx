@@ -162,6 +162,13 @@ interface SuggestionCardProps {
 
 function SuggestionCard({ suggestion, adopting, onAdopt, onDismiss }: SuggestionCardProps) {
   const [name, setName] = useState(suggestion.label);
+  // A refresh can re-label the same cluster id; re-seed the editable name
+  // when the prop actually changes so the card doesn't show a stale label.
+  const [prevLabel, setPrevLabel] = useState(suggestion.label);
+  if (suggestion.label !== prevLabel) {
+    setPrevLabel(suggestion.label);
+    setName(suggestion.label);
+  }
   const [expanded, setExpanded] = useState(false);
   const navigateToNote = useNavigateToNote();
 

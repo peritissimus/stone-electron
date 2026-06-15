@@ -47,7 +47,7 @@ export function VoiceCaptureDock() {
   if (!open) return null;
 
   return (
-    <div
+    <output
       className={cn(
         'fixed bottom-6 left-1/2 z-50 -translate-x-1/2',
         'flex items-center gap-3 rounded-2xl border border-border bg-card/95 py-2 pl-3 pr-2 backdrop-blur-md',
@@ -55,7 +55,6 @@ export function VoiceCaptureDock() {
         'animate-in fade-in slide-in-from-bottom-2',
       )}
       style={{ animationDuration: '200ms' }}
-      role="status"
       aria-label="Voice capture"
     >
       {phase === 'recording' && (
@@ -137,7 +136,7 @@ export function VoiceCaptureDock() {
           <X size={13} />
         </button>
       )}
-    </div>
+    </output>
   );
 }
 

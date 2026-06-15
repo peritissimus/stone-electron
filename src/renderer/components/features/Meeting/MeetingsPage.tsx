@@ -640,22 +640,24 @@ function StatusBadge({ status }: { status: MeetingRecordingStatus }) {
   return <span className="size-4 rounded-full bg-muted" />;
 }
 
+const STATUS_TONE: Record<MeetingRecordingStatus, string> = {
+  recording: 'text-primary',
+  transcribing: 'text-primary',
+  summarizing: 'text-primary',
+  ready: 'text-emerald-600',
+  failed: 'text-destructive',
+};
+
+const STATUS_LABEL: Record<MeetingRecordingStatus, string> = {
+  recording: 'recording',
+  transcribing: 'transcribing',
+  summarizing: 'summarising',
+  ready: 'ready',
+  failed: 'failed',
+};
+
 function StatusInline({ status }: { status: MeetingRecordingStatus }) {
-  const tone: Record<MeetingRecordingStatus, string> = {
-    recording: 'text-primary',
-    transcribing: 'text-primary',
-    summarizing: 'text-primary',
-    ready: 'text-emerald-600',
-    failed: 'text-destructive',
-  };
-  const label: Record<MeetingRecordingStatus, string> = {
-    recording: 'recording',
-    transcribing: 'transcribing',
-    summarizing: 'summarising',
-    ready: 'ready',
-    failed: 'failed',
-  };
-  return <span className={tone[status]}>{label[status]}</span>;
+  return <span className={STATUS_TONE[status]}>{STATUS_LABEL[status]}</span>;
 }
 
 // =============================================================================

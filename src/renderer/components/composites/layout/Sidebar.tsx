@@ -1,7 +1,7 @@
 /**
  * Sidebar Component - pure composition of header + navigation + tree + status.
  *
- * Also hosts the keyboard-nav surface: the root div is focusable (tabindex=-1)
+ * Also hosts the keyboard-nav surface: the root nav is focusable (tabindex=-1)
  * and its onKeyDown is the modal vim-style handler (j/k/h/l/o/Enter/Esc).
  * An effect consumes the sidebarFocusStore's pendingFocus flag so the
  * focusSidebar shortcut can move DOM focus here even if the sidebar was
@@ -17,7 +17,7 @@ import { SidebarNavList } from './SidebarNavList';
 import { SidebarStatusRail } from './SidebarStatusRail';
 
 export function Sidebar() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const { pendingFocus, acknowledgeFocus } = useSidebarFocusHandoff();
   const { handleKeyDown } = useSidebarKeyboardNav();
 
@@ -28,9 +28,8 @@ export function Sidebar() {
   }, [pendingFocus, acknowledgeFocus]);
 
   return (
-    <div
+    <nav
       ref={containerRef}
-      role="navigation"
       aria-label="Sidebar"
       tabIndex={-1}
       data-sidebar-root="true"
@@ -43,6 +42,6 @@ export function Sidebar() {
         <FileTree />
       </div>
       <SidebarStatusRail />
-    </div>
+    </nav>
   );
 }

@@ -7,6 +7,8 @@
 import React, { useRef, useCallback } from 'react';
 import { cn } from '@renderer/lib/utils';
 
+const KEYBOARD_RESIZE_STEP = 16;
+
 export interface ResizablePanelProps {
   children: React.ReactNode;
   width: number;
@@ -57,6 +59,16 @@ export function ResizablePanel({
     [width, minWidth, maxWidth, onWidthChange],
   );
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const delta = e.key === 'ArrowLeft' ? -KEYBOARD_RESIZE_STEP : KEYBOARD_RESIZE_STEP;
+      onWidthChange(Math.max(minWidth, Math.min(maxWidth, width + delta)));
+    },
+    [width, minWidth, maxWidth, onWidthChange],
+  );
+
   return (
     <>
       <div className={cn('flex-shrink-0', className)} style={{ width: `${width}px` }}>
@@ -68,11 +80,17 @@ export function ResizablePanel({
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize panel"
+        aria-valuenow={width}
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        tabIndex={0}
         className={cn(
           'w-1 cursor-col-resize bg-transparent hover:bg-primary transition-colors',
+          'outline-none focus-visible:bg-primary',
           resizerClassName,
         )}
         onMouseDown={handleMouseDown}
+        onKeyDown={handleKeyDown}
       />
     </>
   );

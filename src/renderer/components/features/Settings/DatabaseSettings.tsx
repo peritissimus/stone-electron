@@ -8,6 +8,8 @@ import { StatusCard } from './StatusCard';
 import { Message } from './Message';
 import { ActionCard } from './ActionCard';
 
+const formatBytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+
 export function DatabaseSettings() {
   const [dbStatus, setDbStatus] = useState<DatabaseStatus | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -52,8 +54,6 @@ export function DatabaseSettings() {
       setMessage({ type: 'error', text: 'Integrity check failed' });
     }
   };
-
-  const formatBytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 
   const statusItems = dbStatus
     ? [

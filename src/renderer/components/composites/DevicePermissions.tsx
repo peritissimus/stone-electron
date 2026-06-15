@@ -97,16 +97,21 @@ export function DevicePermissions() {
   // back non-granted, stop pretending — flip to the Open Settings state.
   const [systemAudioAsked, setSystemAudioAsked] = useState(false);
 
+  // Destructured so the effect can list everything it reads; both refresh
+  // callbacks are useCallback-stable, so statuses remain the real triggers.
+  const { status: micStatus, refresh: refreshMic } = mic;
+  const { status: systemAudioStatus, refresh: refreshSystemAudio } = systemAudio;
+
   useEffect(() => {
     const refreshAll = () => {
-      if (mic.status !== 'granted') void mic.refresh();
-      if (systemAudio.status !== 'granted' && systemAudio.status !== 'unsupported') {
-        void systemAudio.refresh();
+      if (micStatus !== 'granted') void refreshMic();
+      if (systemAudioStatus !== 'granted' && systemAudioStatus !== 'unsupported') {
+        void refreshSystemAudio();
       }
     };
     const everythingSettled =
-      (mic.status === 'granted' || mic.status === 'unknown') &&
-      (systemAudio.status === 'granted' || systemAudio.status === 'unsupported');
+      (micStatus === 'granted' || micStatus === 'unknown') &&
+      (systemAudioStatus === 'granted' || systemAudioStatus === 'unsupported');
     if (everythingSettled) return;
 
     const interval = window.setInterval(refreshAll, 2500);
@@ -115,8 +120,7 @@ export function DevicePermissions() {
       window.clearInterval(interval);
       window.removeEventListener('focus', refreshAll);
     };
-    // refresh callbacks are useCallback-stable; statuses are the real inputs.
-  }, [mic.status, systemAudio.status]);
+  }, [micStatus, systemAudioStatus, refreshMic, refreshSystemAudio]);
 
   const micState: PermissionRowState =
     mic.status === 'unknown' || mic.status === null

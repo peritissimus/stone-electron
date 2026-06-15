@@ -37,18 +37,12 @@ export function CommandCenter() {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh]">
       {/* Backdrop */}
-      <div
-        role="button"
+      <button
+        type="button"
         tabIndex={-1}
         aria-label="Close command center"
         className="absolute inset-0 bg-foreground/40 dark:bg-black/60 backdrop-blur-sm"
         onClick={handleClose}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleClose();
-          }
-        }}
       />
 
       {/* Modal */}

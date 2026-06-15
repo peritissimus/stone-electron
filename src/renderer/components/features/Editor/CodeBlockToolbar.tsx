@@ -9,7 +9,7 @@ import { cn } from '@renderer/lib/utils';
 /**
  * Supported programming languages for syntax highlighting
  */
-export const CODE_LANGUAGES = [
+const CODE_LANGUAGES = [
   { value: '', label: 'auto' },
   { value: 'javascript', label: 'JavaScript' },
   { value: 'typescript', label: 'TypeScript' },

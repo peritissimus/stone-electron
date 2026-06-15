@@ -23,29 +23,55 @@ interface DraftRecoveryDialogProps {
   onRecover: (noteId: string, content: string) => void;
 }
 
+const formatTimestamp = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+};
+
 export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftRecoveryDialogProps) {
   const [drafts, setDrafts] = useState<
     Array<{ noteId: string; title?: string; timestamp: number; content: string }>
   >([]);
   const { notes } = useNotes();
 
+  // Sync the list from draft storage whenever the dialog opens; close
+  // immediately if storage turns out to be empty.
   useEffect(() => {
-    if (open) {
-      const allDrafts = getAllDrafts();
-      logger.info('[DraftRecovery] Found drafts:', allDrafts.length);
-      setDrafts(allDrafts);
+    if (!open) return;
+    const allDrafts = getAllDrafts();
+    logger.info('[DraftRecovery] Found drafts:', allDrafts.length);
+    setDrafts(allDrafts);
+    if (allDrafts.length === 0) {
+      onOpenChange(false);
     }
-  }, [open]);
+  }, [open, onOpenChange]);
+
+  // Drop a draft from the list, closing the dialog when the last one is gone.
+  const removeDraftFromList = (noteId: string) => {
+    const next = drafts.filter((d) => d.noteId !== noteId);
+    setDrafts(next);
+    if (next.length === 0) {
+      onOpenChange(false);
+    }
+  };
 
   const handleRecover = (noteId: string, content: string) => {
     onRecover(noteId, content);
-    // Remove this draft from list
-    setDrafts((prev) => prev.filter((d) => d.noteId !== noteId));
+    removeDraftFromList(noteId);
   };
 
   const handleDiscard = (noteId: string) => {
     deleteDraft(noteId);
-    setDrafts((prev) => prev.filter((d) => d.noteId !== noteId));
+    removeDraftFromList(noteId);
     logger.info('[DraftRecovery] Discarded draft:', noteId);
   };
 
@@ -65,30 +91,9 @@ export function DraftRecoveryDialog({ open, onOpenChange, onRecover }: DraftReco
     logger.info('[DraftRecovery] Recovered all drafts');
   };
 
-  // Auto-close when all drafts are processed
-  useEffect(() => {
-    if (drafts.length === 0 && open) {
-      onOpenChange(false);
-    }
-  }, [drafts.length, open, onOpenChange]);
-
   const getNoteTitleById = (noteId: string): string => {
     const note = notes.find((n) => n.id === noteId);
     return note?.title || 'Unknown Note';
-  };
-
-  const formatTimestamp = (timestamp: number): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    return `${days} day${days > 1 ? 's' : ''} ago`;
   };
 
   return (
