@@ -12,14 +12,14 @@ import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
-import { NoteForceGraph } from './NoteForceGraph';
+import { NoteForceGraph } from '@renderer/components/features/Graph/NoteForceGraph';
 import type { GraphData, GraphNode } from '@shared/types';
 
 function isLinked(node: GraphNode): boolean {
   return node.type === 'note' && node.metadata.degree > 0;
 }
 
-export function GraphPage() {
+export default function GraphPage() {
   const navigateToNote = useNavigateToNote();
   const { getGraphData } = useNoteAPI();
   const { activeNoteId } = useNotes();

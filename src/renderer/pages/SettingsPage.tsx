@@ -149,14 +149,6 @@ export default function SettingsPage() {
                     {({ isActive }) => (
                       <>
                         <span
-                          aria-hidden
-                          className={cn(
-                            'absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r-full bg-primary',
-                            'transition-opacity duration-150 ease-out',
-                            isActive ? 'opacity-100' : 'opacity-0',
-                          )}
-                        />
-                        <span
                           className={cn(
                             'flex h-5 w-5 items-center justify-center',
                             isActive ? 'text-primary' : 'text-muted-foreground/80',

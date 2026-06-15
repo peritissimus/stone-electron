@@ -11,6 +11,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useWorkspaceAPI } from '@renderer/hooks/useWorkspaceAPI';
+import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
+import { useOnboardingState } from '@renderer/hooks/useOnboardingState';
 import {
   topicAPI,
   aiAPI,
@@ -30,16 +32,30 @@ export interface CompleteOnboardingInput {
 export function useOnboarding() {
   const { getDefaultWorkspacePath, selectFolder, createWorkspace, setActiveWorkspace } =
     useWorkspaceAPI();
+  const { workspaces } = useWorkspaces();
+  const { markSteps, complete: completeOnboardingState } = useOnboardingState();
+
+  // When onboarding is re-run after a workspace already exists (e.g. a new
+  // step shipped in an update), surface the existing workspace so the wizard
+  // can prefill its path/name instead of pretending it's a clean first run.
+  const existingWorkspace =
+    workspaces.find((w) => w.isActive) ?? workspaces[0] ?? null;
 
   const completeOnboarding = useCallback(
     async ({ name, path }: CompleteOnboardingInput) => {
-      const workspace = await createWorkspace({ name: name.trim(), path });
+      // A workspace already pointing at this folder means we're re-running the
+      // wizard, not setting up from scratch — don't try to recreate it, just
+      // make sure it's active and record that onboarding is done.
+      const already = workspaces.find((w) => w.folderPath === path);
+      const workspace = already ?? (await createWorkspace({ name: name.trim(), path }));
       if (!workspace) return null;
       // Activate so templates seed, caches clear, and the app navigates home.
       await setActiveWorkspace(workspace.id);
+      await markSteps({ workspace: true });
+      await completeOnboardingState();
       return workspace;
     },
-    [createWorkspace, setActiveWorkspace],
+    [workspaces, createWorkspace, setActiveWorkspace, markSteps, completeOnboardingState],
   );
 
   /** Download/load the local embedding model (search, topics). ~35 MB once. */
@@ -66,6 +82,8 @@ export function useOnboarding() {
     getDefaultWorkspacePath,
     selectFolder,
     completeOnboarding,
+    markSteps,
+    existingWorkspace,
     warmUpEmbeddings,
     warmUpWhisper,
   };

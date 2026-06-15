@@ -98,8 +98,8 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
         ref={rowRef}
         className={cn(
           'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
-          isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
-          isCursor && 'ring-2 ring-primary/50',
+          isActive ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50',
+          isCursor && 'bg-secondary',
         )}
         role="button"
         tabIndex={-1}
@@ -142,7 +142,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
                 size="compact"
                 icon={<DotsThreeVertical size={14} />}
                 label="File options"
-                className="size-5 hover:bg-accent"
+                className="size-5 hover:bg-foreground/10"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">

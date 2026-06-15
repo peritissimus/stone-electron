@@ -5,6 +5,7 @@ import type { ITextGenerator } from '../../../../../src/main/domain';
 function textGenerator(): ITextGenerator {
   return {
     generateAnswer: vi.fn(),
+    planQuery: vi.fn(),
     generateMarkdown: vi.fn().mockResolvedValue({ text: '  - summary  ' }),
   };
 }

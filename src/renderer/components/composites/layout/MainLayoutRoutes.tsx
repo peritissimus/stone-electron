@@ -20,27 +20,11 @@ const ScratchEditor = lazy(() =>
   })),
 );
 const JournalsPage = lazy(() => import('@renderer/pages/JournalsPage'));
-const TasksPage = lazy(() =>
-  import('@renderer/components/features/Tasks/TasksPage').then((m) => ({ default: m.TasksPage })),
-);
-const GraphPage = lazy(() =>
-  import('@renderer/components/features/Graph/GraphPage').then((m) => ({ default: m.GraphPage })),
-);
-const TopicsPage = lazy(() =>
-  import('@renderer/components/features/Topics/TopicsPage').then((m) => ({
-    default: m.TopicsPage,
-  })),
-);
-const MeetingsPage = lazy(() =>
-  import('@renderer/components/features/Meeting').then((m) => ({
-    default: m.MeetingsPage,
-  })),
-);
-const DailyReviewPage = lazy(() =>
-  import('@renderer/components/features/DailyReview').then((m) => ({
-    default: m.DailyReviewPage,
-  })),
-);
+const TasksPage = lazy(() => import('@renderer/pages/TasksPage'));
+const GraphPage = lazy(() => import('@renderer/pages/GraphPage'));
+const TopicsPage = lazy(() => import('@renderer/pages/TopicsPage'));
+const MeetingsPage = lazy(() => import('@renderer/pages/MeetingsPage'));
+const DailyReviewPage = lazy(() => import('@renderer/pages/DailyReviewPage'));
 const SettingsPage = lazy(() => import('@renderer/pages/SettingsPage'));
 
 // Loading skeletons

@@ -209,6 +209,13 @@ export const SETTINGS_CHANNELS = {
   GET_MEETINGS: 'settings:getMeetings',
   UPDATE_MEETINGS: 'settings:updateMeetings',
   RESET_MEETINGS: 'settings:resetMeetings',
+  // Onboarding
+  GET_ONBOARDING: 'settings:getOnboarding',
+  UPDATE_ONBOARDING: 'settings:updateOnboarding',
+  RESET_ONBOARDING: 'settings:resetOnboarding',
+  // Quick capture global hotkey
+  GET_QUICK_CAPTURE_SHORTCUT: 'settings:getQuickCaptureShortcut',
+  SET_QUICK_CAPTURE_SHORTCUT: 'settings:setQuickCaptureShortcut',
 } as const;
 
 // System Operations

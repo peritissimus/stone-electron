@@ -461,3 +461,53 @@ describe('mergeAI', () => {
     expect(result.ai.models.embeddingModel).toBe(DEFAULT_APP_CONFIG.ai.models.embeddingModel);
   });
 });
+
+describe('mergeOnboarding', () => {
+  it('defaults to a never-onboarded state when missing', () => {
+    const result = normalizeConfig({});
+    expect(result.onboarding).toEqual(DEFAULT_APP_CONFIG.onboarding);
+    expect(result.onboarding.completed).toBe(false);
+    expect(result.onboarding.completedAt).toBeNull();
+  });
+
+  it('preserves completion + per-step flags and backfills missing steps', () => {
+    const result = normalizeConfig({
+      onboarding: {
+        completed: true,
+        completedAt: '2026-01-01T00:00:00.000Z',
+        steps: { workspace: true, ai: true },
+      },
+    });
+    expect(result.onboarding.completed).toBe(true);
+    expect(result.onboarding.completedAt).toBe('2026-01-01T00:00:00.000Z');
+    expect(result.onboarding.steps.workspace).toBe(true);
+    expect(result.onboarding.steps.ai).toBe(true);
+    // Missing steps fall back to false rather than dropping out.
+    expect(result.onboarding.steps.shortcuts).toBe(false);
+    expect(result.onboarding.steps.models).toBe(false);
+  });
+
+  it('coerces a blank completedAt to null', () => {
+    const result = normalizeConfig({ onboarding: { completed: false, completedAt: '   ' } });
+    expect(result.onboarding.completedAt).toBeNull();
+  });
+});
+
+describe('mergeQuickCapture', () => {
+  it('defaults to Option+Space when missing', () => {
+    const result = normalizeConfig({});
+    expect(result.quickCapture.shortcut).toBe('Alt+Space');
+  });
+
+  it('preserves a custom accelerator', () => {
+    const result = normalizeConfig({
+      quickCapture: { shortcut: 'CommandOrControl+Shift+Space' },
+    });
+    expect(result.quickCapture.shortcut).toBe('CommandOrControl+Shift+Space');
+  });
+
+  it('keeps an explicit empty string (no global hotkey)', () => {
+    const result = normalizeConfig({ quickCapture: { shortcut: '' } });
+    expect(result.quickCapture.shortcut).toBe('');
+  });
+});

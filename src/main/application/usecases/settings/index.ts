@@ -1,6 +1,7 @@
 import type {
   IAIProviderKeyStore,
   IAppConfigRepository,
+  IGlobalShortcutRegistrar,
   ISettingsRepository,
 } from '../../../domain/ports/out';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
@@ -39,6 +40,15 @@ import {
   ResetMeetingsSettingsUseCase,
   UpdateMeetingsSettingsUseCase,
 } from './meetings';
+import {
+  GetOnboardingUseCase,
+  ResetOnboardingUseCase,
+  UpdateOnboardingUseCase,
+} from './onboarding';
+import {
+  GetQuickCaptureShortcutUseCase,
+  SetQuickCaptureShortcutUseCase,
+} from './quickCapture';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
@@ -74,16 +84,33 @@ export {
   ResetMeetingsSettingsUseCase,
   UpdateMeetingsSettingsUseCase,
 } from './meetings';
+export {
+  GetOnboardingUseCase,
+  ResetOnboardingUseCase,
+  UpdateOnboardingUseCase,
+  type OnboardingPatch,
+} from './onboarding';
+export {
+  GetQuickCaptureShortcutUseCase,
+  SetQuickCaptureShortcutUseCase,
+} from './quickCapture';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;
   appConfigRepository: IAppConfigRepository;
   aiProviderKeyStore: IAIProviderKeyStore;
+  globalShortcutRegistrar: IGlobalShortcutRegistrar;
   eventPublisher?: IEventPublisher;
 }
 
 export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUseCases {
-  const { settingsRepository, appConfigRepository, aiProviderKeyStore, eventPublisher } = deps;
+  const {
+    settingsRepository,
+    appConfigRepository,
+    aiProviderKeyStore,
+    globalShortcutRegistrar,
+    eventPublisher,
+  } = deps;
 
   return {
     get: new GetSettingUseCase(settingsRepository),
@@ -110,5 +137,17 @@ export function createSettingsUseCases(deps: SettingsUseCasesDeps): ISettingsUse
     getMeetings: new GetMeetingsSettingsUseCase(appConfigRepository),
     updateMeetings: new UpdateMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
     resetMeetings: new ResetMeetingsSettingsUseCase(appConfigRepository, eventPublisher),
+    getOnboarding: new GetOnboardingUseCase(appConfigRepository),
+    updateOnboarding: new UpdateOnboardingUseCase(appConfigRepository, eventPublisher),
+    resetOnboarding: new ResetOnboardingUseCase(appConfigRepository, eventPublisher),
+    getQuickCaptureShortcut: new GetQuickCaptureShortcutUseCase(
+      appConfigRepository,
+      globalShortcutRegistrar,
+    ),
+    setQuickCaptureShortcut: new SetQuickCaptureShortcutUseCase(
+      appConfigRepository,
+      globalShortcutRegistrar,
+      eventPublisher,
+    ),
   };
 }

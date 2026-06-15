@@ -29,6 +29,13 @@ import {
   type TrayRecorderPhase,
 } from '@main/infrastructure/electron/tray';
 import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
+import { relocateUserData } from '@main/infrastructure/electron/appPaths';
+
+// Pin the app-data dir to ~/.config/stone (config, DB, keys, logs) on every
+// platform, migrating any existing data once. MUST run before the DI container,
+// database manager, repositories, or first file-log write read userData — so it
+// is the very first thing the main process does.
+relocateUserData();
 
 // Enable Chromium's macOS system-audio loopback via ScreenCaptureKit. Must be
 // set before app `ready`. With these on, getDisplayMedia + the
@@ -434,17 +441,17 @@ app.on('ready', async () => {
       }
     }
 
-    // Register global shortcut for quick capture
-    const quickCaptureShortcut = 'Alt+Space';
-    const registered = globalShortcut.register(quickCaptureShortcut, () => {
-      logger.info('[QuickCapture] Global shortcut triggered');
-      createQuickCaptureWindow();
-    });
-
-    if (registered) {
-      logger.info(`✓ Global shortcut registered: ${quickCaptureShortcut}`);
-    } else {
-      logger.warn(`✗ Failed to register global shortcut: ${quickCaptureShortcut}`);
+    // Register the configured quick-capture global hotkey. The registrar owns
+    // the accelerator + (un)register lifecycle; here we just wire the action
+    // and bind whatever the user has configured (default: Option+Space). If the
+    // combo is already taken by another app it stays unregistered until the user
+    // picks a different one in onboarding / Settings.
+    container.globalShortcutRegistrar.setHandler(() => createQuickCaptureWindow());
+    try {
+      const appConfig = await container.appConfigRepository.get();
+      container.globalShortcutRegistrar.bindQuickCapture(appConfig.quickCapture.shortcut);
+    } catch (error) {
+      logger.error('[QuickCapture] Failed to bind global shortcut on startup:', error);
     }
 
     // System tray (menu bar on macOS). One-click path to start a

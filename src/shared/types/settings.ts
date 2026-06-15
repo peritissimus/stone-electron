@@ -421,6 +421,65 @@ export const DEFAULT_MEETINGS_CONFIG: MeetingsConfig = {
   audioRetentionDays: 30,
 };
 
+/**
+ * Which onboarding steps the user has completed. Tracked individually so a
+ * later release that adds a step (e.g. `shortcuts`) can surface just that
+ * step instead of re-running the whole wizard.
+ */
+export interface OnboardingStepState {
+  workspace: boolean;
+  permissions: boolean;
+  ai: boolean;
+  models: boolean;
+  shortcuts: boolean;
+}
+
+export interface OnboardingConfig {
+  /** True once the user has finished (or skipped to the end of) the wizard. */
+  completed: boolean;
+  /** ISO timestamp of completion, or null if never completed. */
+  completedAt: string | null;
+  steps: OnboardingStepState;
+}
+
+export const DEFAULT_ONBOARDING_STEP_STATE: OnboardingStepState = {
+  workspace: false,
+  permissions: false,
+  ai: false,
+  models: false,
+  shortcuts: false,
+};
+
+export const DEFAULT_ONBOARDING_CONFIG: OnboardingConfig = {
+  completed: false,
+  completedAt: null,
+  steps: { ...DEFAULT_ONBOARDING_STEP_STATE },
+};
+
+/**
+ * Global (OS-level) quick-capture hotkey. Stored as an Electron accelerator
+ * string (e.g. `'Alt+Space'` = Option+Space on macOS). Empty string means no
+ * global hotkey is bound. The accelerator may fail to register if another app
+ * already owns it — registration status is reported separately at runtime.
+ */
+export interface QuickCaptureConfig {
+  shortcut: string;
+}
+
+export const DEFAULT_QUICK_CAPTURE_CONFIG: QuickCaptureConfig = {
+  shortcut: 'Alt+Space',
+};
+
+/**
+ * Runtime status of the quick-capture global hotkey — what was requested vs
+ * what is actually bound. `registered` is false when the accelerator is empty
+ * or another app already owns it.
+ */
+export interface QuickCaptureShortcutStatus {
+  shortcut: string;
+  registered: boolean;
+}
+
 export interface AppConfig {
   appearance: AppearanceSettings;
   workspace: WorkspaceConfig;
@@ -429,6 +488,8 @@ export interface AppConfig {
   notes: NotesConfig;
   ai: AIConfig;
   meetings: MeetingsConfig;
+  onboarding: OnboardingConfig;
+  quickCapture: QuickCaptureConfig;
 }
 
 export const DEFAULT_APP_CONFIG: AppConfig = {
@@ -441,6 +502,8 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   notes: DEFAULT_NOTES_CONFIG,
   ai: DEFAULT_AI_CONFIG,
   meetings: DEFAULT_MEETINGS_CONFIG,
+  onboarding: DEFAULT_ONBOARDING_CONFIG,
+  quickCapture: DEFAULT_QUICK_CAPTURE_CONFIG,
 };
 
 /**

@@ -31,7 +31,7 @@ const DraftRecoveryDialog = lazy(() =>
 );
 
 import { useUI } from '@renderer/hooks/useUI';
-import { useWorkspaces } from '@renderer/hooks/useWorkspaces';
+import { useOnboardingState } from '@renderer/hooks/useOnboardingState';
 import { useTagAPI } from '@renderer/hooks/useTagAPI';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
@@ -55,7 +55,11 @@ export function MainLayout() {
   const initialPathRef = useRef(location.pathname);
   const { pickScratchFile } = useScratchAPI();
   const { sidebarOpen, sidebarWidth, editorFullscreen, setSidebarWidth, toggleSidebar } = useUI();
-  const { workspaces } = useWorkspaces();
+  const {
+    config: onboardingConfig,
+    loaded: onboardingLoaded,
+    hydrate: hydrateOnboarding,
+  } = useOnboardingState();
 
   // Derive tree state from the route and subscribe to sidebar-relevant events.
   // These used to live inside <Sidebar>; kept here so <Sidebar> is pure
@@ -267,6 +271,12 @@ export function MainLayout() {
     };
   }, [loadWorkspaces, loadFileTree, loadTags, loadNotes]);
 
+  // Load persisted onboarding state up front so the first-launch gate decides
+  // off the real `onboarding.completed` flag.
+  useEffect(() => {
+    void hydrateOnboarding();
+  }, [hydrateOnboarding]);
+
   // Keyboard shortcuts
   useAppShortcuts({
     onSave: () => editorRef.current?.save(),
@@ -299,19 +309,26 @@ export function MainLayout() {
     [navigateToNote],
   );
 
-  // First-launch gate: once bootstrap has confirmed there are no workspaces,
-  // show onboarding instead of the app shell. The shell would otherwise have
-  // no active workspace to render against (empty tree, journals with nowhere
-  // to write). Creating + activating a workspace flips this off.
+  // First-launch gate: show onboarding until the user has completed the setup
+  // wizard (`onboarding.completed` in AppConfig). Onboarding covers the whole
+  // first-run setup — workspace, permissions, quick-capture hotkey, AI, local
+  // models — so it is NOT inferred from workspace existence. Finishing the
+  // wizard (or marking it incomplete again) flips this.
   //
-  // Dev-only override: VITE_FORCE_ONBOARDING=true forces the screen even when
-  // workspaces exist, so the onboarding UI can be iterated with a normal
-  // `pnpm dev`. Completing onboarding once clears the override (onboardingDone)
-  // so you're not stuck on it.
+  // Dev-only override: VITE_FORCE_ONBOARDING=true forces the screen, so the
+  // onboarding UI can be iterated with a normal `pnpm dev`. Completing it once
+  // clears the override (onboardingDone) so you're not stuck on it.
   const devForceOnboarding =
     import.meta.env.DEV && import.meta.env.VITE_FORCE_ONBOARDING === 'true';
+  // Onboarding is the whole first-run setup (workspace + permissions + quick
+  // capture + AI + local models), so completion is its own persisted flag in
+  // AppConfig — NOT inferred from whether a workspace exists. Re-running the
+  // wizard is non-destructive: the workspace step prefills the existing
+  // workspace and reuses it instead of recreating.
   const showOnboarding =
-    !onboardingDone && ((bootstrapComplete && workspaces.length === 0) || devForceOnboarding);
+    !onboardingDone &&
+    ((bootstrapComplete && onboardingLoaded && !onboardingConfig.completed) ||
+      devForceOnboarding);
   if (showOnboarding) {
     return (
       <Suspense fallback={<PageSkeleton />}>

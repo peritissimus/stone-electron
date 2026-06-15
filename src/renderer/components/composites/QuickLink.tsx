@@ -46,7 +46,7 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
           'flex items-center justify-start',
           'rounded-md',
           'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
-          isActive ? 'bg-accent/40' : 'hover:bg-accent/20',
+          isActive ? 'bg-secondary' : 'hover:bg-secondary/50',
           isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
           className,
         )}

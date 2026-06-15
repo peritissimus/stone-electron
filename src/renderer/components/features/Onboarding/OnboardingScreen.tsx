@@ -23,6 +23,7 @@ import {
   CloudArrowUp,
   DownloadSimple,
   FolderOpen,
+  Keyboard,
   Lightning,
   Warning,
 } from '@phosphor-icons/react';
@@ -34,6 +35,8 @@ import { Switch } from '@renderer/components/base/ui/switch';
 import { Progress } from '@renderer/components/base/ui/progress';
 import { Heading2, Body, Caption, Label } from '@renderer/components/base/ui/text';
 import { useOnboarding, useModelDownloadProgress } from '@renderer/hooks/useOnboarding';
+import { useQuickCaptureShortcut } from '@renderer/hooks/useQuickCaptureShortcut';
+import { eventToAccelerator, formatAccelerator } from '@renderer/lib/accelerator';
 import { DevicePermissions } from '@renderer/components/composites/DevicePermissions';
 import { useAISettings } from '@renderer/hooks/useAISettings';
 
@@ -43,9 +46,9 @@ export interface OnboardingScreenProps {
   onComplete?: () => void;
 }
 
-type StepId = 'workspace' | 'permissions' | 'ai' | 'models';
+type StepId = 'workspace' | 'permissions' | 'shortcuts' | 'ai' | 'models';
 
-const STEPS: StepId[] = ['workspace', 'permissions', 'ai', 'models'];
+const STEPS: StepId[] = ['workspace', 'permissions', 'shortcuts', 'ai', 'models'];
 
 /** Last path segment, tolerant of both posix and windows separators. */
 function basename(path: string): string {
@@ -54,7 +57,8 @@ function basename(path: string): string {
 }
 
 export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
-  const { getDefaultWorkspacePath, selectFolder, completeOnboarding } = useOnboarding();
+  const { getDefaultWorkspacePath, selectFolder, completeOnboarding, markSteps, existingWorkspace } =
+    useOnboarding();
 
   const [step, setStep] = useState<StepId>('workspace');
   const [path, setPath] = useState('');
@@ -65,10 +69,17 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Seed the suggested default location on mount.
+  // Seed the location field. If a workspace already exists (re-running the
+  // wizard after an update added a step), read its real path/name; otherwise
+  // fall back to the suggested default location.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (existingWorkspace) {
+        setPath((current) => current || existingWorkspace.folderPath);
+        setName((current) => (current ? current : existingWorkspace.name));
+        return;
+      }
       const suggested = await getDefaultWorkspacePath();
       if (cancelled || !suggested) return;
       setPath((current) => current || suggested);
@@ -77,7 +88,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [getDefaultWorkspacePath]);
+  }, [getDefaultWorkspacePath, existingWorkspace]);
 
   // Keep the name in sync with the folder until the user types their own.
   const applyPath = useCallback((next: string) => {
@@ -97,6 +108,7 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     setCreating(true);
     setError(null);
     try {
+      await markSteps({ models: true });
       const workspace = await completeOnboarding({ name, path });
       if (!workspace) {
         setError('Could not create the workspace. Try a different folder.');
@@ -108,51 +120,50 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
     } finally {
       setCreating(false);
     }
-  }, [path, name, creating, completeOnboarding, onComplete]);
+  }, [path, name, creating, completeOnboarding, markSteps, onComplete]);
 
   const workspaceValid = Boolean(path) && name.trim().length > 0;
   const stepIndex = STEPS.indexOf(step);
 
   return (
-    <div className="flex h-full w-full items-center justify-center bg-background p-6">
+    <div className="flex h-full w-full justify-center overflow-y-auto bg-background px-6 py-14">
       <div className="w-full max-w-md">
-        {/* Brand mark */}
-        <div
-          className="mb-6 flex animate-in fade-in slide-in-from-bottom-2 flex-col items-center text-center"
-          style={{ animationDuration: '400ms' }}
-        >
+        {/* Brand mark — pinned. The logo lives OUTSIDE the per-step animation
+            and the whole header is top-anchored (no vertical centering), so it
+            never moves as steps change height. */}
+        <div className="flex flex-col items-center text-center">
           <StoneLogo size={64} className="mb-4" />
-          {/* Keyed on step so the copy crossfades when navigating. */}
+          {/* Title + subtitle. Reserved min-height keeps the card from shifting
+              when the copy changes between steps; fade only, no slide. */}
           <div
             key={step}
-            className="animate-in fade-in slide-in-from-bottom-1 flex flex-col items-center"
-            style={{ animationDuration: '250ms' }}
+            className="flex min-h-[66px] animate-in fade-in flex-col items-center"
+            style={{ animationDuration: '200ms' }}
           >
             <Heading2 className="text-balance">
               {step === 'workspace' && 'Welcome to Stone'}
               {step === 'permissions' && 'Permissions'}
+              {step === 'shortcuts' && 'Quick capture'}
               {step === 'ai' && 'Set up AI'}
               {step === 'models' && 'Local models'}
             </Heading2>
-            <Body size="sm" className="mt-2 max-w-sm text-pretty text-muted-foreground">
-              {step === 'workspace' && 'Your notes live in a folder on this computer. Plain Markdown, fully local.'}
-              {step === 'permissions' && 'For recording meetings and voice notes. Optional.'}
-              {step === 'ai' && 'Optional. Powers summaries and weekly reports. Stone works fully offline without it.'}
-              {step === 'models' && 'Search and transcription run on-device. Download now, or on first use.'}
+            <Body size="sm" className="mt-1.5 text-muted-foreground">
+              {step === 'workspace' && 'Where your notes live.'}
+              {step === 'permissions' && 'For meetings & voice notes.'}
+              {step === 'shortcuts' && 'Capture from anywhere.'}
+              {step === 'ai' && 'Optional. Summaries & reports.'}
+              {step === 'models' && 'On-device search & transcription.'}
             </Body>
           </div>
         </div>
 
         {/* Step card */}
-        <div
-          className="animate-in fade-in slide-in-from-bottom-2 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]"
-          style={{ animationDuration: '400ms', animationDelay: '120ms', animationFillMode: 'both' }}
-        >
-          {/* Keyed on step so each step's form slides in instead of snapping. */}
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)]">
+          {/* Keyed on step so each step's form crossfades instead of snapping. */}
           <div
             key={step}
-            className="animate-in fade-in slide-in-from-bottom-1"
-            style={{ animationDuration: '250ms' }}
+            className="animate-in fade-in"
+            style={{ animationDuration: '200ms' }}
           >
           {step === 'workspace' && (
             <WorkspaceStep
@@ -172,12 +183,31 @@ export function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
           {step === 'permissions' && (
             <PermissionsStep
               onBack={() => setStep('workspace')}
-              onContinue={() => setStep('ai')}
+              onContinue={() => {
+                void markSteps({ permissions: true });
+                setStep('shortcuts');
+              }}
+            />
+          )}
+
+          {step === 'shortcuts' && (
+            <ShortcutsStep
+              onBack={() => setStep('permissions')}
+              onContinue={() => {
+                void markSteps({ shortcuts: true });
+                setStep('ai');
+              }}
             />
           )}
 
           {step === 'ai' && (
-            <AIStep onBack={() => setStep('permissions')} onContinue={() => setStep('models')} />
+            <AIStep
+              onBack={() => setStep('shortcuts')}
+              onContinue={() => {
+                void markSteps({ ai: true });
+                setStep('models');
+              }}
+            />
           )}
 
           {step === 'models' && (
@@ -443,6 +473,121 @@ function PermissionsStep({ onBack, onContinue }: { onBack: () => void; onContinu
   return (
     <div className="space-y-4">
       <DevicePermissions />
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onBack}
+          className="transition-transform active:scale-[0.96]"
+        >
+          Back
+        </Button>
+        <Button
+          type="button"
+          onClick={onContinue}
+          className="flex-1 transition-transform active:scale-[0.96]"
+        >
+          Continue
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// Step — Quick capture global hotkey
+// =============================================================================
+
+function ShortcutsStep({ onBack, onContinue }: { onBack: () => void; onContinue: () => void }) {
+  const { status, loaded, saving, setShortcut } = useQuickCaptureShortcut();
+  const [recording, setRecording] = useState(false);
+  const [conflict, setConflict] = useState(false);
+
+  // While recording, capture the next key combo globally (capture phase so the
+  // app's own shortcuts don't swallow it first). Esc cancels.
+  useEffect(() => {
+    if (!recording) return;
+    const handler = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Escape') {
+        setRecording(false);
+        return;
+      }
+      const accelerator = eventToAccelerator(e);
+      if (!accelerator) return; // modifier-only — keep waiting for a real key
+      setRecording(false);
+      void (async () => {
+        const result = await setShortcut(accelerator);
+        setConflict(Boolean(result && !result.registered && result.shortcut.length > 0));
+      })();
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [recording, setShortcut]);
+
+  const shortcut = status?.shortcut ?? '';
+  const registered = status?.registered ?? false;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 p-3">
+        <div className="flex items-start gap-2.5">
+          <Keyboard size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+          <div>
+            <div className="text-sm font-medium text-foreground">Quick capture hotkey</div>
+            <Caption className="text-muted-foreground">
+              Opens a capture window from any app.
+            </Caption>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {recording ? (
+            <span className="rounded-md border border-primary/50 bg-primary/5 px-2 py-1 text-xs text-primary">
+              Press keys…
+            </span>
+          ) : (
+            <kbd className="rounded-md border border-border bg-background px-2 py-1 text-xs font-medium tabular-nums text-foreground">
+              {shortcut ? formatAccelerator(shortcut) : 'Not set'}
+            </kbd>
+          )}
+          {!recording && shortcut && loaded && (
+            registered ? (
+              <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
+                <Check size={11} weight="bold" />
+              </span>
+            ) : (
+              <span className="flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                <Warning size={11} weight="fill" />
+              </span>
+            )
+          )}
+        </div>
+      </div>
+
+      {conflict && !recording && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <Warning size={14} weight="fill" className="mt-0.5 shrink-0 text-destructive" />
+          <Body size="sm" className="text-destructive">
+            {shortcut ? `${formatAccelerator(shortcut)} is already in use by another app.` : 'That combo is unavailable.'}{' '}
+            Record a different one.
+          </Body>
+        </div>
+      )}
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => {
+          setConflict(false);
+          setRecording(true);
+        }}
+        disabled={saving || recording}
+        className="w-full transition-transform active:scale-[0.96]"
+      >
+        {recording ? 'Press a key combination… (Esc to cancel)' : 'Record a different shortcut'}
+      </Button>
+
       <div className="flex gap-2">
         <Button
           type="button"
