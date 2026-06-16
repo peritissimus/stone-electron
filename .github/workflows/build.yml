@@ -2,7 +2,7 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main, develop, feature/** ]
+    branches: [ main, develop, feature/**, feat/** ]
   pull_request:
     branches: [ main, develop ]
 
@@ -44,6 +44,12 @@ jobs:
 
       - name: Type check
         run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
 
       - name: Build application
         run: pnpm build

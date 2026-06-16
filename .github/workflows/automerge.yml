@@ -1,0 +1,24 @@
+name: Auto-merge
+
+# Opt-in per PR: add the "automerge" label and GitHub enables native
+# auto-merge, which merges the PR automatically once the required status
+# checks (the Build and Test workflow) pass and the branch is mergeable.
+
+on:
+  pull_request:
+    types: [labeled, opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: contains(github.event.pull_request.labels.*.name, 'automerge')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        run: gh pr merge --auto --merge "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
