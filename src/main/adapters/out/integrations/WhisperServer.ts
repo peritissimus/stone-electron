@@ -24,6 +24,11 @@ import {
   WHISPER_MODEL,
 } from './whisperPaths';
 
+/** Per-chunk transcription timeout. A live chunk is only a few seconds of
+ *  audio; if the resident server hasn't responded within this, it's wedged and
+ *  should be restarted rather than left to block on undici's 5-minute default. */
+const CHUNK_TIMEOUT_MS = 20_000;
+
 export interface WhisperServerDeps {
   model?: string;
   modelDir?: string;
@@ -75,10 +80,21 @@ export class WhisperServer implements ILiveTranscriber {
     form.append('language', 'auto');
     form.append('temperature', '0');
 
-    const res = await fetch(`http://${host}:${this.port}/inference`, {
-      method: 'POST',
-      body: form,
-    });
+    let res: Response;
+    try {
+      res = await fetch(`http://${host}:${this.port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(CHUNK_TIMEOUT_MS),
+      });
+    } catch (err) {
+      // The server hung or died: tear it down so the next chunk respawns a
+      // fresh process instead of piling onto a wedged one (each stuck fetch
+      // would otherwise block for undici's 5-minute default). Live draft is
+      // best-effort — the clean transcript still comes from batch finalize.
+      void this.stop();
+      throw err;
+    }
     if (!res.ok) throw new Error(`whisper-server inference failed (${res.status})`);
     const json = (await res.json()) as { text?: string; segments?: ServerSegment[] };
 

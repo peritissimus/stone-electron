@@ -39,9 +39,25 @@ const liveTimerRef: { current: ReturnType<typeof setInterval> | null } = { curre
 const LIVE_INTERVAL_MS = 6_000;
 const MIN_LIVE_CHUNK_S = 0.6;
 
+/** Guards against overlapping live ticks. The resident whisper-server handles
+ *  one /inference at a time; without this, a slow or wedged server lets
+ *  interval ticks pile up into dozens of concurrent requests. Skipping a tick
+ *  while one is in flight just lets the next drain batch more audio. */
+let liveChunkInFlight = false;
+
 /** Drain new audio from each track (hook owns the hardware), encode it, and
  *  hand it to the store to transcribe + append. Best-effort. */
 async function streamLiveChunk(): Promise<void> {
+  if (liveChunkInFlight) return;
+  liveChunkInFlight = true;
+  try {
+    await drainAndTranscribe();
+  } finally {
+    liveChunkInFlight = false;
+  }
+}
+
+async function drainAndTranscribe(): Promise<void> {
   const store = useMeetingRecorderStore.getState();
   const recorders: Array<['mic' | 'system', PcmRecording | null]> = [
     ['mic', micPcmRecorderRef.current],
