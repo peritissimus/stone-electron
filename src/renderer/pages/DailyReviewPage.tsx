@@ -22,8 +22,15 @@ import {
   ArrowClockwise,
   Calendar,
   Sparkle,
+  MagicWand,
+  Envelope,
+  Kanban,
+  X,
+  CircleNotch,
+  FloppyDisk,
 } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
+import { renderMarkdown } from '@renderer/lib/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
 import { useSidebarUI } from '@renderer/hooks/useUI';
@@ -33,16 +40,20 @@ import { useVoiceCaptureTrigger } from '@renderer/hooks/useVoiceCapture';
 import { toNote } from '@renderer/navigation';
 import { StatusReportDialog } from '@renderer/components/features/DailyReview/StatusReportDialog';
 import type {
+  CalendarEvent,
   DailyReviewMeetingSummary,
   DailyReviewOnThisDayEntry,
   DailyReviewSnapshot,
+  LinearIssue,
+  MailMessage,
   Note,
   TodoItem,
 } from '@shared/types';
 
 export default function DailyReviewPage() {
   const { toggleSidebar, sidebarOpen } = useSidebarUI();
-  const { snapshot, loading, loadedOnce, refreshing, error, reload } = useDailyReview();
+  const { snapshot, loading, loadedOnce, refreshing, error, reload, summary, summarizing, summaryError, summarize, clearSummary } =
+    useDailyReview();
   const { openAndGenerate: openStatusReport } = useStatusReport();
   const { openVoiceCapture } = useVoiceCaptureTrigger();
 
@@ -97,6 +108,21 @@ export default function DailyReviewPage() {
         <Button
           variant="ghost"
           size="sm"
+          onClick={() => void summarize(false)}
+          disabled={summarizing}
+          className="shrink-0 text-xs"
+          title="Summarize today from your journal, meetings, tasks, calendar, mail, and Linear (local or configured AI)"
+        >
+          {summarizing ? (
+            <CircleNotch size={14} className="animate-spin" />
+          ) : (
+            <MagicWand size={14} weight="fill" />
+          )}
+          Summarize day
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => void openStatusReport()}
           className="shrink-0 text-xs"
           title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
@@ -110,6 +136,15 @@ export default function DailyReviewPage() {
         <div className="mx-auto max-w-3xl px-8 py-7">
           {!loadedOnce && loading && <PageSkeleton />}
           {error && <ErrorBox message={error} />}
+          {(summary || summaryError) && (
+            <DaySummaryCard
+              summary={summary}
+              error={summaryError}
+              saving={summarizing}
+              onSave={() => void summarize(true)}
+              onDismiss={clearSummary}
+            />
+          )}
           {snapshot && <Sections snapshot={snapshot} />}
         </div>
       </div>
@@ -127,21 +162,31 @@ function Sections({ snapshot }: { snapshot: DailyReviewSnapshot }) {
   const navigate = useNavigate();
   const goToNote = (id: string) => navigate(toNote(id));
 
+  const calendarEvents = snapshot.calendarEvents ?? [];
+  const mailMessages = snapshot.mailMessages ?? [];
+  const linearIssues = snapshot.linearIssues ?? [];
+
   const empty =
     !snapshot.todayJournal.noteId &&
     snapshot.todayMeetings.length === 0 &&
     snapshot.openTasks.length === 0 &&
     snapshot.recentNotes.length === 0 &&
-    snapshot.onThisDay.length === 0;
+    snapshot.onThisDay.length === 0 &&
+    calendarEvents.length === 0 &&
+    mailMessages.length === 0 &&
+    linearIssues.length === 0;
 
   if (empty) return <EmptyAllSections />;
 
   return (
     <div className="space-y-7">
       <JournalSection journal={snapshot.todayJournal} onOpen={goToNote} />
+      {calendarEvents.length > 0 && <CalendarSection events={calendarEvents} />}
       {snapshot.todayMeetings.length > 0 && (
         <MeetingsSection meetings={snapshot.todayMeetings} />
       )}
+      {linearIssues.length > 0 && <LinearSection issues={linearIssues} />}
+      {mailMessages.length > 0 && <MailSection messages={mailMessages} />}
       {snapshot.openTasks.length > 0 && (
         <TasksSection tasks={snapshot.openTasks} onOpenNote={goToNote} />
       )}
@@ -349,6 +394,143 @@ function OnThisDaySection({
   );
 }
 
+function CalendarSection({ events }: { events: CalendarEvent[] }) {
+  return (
+    <section>
+      <SectionLabel icon={<Calendar size={12} />}>
+        Calendar{' '}
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">({events.length})</span>
+      </SectionLabel>
+      <ul className="mt-2 space-y-1">
+        {events.map((e, i) => (
+          <li
+            key={`${e.start}-${i}`}
+            className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
+          >
+            <span className="w-24 shrink-0 text-[11px] tabular-nums text-muted-foreground">
+              {e.allDay ? 'all day' : formatClock(e.start)}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-foreground">{e.title}</span>
+            {e.location && (
+              <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
+                {e.location}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function LinearSection({ issues }: { issues: LinearIssue[] }) {
+  return (
+    <section>
+      <SectionLabel icon={<Kanban size={12} />}>
+        Linear{' '}
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">({issues.length})</span>
+      </SectionLabel>
+      <ul className="mt-2 space-y-1">
+        {issues.map((issue) => (
+          <li
+            key={issue.identifier}
+            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
+          >
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+              {issue.identifier}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-foreground">{issue.title}</span>
+            {issue.dueDate && (
+              <span className="shrink-0 text-[11px] tabular-nums text-amber-600">
+                due {issue.dueDate}
+              </span>
+            )}
+            <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
+              {issue.state}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MailSection({ messages }: { messages: MailMessage[] }) {
+  return (
+    <section>
+      <SectionLabel icon={<Envelope size={12} />}>
+        Unread mail{' '}
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">({messages.length})</span>
+      </SectionLabel>
+      <ul className="mt-2 space-y-1">
+        {messages.map((m, i) => (
+          <li
+            key={`${m.receivedAt}-${i}`}
+            className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
+          >
+            <span className="min-w-0 flex-1 truncate text-foreground">{m.subject}</span>
+            <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
+              {m.sender}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function DaySummaryCard({
+  summary,
+  error,
+  saving,
+  onSave,
+  onDismiss,
+}: {
+  summary: string | null;
+  error: string | null;
+  saving: boolean;
+  onSave: () => void;
+  onDismiss: () => void;
+}) {
+  return (
+    <div className="mb-7 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4">
+      <div className="flex items-center justify-between">
+        <SectionLabel icon={<MagicWand size={12} />}>Day summary</SectionLabel>
+        <div className="flex items-center gap-1.5">
+          {summary && (
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+            >
+              <FloppyDisk size={12} />
+              Save to journal
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label="Dismiss summary"
+            className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      </div>
+      {error ? (
+        <p className="mt-2 text-sm text-destructive">{error}</p>
+      ) : summary ? (
+        <article
+          className="prose prose-sm mt-2 max-w-none text-[14px] leading-relaxed text-foreground"
+          // Our own AI output, rendered with html:false (escaped) — safe.
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(summary) }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 // =============================================================================
 // Bits
 // =============================================================================
@@ -447,6 +629,12 @@ function formatHeaderDate(iso: string): string {
     month: 'long',
     day: 'numeric',
   });
+}
+
+function formatClock(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 function formatDuration(ms: number): string {
