@@ -125,7 +125,7 @@
     "@tiptap/starter-kit": "^2.26.4",
     "@tiptap/suggestion": "^2.27.1",
     "@types/jsdom": "^27.0.0",
-    "@types/node": "^20.10.6",
+    "@types/node": "^22.10.0",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
     "@types/turndown": "^5.0.6",
@@ -167,7 +167,7 @@
     "zustand": "^4.4.7"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   },
   "workspaces": [
     "."
