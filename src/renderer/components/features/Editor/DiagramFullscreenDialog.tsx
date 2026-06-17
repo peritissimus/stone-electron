@@ -2,7 +2,7 @@
  * Diagram Fullscreen Dialog - Fullscreen view with zoom and pan
  */
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { X, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowsIn, ArrowsOut } from '@phosphor-icons/react';
 import {
   Dialog,
@@ -72,11 +72,21 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
     setPosition({ x: 0, y: 0 });
   }, [scale]);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setScale((s) => Math.min(Math.max(s + delta, 0.25), 4));
-  }, []);
+  // Bind wheel-to-zoom as a native non-passive listener. React's onWheel is
+  // registered passively at the root, so preventDefault() there is ignored and
+  // Chromium warns on every tick — addEventListener with { passive: false } is
+  // the only way to actually suppress the page scroll while zooming.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setScale((s) => Math.min(Math.max(s + delta, 0.25), 4));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [open]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0) {
@@ -183,7 +193,6 @@ export const DiagramFullscreenDialog: React.FC<DiagramFullscreenDialogProps> = (
               isDragging && 'cursor-grabbing',
             )}
             style={{ overflow: 'hidden' }}
-            onWheel={handleWheel}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
