@@ -35,6 +35,7 @@ import type {
   ChordBinding,
   EditorSettings,
   FontSettings,
+  IntegrationsConfig,
   MeetingsConfig,
   OnboardingConfig,
   OnboardingStepState,
@@ -48,6 +49,7 @@ import {
   AIConfigSchema,
   AIProviderKeyStatusSchema,
   EditorSettingsSchema,
+  IntegrationsConfigSchema,
   MeetingsConfigSchema,
   OnboardingConfigSchema,
   QuickCaptureShortcutStatusSchema,
@@ -209,6 +211,18 @@ export const settingsAPI = {
   resetMeetings: async (): Promise<IpcResponse<MeetingsConfig>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.RESET_MEETINGS, {});
     return validateResponse(response, MeetingsConfigSchema);
+  },
+
+  getIntegrations: async (): Promise<IpcResponse<IntegrationsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.GET_INTEGRATIONS, {});
+    return validateResponse(response, IntegrationsConfigSchema);
+  },
+
+  updateIntegrations: async (
+    integrations: Partial<IntegrationsConfig>,
+  ): Promise<IpcResponse<IntegrationsConfig>> => {
+    const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_INTEGRATIONS, { integrations });
+    return validateResponse(response, IntegrationsConfigSchema);
   },
 
   // ----- onboarding -----

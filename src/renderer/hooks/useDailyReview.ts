@@ -22,6 +22,11 @@ export function useDailyReview() {
   const error = useDailyReviewStore((s) => s.error);
   const load = useDailyReviewStore((s) => s.load);
   const refresh = useDailyReviewStore((s) => s.refresh);
+  const summary = useDailyReviewStore((s) => s.summary);
+  const summarizing = useDailyReviewStore((s) => s.summarizing);
+  const summaryError = useDailyReviewStore((s) => s.summaryError);
+  const summarize = useDailyReviewStore((s) => s.summarize);
+  const clearSummary = useDailyReviewStore((s) => s.clearSummary);
 
   useEffect(() => {
     if (!loadedOnce) void load();
@@ -63,5 +68,17 @@ export function useDailyReview() {
     onDeleted: throttledRefresh,
   });
 
-  return { snapshot, loading, loadedOnce, refreshing, error, reload: refresh };
+  return {
+    snapshot,
+    loading,
+    loadedOnce,
+    refreshing,
+    error,
+    reload: refresh,
+    summary,
+    summarizing,
+    summaryError,
+    summarize,
+    clearSummary,
+  };
 }

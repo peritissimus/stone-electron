@@ -40,3 +40,6 @@ export * from './IEchoCanceller';
 export * from './ISummarizationStrategy';
 export * from './ITemplateRepository';
 export * from './IDatabaseManager';
+export * from './ICalendarSource';
+export * from './IMailSource';
+export * from './ILinearSource';

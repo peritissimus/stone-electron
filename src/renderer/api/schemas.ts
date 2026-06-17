@@ -206,6 +206,12 @@ export const MeetingsConfigSchema = z.object({
   audioRetentionDays: z.number().int(),
 });
 
+// ----- integrations settings -----
+
+export const IntegrationsConfigSchema = z.object({
+  linearApiKey: z.string(),
+});
+
 // ----- onboarding -----
 
 export const OnboardingConfigSchema = z.object({

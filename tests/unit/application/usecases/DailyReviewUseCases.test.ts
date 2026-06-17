@@ -130,6 +130,8 @@ describe('DailyReviewUseCases', () => {
       journalUseCases,
       taskUseCases,
       appConfigRepository,
+      textGenerator: { generateMarkdown: vi.fn(async () => ({ text: '- summary' })) } as never,
+      appendToJournal: vi.fn(async () => ({ noteId: 'journal-1', appended: true })),
     });
   }
 

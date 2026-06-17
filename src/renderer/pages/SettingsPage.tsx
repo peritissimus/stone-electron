@@ -12,6 +12,7 @@ import {
   Microphone,
   Palette,
   PencilSimple,
+  PuzzlePiece,
 } from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
 import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
@@ -22,6 +23,7 @@ import { AboutSettings } from '@renderer/components/features/Settings/AboutSetti
 import { AISettings } from '@renderer/components/features/Settings/AISettings';
 import { AppearanceSettings } from '@renderer/components/features/Settings/AppearanceSettings';
 import { EditorSettings } from '@renderer/components/features/Settings/EditorSettings';
+import { IntegrationsSettings } from '@renderer/components/features/Settings/IntegrationsSettings';
 import { DatabaseSettings } from '@renderer/components/features/Settings/DatabaseSettings';
 import { GitSettings } from '@renderer/components/features/Settings/GitSettings';
 import { KeyboardShortcutsSettings } from '@renderer/components/features/Settings/KeyboardShortcutsSettings';
@@ -34,6 +36,7 @@ type SettingsSectionId =
   | 'shortcuts'
   | 'recording'
   | 'ai'
+  | 'integrations'
   | 'git'
   | 'database'
   | 'performance'
@@ -70,6 +73,7 @@ const GROUPS: SettingsGroup[] = [
   {
     label: 'Data & Sync',
     items: [
+      { id: 'integrations', label: 'Integrations', icon: <PuzzlePiece size={16} />, element: <IntegrationsSettings /> },
       { id: 'git', label: 'Sync', icon: <GitBranch size={16} />, element: <GitSettings /> },
       { id: 'database', label: 'Database', icon: <Database size={16} />, element: <DatabaseSettings /> },
     ],

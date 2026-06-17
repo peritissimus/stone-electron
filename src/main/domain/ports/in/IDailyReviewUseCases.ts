@@ -9,6 +9,9 @@
 
 import type { NoteProps } from '../../entities';
 import type { TaskItem } from './ITaskUseCases';
+import type { CalendarEvent } from '../out/ICalendarSource';
+import type { MailMessage } from '../out/IMailSource';
+import type { LinearIssue } from '../out/ILinearSource';
 
 export interface DailyReviewTodayJournal {
   /** YYYY-MM-DD for today's local date. */
@@ -49,6 +52,10 @@ export interface DailyReviewSnapshot {
   openTasks: TaskItem[];
   recentNotes: NoteProps[];
   onThisDay: DailyReviewOnThisDayEntry[];
+  /** External integrations — present only when the source is available. */
+  calendarEvents?: CalendarEvent[];
+  mailMessages?: MailMessage[];
+  linearIssues?: LinearIssue[];
 }
 
 export interface GetDailyReviewRequest {
@@ -61,6 +68,25 @@ export interface IGetDailyReviewUseCase {
   execute(request?: GetDailyReviewRequest): Promise<DailyReviewSnapshot>;
 }
 
+export interface SummarizeDailyReviewRequest {
+  workspaceId?: string;
+  date?: string;
+  /** When true, append the summary to today's journal entry. */
+  saveToJournal?: boolean;
+}
+
+export interface SummarizeDailyReviewResponse {
+  /** Markdown summary of the day. */
+  summary: string;
+  /** Journal note the summary was appended to, when saveToJournal was set. */
+  journalNoteId: string | null;
+}
+
+export interface ISummarizeDailyReviewUseCase {
+  execute(request?: SummarizeDailyReviewRequest): Promise<SummarizeDailyReviewResponse>;
+}
+
 export interface IDailyReviewUseCases {
   getDailyReview: IGetDailyReviewUseCase;
+  summarizeDailyReview: ISummarizeDailyReviewUseCase;
 }

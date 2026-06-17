@@ -151,6 +151,7 @@ export const TEMPLATE_CHANNELS = {
 // Daily Review operations
 export const DAILY_REVIEW_CHANNELS = {
   GET: 'dailyReview:get',
+  SUMMARIZE: 'dailyReview:summarize',
 } as const;
 
 // Status Report operations
@@ -216,6 +217,9 @@ export const SETTINGS_CHANNELS = {
   // Quick capture global hotkey
   GET_QUICK_CAPTURE_SHORTCUT: 'settings:getQuickCaptureShortcut',
   SET_QUICK_CAPTURE_SHORTCUT: 'settings:setQuickCaptureShortcut',
+  // Integrations (Linear, etc.)
+  GET_INTEGRATIONS: 'settings:getIntegrations',
+  UPDATE_INTEGRATIONS: 'settings:updateIntegrations',
 } as const;
 
 // System Operations

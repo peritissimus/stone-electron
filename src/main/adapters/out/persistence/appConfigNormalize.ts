@@ -453,6 +453,17 @@ export function normalizeConfig(value: unknown): AppConfig {
     meetings: mergeMeetings(value.meetings),
     onboarding: mergeOnboarding(value.onboarding),
     quickCapture: mergeQuickCapture(value.quickCapture),
+    integrations: mergeIntegrations(value.integrations),
+  };
+}
+
+function mergeIntegrations(value: unknown): AppConfig['integrations'] {
+  if (!isRecord(value)) return { ...DEFAULT_APP_CONFIG.integrations };
+  return {
+    linearApiKey:
+      typeof value.linearApiKey === 'string'
+        ? value.linearApiKey.trim()
+        : DEFAULT_APP_CONFIG.integrations.linearApiKey,
   };
 }
 

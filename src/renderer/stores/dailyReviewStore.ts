@@ -18,8 +18,15 @@ interface DailyReviewState {
   refreshing: boolean;
   error: string | null;
 
+  /** On-demand AI day summary. */
+  summary: string | null;
+  summarizing: boolean;
+  summaryError: string | null;
+
   load: () => Promise<void>;
   refresh: () => Promise<void>;
+  summarize: (saveToJournal: boolean) => Promise<void>;
+  clearSummary: () => void;
   reset: () => void;
 }
 
@@ -31,6 +38,9 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   loadedOnce: false,
   refreshing: false,
   error: null,
+  summary: null,
+  summarizing: false,
+  summaryError: null,
 
   load: async () => {
     if (get().loadedOnce) return;
@@ -78,6 +88,31 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
     return inFlight;
   },
 
+  summarize: async (saveToJournal) => {
+    set({ summarizing: true, summaryError: null });
+    try {
+      const response = await dailyReviewAPI.summarize({ saveToJournal });
+      if (response.success && response.data) {
+        set({ summary: response.data.summary, summarizing: false, summaryError: null });
+        // Saving to the journal changes today's snapshot — pull it back in.
+        if (saveToJournal) void get().refresh();
+      } else {
+        set({
+          summarizing: false,
+          summaryError: response.error?.message ?? 'Failed to summarize today',
+        });
+      }
+    } catch (err) {
+      logger.warn('[dailyReviewStore] summarize failed', err);
+      set({
+        summarizing: false,
+        summaryError: err instanceof Error ? err.message : 'Failed to summarize today',
+      });
+    }
+  },
+
+  clearSummary: () => set({ summary: null, summaryError: null }),
+
   reset: () =>
     set({
       snapshot: null,
@@ -85,5 +120,8 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
       loadedOnce: false,
       refreshing: false,
       error: null,
+      summary: null,
+      summarizing: false,
+      summaryError: null,
     }),
 }));
