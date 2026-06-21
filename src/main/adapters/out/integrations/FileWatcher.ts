@@ -35,9 +35,17 @@ export interface FileWatcherDeps {
   syncWorkspace: WorkspaceSyncTrigger;
 }
 
+// Retry-on-failure tuning for the debounced workspace sync.
+const SYNC_DEBOUNCE_MS = 500;
+const SYNC_RETRY_BASE_MS = 1000;
+const SYNC_RETRY_MAX_MS = 30000;
+const SYNC_RETRY_MAX_ATTEMPTS = 5;
+
 export class FileWatcher implements IFileWatcher {
   private readonly watchers = new Map<string, WatchEntry>();
   private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  // Number of consecutive failed sync attempts per workspace; drives backoff.
+  private readonly retryAttempts = new Map<string, number>();
   private started = false;
 
   constructor(private readonly deps: FileWatcherDeps) {}
@@ -160,7 +168,21 @@ export class FileWatcher implements IFileWatcher {
     });
   }
 
+  /**
+   * Schedule a debounced sync for a workspace. A new file event resets the
+   * debounce timer and the retry/backoff state (fresh debounce wins).
+   */
   private scheduleSync(workspaceId: string) {
+    // A new file event supersedes any pending sync or retry for this workspace.
+    this.retryAttempts.delete(workspaceId);
+    this.runScheduledSync(workspaceId, SYNC_DEBOUNCE_MS);
+  }
+
+  /**
+   * (Re)schedule the sync after `delayMs`. On failure, retries with bounded
+   * exponential backoff up to SYNC_RETRY_MAX_ATTEMPTS before giving up.
+   */
+  private runScheduledSync(workspaceId: string, delayMs: number) {
     const prev = this.debounceTimers.get(workspaceId);
     if (prev) clearTimeout(prev);
 
@@ -169,11 +191,27 @@ export class FileWatcher implements IFileWatcher {
         this.debounceTimers.delete(workspaceId);
         try {
           await this.syncWorkspace(workspaceId);
+          this.retryAttempts.delete(workspaceId);
         } catch (e) {
-          logger.error(`[Watcher] Sync failed for workspace ${workspaceId}:`, e);
+          const attempt = (this.retryAttempts.get(workspaceId) ?? 0) + 1;
+          if (attempt >= SYNC_RETRY_MAX_ATTEMPTS) {
+            this.retryAttempts.delete(workspaceId);
+            logger.error(
+              `[Watcher] Sync failed for workspace ${workspaceId} after ${attempt} attempts, giving up:`,
+              e,
+            );
+            return;
+          }
+          this.retryAttempts.set(workspaceId, attempt);
+          const backoff = Math.min(SYNC_RETRY_BASE_MS * 2 ** (attempt - 1), SYNC_RETRY_MAX_MS);
+          logger.error(
+            `[Watcher] Sync failed for workspace ${workspaceId} (attempt ${attempt}/${SYNC_RETRY_MAX_ATTEMPTS}), retrying in ${backoff}ms:`,
+            e,
+          );
+          this.runScheduledSync(workspaceId, backoff);
         }
       });
-    }, 500);
+    }, delayMs);
 
     this.debounceTimers.set(workspaceId, timer);
   }
@@ -184,12 +222,15 @@ export class FileWatcher implements IFileWatcher {
       clearTimeout(timer);
       this.debounceTimers.delete(workspaceId);
     }
+    this.retryAttempts.delete(workspaceId);
   }
 
   private clearAllTimers() {
     for (const [workspaceId] of this.debounceTimers) {
       this.clearTimer(workspaceId);
     }
+    // Clear any residual retry state not paired with a live timer.
+    this.retryAttempts.clear();
   }
 
   private async syncWorkspace(workspaceId: string) {
@@ -200,17 +241,19 @@ export class FileWatcher implements IFileWatcher {
       logger.info(`[Watcher] Debounced sync start for workspace ${ws.name}`);
       try {
         await this.deps.syncWorkspace(workspaceId);
-
-        // Notify renderer that workspace has updated; UI can refresh trees/counts
-        this.deps.eventPublisher.publish({
-          type: DOMAIN_EVENT_TYPES.WORKSPACE_UPDATED,
-          timestamp: new Date(),
-          payload: { workspace: ws },
-        });
-        logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
       } catch (e) {
         logger.error(`[Watcher] Error syncing ${ws.name}:`, e);
+        // Rethrow so the scheduler can apply retry/backoff instead of dropping it.
+        throw e;
       }
+
+      // Notify renderer that workspace has updated; UI can refresh trees/counts
+      this.deps.eventPublisher.publish({
+        type: DOMAIN_EVENT_TYPES.WORKSPACE_UPDATED,
+        timestamp: new Date(),
+        payload: { workspace: ws },
+      });
+      logger.info(`[Watcher] Sync complete for workspace ${ws.name}`);
     });
   }
 }
