@@ -143,6 +143,8 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
         workspaceId,
       });
     } catch {
+      // Semantic retrieval failed → fall back to full-text-only results.
+      // (Observability for this belongs in the embedder/index adapters.)
       return [];
     }
   }
@@ -167,6 +169,7 @@ export class HybridSearchUseCase implements IHybridSearchUseCase {
       merged.sort((a, b) => b.rrfScore - a.rrfScore);
     } catch {
       // Reranker failure shouldn't break search — fall through with RRF order.
+      // (Observability for this belongs in the reranker adapter.)
     }
   }
 }
