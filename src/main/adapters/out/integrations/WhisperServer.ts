@@ -16,7 +16,7 @@ import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import type { ILiveTranscriber, LiveChunkResult, TranscriptSegment } from '../../../domain';
 import { collapseRepeatedSegments } from '../../../domain';
-import { logger } from '../../../shared/utils';
+import { SupervisedProcess } from '../../../shared/utils';
 import {
   vadModelPath,
   whisperBinaryPath,
@@ -39,40 +39,36 @@ export interface WhisperServerDeps {
 
 export class WhisperServer implements ILiveTranscriber {
   private readonly model: string;
-  private proc: ChildProcess | null = null;
+  private readonly host: string;
   private port = 0;
-  private starting: Promise<void> | null = null;
+  /** Owns spawn/health-check/restart/backoff/circuit-breaker for the binary. */
+  private readonly supervisor: SupervisedProcess;
 
   constructor(private readonly deps: WhisperServerDeps = {}) {
     this.model = deps.model ?? process.env.STONE_WHISPER_MODEL ?? WHISPER_MODEL;
+    this.host = deps.host ?? '127.0.0.1';
+    this.supervisor = new SupervisedProcess({
+      name: 'whisper-server',
+      spawn: () => this.spawnServer(),
+      healthCheck: () => waitForReady(`http://${this.host}:${this.port}/`, 30_000),
+    });
   }
 
   isReady(): boolean {
-    return this.proc !== null && this.port !== 0;
+    return this.supervisor.isReady();
   }
 
   async start(): Promise<void> {
-    if (this.isReady()) return;
-    this.starting ??= this.spawnServer();
-    try {
-      await this.starting;
-    } finally {
-      this.starting = null;
-    }
+    await this.supervisor.ensureReady();
   }
 
   async stop(): Promise<void> {
-    const proc = this.proc;
-    this.proc = null;
+    this.supervisor.stop();
     this.port = 0;
-    if (proc && !proc.killed) {
-      proc.kill('SIGTERM');
-    }
   }
 
   async transcribeChunk(wav: Uint8Array): Promise<LiveChunkResult> {
-    if (!this.isReady()) await this.start();
-    const host = this.deps.host ?? '127.0.0.1';
+    await this.supervisor.ensureReady();
 
     const form = new FormData();
     form.append('file', new Blob([wav as BlobPart], { type: 'audio/wav' }), 'chunk.wav');
@@ -82,17 +78,19 @@ export class WhisperServer implements ILiveTranscriber {
 
     let res: Response;
     try {
-      res = await fetch(`http://${host}:${this.port}/inference`, {
+      res = await fetch(`http://${this.host}:${this.port}/inference`, {
         method: 'POST',
         body: form,
         signal: AbortSignal.timeout(CHUNK_TIMEOUT_MS),
       });
     } catch (err) {
-      // The server hung or died: tear it down so the next chunk respawns a
-      // fresh process instead of piling onto a wedged one (each stuck fetch
-      // would otherwise block for undici's 5-minute default). Live draft is
-      // best-effort — the clean transcript still comes from batch finalize.
-      void this.stop();
+      // The server hung or died: tell the supervisor so the next chunk respawns
+      // a fresh process instead of piling onto a wedged one (each stuck fetch
+      // would otherwise block for undici's 5-minute default). The circuit
+      // breaker stops us relaunching a persistently-broken binary in a loop.
+      // Live draft is best-effort — the clean transcript still comes from batch
+      // finalize.
+      this.supervisor.markUnhealthy('chunk inference fetch failed');
       throw err;
     }
     if (!res.ok) throw new Error(`whisper-server inference failed (${res.status})`);
@@ -113,31 +111,20 @@ export class WhisperServer implements ILiveTranscriber {
 
   // ===========================================================================
 
-  private async spawnServer(): Promise<void> {
+  /** Spawn the binary and return the handle; the supervisor owns readiness,
+   *  restart, and lifecycle. Throws if the binary/model isn't available. */
+  private async spawnServer(): Promise<ChildProcess> {
     const binary = whisperBinaryPath('whisper-server', this.deps.binary);
     const model = whisperModelPath(this.model, this.deps.modelDir);
     const vad = vadModelPath(this.deps.modelDir);
     await fs.access(binary);
     await fs.access(model);
-    const host = this.deps.host ?? '127.0.0.1';
-    const port = await freePort();
+    this.port = await freePort();
 
-    const args = ['-m', model, '-l', 'auto', '--host', host, '--port', String(port)];
+    const args = ['-m', model, '-l', 'auto', '--host', this.host, '--port', String(this.port)];
     if (await exists(vad)) args.push('--vad', '-vm', vad);
 
-    const proc = spawn(binary, args, { stdio: ['ignore', 'ignore', 'pipe'] });
-    proc.on('exit', (code) => {
-      if (this.proc === proc) {
-        this.proc = null;
-        this.port = 0;
-      }
-      if (code) logger.warn(`[WhisperServer] exited with code ${code}`);
-    });
-    this.proc = proc;
-    this.port = port;
-
-    await waitForReady(`http://${host}:${port}/`, 30_000);
-    logger.info(`[WhisperServer] ready on ${host}:${port} (model ${this.model})`);
+    return spawn(binary, args, { stdio: ['ignore', 'ignore', 'pipe'] });
   }
 }
 
