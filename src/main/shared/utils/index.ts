@@ -17,3 +17,9 @@ export {
   type HandleRequestOptions,
   type HandleOperationOptions,
 } from './operation';
+export {
+  SupervisedProcess,
+  type SupervisedProcessOptions,
+  type SupervisableProcess,
+} from './SupervisedProcess';
+export { withRetry, type RetryOptions } from './retry';
