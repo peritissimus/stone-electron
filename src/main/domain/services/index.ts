@@ -46,6 +46,8 @@ export type { Chunk, ChunkOptions } from './NoteChunker';
 
 export { hashText } from './hashText';
 
+export { mapWithConcurrency, type MapWithConcurrencyOptions } from './mapWithConcurrency';
+
 export { DEFAULT_MEETING_SUMMARY_PROMPT } from './meetingSummaryPrompts';
 
 export { TemplateRenderer, type TemplateRenderContext } from './TemplateRenderer';
