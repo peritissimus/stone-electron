@@ -370,6 +370,12 @@ app.on('ready', async () => {
     perfMonitor.markStartupPhase('containerInitTime');
     logger.info('✓ Hex DI container initialized');
 
+    // Start the durable background-job runner. Self-paced (adaptive idle
+    // backoff) and self-cleaning, so it's safe to run for the whole session.
+    void container.jobRunner
+      .start()
+      .catch((e: unknown) => logger.error('Failed to start job runner:', e));
+
     // Register hex IPC handlers
     logger.info('🔄 Registering hex IPC handlers...');
     registerIPCHandlers();
@@ -524,10 +530,11 @@ app.on('before-quit', () => {
     // May not be initialized
   }
 
-  // Stop watchers
+  // Stop watchers + background-job runner
   try {
     const container = getContainer();
     container.fileWatcher.stopAll().catch(() => {});
+    container.jobRunner.stop().catch(() => {});
   } catch {
     // Container may not be initialized yet
   }

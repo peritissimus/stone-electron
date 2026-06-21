@@ -10,6 +10,8 @@ import { DEFAULT_APP_CONFIG, type AppConfig } from '../../../../src/main/domain/
 import type { ISummarizationStrategy } from '../../../../src/main/domain/ports/out/ISummarizationStrategy';
 import type { ITranscriber } from '../../../../src/main/domain/ports/out/ITranscriber';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
+import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import type { IJobQueue } from '../../../../src/main/domain/ports/out/IJobQueue';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
 function createMockMeetingRepository(): IMeetingRecordingRepository {
@@ -19,6 +21,21 @@ function createMockMeetingRepository(): IMeetingRecordingRepository {
     list: vi.fn(),
     delete: vi.fn(),
     listWithAudioOlderThan: vi.fn().mockResolvedValue([]),
+  };
+}
+
+function createMockEventPublisher(): IEventPublisher {
+  return {
+    publish: vi.fn(),
+    publishAll: vi.fn(),
+    subscribe: vi.fn(() => () => {}),
+    subscribeAll: vi.fn(() => () => {}),
+  };
+}
+
+function createMockJobQueue(): IJobQueue {
+  return {
+    enqueue: vi.fn(async () => 'job-1'),
   };
 }
 
@@ -141,6 +158,8 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       appConfigRepository: createMockAppConfigRepository(),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -355,6 +374,8 @@ describe('MeetingUseCases', () => {
       summarizer,
       echoCanceller,
       appConfigRepository: createMockAppConfigRepository(),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -404,6 +425,8 @@ describe('MeetingUseCases', () => {
       summarizer,
       echoCanceller,
       appConfigRepository: createMockAppConfigRepository(),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -476,6 +499,8 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       appConfigRepository: createMockAppConfigRepository(-1),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -522,6 +547,8 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       appConfigRepository: createMockAppConfigRepository(30),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });
@@ -560,6 +587,8 @@ describe('MeetingUseCases', () => {
       transcriber,
       summarizer,
       appConfigRepository: createMockAppConfigRepository(0),
+      eventPublisher: createMockEventPublisher(),
+      jobQueue: createMockJobQueue(),
       appendToJournal,
       defaultPrompt: 'Default prompt {{transcript}}',
     });

@@ -38,6 +38,7 @@ export const DOMAIN_EVENT_TYPES = {
   DB_VACUUM_PROGRESS: 'db:vacuum:progress',
   DB_VACUUM_COMPLETE: 'db:vacuum:complete',
   SETTINGS_CHANGED: 'settings:changed',
+  MEETING_STATUS_CHANGED: 'meeting:statusChanged',
 } as const;
 
 export interface NoteCreatedEvent extends DomainEvent {
@@ -305,6 +306,16 @@ export interface SettingsChangedEvent extends DomainEvent {
   payload: { scope: SettingsScope };
 }
 
+// Meeting events — pushed during the async finalize pipeline so the renderer
+// reflects transcribing → summarizing → ready/failed without polling.
+export interface MeetingStatusChangedEvent extends DomainEvent {
+  type: 'meeting:statusChanged';
+  payload: {
+    /** Full recording props so the renderer can update its store wholesale. */
+    recording: unknown;
+  };
+}
+
 export type AppDomainEvent =
   | NoteCreatedEvent
   | NoteUpdatedEvent
@@ -330,7 +341,8 @@ export type AppDomainEvent =
   | EmbeddingProgressEvent
   | DbVacuumProgressEvent
   | DbVacuumCompleteEvent
-  | SettingsChangedEvent;
+  | SettingsChangedEvent
+  | MeetingStatusChangedEvent;
 
 export type EventHandler<T extends DomainEvent = DomainEvent> = (event: T) => void | Promise<void>;
 

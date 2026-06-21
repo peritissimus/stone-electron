@@ -30,6 +30,7 @@ export function RecordingDock() {
     captureMode,
     error,
     lastRecording,
+    finalizeStage,
     start,
     stop,
     cancel,
@@ -80,6 +81,14 @@ export function RecordingDock() {
   const isActive = phase === 'recording';
   const isProcessing = phase === 'uploading' || phase === 'finalizing' || phase === 'preparing';
 
+  // Sub-stage label while the background pipeline runs (phase stays 'finalizing').
+  const finalizeLabel =
+    finalizeStage === 'summarizing'
+      ? 'Summarising…'
+      : finalizeStage === 'transcribing'
+        ? 'Transcribing…'
+        : 'Processing…';
+
   return (
     <div
       className={cn(
@@ -122,6 +131,7 @@ export function RecordingDock() {
         systemAudioStatus={systemAudio.status}
         onEnableSystemAudio={systemAudio.openSettings}
         lastTitle={lastRecording?.title ?? null}
+        finalizeLabel={finalizeLabel}
       />
 
       <footer className="mt-3 flex items-center gap-2 px-1">
@@ -152,7 +162,7 @@ export function RecordingDock() {
         )}
         {(phase === 'uploading' || phase === 'finalizing') && (
           <DisabledButton icon={<CircleNotch size={14} className="animate-spin" />}>
-            {phase === 'uploading' ? 'Saving audio…' : 'Transcribing…'}
+            {phase === 'uploading' ? 'Saving audio…' : finalizeLabel}
           </DisabledButton>
         )}
       </footer>
@@ -180,6 +190,7 @@ function PhaseBody({
   systemAudioStatus,
   onEnableSystemAudio,
   lastTitle,
+  finalizeLabel,
 }: {
   phase: RecorderPhase;
   elapsedMs: number;
@@ -190,6 +201,7 @@ function PhaseBody({
   systemAudioStatus: 'granted' | 'denied' | 'unsupported' | null;
   onEnableSystemAudio: () => void;
   lastTitle: string | null;
+  finalizeLabel: string;
 }) {
   return (
     <div className="relative mt-3 min-h-[84px] rounded-xl bg-muted/40 p-3">
@@ -208,7 +220,7 @@ function PhaseBody({
       />
       <Processing
         visible={phase === 'uploading' || phase === 'finalizing'}
-        label={phase === 'uploading' ? 'Saving audio locally' : 'Transcribing and summarising'}
+        label={phase === 'uploading' ? 'Saving audio locally' : finalizeLabel}
       />
       <Done visible={phase === 'done'} title={lastTitle} />
       <Errored visible={phase === 'error'} message={error} />

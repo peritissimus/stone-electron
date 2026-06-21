@@ -9,6 +9,7 @@ import {
   buildSummaryTranscript,
   buildTranscriptText,
   type IEchoCanceller,
+  type IEventPublisher,
   type IFileStorage,
   type IMeetingRecordingRepository,
   type ISummarizationStrategy,
@@ -22,8 +23,23 @@ export interface MeetingReprocessDeps {
   fileStorage: IFileStorage;
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
+  /** Pushes recording status to the renderer as the pipeline progresses. */
+  eventPublisher: IEventPublisher;
   /** Optional — cancels speaker bleed from the mic using the system reference. */
   echoCanceller?: IEchoCanceller;
+}
+
+/** Broadcast the recording's current state so the renderer can reflect async
+ *  finalize progress (transcribing → summarizing → ready/failed). */
+export function publishMeetingStatus(
+  eventPublisher: IEventPublisher,
+  recording: MeetingRecordingEntity,
+): void {
+  eventPublisher.publish({
+    type: 'meeting:statusChanged',
+    timestamp: new Date(),
+    payload: { recording: recording.toPersistence() },
+  });
 }
 
 /**
@@ -40,6 +56,7 @@ export async function reprocessRecordingAudio(
 ): Promise<void> {
   recording.markTranscribing();
   await deps.meetingRepository.save(recording);
+  publishMeetingStatus(deps.eventPublisher, recording);
 
   const hasSystemTrack = await deps.fileStorage.exists(systemAbsolutePath);
 
@@ -75,6 +92,7 @@ export async function reprocessRecordingAudio(
   const durationMs = Math.max(maxDurationMs, requestDurationMs);
   recording.attachTranscript(text, segments, durationMs);
   await deps.meetingRepository.save(recording);
+  publishMeetingStatus(deps.eventPublisher, recording);
 
   const summary = await deps.summarizer.summarize({
     transcript: buildSummaryTranscript(segments),
@@ -82,6 +100,7 @@ export async function reprocessRecordingAudio(
   });
   recording.attachSummary(summary.summary, summary.promptUsed);
   await deps.meetingRepository.save(recording);
+  publishMeetingStatus(deps.eventPublisher, recording);
 }
 
 /**

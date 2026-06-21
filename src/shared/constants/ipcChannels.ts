@@ -305,6 +305,9 @@ export const EVENTS = {
   MEETING_START_REQUESTED: 'meetings:startRequested',
   // Tray menu while recording asks the renderer to stop.
   MEETING_STOP_REQUESTED: 'meetings:stopRequested',
+  // Async finalize pipeline pushes recording status updates
+  // (transcribing → summarizing → ready/failed) to the renderer.
+  MEETING_STATUS_CHANGED: 'meetings:statusChanged',
 
   // Notebook events
   NOTEBOOK_CREATED: 'notebooks:created',

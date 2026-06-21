@@ -1,8 +1,10 @@
 import type {
   IAppConfigRepository,
   IEchoCanceller,
+  IEventPublisher,
   IFileStorage,
   IIdGenerator,
+  IJobQueue,
   ILiveTranscriber,
   IMeetingRecordingRepository,
   IMeetingUseCases,
@@ -18,6 +20,7 @@ import { WarmUpTranscriberUseCase } from './WarmUpTranscriberUseCase';
 import { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 import { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 import { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
+import { RequestFinalizeRecordingUseCase } from './RequestFinalizeRecordingUseCase';
 import { GetMeetingRecordingUseCase } from './GetMeetingRecordingUseCase';
 import { GetMeetingAudioUseCase } from './GetMeetingAudioUseCase';
 import { ListMeetingRecordingsUseCase } from './ListMeetingRecordingsUseCase';
@@ -28,6 +31,10 @@ import { SendToJournalUseCase } from './SendToJournalUseCase';
 export { AppendRecordingAudioUseCase } from './AppendRecordingAudioUseCase';
 export { DeleteMeetingRecordingUseCase } from './DeleteMeetingRecordingUseCase';
 export { FinalizeRecordingUseCase } from './FinalizeRecordingUseCase';
+export {
+  RequestFinalizeRecordingUseCase,
+  MEETING_FINALIZE_JOB,
+} from './RequestFinalizeRecordingUseCase';
 export { GetMeetingRecordingUseCase } from './GetMeetingRecordingUseCase';
 export { GetMeetingAudioUseCase } from './GetMeetingAudioUseCase';
 export { ListMeetingRecordingsUseCase } from './ListMeetingRecordingsUseCase';
@@ -46,6 +53,8 @@ export interface MeetingUseCasesDeps {
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
   appConfigRepository: IAppConfigRepository;
+  eventPublisher: IEventPublisher;
+  jobQueue: IJobQueue;
   echoCanceller?: IEchoCanceller;
   liveTranscriber?: ILiveTranscriber;
   appendToJournal: (
@@ -70,6 +79,10 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       deps.fileStorage,
       deps.pathService,
     ),
+    requestFinalize: new RequestFinalizeRecordingUseCase({
+      meetingRepository: deps.meetingRepository,
+      jobQueue: deps.jobQueue,
+    }),
     finalizeRecording: new FinalizeRecordingUseCase({
       meetingRepository: deps.meetingRepository,
       workspaceRepository: deps.workspaceRepository,
@@ -78,6 +91,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       transcriber: deps.transcriber,
       summarizer: deps.summarizer,
       appConfigRepository: deps.appConfigRepository,
+      eventPublisher: deps.eventPublisher,
       echoCanceller: deps.echoCanceller,
       defaultPrompt: deps.defaultPrompt,
     }),
@@ -110,6 +124,7 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       pathService: deps.pathService,
       transcriber: deps.transcriber,
       summarizer: deps.summarizer,
+      eventPublisher: deps.eventPublisher,
       echoCanceller: deps.echoCanceller,
       defaultPrompt: deps.defaultPrompt,
     }),

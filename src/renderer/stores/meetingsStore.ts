@@ -167,3 +167,16 @@ function markBusy(set: (fn: (s: MeetingsState) => Partial<MeetingsState>) => voi
     return { busyIds: next };
   });
 }
+
+// Live status from the durable background finalize pipeline. The main
+// process pushes the recording on each transition ('transcribing' →
+// 'summarizing' → 'ready' | 'failed'); reflect it in the list so an open
+// Meetings view updates without a manual refresh. Only upserts a recording
+// already known to the list (the recorder store owns brand-new sessions and
+// splices them in via useMeetings on completion). Subscribed once at init.
+meetingAPI.onStatusChanged((recording) => {
+  const store = useMeetingsStore.getState();
+  if (store.recordings.some((r) => r.id === recording.id)) {
+    store.upsertLocal(recording);
+  }
+});

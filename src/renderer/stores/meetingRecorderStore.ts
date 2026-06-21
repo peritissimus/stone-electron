@@ -7,6 +7,14 @@
  *   idle → preparing → recording → uploading → finalizing → done
  *                            └────────────────────┴────────→ error
  *
+ * The finalize pipeline runs as a durable BACKGROUND job in main. The
+ * meetingAPI.finalize() call only enqueues it and returns immediately, so
+ * the store stays in 'finalizing' and resolves to 'done'/'error' only when
+ * a `meetings:statusChanged` event arrives for the active recording with
+ * status 'ready'/'failed' (see the module-level subscription below).
+ * `finalizeStage` surfaces the intermediate 'transcribing'/'summarizing'
+ * sub-state while phase stays 'finalizing'.
+ *
  * `dock` flag controls whether the floating recording dock is visible.
  */
 
@@ -14,7 +22,7 @@ import { create } from 'zustand';
 import { meetingAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
 import { logger } from '@renderer/lib/logger';
-import type { MeetingRecording } from '@shared/types';
+import type { MeetingRecording, MeetingRecordingStatus } from '@shared/types';
 
 export type RecorderPhase =
   | 'idle'
@@ -49,6 +57,12 @@ interface MeetingRecorderState {
   captureMode: CaptureMode;
   error: string | null;
   lastRecording: MeetingRecording | null;
+  /**
+   * Background-pipeline sub-state while `phase === 'finalizing'`. Mirrors the
+   * persisted recording status so the dock can show "Transcribing…" vs
+   * "Summarising…". Null outside the finalizing window.
+   */
+  finalizeStage: Extract<MeetingRecordingStatus, 'transcribing' | 'summarizing'> | null;
   /** Live (raw) draft lines, appended as chunks transcribe during recording. */
   liveLines: LiveLine[];
 
@@ -77,6 +91,13 @@ interface MeetingRecorderState {
   ) => Promise<void>;
   cancelActive: () => Promise<void>;
   markError: (message: string) => void;
+  /**
+   * Handle a background-pipeline status push for the active recording.
+   * Resolves the finalizing phase: 'ready' → 'done', 'failed' → 'error',
+   * intermediate statuses keep phase 'finalizing' and update finalizeStage.
+   * Ignores events for other recordings.
+   */
+  _onStatusChanged: (recording: MeetingRecording) => void;
   appendLiveLine: (source: 'mic' | 'system', text: string) => void;
   clearLive: () => void;
   /** Warm the resident live model and reset the draft (recording start). */
@@ -100,6 +121,9 @@ const initial = {
   captureMode: 'mic-only' as CaptureMode,
   error: null,
   lastRecording: null,
+  finalizeStage: null as
+    | Extract<MeetingRecordingStatus, 'transcribing' | 'summarizing'>
+    | null,
   liveLines: [] as LiveLine[],
 };
 
@@ -169,21 +193,29 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
         }
       }
 
-      set({ phase: 'finalizing' });
+      // finalize() now only ENQUEUES the durable background pipeline and
+      // returns the current recording immediately (status still e.g.
+      // 'recording', NOT 'ready'). We stay in 'finalizing' and let the
+      // `meetings:statusChanged` event (handled by _onStatusChanged) resolve
+      // the phase to 'done'/'error' once the job completes.
+      set({ phase: 'finalizing', finalizeStage: null });
       const finalizeRes = await meetingAPI.finalize(recordingId, durationMs);
       if (!finalizeRes.success || !finalizeRes.data) {
         set({
           phase: 'error',
+          finalizeStage: null,
           error: finalizeRes.error?.message ?? 'Failed to finalize recording',
         });
         return;
       }
-      const recording = finalizeRes.data.recording;
-      if (recording.status === 'failed') {
-        set({ phase: 'error', error: recording.error ?? 'Pipeline failed' });
-        return;
+      // A job that fails synchronously at enqueue time still reports here.
+      if (finalizeRes.data.recording.status === 'failed') {
+        set({
+          phase: 'error',
+          finalizeStage: null,
+          error: finalizeRes.data.recording.error ?? 'Pipeline failed',
+        });
       }
-      set({ phase: 'done', lastRecording: recording });
     } catch (err) {
       logger.error('[meetingRecorderStore] uploadAndFinalize failed', err);
       set({
@@ -206,6 +238,35 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   },
 
   markError: (message) => set({ phase: 'error', error: message }),
+
+  _onStatusChanged: (recording) => {
+    const state = get();
+    // Only react to the recording we're actively finalizing.
+    if (state.recordingId !== recording.id) return;
+    if (state.phase !== 'finalizing') return;
+
+    switch (recording.status) {
+      case 'ready':
+        set({ phase: 'done', finalizeStage: null, lastRecording: recording, error: null });
+        break;
+      case 'failed':
+        set({
+          phase: 'error',
+          finalizeStage: null,
+          error: recording.error ?? 'Pipeline failed',
+        });
+        break;
+      case 'transcribing':
+      case 'summarizing':
+        // Stay in 'finalizing'; surface the sub-stage for the dock label.
+        set({ finalizeStage: recording.status });
+        break;
+      default:
+        // 'recording' or any other interim status — keep waiting.
+        break;
+    }
+  },
+
   appendLiveLine: (source, text) =>
     set((s) => ({ liveLines: [...s.liveLines, { id: s.liveLines.length, source, text }] })),
   clearLive: () => set({ liveLines: [] }),
@@ -238,4 +299,12 @@ useMeetingRecorderStore.subscribe((state) => {
     lastTrayPhase = state.phase;
     void meetingAPI.setTrayState(state.phase);
   }
+});
+
+// Resolve the 'finalizing' phase from the durable background pipeline. The
+// main process pushes the recording on each transition; the store handler
+// ignores events for other recordings and moves to 'done'/'error' on
+// 'ready'/'failed'. Subscribed once at module init.
+meetingAPI.onStatusChanged((recording) => {
+  useMeetingRecorderStore.getState()._onStatusChanged(recording);
 });
