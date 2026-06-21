@@ -410,6 +410,7 @@ describe('function-style IPC adapters', () => {
     const meetingUseCases = {
       reserveRecordingSlot: execute({ recordingId: 'rec-1' }),
       appendRecordingAudio: execute({ appended: true }),
+      requestFinalize: execute({ recordingId: 'rec-1', transcript: 'done' }),
       finalizeRecording: execute({ recordingId: 'rec-1', transcript: 'done' }),
       listMeetingRecordings: execute({ recordings: [] }),
       getMeetingRecording: execute({ recordingId: 'rec-1' }),
@@ -457,7 +458,7 @@ describe('function-style IPC adapters', () => {
     await invoke(PERFORMANCE_CHANNELS.GET_STARTUP);
     await invoke(PERFORMANCE_CHANNELS.CLEAR_HISTORY);
 
-    expect(meetingUseCases.finalizeRecording.execute).toHaveBeenCalledWith({
+    expect(meetingUseCases.requestFinalize.execute).toHaveBeenCalledWith({
       recordingId: 'rec-1',
       durationMs: 0,
     });

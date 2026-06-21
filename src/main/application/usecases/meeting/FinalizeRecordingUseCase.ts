@@ -15,6 +15,7 @@ import {
   MeetingRecordingNotFoundError,
   type IAppConfigRepository,
   type IEchoCanceller,
+  type IEventPublisher,
   type IFileStorage,
   type IMeetingRecordingRepository,
   type IPathService,
@@ -29,7 +30,7 @@ import {
   type FinalizeRecordingResponse,
 } from '../../../domain/ports/in/IMeetingUseCases';
 import { deleteRecordingAudioFiles } from './meetingAudioCleanup';
-import { reprocessRecordingAudio } from './meetingReprocess';
+import { reprocessRecordingAudio, publishMeetingStatus } from './meetingReprocess';
 
 export interface FinalizeRecordingUseCaseDeps {
   meetingRepository: IMeetingRecordingRepository;
@@ -39,6 +40,8 @@ export interface FinalizeRecordingUseCaseDeps {
   transcriber: ITranscriber;
   summarizer: ISummarizationStrategy;
   appConfigRepository: IAppConfigRepository;
+  /** Pushes recording status to the renderer during the async pipeline. */
+  eventPublisher: IEventPublisher;
   /** Optional — cancels speaker bleed from the mic using the system track as
    *  the reference before transcription. Best-effort: skipped on failure. */
   echoCanceller?: IEchoCanceller;
@@ -52,6 +55,15 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
   async execute(request: FinalizeRecordingRequest): Promise<FinalizeRecordingResponse> {
     const recording = await this.deps.meetingRepository.findById(request.recordingId);
     if (!recording) throw new MeetingRecordingNotFoundError(request.recordingId);
+
+    // Idempotency: this runs as a durable job, so it may be re-delivered (a
+    // retry, or recovery after a crash that finished the work but didn't mark
+    // the job done). If it's already finalized, do nothing — never re-run the
+    // expensive transcription/summarization.
+    if (recording.status === 'ready') {
+      return { recording: recording.toPersistence() };
+    }
+
     if (!recording.audioPath) {
       throw new Error(`Recording ${request.recordingId} has no audio path`);
     }
@@ -82,6 +94,7 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
       const message = error instanceof Error ? error.message : String(error);
       recording.markFailed(message);
       await this.deps.meetingRepository.save(recording);
+      publishMeetingStatus(this.deps.eventPublisher, recording);
       return { recording: recording.toPersistence() };
     }
 
@@ -99,6 +112,7 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
       );
       recording.clearAudio();
       await this.deps.meetingRepository.save(recording);
+      publishMeetingStatus(this.deps.eventPublisher, recording);
     }
 
     return { recording: recording.toPersistence() };

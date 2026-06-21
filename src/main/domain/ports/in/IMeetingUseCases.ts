@@ -208,6 +208,9 @@ export interface ILiveTranscriptionUseCases {
 export interface IMeetingUseCases {
   reserveRecordingSlot: IReserveRecordingSlotUseCase;
   appendRecordingAudio: IAppendRecordingAudioUseCase;
+  /** Producer: enqueues the finalize job and returns immediately (IPC-facing). */
+  requestFinalize: IFinalizeRecordingUseCase;
+  /** The actual pipeline; invoked by the background job handler, not over IPC. */
   finalizeRecording: IFinalizeRecordingUseCase;
   listMeetingRecordings: IListMeetingRecordingsUseCase;
   getMeetingRecording: IGetMeetingRecordingUseCase;

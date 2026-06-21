@@ -134,6 +134,7 @@ export function useMeetingRecorder() {
   const captureMode = useMeetingRecorderStore((s) => s.captureMode);
   const error = useMeetingRecorderStore((s) => s.error);
   const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
+  const finalizeStage = useMeetingRecorderStore((s) => s.finalizeStage);
   const liveLines = useMeetingRecorderStore((s) => s.liveLines);
 
   const openDock = useMeetingRecorderStore((s) => s.openDock);
@@ -327,6 +328,7 @@ export function useMeetingRecorder() {
     captureMode,
     error,
     lastRecording,
+    finalizeStage,
     liveLines,
     start,
     stop,

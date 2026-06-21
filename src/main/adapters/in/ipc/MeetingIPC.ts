@@ -43,10 +43,12 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     ),
   );
 
+  // Enqueues the durable finalize job and returns immediately; the pipeline
+  // runs in the background and pushes progress via meetings:statusChanged.
   ipcMain.handle(MEETING_CHANNELS.FINALIZE, async (_event, request) =>
     handleRequest(
       async () =>
-        meetingUseCases.finalizeRecording.execute({
+        meetingUseCases.requestFinalize.execute({
           recordingId: request.recordingId,
           durationMs: request.durationMs ?? 0,
         }),
