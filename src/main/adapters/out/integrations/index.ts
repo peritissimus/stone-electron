@@ -37,3 +37,4 @@ export {
 export { LinearSource, type LinearSourceDeps } from './LinearSource';
 export { AppleCalendarSource } from './AppleCalendarSource';
 export { AppleMailSource } from './AppleMailSource';
+export { LoggerJobTracer } from './LoggerJobTracer';
