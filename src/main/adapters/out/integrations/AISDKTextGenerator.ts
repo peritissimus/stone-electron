@@ -17,6 +17,64 @@ import type {
   QueryPlan,
 } from '../../../domain';
 import { assertCloudInferenceAllowed, assertCloudNoteContentAllowed } from '../../../domain';
+import { logger, withRetry } from '../../../shared/utils';
+
+/** Retry config for transient LLM failures. 3 attempts total (1 + 2 retries). */
+const LLM_RETRY = { retries: 2, baseMs: 500, maxMs: 8000 } as const;
+
+/**
+ * Decide whether an LLM call failure is transient and worth retrying.
+ *
+ * Only clearly-transient/infra signals retry: network errors
+ * (ECONNRESET/ETIMEDOUT/"fetch failed"), HTTP 429 (rate limit) and HTTP 5xx.
+ * Deterministic failures — 4xx other than 429 (400 bad request, 401/403
+ * auth/invalid key) and input/validation errors — are NOT retried, since
+ * retrying only wastes time and tokens. When the error shape is unknown we
+ * default to NOT retrying, to avoid duplicate token spend.
+ */
+function isTransientLlmError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
+  const err = error as Record<string, unknown>;
+
+  // HTTP status — the AI SDK's APICallError exposes statusCode; other shapes
+  // may use status. Treat 429 and any 5xx as transient; anything else (incl.
+  // other 4xx) as non-retryable.
+  const status = typeof err.statusCode === 'number' ? err.statusCode : err.status;
+  if (typeof status === 'number') {
+    return status === 429 || (status >= 500 && status <= 599);
+  }
+
+  // Some SDK errors carry an explicit retryability hint.
+  if (typeof err.isRetryable === 'boolean') {
+    return err.isRetryable;
+  }
+
+  // Node network errors expose a string `code` (no HTTP status reaches us).
+  const code = typeof err.code === 'string' ? err.code : undefined;
+  if (code) {
+    const transientCodes = new Set([
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ECONNREFUSED',
+      'EAI_AGAIN',
+      'EPIPE',
+      'ENETUNREACH',
+      'ENOTFOUND',
+    ]);
+    return transientCodes.has(code);
+  }
+
+  // Undici/fetch surfaces network failures as a bare "fetch failed" message.
+  const message = typeof err.message === 'string' ? err.message.toLowerCase() : '';
+  if (message.includes('fetch failed') || message.includes('network')) {
+    return true;
+  }
+
+  // Unknown shape: do not retry (avoid duplicate token spend).
+  return false;
+}
 
 /**
  * Split a "provider/model" id into its parts (e.g. "openai/gpt-5.4-mini" →
@@ -70,7 +128,14 @@ export class AISDKTextGenerator implements ITextGenerator {
 
   constructor(private readonly deps: AISDKTextGeneratorDeps) {
     this.openaiFactory = deps.openaiFactory ?? (createOpenAI as unknown as OpenAIFactory);
-    this.generateTextFn =
+    // Wrap the actual model invocation in withRetry at the adapter boundary so
+    // every use case (answer / plan / markdown) gets transient-failure retries
+    // for free. generateText is non-streaming, so retrying the whole call is
+    // safe — there is no partially-consumed stream to worry about. We disable
+    // the AI SDK's own per-call retries (maxRetries: 0) so backoff/budget is
+    // controlled in one place here. An injected generateTextFn (tests) is used
+    // as-is, untouched.
+    const baseGenerate: GenerateTextFn =
       deps.generateTextFn ??
       ((request) =>
         generateText({
@@ -78,8 +143,23 @@ export class AISDKTextGenerator implements ITextGenerator {
           system: request.system,
           prompt: request.prompt,
           temperature: request.temperature,
-          maxRetries: request.maxRetries,
+          maxRetries: request.maxRetries ?? 0,
         }));
+
+    this.generateTextFn = deps.generateTextFn
+      ? baseGenerate
+      : (request) =>
+          withRetry((): ReturnType<GenerateTextFn> => baseGenerate(request), {
+            ...LLM_RETRY,
+            shouldRetry: (error) => isTransientLlmError(error),
+            onRetry: (error, attempt, delayMs) => {
+              const reason = error instanceof Error ? error.message : String(error);
+              logger.warn(
+                `[AISDKTextGenerator] transient LLM failure (attempt ${attempt}), ` +
+                  `retrying in ${delayMs}ms: ${reason}`,
+              );
+            },
+          });
   }
 
   async generateAnswer(request: GenerateAnswerRequest): Promise<GenerateAnswerResponse> {
