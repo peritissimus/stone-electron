@@ -40,3 +40,6 @@ export * from './IEchoCanceller';
 export * from './ISummarizationStrategy';
 export * from './ITemplateRepository';
 export * from './IDatabaseManager';
+export * from './IJobRepository';
+export * from './IJobTracer';
+export * from './IJobQueue';

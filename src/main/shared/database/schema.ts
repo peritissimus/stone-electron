@@ -277,3 +277,37 @@ export const meetingRecordings = sqliteTable(
     index('idx_meeting_recordings_created_at').on(table.createdAt),
   ],
 );
+
+// Durable background jobs — a libSQL-backed work queue so background tasks
+// (e.g. retrying a failed transcription chunk, deferred re-indexing) survive
+// an app restart. The JobRunner worker claims due rows, runs the registered
+// handler, and reschedules with backoff or marks the row `dead` once attempts
+// are exhausted. Terminal rows are pruned on a retention sweep so the table
+// never grows unbounded on a user's machine.
+export const jobs = sqliteTable(
+  'jobs',
+  {
+    id: text('id').primaryKey(),
+    // Handler key, e.g. 'transcription.retry_chunk'. Maps to a registered handler.
+    type: text('type').notNull(),
+    // JSON-encoded handler payload (opaque to the queue).
+    payload: text('payload').notNull().default('{}'),
+    // pending → running → done | dead. `dead` is terminal (attempts exhausted).
+    status: text('status').notNull().default('pending'),
+    attempts: integer('attempts').notNull().default(0),
+    maxAttempts: integer('max_attempts').notNull().default(5),
+    // Earliest time this job may run — bumped on each retry for backoff.
+    runAfter: integer('run_after', { mode: 'timestamp' }).notNull(),
+    // When a runner claimed the row; used to detect jobs orphaned by a crash.
+    claimedAt: integer('claimed_at', { mode: 'timestamp' }),
+    lastError: text('last_error'),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+  },
+  (table) => [
+    // Hot path: claim due pending jobs ordered by run_after.
+    index('idx_jobs_due').on(table.status, table.runAfter),
+    index('idx_jobs_status').on(table.status),
+    index('idx_jobs_type').on(table.type),
+  ],
+);

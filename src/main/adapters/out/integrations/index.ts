@@ -34,3 +34,4 @@ export {
   type SingleShotSummarizerDeps,
   DEFAULT_MEETING_SUMMARY_PROMPT,
 } from './SingleShotSummarizer';
+export { LoggerJobTracer } from './LoggerJobTracer';

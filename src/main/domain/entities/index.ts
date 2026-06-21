@@ -38,3 +38,11 @@ export {
   type MeetingRecordingStatus,
   type TranscriptSegment,
 } from './MeetingRecording';
+
+export {
+  JobEntity,
+  type JobProps,
+  type CreateJobInput,
+  type JobStatus,
+  type BackoffPolicy,
+} from './Job';
