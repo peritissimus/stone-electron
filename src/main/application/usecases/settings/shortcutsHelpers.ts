@@ -1,4 +1,3 @@
-import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
 import type { IEventPublisher } from '../../../domain/ports/out/IEventPublisher';
 import type { ShortcutsScope } from '../../../domain/ports/in/ISettingsUseCases';
 import { ShortcutConflictError } from '../../../domain/errors';
@@ -9,7 +8,6 @@ import type {
   ShortcutsConfig,
 } from '../../../domain/value-objects/AppConfig';
 import {
-  DEFAULT_APP_CONFIG,
   DEFAULT_APP_SHORTCUTS,
   DEFAULT_EDITOR_SHORTCUTS,
 } from '../../../domain/value-objects/AppConfig';
@@ -26,7 +24,7 @@ const KNOWN_EDITOR_ACTIONS = new Set(
   Object.keys(DEFAULT_EDITOR_SHORTCUTS) as EditorShortcutAction[],
 );
 
-function publishShortcutsChanged(eventPublisher?: IEventPublisher): void {
+export function publishShortcutsChanged(eventPublisher?: IEventPublisher): void {
   eventPublisher?.publish({
     type: 'settings:changed',
     timestamp: new Date(),
@@ -34,7 +32,7 @@ function publishShortcutsChanged(eventPublisher?: IEventPublisher): void {
   });
 }
 
-function assertKnownAction(scope: ShortcutsScope, action: string): void {
+export function assertKnownAction(scope: ShortcutsScope, action: string): void {
   const known = scope === 'app' ? KNOWN_APP_ACTIONS : KNOWN_EDITOR_ACTIONS;
   if (!known.has(action as never)) {
     throw new ShortcutConflictError({
@@ -45,7 +43,7 @@ function assertKnownAction(scope: ShortcutsScope, action: string): void {
   }
 }
 
-function assertChordsValid(binding: ChordBinding | ChordBinding[]): void {
+export function assertChordsValid(binding: ChordBinding | ChordBinding[]): void {
   const chords = Array.isArray(binding) ? binding : [binding];
   for (const chord of chords) {
     if (!validateChord(chord)) {
@@ -58,7 +56,7 @@ function assertChordsValid(binding: ChordBinding | ChordBinding[]): void {
   }
 }
 
-function assertNotReserved(binding: ChordBinding | ChordBinding[]): void {
+export function assertNotReserved(binding: ChordBinding | ChordBinding[]): void {
   const chords = Array.isArray(binding) ? binding : [binding];
   for (const chord of chords) {
     if (isReservedChord(chord)) {
@@ -71,7 +69,7 @@ function assertNotReserved(binding: ChordBinding | ChordBinding[]): void {
   }
 }
 
-function assertNoConflicts(
+export function assertNoConflicts(
   scope: ShortcutsScope,
   action: string,
   binding: ChordBinding | ChordBinding[],
@@ -102,7 +100,7 @@ function assertNoConflicts(
   }
 }
 
-function withBinding(
+export function withBinding(
   current: ShortcutsConfig,
   scope: ShortcutsScope,
   action: string,
@@ -120,7 +118,7 @@ function withBinding(
   };
 }
 
-function withoutBinding(
+export function withoutBinding(
   current: ShortcutsConfig,
   scope: ShortcutsScope,
   action: string,
@@ -133,78 +131,4 @@ function withoutBinding(
   const { [action as EditorShortcutAction]: _removed, ...rest } = current.editor;
   void _removed;
   return { ...current, editor: rest };
-}
-
-export class GetShortcutsUseCase {
-  constructor(private readonly appConfigRepository: IAppConfigRepository) {}
-
-  async execute(): Promise<ShortcutsConfig> {
-    const config = await this.appConfigRepository.get();
-    return config.shortcuts;
-  }
-}
-
-export class SetShortcutUseCase {
-  constructor(
-    private readonly appConfigRepository: IAppConfigRepository,
-    private readonly eventPublisher?: IEventPublisher,
-  ) {}
-
-  async execute(request: {
-    scope: ShortcutsScope;
-    action: string;
-    binding: ChordBinding | ChordBinding[];
-  }): Promise<ShortcutsConfig> {
-    const { scope, action, binding } = request;
-
-    assertKnownAction(scope, action);
-    assertChordsValid(binding);
-    assertNotReserved(binding);
-
-    const current = await this.appConfigRepository.get();
-    const candidate = withBinding(current.shortcuts, scope, action, binding);
-    assertNoConflicts(scope, action, binding, candidate);
-
-    const next = await this.appConfigRepository.update((config) => ({
-      ...config,
-      shortcuts: candidate,
-    }));
-    publishShortcutsChanged(this.eventPublisher);
-    return next.shortcuts;
-  }
-}
-
-export class ResetShortcutUseCase {
-  constructor(
-    private readonly appConfigRepository: IAppConfigRepository,
-    private readonly eventPublisher?: IEventPublisher,
-  ) {}
-
-  async execute(request: { scope: ShortcutsScope; action: string }): Promise<ShortcutsConfig> {
-    const { scope, action } = request;
-    assertKnownAction(scope, action);
-
-    const next = await this.appConfigRepository.update((config) => ({
-      ...config,
-      shortcuts: withoutBinding(config.shortcuts, scope, action),
-    }));
-    publishShortcutsChanged(this.eventPublisher);
-    return next.shortcuts;
-  }
-}
-
-export class ResetAllShortcutsUseCase {
-  constructor(
-    private readonly appConfigRepository: IAppConfigRepository,
-    private readonly eventPublisher?: IEventPublisher,
-  ) {}
-
-  async execute(): Promise<ShortcutsConfig> {
-    const next = await this.appConfigRepository.update((config) => ({
-      ...config,
-      shortcuts: DEFAULT_APP_CONFIG.shortcuts,
-    }));
-    publishShortcutsChanged(this.eventPublisher);
-    return next.shortcuts;
-  }
 }

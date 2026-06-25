@@ -9,91 +9,63 @@ import type { ISettingsUseCases } from '../../../domain/ports/in/ISettingsUseCas
 import { GetSettingUseCase } from './GetSettingUseCase';
 import { SetSettingUseCase } from './SetSettingUseCase';
 import { GetAllSettingsUseCase } from './GetAllSettingsUseCase';
-import {
-  GetAppearanceSettingsUseCase,
-  SetThemeUseCase,
-  SetAccentColorUseCase,
-  UpdateFontSettingsUseCase,
-  ResetFontSettingsUseCase,
-} from './appearance';
-import {
-  GetEditorSettingsUseCase,
-  UpdateEditorSettingsUseCase,
-  ResetEditorSettingsUseCase,
-} from './editor';
-import {
-  GetShortcutsUseCase,
-  SetShortcutUseCase,
-  ResetShortcutUseCase,
-  ResetAllShortcutsUseCase,
-} from './shortcuts';
-import {
-  DeleteAIProviderKeyUseCase,
-  GetAIProviderKeysUseCase,
-  GetAISettingsUseCase,
-  ResetAISettingsUseCase,
-  SetAIProviderKeyUseCase,
-  UpdateAISettingsUseCase,
-} from './ai';
-import {
-  GetMeetingsSettingsUseCase,
-  ResetMeetingsSettingsUseCase,
-  UpdateMeetingsSettingsUseCase,
-} from './meetings';
-import {
-  GetOnboardingUseCase,
-  ResetOnboardingUseCase,
-  UpdateOnboardingUseCase,
-} from './onboarding';
-import {
-  GetQuickCaptureShortcutUseCase,
-  SetQuickCaptureShortcutUseCase,
-} from './quickCapture';
+import { GetAppearanceSettingsUseCase } from './GetAppearanceSettingsUseCase';
+import { SetThemeUseCase } from './SetThemeUseCase';
+import { SetAccentColorUseCase } from './SetAccentColorUseCase';
+import { UpdateFontSettingsUseCase } from './UpdateFontSettingsUseCase';
+import { ResetFontSettingsUseCase } from './ResetFontSettingsUseCase';
+import { GetEditorSettingsUseCase } from './GetEditorSettingsUseCase';
+import { UpdateEditorSettingsUseCase } from './UpdateEditorSettingsUseCase';
+import { ResetEditorSettingsUseCase } from './ResetEditorSettingsUseCase';
+import { GetShortcutsUseCase } from './GetShortcutsUseCase';
+import { SetShortcutUseCase } from './SetShortcutUseCase';
+import { ResetShortcutUseCase } from './ResetShortcutUseCase';
+import { ResetAllShortcutsUseCase } from './ResetAllShortcutsUseCase';
+import { GetAISettingsUseCase } from './GetAISettingsUseCase';
+import { UpdateAISettingsUseCase } from './UpdateAISettingsUseCase';
+import { ResetAISettingsUseCase } from './ResetAISettingsUseCase';
+import { GetAIProviderKeysUseCase } from './GetAIProviderKeysUseCase';
+import { SetAIProviderKeyUseCase } from './SetAIProviderKeyUseCase';
+import { DeleteAIProviderKeyUseCase } from './DeleteAIProviderKeyUseCase';
+import { GetMeetingsSettingsUseCase } from './GetMeetingsSettingsUseCase';
+import { UpdateMeetingsSettingsUseCase } from './UpdateMeetingsSettingsUseCase';
+import { ResetMeetingsSettingsUseCase } from './ResetMeetingsSettingsUseCase';
+import { GetOnboardingUseCase } from './GetOnboardingUseCase';
+import { UpdateOnboardingUseCase } from './UpdateOnboardingUseCase';
+import { ResetOnboardingUseCase } from './ResetOnboardingUseCase';
+import { GetQuickCaptureShortcutUseCase } from './GetQuickCaptureShortcutUseCase';
+import { SetQuickCaptureShortcutUseCase } from './SetQuickCaptureShortcutUseCase';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
 export { GetAllSettingsUseCase } from './GetAllSettingsUseCase';
-export {
-  GetAppearanceSettingsUseCase,
-  SetThemeUseCase,
-  SetAccentColorUseCase,
-  UpdateFontSettingsUseCase,
-  ResetFontSettingsUseCase,
-} from './appearance';
-export {
-  GetEditorSettingsUseCase,
-  UpdateEditorSettingsUseCase,
-  ResetEditorSettingsUseCase,
-} from './editor';
-export {
-  GetShortcutsUseCase,
-  SetShortcutUseCase,
-  ResetShortcutUseCase,
-  ResetAllShortcutsUseCase,
-} from './shortcuts';
-export {
-  DeleteAIProviderKeyUseCase,
-  GetAIProviderKeysUseCase,
-  GetAISettingsUseCase,
-  ResetAISettingsUseCase,
-  SetAIProviderKeyUseCase,
-  UpdateAISettingsUseCase,
-} from './ai';
-export {
-  GetMeetingsSettingsUseCase,
-  ResetMeetingsSettingsUseCase,
-  UpdateMeetingsSettingsUseCase,
-} from './meetings';
-export {
-  GetOnboardingUseCase,
-  ResetOnboardingUseCase,
-  UpdateOnboardingUseCase,
-  type OnboardingPatch,
-} from './onboarding';
-export {
-  GetQuickCaptureShortcutUseCase,
-  SetQuickCaptureShortcutUseCase,
-} from './quickCapture';
+export { GetAppearanceSettingsUseCase } from './GetAppearanceSettingsUseCase';
+export { SetThemeUseCase } from './SetThemeUseCase';
+export { SetAccentColorUseCase } from './SetAccentColorUseCase';
+export { UpdateFontSettingsUseCase } from './UpdateFontSettingsUseCase';
+export { ResetFontSettingsUseCase } from './ResetFontSettingsUseCase';
+export { GetEditorSettingsUseCase } from './GetEditorSettingsUseCase';
+export { UpdateEditorSettingsUseCase } from './UpdateEditorSettingsUseCase';
+export { ResetEditorSettingsUseCase } from './ResetEditorSettingsUseCase';
+export { GetShortcutsUseCase } from './GetShortcutsUseCase';
+export { SetShortcutUseCase } from './SetShortcutUseCase';
+export { ResetShortcutUseCase } from './ResetShortcutUseCase';
+export { ResetAllShortcutsUseCase } from './ResetAllShortcutsUseCase';
+export { GetAISettingsUseCase } from './GetAISettingsUseCase';
+export { UpdateAISettingsUseCase } from './UpdateAISettingsUseCase';
+export { ResetAISettingsUseCase } from './ResetAISettingsUseCase';
+export { GetAIProviderKeysUseCase } from './GetAIProviderKeysUseCase';
+export { SetAIProviderKeyUseCase } from './SetAIProviderKeyUseCase';
+export { DeleteAIProviderKeyUseCase } from './DeleteAIProviderKeyUseCase';
+export { GetMeetingsSettingsUseCase } from './GetMeetingsSettingsUseCase';
+export { UpdateMeetingsSettingsUseCase } from './UpdateMeetingsSettingsUseCase';
+export { ResetMeetingsSettingsUseCase } from './ResetMeetingsSettingsUseCase';
+export { GetOnboardingUseCase } from './GetOnboardingUseCase';
+export { UpdateOnboardingUseCase } from './UpdateOnboardingUseCase';
+export { ResetOnboardingUseCase } from './ResetOnboardingUseCase';
+export { type OnboardingPatch } from './onboardingHelpers';
+export { GetQuickCaptureShortcutUseCase } from './GetQuickCaptureShortcutUseCase';
+export { SetQuickCaptureShortcutUseCase } from './SetQuickCaptureShortcutUseCase';
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;

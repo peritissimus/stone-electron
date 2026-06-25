@@ -321,6 +321,21 @@ domain/services/     domain/ports/out/ (interface)
 - Do NOT use generic suffixes like `Service` for adapters — name by the role they play (`Embedder`, `Exporter`, `GitClient`, `SystemBridge`, `FileWatcher`).
 - **Use cases**: one class per action (`UpdateNoteUseCase`, `IndexNoteUseCase`, `FinalizeRecordingUseCase`) is the pattern, NOT one mega-class per entity. The grouped IN port (`INoteUseCases`, `IIndexUseCases`) is a facade exposed to IPC adapters — it composes the per-action classes via a `create{Domain}UseCases(deps)` factory in `application/usecases/{domain}/index.ts`. Per-action classes don't need an individual matching `IX` port interface; the facade is the contract. IN adapters depend only on the facade, never on the per-action class or on OUT ports.
 
+### File homogeneity rule (filename case carries meaning)
+
+Every `.ts` file in `src/main` is exactly one of two kinds, and the **filename case tells you which** — no exceptions:
+
+| Filename case | Kind | Shape | Examples |
+| ------------- | ---- | ----- | -------- |
+| **PascalCase** | A *thing with identity* | Exports **exactly one** class named the same as the file | `CreateNoteUseCase.ts`, `NoteRepository.ts`, `MeetingIPC.ts`, `TaskExtractor.ts` |
+| **camelCase** | A *pure helper module* | Exports only functions / consts / types — **no classes** | `hashText.ts`, `journalDate.ts`, `meetingReprocess.ts`, `whisperPaths.ts`, `editorHelpers.ts`, `statusReportPrompts.ts` |
+
+**Therefore:**
+
+- Never put a `class` in a camelCase file, and never put more than one identity-class in a PascalCase file. A topic-file holding several `UseCase` classes (the old `settings/editor.ts` shape) is a violation — split it into one `XxxUseCase.ts` per class.
+- Shared private helpers used by 2+ use cases in a feature go in a camelCase helper module beside them (e.g. `application/usecases/settings/editorHelpers.ts`), exported and imported — not duplicated, not buried inside one class file.
+- A reader scanning any feature folder can tell entry-point use cases (PascalCase) from plumbing (camelCase) at a glance. Keep every feature folder shaped the same way.
+
 ---
 
 ## 12. Dependency Injection Rules
