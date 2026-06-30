@@ -25,6 +25,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import { lowlight } from 'lowlight';
+import plaintext from 'highlight.js/lib/languages/plaintext';
 
 import { ImageWithMenu } from '@renderer/lib/extensions/ImageWithMenu';
 import LogseqTaskItem from '@renderer/lib/extensions/LogseqTaskItem';
@@ -41,6 +42,13 @@ import { BlockDragDrop } from '@renderer/lib/extensions/BlockDragDrop';
 
 import type { EditorSettings } from '@shared/types/settings';
 import type { ResolvedShortcuts } from '@shared/utils/shortcuts';
+
+// Register a no-op "plaintext" grammar used as the code-block default. Without
+// an explicit language the extension otherwise falls back to highlightAuto(),
+// which guesses a language and scatters meaningless colors across plain text
+// and ASCII diagrams. Defaulting to plaintext renders such blocks verbatim;
+// real highlighting is opt-in via the language dropdown.
+lowlight.registerLanguage('plaintext', plaintext);
 
 export interface BuildEditorExtensionsDeps {
   editorConfig: EditorSettings;
@@ -74,6 +82,7 @@ export function buildEditorExtensions(deps: BuildEditorExtensionsDeps) {
     }),
     CodeBlockWithMermaid.configure({
       lowlight,
+      defaultLanguage: 'plaintext',
       HTMLAttributes: { class: 'code-block-wrapper' },
     }),
     Link.configure({
