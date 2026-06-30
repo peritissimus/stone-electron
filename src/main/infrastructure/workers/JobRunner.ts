@@ -33,6 +33,7 @@ import type {
 } from '../../domain';
 import { JobEntity } from '../../domain';
 import { logger } from '../../shared/utils';
+import type { ManagedWorker, WorkerStatus } from './WorkerManager';
 
 export interface JobContext {
   /** Aborts when the per-job timeout fires or the runner is stopping. */
@@ -80,7 +81,8 @@ const DEFAULTS = {
   shutdownGraceMs: 5_000,
 } as const;
 
-export class JobRunner implements IJobQueue {
+export class JobRunner implements IJobQueue, ManagedWorker {
+  readonly name = 'jobs';
   private readonly repo: IJobRepository;
   private readonly tracer: IJobTracer;
   private readonly ids: IIdGenerator;
@@ -157,6 +159,20 @@ export class JobRunner implements IJobQueue {
       await delay(100);
     }
     logger.info('[JobRunner] stopped');
+  }
+
+  async status(): Promise<WorkerStatus> {
+    let counts: Record<string, number> = {};
+    try {
+      counts = await this.repo.countByStatus();
+    } catch {
+      // status is best-effort — a failed count shouldn't break the panel
+    }
+    return {
+      name: this.name,
+      state: this.running ? 'ready' : 'stopped',
+      metrics: { inFlight: this.inFlight.size, ...counts },
+    };
   }
 
   // ===========================================================================

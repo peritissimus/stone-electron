@@ -16,6 +16,7 @@ import path from 'node:path';
 import { app } from 'electron';
 import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
+import type { ManagedWorker, WorkerStatus } from './WorkerManager';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
@@ -42,7 +43,8 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class EmbeddingWorker {
+export class EmbeddingWorker implements ManagedWorker {
+  readonly name = 'embeddings';
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -383,6 +385,26 @@ export class EmbeddingWorker {
    */
   isReady(): boolean {
     return this.initialized && this.workerReady && this.worker !== null;
+  }
+
+  // --- ManagedWorker ---
+
+  /** ManagedWorker alias for shutdown() so the WorkerManager can stop it. */
+  stop(): Promise<void> {
+    return this.shutdown();
+  }
+
+  status(): WorkerStatus {
+    const state = this.isReady() ? 'ready' : this.initializing ? 'starting' : 'idle';
+    return {
+      name: this.name,
+      state,
+      metrics: {
+        pendingRequests: this.pendingRequests.size,
+        rerankerReady: this.rerankerReady ? 1 : 0,
+        transcriberReady: this.transcriberReady ? 1 : 0,
+      },
+    };
   }
 
   /**
