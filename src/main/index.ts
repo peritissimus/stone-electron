@@ -353,6 +353,15 @@ function createQuickCaptureWindow() {
  */
 app.on('ready', async () => {
   try {
+    // Start OpenTelemetry FIRST (dev only) so its HTTP/fetch auto-instrumentation
+    // is in place before any outbound request. The SDK is a devDependency loaded
+    // via a dev-gated dynamic import, so nothing OTel ships to or runs in prod.
+    if (isDev) {
+      await import('@main/infrastructure/telemetry/otel')
+        .then((m) => m.startTelemetry())
+        .catch((e: unknown) => logger.warn('Failed to start telemetry:', e));
+    }
+
     // Initialize database
     logger.info('🔄 Initializing database...');
     const dbManager = getDatabaseManager();
@@ -530,13 +539,21 @@ app.on('before-quit', () => {
     // May not be initialized
   }
 
-  // Stop watchers + background-job runner
+  // Stop watchers + all resident background engines (job queue, embedding
+  // worker, live whisper server) via the unified manager.
   try {
     const container = getContainer();
     container.fileWatcher.stopAll().catch(() => {});
-    container.jobRunner.stop().catch(() => {});
+    container.workerManager.stopAll().catch(() => {});
   } catch {
     // Container may not be initialized yet
+  }
+
+  // Flush + stop OpenTelemetry (dev only). Best-effort, not awaited.
+  if (isDev) {
+    import('@main/infrastructure/telemetry/otel')
+      .then((m) => m.shutdownTelemetry())
+      .catch(() => {});
   }
 });
 

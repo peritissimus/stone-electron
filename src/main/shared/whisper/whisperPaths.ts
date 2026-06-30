@@ -16,8 +16,16 @@ try {
   // Outside Electron (tests/standalone) — fall back to cwd/tmp.
 }
 
-/** Default transcription model: large-v3-turbo, quantized q5_0 (~547 MB). */
+/** Default transcription model: large-v3-turbo, quantized q5_0 (~547 MB).
+ *  This is whisper's distilled "efficient large" (4 decoder layers, near-large
+ *  accuracy) — used by both the live draft and the finalize pass. */
 export const WHISPER_MODEL = 'large-v3-turbo-q5_0';
+
+/** The live draft uses the SAME full-quality model — not a downgrade. It's kept
+ *  efficient instead: language is pinned after the first chunk (skips a per-chunk
+ *  detection pass), VAD skips silence, and threads are bounded. See WhisperServer. */
+export const LIVE_WHISPER_MODEL = WHISPER_MODEL;
+
 export const WHISPER_MODEL_URL = (model: string) =>
   `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${model}.bin`;
 

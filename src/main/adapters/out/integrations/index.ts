@@ -28,10 +28,10 @@ export {
   type WhisperCppTranscriberDeps,
 } from './WhisperCppTranscriber';
 export { OnnxEchoCanceller, type OnnxEchoCancellerDeps } from './OnnxEchoCanceller';
-export { WhisperServer, type WhisperServerDeps } from './WhisperServer';
 export {
   SingleShotSummarizer,
   type SingleShotSummarizerDeps,
   DEFAULT_MEETING_SUMMARY_PROMPT,
 } from './SingleShotSummarizer';
 export { LoggerJobTracer } from './LoggerJobTracer';
+export { OtelJobTracer } from './OtelJobTracer';

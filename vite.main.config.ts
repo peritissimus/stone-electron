@@ -26,6 +26,10 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'electron',
+        // OpenTelemetry is dev-only (loaded via a dev-gated dynamic import).
+        // Externalised so its require-in-the-middle auto-instrumentation works
+        // and the devDependency SDK never gets bundled into prod.
+        /^@opentelemetry\//,
         '@libsql/client',
         '@libsql/client/sqlite3',
         'vectra',
