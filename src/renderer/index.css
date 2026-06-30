@@ -166,21 +166,21 @@
   --font-mono: 'Fira Code', 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
   --font-mono-size: 14px;
 
-  /* Code Syntax Colors - Light Theme */
+  /* Code Syntax Colors - Light Theme (Catppuccin Latte tuned) */
   --code-bg: 0 0% 96%;
-  --code-text: 0 0% 18%;
-  --code-comment: 0 0% 55%;
-  --code-keyword: 262 60% 50%;
-  --code-string: 142 60% 40%;
-  --code-number: 28 80% 50%;
-  --code-function: 211 100% 45%;
-  --code-variable: 0 0% 30%;
-  --code-type: 45 80% 45%;
-  --code-operator: 180 40% 45%;
-  --code-punctuation: 0 0% 45%;
-  --code-attribute: 330 60% 50%;
-  --code-tag: 211 80% 45%;
-  --code-property: 262 50% 50%;
+  --code-text: 234 16% 35%;
+  --code-comment: 233 13% 52%;
+  --code-keyword: 266 85% 58%;
+  --code-string: 109 58% 36%;
+  --code-number: 22 99% 48%;
+  --code-function: 220 91% 54%;
+  --code-variable: 234 16% 35%;
+  --code-type: 35 77% 45%;
+  --code-operator: 183 74% 34%;
+  --code-punctuation: 233 10% 47%;
+  --code-attribute: 347 80% 46%;
+  --code-tag: 355 70% 55%;
+  --code-property: 189 70% 42%;
 
   /* Semantic colors */
   --success: 142 60% 40%;
@@ -220,21 +220,21 @@
   /* Solid opaque overlay for inputs/popovers */
   --overlay: 0 0% 18%;
 
-  /* Code Syntax Colors - Dark Theme */
+  /* Code Syntax Colors - Dark Theme (Catppuccin Mocha tuned) */
   --code-bg: 0 0% 10% / 0.6;
-  --code-text: 0 0% 90%;
-  --code-comment: 0 0% 50%;
-  --code-keyword: 262 70% 70%;
-  --code-string: 142 50% 60%;
-  --code-number: 28 70% 65%;
-  --code-function: 211 80% 65%;
-  --code-variable: 0 0% 85%;
-  --code-type: 45 70% 65%;
-  --code-operator: 180 50% 65%;
-  --code-punctuation: 0 0% 60%;
-  --code-attribute: 330 60% 65%;
-  --code-tag: 211 70% 65%;
-  --code-property: 262 60% 70%;
+  --code-text: 225 25% 88%;
+  --code-comment: 230 13% 55%;
+  --code-keyword: 267 84% 81%;
+  --code-string: 115 54% 76%;
+  --code-number: 23 92% 76%;
+  --code-function: 217 92% 76%;
+  --code-variable: 232 60% 85%;
+  --code-type: 41 86% 77%;
+  --code-operator: 171 57% 73%;
+  --code-punctuation: 228 17% 64%;
+  --code-attribute: 343 81% 75%;
+  --code-tag: 350 65% 77%;
+  --code-property: 199 76% 69%;
 
   /* Semantic colors */
   --success: 142 50% 60%;
@@ -277,21 +277,21 @@
     /* Solid opaque overlay for inputs/popovers */
     --overlay: 0 0% 18%;
 
-    /* Code Syntax Colors - Dark Theme */
+    /* Code Syntax Colors - Dark Theme (Catppuccin Mocha tuned) */
     --code-bg: 0 0% 10% / 0.6;
-    --code-text: 0 0% 90%;
-    --code-comment: 0 0% 50%;
-    --code-keyword: 262 70% 70%;
-    --code-string: 142 50% 60%;
-    --code-number: 28 70% 65%;
-    --code-function: 211 80% 65%;
-    --code-variable: 0 0% 85%;
-    --code-type: 45 70% 65%;
-    --code-operator: 180 50% 65%;
-    --code-punctuation: 0 0% 60%;
-    --code-attribute: 330 60% 65%;
-    --code-tag: 211 70% 65%;
-    --code-property: 262 60% 70%;
+    --code-text: 225 25% 88%;
+    --code-comment: 230 13% 55%;
+    --code-keyword: 267 84% 81%;
+    --code-string: 115 54% 76%;
+    --code-number: 23 92% 76%;
+    --code-function: 217 92% 76%;
+    --code-variable: 232 60% 85%;
+    --code-type: 41 86% 77%;
+    --code-operator: 171 57% 73%;
+    --code-punctuation: 228 17% 64%;
+    --code-attribute: 343 81% 75%;
+    --code-tag: 350 65% 77%;
+    --code-property: 199 76% 69%;
 
     /* Semantic colors */
     --success: 142 50% 60%;
@@ -351,6 +351,15 @@ body {
   line-height: var(--font-editor-line-height);
   letter-spacing: -0.003em;
   color: hsl(var(--foreground));
+  text-wrap: pretty;
+}
+
+/* Headings break on phrase boundaries, not mid-line orphans. */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  text-wrap: balance;
 }
 
 .dark body {
@@ -734,25 +743,44 @@ textarea:focus {
 
 /* Inline code - Notion style */
 .prose code {
-  background-color: hsl(var(--muted));
-  color: hsl(var(--foreground) / 0.85);
-  @apply px-2 py-1 rounded font-mono;
-  font-size: 0.875em;
+  background-color: hsl(var(--foreground) / 0.07);
+  color: hsl(var(--foreground) / 0.9);
+  @apply px-1.5 py-0.5 rounded font-mono;
+  font-size: 0.85em;
+  font-weight: 450;
+  border: 1px solid hsl(var(--border) / 0.4);
+  /* Keep padding/border/radius intact on each fragment when a long chip
+     (e.g. an endpoint in a heading) wraps across lines, instead of clipping. */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Inline code inside headings: dial size back toward the body so long
+   endpoints don't balloon and shatter the heading line. */
+.prose h1 code,
+.prose h2 code,
+.prose h3 code,
+.prose h4 code {
+  font-size: 0.7em;
   font-weight: 500;
-  border: 1px solid hsl(var(--border) / 0.5);
+  vertical-align: 0.05em;
 }
 
 /* Code blocks - Notion style */
 .prose pre {
   background-color: hsl(var(--code-bg));
-  border: 1px solid hsl(var(--border) / 0.5);
-  @apply p-6 rounded-lg overflow-x-auto my-3;
+  border: 1px solid hsl(var(--border) / 0.6);
+  box-shadow:
+    0 1px 2px hsl(var(--shadow-color) / 0.06),
+    0 4px 12px hsl(var(--shadow-color) / 0.04);
+  @apply p-4 rounded-lg overflow-x-auto my-3;
 }
 
 .prose pre code {
   @apply bg-transparent p-0 border-0;
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.6;
+  white-space: pre;
   color: hsl(var(--code-text));
 }
 
@@ -763,16 +791,20 @@ textarea:focus {
 
 .code-block-wrapper pre {
   background-color: hsl(var(--code-bg));
-  border: none;
-  @apply p-6 m-0 overflow-x-auto;
+  border: 1px solid hsl(var(--border) / 0.6);
+  box-shadow:
+    0 1px 2px hsl(var(--shadow-color) / 0.06),
+    0 4px 12px hsl(var(--shadow-color) / 0.04);
+  @apply p-4 m-0 overflow-x-auto rounded-lg;
   font-family:
     'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .code-block-wrapper pre code {
   @apply bg-transparent p-0 border-0;
+  white-space: pre;
   color: hsl(var(--code-text));
 }
 
@@ -1047,10 +1079,11 @@ span[data-type="task-marker"][data-state="idea"] {
 
 .stone-table-header,
 .stone-table-cell {
-  @apply border border-border px-3 py-1.5 align-top;
+  @apply border border-border px-3 py-1.5 align-top text-left;
   font-size: 0.95em;
   color: hsl(var(--foreground) / 0.9);
   background-color: hsl(var(--card));
+  font-variant-numeric: tabular-nums;
 }
 
 .stone-table-header {
@@ -1061,10 +1094,11 @@ span[data-type="task-marker"][data-state="idea"] {
 
 .prose table td,
 .prose table th {
-  @apply border border-border px-3 py-1.5 align-top;
+  @apply border border-border px-3 py-1.5 align-top text-left;
   font-size: 0.95em;
   color: hsl(var(--foreground) / 0.9);
   background-color: hsl(var(--card));
+  font-variant-numeric: tabular-nums;
 }
 
 .prose table th {
