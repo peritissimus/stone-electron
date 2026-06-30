@@ -63,6 +63,41 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
     });
   }, [language]);
 
+  // Pretty-print JSON blocks on demand. Only offered when the block is tagged
+  // json/jsonc and the current content actually parses.
+  const langKey = language.toLowerCase();
+  const canFormat =
+    (langKey === 'json' || langKey === 'jsonc') &&
+    (() => {
+      try {
+        JSON.parse(codeContent);
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+
+  const handleFormat = useCallback(() => {
+    if (!editor) return;
+    let formatted: string;
+    try {
+      formatted = JSON.stringify(JSON.parse(codeContent), null, 2);
+    } catch {
+      return;
+    }
+    if (formatted === codeContent) return;
+
+    const { view, state } = editor;
+    const pos = getPos();
+    if (pos === undefined) return;
+    const blockNode = state.doc.nodeAt(pos);
+    if (!blockNode || blockNode.type.name !== 'codeBlock') return;
+
+    const from = pos + 1;
+    const to = from + blockNode.content.size;
+    view.dispatch(state.tr.replaceWith(from, to, state.schema.text(formatted)));
+  }, [editor, codeContent, getPos]);
+
   // Load language on demand (lazy loading)
   useEffect(() => {
     if (language && language !== 'mermaid' && language !== 'flowdsl' && language !== 'auto') {
@@ -183,6 +218,8 @@ export const CodeBlockComponent: React.FC<CodeBlockComponentProps> = ({
           onFullscreen={() => setIsFullscreen(true)}
           codeContent={codeContent}
           onDownload={handleDownload}
+          canFormat={canFormat}
+          onFormat={handleFormat}
         />
       </div>
     </NodeViewWrapper>

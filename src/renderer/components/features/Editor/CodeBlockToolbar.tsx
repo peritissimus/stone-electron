@@ -3,14 +3,14 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { Copy, Check, ArrowsOutSimple, DownloadSimple } from '@phosphor-icons/react';
+import { Copy, Check, ArrowsOutSimple, DownloadSimple, BracketsCurly } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
 
 /**
  * Supported programming languages for syntax highlighting
  */
 const CODE_LANGUAGES = [
-  { value: '', label: 'auto' },
+  { value: '', label: 'Plain' },
   { value: 'javascript', label: 'JavaScript' },
   { value: 'typescript', label: 'TypeScript' },
   { value: 'python', label: 'Python' },
@@ -42,6 +42,8 @@ interface CodeBlockToolbarProps {
   onFullscreen?: () => void;
   codeContent?: string;
   onDownload?: () => void;
+  canFormat?: boolean;
+  onFormat?: () => void;
 }
 
 export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
@@ -53,6 +55,8 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
   onFullscreen,
   codeContent = '',
   onDownload,
+  canFormat = false,
+  onFormat,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -103,6 +107,24 @@ export const CodeBlockToolbar: React.FC<CodeBlockToolbarProps> = ({
           )}
         >
           {showCode ? 'View Diagram' : 'Edit Code'}
+        </button>
+      )}
+
+      {/* Format (pretty-print) — JSON blocks only */}
+      {canFormat && onFormat && (
+        <button
+          type="button"
+          contentEditable={false}
+          onClick={onFormat}
+          className={cn(
+            'p-1.5 rounded bg-background/90 backdrop-blur-xs',
+            'border border-border text-foreground cursor-pointer',
+            'focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-1',
+            'hover:bg-accent transition-colors',
+          )}
+          title="Format JSON"
+        >
+          <BracketsCurly size={14} />
         </button>
       )}
 
