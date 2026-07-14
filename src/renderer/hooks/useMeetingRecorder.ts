@@ -345,9 +345,9 @@ export function useMeetingRecorder() {
 
 /**
  * Try to grab the system-audio stream via getDisplayMedia. We request
- * video too because Electron / browsers require at least one of the
- * two — but we immediately stop the video tracks once we have the
- * stream, since we only want audio. Returns null on any failure
+ * video too because Chromium requires it for getDisplayMedia. The main
+ * process supplies Stone's own frame rather than a monitor, and we immediately
+ * stop that disposable track. Returns null on any failure
  * (user denied, platform doesn't support, etc.).
  */
 async function tryCaptureSystemAudio(): Promise<MediaStream | null> {
