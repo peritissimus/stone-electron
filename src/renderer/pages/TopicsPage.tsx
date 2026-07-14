@@ -4,7 +4,7 @@
  * Replaces the old flat topics list. The page is structured around three
  * questions a user wants answered fast:
  *
- *   1. Is my workspace fully indexed? (top: IndexStatusCard with progress bar)
+ *   1. Can I find something by meaning? (semantic search)
  *   2. What's in my workspace? (topics as a grid of cards, not a list)
  *   3. Can I find <something>? (prominent semantic search; results inline)
  *
@@ -21,7 +21,7 @@ import {
   CloudArrowDown,
   MagnifyingGlass,
   Plus,
-  Sparkle,
+  WarningCircle,
 } from '@phosphor-icons/react';
 import { useNavigateToNote } from '@renderer/navigation';
 import { useSidebarUI } from '@renderer/hooks/useUI';
@@ -56,71 +56,50 @@ function IndexStatusCard({ stats, rebuilding, onReindex }: IndexStatusCardProps)
   const indexed = stats?.indexedNotes ?? 0;
   const pending = stats?.pendingNotes ?? 0;
   const failed = stats?.failedNotes ?? 0;
-  const chunks = stats?.chunkCount ?? 0;
-  const percent = total > 0 ? Math.round((indexed / total) * 100) : 0;
   const isComplete = total > 0 && pending === 0 && failed === 0;
 
-  const stateLabel = !stats
-    ? 'Loading status…'
-    : total === 0
-      ? 'No notes to index'
-      : pending === 0 && failed === 0
-        ? `Every note is searchable across ${chunks.toLocaleString()} chunks`
-        : failed > 0
-          ? `${pending} pending · ${failed} failed`
-          : `${pending} note${pending === 1 ? '' : 's'} pending`;
+  // Indexing is infrastructure. Keep it out of the user's way unless there is
+  // an actual exception they can recover from.
+  if (!stats || total === 0 || isComplete) return null;
+
+  const hasFailures = failed > 0;
+  const title = hasFailures
+    ? `${failed} note${failed === 1 ? '' : 's'} couldn’t be indexed`
+    : `${pending} note${pending === 1 ? '' : 's'} waiting to be indexed`;
+  const description = hasFailures
+    ? `${indexed} of ${total} notes are still searchable. Retry to include the remaining ${failed}.`
+    : `${indexed} of ${total} notes are searchable. Finish indexing to include the remaining ${pending}.`;
 
   return (
-    <section className="rounded-xl border border-border bg-card/40 p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            <Sparkle size={12} weight="fill" className="text-primary" />
-            Semantic Index
-          </div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-semibold tabular-nums text-foreground">{indexed}</span>
-            <span className="text-sm text-muted-foreground tabular-nums">/ {total} notes</span>
-            {chunks > 0 && (
-              <span className="text-sm text-muted-foreground tabular-nums">
-                · {chunks.toLocaleString()} chunks
-              </span>
+    <section
+      className="rounded-lg border border-border/60 bg-muted/20 px-4 py-3"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <WarningCircle
+            size={16}
+            className={cn(
+              'mt-0.5 shrink-0',
+              hasFailures ? 'text-destructive/80' : 'text-muted-foreground',
             )}
-            <span className="text-sm text-muted-foreground tabular-nums">· {percent}%</span>
+          />
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-foreground">{title}</div>
+            <div className="mt-0.5 text-xs text-muted-foreground">{description}</div>
           </div>
-          <div className="mt-0.5 text-xs text-muted-foreground">{stateLabel}</div>
         </div>
 
         <Button
           size="sm"
-          variant={isComplete ? 'ghost' : 'outline'}
+          variant="ghost"
           disabled={rebuilding}
           onClick={onReindex}
-          title={
-            isComplete
-              ? 'Re-chunk and re-embed every note in this workspace'
-              : 'Chunk and embed any pending notes'
-          }
+          title={hasFailures ? 'Retry notes that could not be indexed' : 'Index remaining notes'}
         >
           <ArrowsClockwise size={14} className={cn(rebuilding && 'animate-spin')} />
-          {rebuilding ? 'Indexing…' : isComplete ? 'Reindex' : 'Index pending'}
+          {rebuilding ? 'Indexing…' : hasFailures ? 'Retry indexing' : 'Finish indexing'}
         </Button>
-      </div>
-
-      <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-        <div
-          className={cn(
-            'h-full transition-[width,background-color] duration-300 ease-out',
-            total === 0
-              ? 'bg-muted-foreground/40'
-              : percent === 100
-                ? 'bg-green-500'
-                : percent >= 80
-                  ? 'bg-primary'
-                  : 'bg-yellow-500',
-          )}
-          style={{ width: `${Math.max(percent, total > 0 ? 2 : 0)}%` }}
-        />
       </div>
     </section>
   );
@@ -226,34 +205,33 @@ export default function TopicsPage() {
             selectedTopicId ? 'lg:max-w-[60%]' : '',
           )}
         >
-          <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
+          <div className="mx-auto w-full max-w-4xl space-y-8 px-6 py-8">
             {error && (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {error}
               </div>
             )}
 
-            <IndexStatusCard
-              stats={indexStats}
-              rebuilding={rebuilding}
-              onReindex={handleReindex}
-            />
-
-            <section className="space-y-2">
-              <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Semantic search
+            <section className="space-y-3">
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                  Find something you remember
+                </h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Search by idea or meaning, even when you cannot remember the exact words.
+                </p>
               </div>
               <div className="relative">
                 <MagnifyingGlass
-                  size={14}
-                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  size={18}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <Input
                   type="text"
                   placeholder="Find notes by meaning, not just keywords…"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-9"
+                  className="h-12 rounded-xl border-border/70 bg-card pl-11 text-[15px] shadow-sm"
                 />
               </div>
               {searchQuery && (
@@ -283,10 +261,10 @@ export default function TopicsPage() {
 
             <SuggestedTopicsSection />
 
-            <section className="space-y-2">
+            <section className="space-y-3">
               <div className="flex items-center justify-between gap-4">
-                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Topics
+                <div className="text-sm font-medium text-foreground">
+                  Your topics
                   {topics.length > 0 && (
                     <span className="ml-1.5 tabular-nums text-muted-foreground/70">
                       ({topics.length})
@@ -309,7 +287,7 @@ export default function TopicsPage() {
               {topics.length === 0 ? (
                 <EmptyTopicsCard onCreate={() => setShowCreateDialog(true)} />
               ) : (
-                <div className="overflow-hidden rounded-md border border-border/60">
+                <div className="grid gap-2 sm:grid-cols-2">
                   {topics.map((topic) => (
                     <TopicRow
                       key={topic.id}
@@ -321,6 +299,8 @@ export default function TopicsPage() {
                 </div>
               )}
             </section>
+
+            <IndexStatusCard stats={indexStats} rebuilding={rebuilding} onReindex={handleReindex} />
           </div>
         </div>
 
@@ -399,9 +379,9 @@ function PageHeader({
         className={cn(
           'ml-2 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs tabular-nums',
           pillState.tone === 'good'
-            ? 'border-green-500/30 bg-green-500/10 text-green-600 dark:text-green-400'
+            ? 'border-border/70 bg-muted/40 text-muted-foreground'
             : pillState.tone === 'warn'
-              ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400'
+              ? 'border-border bg-muted/60 text-foreground'
               : 'border-border bg-muted/50 text-muted-foreground',
         )}
       >
@@ -409,9 +389,9 @@ function PageHeader({
           className={cn(
             'h-1.5 w-1.5 rounded-full',
             pillState.tone === 'good'
-              ? 'bg-green-500'
+              ? 'bg-muted-foreground/60'
               : pillState.tone === 'warn'
-                ? 'bg-yellow-500'
+                ? 'bg-muted-foreground'
                 : 'bg-muted-foreground/60',
           )}
           aria-hidden

@@ -13,7 +13,6 @@ import {
   ArrowsClockwise,
   CaretDown,
   CaretRight,
-  Check,
   Lightbulb,
   Plus,
   X,
@@ -33,9 +32,9 @@ const COLLAPSED_KEY = 'knowledge-suggested-collapsed';
 export function SuggestedTopicsSection() {
   const { suggestions, loading, adopting, hasLoadedOnce, refresh, dismiss, adopt } =
     useSuggestedTopics();
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(COLLAPSED_KEY) !== 'false',
-  );
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSED_KEY) === 'true');
+  const [showAll, setShowAll] = useState(false);
+  const visibleSuggestions = showAll ? suggestions : suggestions.slice(0, 4);
 
   const toggleCollapsed = useCallback(() => {
     setCollapsed((current) => {
@@ -79,10 +78,10 @@ export function SuggestedTopicsSection() {
       />
       {!collapsed && (
         <div
-          className="animate-in fade-in slide-in-from-top-1 space-y-2"
+          className="animate-in fade-in slide-in-from-top-1 overflow-hidden rounded-lg border border-border/60 bg-card/20 divide-y divide-border/50"
           style={{ animationDuration: '200ms' }}
         >
-          {suggestions.map((s) => (
+          {visibleSuggestions.map((s) => (
             <SuggestionCard
               key={s.id}
               suggestion={s}
@@ -91,6 +90,16 @@ export function SuggestedTopicsSection() {
               onDismiss={() => dismiss(s.id)}
             />
           ))}
+          {suggestions.length > 4 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAll((current) => !current)}
+              className="w-full rounded-none text-xs text-muted-foreground"
+            >
+              {showAll ? 'Show fewer suggestions' : `Show all ${suggestions.length} suggestions`}
+            </Button>
+          )}
         </div>
       )}
     </section>
@@ -117,7 +126,7 @@ function SectionHeader({
         onClick={onToggle}
         aria-expanded={!collapsed}
         className={cn(
-          'group relative flex items-center gap-1.5 rounded-md py-1 pr-2 text-xs font-medium uppercase tracking-wider text-muted-foreground',
+          'group relative flex items-center gap-1.5 rounded-md py-1 pr-2 text-sm font-medium text-foreground',
           'transition-[color,transform] duration-150 ease-out hover:text-foreground active:scale-[0.98]',
           // Extend the hit area without growing the visible row.
           "before:absolute before:inset-[-6px] before:content-['']",
@@ -127,16 +136,11 @@ function SectionHeader({
         <CaretRight
           size={10}
           weight="bold"
-          className={cn(
-            'transition-transform duration-150 ease-out',
-            !collapsed && 'rotate-90',
-          )}
+          className={cn('transition-transform duration-150 ease-out', !collapsed && 'rotate-90')}
         />
-        <Lightbulb size={12} weight="fill" className="text-primary" />
+        <Lightbulb size={12} weight="fill" className="text-muted-foreground" />
         Suggested
-        {count !== null && (
-          <span className="tabular-nums text-muted-foreground/70">({count})</span>
-        )}
+        {count !== null && <span className="tabular-nums text-muted-foreground/70">({count})</span>}
       </button>
       <Button
         variant="ghost"
@@ -186,98 +190,97 @@ function SuggestionCard({ suggestion, adopting, onAdopt, onDismiss }: Suggestion
   return (
     <article
       className={cn(
-        'rounded-lg border border-border/60 bg-card/40 px-3 py-2.5',
-        'transition-[border-color,background-color] duration-150 ease-out',
-        'hover:border-border',
+        'px-3 py-3 transition-[background-color] duration-150 ease-out',
+        'hover:bg-muted/20',
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
           className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground',
-            'transition-[background-color,transform] duration-150 ease-out active:scale-[0.92]',
+            'flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground',
+            'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
             'hover:bg-muted hover:text-foreground',
           )}
           aria-label={expanded ? 'Hide examples' : 'Show examples'}
         >
-          {expanded ? <CaretDown size={12} weight="bold" /> : <CaretRight size={12} weight="bold" />}
+          {expanded ? (
+            <CaretDown size={12} weight="bold" />
+          ) : (
+            <CaretRight size={12} weight="bold" />
+          )}
         </button>
 
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              void handleAdopt();
-            }
-          }}
-          disabled={adopting}
-          className="h-7 max-w-xs border-transparent bg-transparent text-sm font-medium hover:border-border focus-visible:border-input"
-        />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  void handleAdopt();
+                }
+              }}
+              disabled={adopting}
+              aria-label="Suggested topic name"
+              className="h-7 w-48 border-transparent bg-transparent px-1 text-sm font-medium hover:border-border focus-visible:border-input"
+            />
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+              <span>{suggestion.noteCount} notes</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span>{cohesionPct}% match</span>
+            </div>
+          </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
-          <span>{suggestion.noteCount} notes</span>
-          <span className="text-muted-foreground/40">·</span>
-          <span>{cohesionPct}% cohesion</span>
+          {suggestion.altLabels.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground/75">
+              <span>Related names</span>
+              {suggestion.altLabels.map((alt) => (
+                <button
+                  key={alt}
+                  type="button"
+                  onClick={() => setName(alt)}
+                  className="rounded-sm underline-offset-2 transition-[color,transform] hover:text-foreground hover:underline active:scale-[0.96]"
+                >
+                  {alt}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
             disabled={adopting}
             onClick={onDismiss}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="size-8 p-0 text-muted-foreground hover:text-foreground"
+            aria-label="Dismiss suggestion"
             title="Hide this suggestion"
           >
             <X size={14} />
-            Dismiss
           </Button>
           <Button
+            variant="outline"
             size="sm"
             disabled={adopting || !name.trim()}
             onClick={handleAdopt}
+            className="border-border/70 bg-transparent hover:bg-muted"
             title="Create a topic with this name and assign the matching notes"
           >
-            {adopting ? (
-              <ArrowsClockwise size={14} className="animate-spin" />
-            ) : (
-              <Plus size={14} />
-            )}
+            {adopting ? <ArrowsClockwise size={14} className="animate-spin" /> : <Plus size={14} />}
             {adopting ? 'Adopting…' : 'Adopt'}
           </Button>
         </div>
       </div>
 
-      {suggestion.altLabels.length > 0 && (
-        <div className="mt-1.5 ml-8 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          <span>Also tried:</span>
-          {suggestion.altLabels.map((alt) => (
-            <button
-              key={alt}
-              type="button"
-              onClick={() => setName(alt)}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5',
-                'transition-[background-color,border-color] duration-150 ease-out',
-                'hover:border-border hover:bg-muted',
-              )}
-            >
-              <Check size={10} className="opacity-0 group-hover:opacity-100" />
-              {alt}
-            </button>
-          ))}
-        </div>
-      )}
-
       {expanded && suggestion.representatives.length > 0 && (
-        <ul className="mt-3 ml-8 space-y-1.5">
+        <ul className="mt-3 ml-10 space-y-1.5 border-t border-border/40 pt-3">
           {suggestion.representatives.map((rep) => {
-            const heading =
-              rep.headingPath.length > 0 ? rep.headingPath.join(' › ') : null;
+            const heading = rep.headingPath.length > 0 ? rep.headingPath.join(' › ') : null;
             return (
               <li key={rep.chunkId}>
                 <button

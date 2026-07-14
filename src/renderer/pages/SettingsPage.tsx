@@ -128,11 +128,11 @@ export default function SettingsPage() {
       </div>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-56 shrink-0 border-r border-border bg-muted/10 md:flex md:flex-col">
-          <nav className="flex flex-col gap-4 p-2 py-3">
+        <aside className="hidden w-52 shrink-0 border-r border-border/50 bg-muted/[0.035] md:flex md:flex-col">
+          <nav className="flex flex-col gap-5 px-3 py-5">
             {GROUPS.map((group) => (
-              <div key={group.label} className="flex flex-col gap-0.5">
-                <span className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <div key={group.label} className="flex flex-col gap-1">
+                <span className="px-2 pb-1 text-[11px] font-medium text-muted-foreground/60">
                   {group.label}
                 </span>
                 {group.items.map((item) => (
@@ -141,12 +141,12 @@ export default function SettingsPage() {
                     to={toSettings(item.id)}
                     className={({ isActive }) =>
                       cn(
-                        'group relative flex h-9 items-center gap-2.5 rounded-md pl-3 pr-2 text-sm',
+                        'group relative flex h-9 items-center gap-2.5 rounded-lg px-2 text-[13px]',
                         'transition-[background-color,color,transform] duration-150 ease-out',
                         'active:scale-[0.98]',
                         isActive
-                          ? 'bg-secondary text-foreground'
-                          : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
+                          ? 'bg-secondary/80 text-foreground shadow-[inset_0_0_0_1px_hsl(var(--border)/0.25)]'
+                          : 'text-muted-foreground hover:bg-secondary/40 hover:text-foreground',
                       )
                     }
                   >
@@ -197,7 +197,7 @@ export default function SettingsPage() {
           </div>
 
           <ScrollArea className="min-h-0 flex-1">
-            <main className="mx-auto w-full max-w-3xl px-4 py-8 md:px-10">
+            <main className="mx-auto w-full max-w-2xl px-5 py-8 md:px-8 md:py-10">
               {activeSection.element}
             </main>
           </ScrollArea>

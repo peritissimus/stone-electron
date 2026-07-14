@@ -62,10 +62,11 @@ export default function DailyReviewPage() {
   ]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden">
       <header
         className={cn(
-          'flex shrink-0 items-center gap-3 border-b border-border bg-card px-4',
+          'flex min-w-0 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-card px-4',
+          'max-[900px]:gap-1.5 max-[900px]:px-2',
           sizeHeightClasses['spacious'],
         )}
       >
@@ -78,32 +79,37 @@ export default function DailyReviewPage() {
           />
         )}
         <Sun size={16} className="shrink-0 text-muted-foreground" />
-        <div className="flex min-w-0 items-baseline gap-2">
+        <div className="flex min-w-0 items-baseline gap-2 max-[900px]:gap-0">
           <h1 className="shrink-0 text-sm font-semibold">Today</h1>
-          <span className="truncate text-xs text-muted-foreground tabular-nums">{headerDate}</span>
+          <span className="truncate text-xs text-muted-foreground tabular-nums max-[900px]:hidden">
+            {headerDate}
+          </span>
         </div>
-        <div className="flex-1" />
+        <div className="min-w-0 flex-1" />
         {refreshing && (
           <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
         )}
         <Button
-          variant="ghost"
+          variant="secondary"
           size="sm"
           onClick={() => void reload()}
           className="shrink-0 text-xs"
+          aria-label="Refresh today"
+          title="Refresh today"
         >
           <ArrowClockwise size={14} />
-          Refresh
+          <span className="max-[1100px]:sr-only">Refresh</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={openVoiceCapture}
           className="shrink-0 text-xs"
+          aria-label="Record voice note"
           title="Record a voice note — transcribed locally and saved to today's journal"
         >
           <Microphone size={14} weight="fill" />
-          Voice note
+          <span className="max-[900px]:sr-only">Voice note</span>
         </Button>
         <Button
           variant="ghost"
@@ -111,6 +117,7 @@ export default function DailyReviewPage() {
           onClick={() => void summarize(false)}
           disabled={summarizing}
           className="shrink-0 text-xs"
+          aria-label="Summarize day"
           title="Summarize today from your journal, meetings, tasks, calendar, mail, and Linear (local or configured AI)"
         >
           {summarizing ? (
@@ -118,22 +125,23 @@ export default function DailyReviewPage() {
           ) : (
             <MagicWand size={14} weight="fill" />
           )}
-          Summarize day
+          <span className="max-[1100px]:sr-only">Summarize day</span>
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => void openStatusReport()}
           className="shrink-0 text-xs"
+          aria-label="Create weekly status"
           title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
         >
           <Sparkle size={14} weight="fill" />
-          Weekly status
+          <span className="max-[1100px]:sr-only">Weekly status</span>
         </Button>
       </header>
 
       <div className="flex-1 overflow-y-auto bg-background">
-        <div className="mx-auto max-w-3xl px-8 py-7">
+        <div className="mx-auto w-full max-w-3xl px-8 py-7 max-[900px]:px-4 max-[900px]:py-5">
           {!loadedOnce && loading && <PageSkeleton />}
           {error && <ErrorBox message={error} />}
           {(summary || summaryError) && (
@@ -180,7 +188,11 @@ function Sections({ snapshot }: { snapshot: DailyReviewSnapshot }) {
 
   return (
     <div className="space-y-7">
-      <JournalSection journal={snapshot.todayJournal} onOpen={goToNote} />
+      <JournalSection
+        journal={snapshot.todayJournal}
+        onOpen={goToNote}
+        onStartWriting={() => navigate('/journals')}
+      />
       {calendarEvents.length > 0 && <CalendarSection events={calendarEvents} />}
       {snapshot.todayMeetings.length > 0 && (
         <MeetingsSection meetings={snapshot.todayMeetings} />
@@ -203,9 +215,11 @@ function Sections({ snapshot }: { snapshot: DailyReviewSnapshot }) {
 function JournalSection({
   journal,
   onOpen,
+  onStartWriting,
 }: {
   journal: DailyReviewSnapshot['todayJournal'];
   onOpen: (id: string) => void;
+  onStartWriting: () => void;
 }) {
   const has = Boolean(journal.noteId);
   return (
@@ -230,9 +244,26 @@ function JournalSection({
           )}
         </button>
       ) : (
-        <p className="mt-2 rounded-xl border border-dashed border-border/60 bg-muted/20 px-5 py-4 text-sm italic text-muted-foreground/80">
-          No journal entry for today yet. The next quick-capture you make will create it.
-        </p>
+        <button
+          type="button"
+          onClick={onStartWriting}
+          className={cn(
+            'group mt-2 flex w-full items-center justify-between gap-4 rounded-xl bg-muted/25 px-5 py-4 text-left',
+            'shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]',
+            'transition-[background-color,box-shadow,transform] duration-150 hover:bg-muted/40 hover:shadow-[inset_0_0_0_1px_hsl(var(--border)/0.55)] active:scale-[0.99]',
+          )}
+        >
+          <span>
+            <span className="block text-sm font-medium text-foreground/90">Write today’s entry</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+              Capture what mattered while the day is still fresh.
+            </span>
+          </span>
+          <CaretRight
+            size={15}
+            className="shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
+          />
+        </button>
       )}
     </section>
   );
@@ -543,7 +574,7 @@ function SectionLabel({
   children: React.ReactNode;
 }) {
   return (
-    <h2 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <h2 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
       {icon}
       <span>{children}</span>
     </h2>

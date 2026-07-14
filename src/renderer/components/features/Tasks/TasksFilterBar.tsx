@@ -55,8 +55,8 @@ export function TasksFilterBar({
     activeStates.every((s) => visibleStates.has(s.key));
 
   return (
-    <div className="px-4 py-2 border-b border-border bg-card/50 flex items-center gap-2 flex-wrap">
-      <div className="relative flex-1 min-w-[180px] max-w-xs">
+    <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 px-6 pb-4 pt-5">
+      <div className="relative min-w-[220px] flex-1">
         <MagnifyingGlass
           size={16}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -66,7 +66,7 @@ export function TasksFilterBar({
           placeholder="Search tasks..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 h-8"
+          className="h-9 rounded-lg border-border/70 bg-card pl-9 shadow-sm"
         />
       </div>
 
@@ -119,7 +119,10 @@ export function TasksFilterBar({
           >
             All states
           </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem checked={allActiveSelected} onCheckedChange={selectActiveStates}>
+          <DropdownMenuCheckboxItem
+            checked={allActiveSelected}
+            onCheckedChange={selectActiveStates}
+          >
             Active only
           </DropdownMenuCheckboxItem>
         </DropdownMenuContent>

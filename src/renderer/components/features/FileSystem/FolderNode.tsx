@@ -21,6 +21,12 @@ import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
+import {
+  fileTreeIconClassName,
+  fileTreeLabelClassName,
+  fileTreeRowClassName,
+  getFileTreeRowStyle,
+} from './fileTreeStyles';
 
 interface FolderNodeProps {
   node: FileTreeNode;
@@ -166,8 +172,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
           <div
             ref={rowRef}
             className={cn(
-              'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
-              'hover:bg-muted/60',
+              fileTreeRowClassName,
               isCursor && 'bg-secondary',
             )}
             role="button"
@@ -179,30 +184,28 @@ export const FolderNode = React.memo<FolderNodeProps>(
                 handleClick(e);
               }
             }}
-            style={{ paddingLeft: `${level * 20 + 8}px` }}
+            style={getFileTreeRowStyle(level)}
           >
             {isExpanded ? (
               <FolderOpen
-                size={14}
+                size={16}
                 className={cn(
-                  'mr-2 flex-shrink-0 transition-colors duration-150',
-                  'text-muted-foreground',
+                  fileTreeIconClassName,
                   isHovered && 'text-foreground/70',
                 )}
               />
             ) : (
               <FolderSimple
-                size={14}
+                size={16}
                 className={cn(
-                  'mr-2 flex-shrink-0 transition-colors duration-150',
-                  'text-muted-foreground',
+                  fileTreeIconClassName,
                   isHovered && 'text-foreground/70',
                 )}
               />
             )}
             <span
               className={cn(
-                'flex-1 text-xs truncate transition-colors duration-150',
+                fileTreeLabelClassName,
                 isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
               )}
             >
@@ -211,7 +214,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
 
             <div
               className={cn(
-                'ml-auto opacity-0 transition-opacity duration-150',
+                'ml-auto opacity-0 transition-opacity duration-150 group-focus-within:opacity-100',
                 isHovered && 'opacity-100',
               )}
               onClick={(e) => e.stopPropagation()}
@@ -222,7 +225,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
                     size="compact"
                     icon={<DotsThreeVertical size={14} />}
                     label="Folder options"
-                    className="size-5 hover:bg-foreground/10"
+                    className="size-6 hover:bg-foreground/10"
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">

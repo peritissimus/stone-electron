@@ -16,7 +16,8 @@
     "url": "https://github.com/peritissimus/stone-electron/issues"
   },
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "pnpm run build:dev-runtime && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:dev-runtime": "pnpm run build:main && pnpm run build:worker && pnpm run build:preload",
     "build": "pnpm run build:main && pnpm run build:worker && pnpm run build:preload && pnpm run build:renderer",
     "build:worker": "vite build --config vite.worker.config.ts",
     "build:main": "vite build --config vite.main.config.ts",

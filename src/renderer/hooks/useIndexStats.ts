@@ -17,8 +17,17 @@ export function useIndexStats() {
   const rebuildAll = async (force = false) => {
     const before = stats?.indexedNotes ?? 0;
     await rebuildAllRaw(force);
-    const after = useIndexStatsStore.getState().stats?.indexedNotes ?? 0;
+    const refreshedStats = useIndexStatsStore.getState().stats;
+    const after = refreshedStats?.indexedNotes ?? 0;
+    const remainingFailures = refreshedStats?.failedNotes ?? 0;
     const delta = after - before;
+    if (remainingFailures > 0) {
+      toast.error(
+        `${remainingFailures} note${remainingFailures === 1 ? '' : 's'} still couldn’t be indexed`,
+        { description: 'Check that the local embedding worker is available, then try again.' },
+      );
+      return;
+    }
     if (delta > 0) {
       toast.success(`Index rebuilt — ${delta} note${delta === 1 ? '' : 's'} indexed`);
     } else if (force) {

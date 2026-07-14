@@ -395,7 +395,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
         </>
       )}
 
-      <div className="flex items-center justify-between px-4 py-1.5 border-t border-border text-xs text-muted-foreground shrink-0">
+      <div className="flex shrink-0 items-center justify-between border-t border-border/35 bg-muted/[0.03] px-4 py-1 text-[11px] text-muted-foreground/75">
         {editorMode === 'raw' ? (
           <RawEditorStats markdown={rawMarkdown} />
         ) : (
@@ -430,7 +430,7 @@ function CopyPathButton({ filePath, workspacePath }: { filePath: string; workspa
     <button
       type="button"
       onClick={handleCopy}
-      className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-accent/20 transition-colors"
+      className="flex min-h-7 items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-accent/15 hover:text-muted-foreground"
       title={copied ? 'Copied!' : `Copy path: ${fullPath}`}
     >
       {copied ? <Check size={12} className="text-success" /> : <Copy size={12} />}

@@ -105,7 +105,14 @@ export class IndexRepository implements IIndexRepository {
             chunks: sql<number>`coalesce(sum(${noteIndexRecords.chunkCount}), 0)`,
           })
           .from(noteIndexRecords)
-          .where(eq(noteIndexRecords.workspaceId, workspaceId))
+          .innerJoin(notes, eq(noteIndexRecords.noteId, notes.id))
+          .where(
+            and(
+              eq(noteIndexRecords.workspaceId, workspaceId),
+              eq(notes.workspaceId, workspaceId),
+              eq(notes.isDeleted, false),
+            ),
+          )
           .groupBy(noteIndexRecords.status);
 
         let indexed = 0;

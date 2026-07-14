@@ -84,8 +84,8 @@ export default function TasksPage() {
         setGroupBy={setGroupBy}
       />
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="max-w-2xl mx-auto">
+      <div className="flex-1 overflow-auto px-6 pb-8 pt-2">
+        <div className="max-w-3xl mx-auto">
           <TasksContent
             counts={counts}
             groupBy={groupBy}
@@ -125,11 +125,11 @@ function TasksContent({
 }: TasksContentProps) {
   if (counts.total === 0) {
     return (
-      <div className="text-center py-16">
-        <CheckSquare className="size-12 text-muted-foreground/30 mx-auto mb-4" />
-        <h2 className="text-lg font-medium text-muted-foreground mb-2">No tasks yet</h2>
-        <p className="text-sm text-muted-foreground/70">
-          Create tasks in your notes using TODO, DOING, or other task states
+      <div className="mt-3 rounded-xl bg-muted/20 px-6 py-10 text-center">
+        <CheckSquare className="mx-auto mb-3 size-7 text-muted-foreground/50" />
+        <h2 className="mb-1 text-sm font-medium text-foreground">No tasks yet</h2>
+        <p className="mx-auto max-w-sm text-sm text-muted-foreground">
+          Add TODO or DOING to a note and it will appear here.
         </p>
       </div>
     );
@@ -137,11 +137,11 @@ function TasksContent({
 
   if (counts.visible === 0) {
     return (
-      <div className="text-center py-16">
-        <Funnel size={48} className="text-muted-foreground/30 mx-auto mb-4" />
-        <h2 className="text-lg font-medium text-muted-foreground mb-2">No matching tasks</h2>
-        <p className="text-sm text-muted-foreground/70">
-          Try adjusting your filters or search query
+      <div className="mt-3 rounded-xl bg-muted/20 px-6 py-10 text-center">
+        <Funnel size={28} className="mx-auto mb-3 text-muted-foreground/50" />
+        <h2 className="mb-1 text-sm font-medium text-foreground">No matching tasks</h2>
+        <p className="text-sm text-muted-foreground">
+          Nothing matches the current search and filters.
         </p>
         <Button variant="ghost" size="sm" onClick={onSelectAllStates} className="mt-4">
           Show all states
