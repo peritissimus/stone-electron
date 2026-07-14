@@ -52,7 +52,7 @@
     "release": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
     "release:major": "./scripts/release.sh major",
-    "postinstall": "electron-rebuild",
+    "postinstall": "electron-builder install-app-deps",
     "prepare": "git config core.hooksPath .githooks 2>/dev/null || true",
     "react-devtools": "react-devtools",
     "build:whisper": "./scripts/build-whisper.sh"
@@ -90,7 +90,6 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.1",
     "@fontsource/patrick-hand": "^5.2.8",
     "@opentelemetry/exporter-trace-otlp-http": "^0.219.0",
     "@opentelemetry/instrumentation-http": "^0.219.0",
@@ -148,7 +147,7 @@
     "concurrently": "^8.2.2",
     "date-fns": "^2.30.0",
     "drizzle-kit": "^0.31.6",
-    "electron": "33.4.11",
+    "electron": "41.10.1",
     "electron-builder": "^24.6.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
