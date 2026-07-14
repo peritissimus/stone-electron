@@ -18,7 +18,7 @@ import { TagEntity } from '../../../../../src/main/domain/entities/Tag';
 import { TopicEntity } from '../../../../../src/main/domain/entities/Topic';
 import { VersionEntity } from '../../../../../src/main/domain/entities/Version';
 import { WorkspaceEntity } from '../../../../../src/main/domain/entities/Workspace';
-import { noteTopics, topics } from '../../../../../src/main/shared/database/schema';
+import { noteTopics, notes, topics } from '../../../../../src/main/shared/database/schema';
 import { createMainTestDatabase, seedNote, seedWorkspace, type TestDatabase } from '../../../../helpers/mainDb';
 
 describe('remaining persistence adapters', () => {
@@ -357,6 +357,13 @@ describe('remaining persistence adapters', () => {
       indexedNotes: 1,
       failedNotes: 1,
       chunkCount: 2,
+    });
+    await testDb.db.update(notes).set({ isDeleted: true }).where(eq(notes.id, 'note-b'));
+    expect(await index.getWorkspaceStats('ws-1')).toMatchObject({
+      totalNotes: 1,
+      indexedNotes: 1,
+      failedNotes: 0,
+      pendingNotes: 0,
     });
     expect((await index.searchFullText('alpha', { workspaceId: 'ws-1', limit: 5 }))[0].chunk.id).toBe(
       'chunk-1',
