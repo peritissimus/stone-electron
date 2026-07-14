@@ -1,7 +1,13 @@
 packages:
   - .
 
+autoInstallPeers: false
+
+ignoredBuiltDependencies:
+  - electron-winstaller
+
 onlyBuiltDependencies:
   - cypress
   - electron
+  - esbuild
   - sharp

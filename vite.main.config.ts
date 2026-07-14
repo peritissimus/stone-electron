@@ -15,7 +15,7 @@ export default defineConfig({
     conditions: ['node'],
   },
   build: {
-    target: 'node18',
+    target: 'node22',
     outDir: 'dist/main',
     emptyOutDir: true,
     lib: {

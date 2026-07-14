@@ -23,11 +23,15 @@ const workerMock = vi.hoisted(() => {
 
   return {
     instances: [] as MockWorker[],
-    Worker: vi.fn((_path: string, _options: unknown) => {
-      const worker = new MockWorker();
-      workerMock.instances.push(worker);
-      return worker;
-    }),
+    Worker: vi.fn(
+      class WorkerConstructorMock {
+        constructor(_path: string, _options: unknown) {
+          const worker = new MockWorker();
+          workerMock.instances.push(worker);
+          return worker;
+        }
+      },
+    ),
   };
 });
 

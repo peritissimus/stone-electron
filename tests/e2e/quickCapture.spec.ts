@@ -10,8 +10,10 @@ import { test, expect } from './fixtures/electron';
 test('appendToJournal refreshes the open journal in place', async ({ app }) => {
   const window = await app.firstWindow();
 
-  // Today's journal auto-opens on startup, so the ProseMirror editor is
-  // already bound to today's note when it appears.
+  // Startup lands on Today. Open the journal card so the editor is bound to
+  // today's note before exercising the in-place refresh chain.
+  const journalSection = window.getByRole('heading', { name: "Today's journal" }).locator('..');
+  await journalSection.getByRole('button').click();
   await expect(window.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 });
 
   // Unique token per-run so assertions can't accidentally pass against
