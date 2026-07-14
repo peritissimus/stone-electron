@@ -112,7 +112,32 @@ export const App: React.FC = () => {
         {/* All routes render within MainLayout */}
         <Route path="/*" element={<MainLayout />} />
       </Routes>
-      <Toaster position="top-center" richColors closeButton />
+      <Toaster
+        position="bottom-right"
+        closeButton
+        gap={8}
+        offset={{ bottom: 16, right: 16 }}
+        toastOptions={{
+          unstyled: true,
+          classNames: {
+            toast:
+              'group relative flex w-[340px] items-start gap-3 rounded-xl border border-border/70 bg-popover px-3.5 py-3 pr-10 text-popover-foreground shadow-[0_8px_28px_hsl(0_0%_0%/0.22),0_1px_2px_hsl(0_0%_0%/0.16)]',
+            content: 'min-w-0 flex-1',
+            title: 'text-sm font-medium leading-5 text-foreground',
+            description: 'mt-0.5 text-xs leading-4 text-muted-foreground',
+            icon: 'mt-0.5 shrink-0 text-muted-foreground',
+            success: 'border-border/70',
+            error: 'border-destructive/35 [&_[data-icon]]:text-destructive',
+            warning: 'border-border',
+            closeButton:
+              'absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,transform] hover:bg-muted hover:text-foreground active:scale-[0.96]',
+            actionButton:
+              'rounded-md border border-border bg-transparent px-2.5 py-1.5 text-xs font-medium text-foreground transition-[background-color,transform] hover:bg-muted active:scale-[0.96]',
+            cancelButton:
+              'rounded-md px-2.5 py-1.5 text-xs text-muted-foreground transition-[background-color,color,transform] hover:bg-muted hover:text-foreground active:scale-[0.96]',
+          },
+        }}
+      />
     </HashRouter>
   );
 };
