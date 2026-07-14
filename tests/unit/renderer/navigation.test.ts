@@ -2,12 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { PRIMARY_DESTINATIONS } from '@renderer/navigation';
 
 describe('navigation/destinations', () => {
-  it('lists Today, Home, Journals, Tasks, Graph, Topics, Meetings as primary destinations', () => {
+  it('lists the visible primary destinations', () => {
     expect(PRIMARY_DESTINATIONS.map((d) => d.id)).toEqual([
       'today',
       'journals',
       'tasks',
-      'graph',
       'topics',
       'meetings',
     ]);
