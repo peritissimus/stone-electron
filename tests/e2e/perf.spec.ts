@@ -147,7 +147,6 @@ test('perf: large-document open + save', async ({ app }) => {
   });
 
   const editor = window.locator('.ProseMirror');
-  await expect(editor).toBeVisible({ timeout: 15_000 });
 
   const results: Row[] = [];
   const cleanups: Array<() => void> = [];
@@ -180,6 +179,7 @@ test('perf: large-document open + save', async ({ app }) => {
         await expect(window.getByText(resolved.basename, { exact: true }).first()).toBeVisible({
           timeout: PHASE_TIMEOUT_MS,
         });
+        await expect(editor).toBeVisible({ timeout: PHASE_TIMEOUT_MS });
         const t1 = Date.now();
 
         // Phase 2: editor contains visible content from the file (parse +
