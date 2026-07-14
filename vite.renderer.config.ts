@@ -37,13 +37,17 @@ function rendererManualChunks(id: string): string | undefined {
 export default defineConfig({
   plugins: [
     react(),
-    visualizer({
-      filename: 'bundle-stats.html',
-      open: false,
-      gzipSize: true,
-      brotliSize: true,
-      template: 'treemap', // treemap, sunburst, or network
-    }),
+    ...(process.env.ANALYZE === '1'
+      ? [
+          visualizer({
+            filename: 'bundle-stats.html',
+            open: false,
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap',
+          }),
+        ]
+      : []),
   ],
   base: './', // Use relative paths for Electron
   resolve: {
