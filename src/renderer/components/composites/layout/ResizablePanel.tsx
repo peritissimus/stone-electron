@@ -85,8 +85,10 @@ export function ResizablePanel({
         aria-valuemax={maxWidth}
         tabIndex={0}
         className={cn(
-          'w-1 cursor-col-resize bg-transparent hover:bg-primary transition-colors',
-          'outline-none focus-visible:bg-primary',
+          'relative z-[1] -mx-0.5 w-1 cursor-col-resize bg-transparent outline-none',
+          'after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2',
+          'after:bg-transparent after:transition-colors hover:after:bg-muted-foreground/40',
+          'focus-visible:after:bg-muted-foreground/60',
           resizerClassName,
         )}
         onMouseDown={handleMouseDown}

@@ -167,7 +167,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
             ref={rowRef}
             className={cn(
               'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
-              'hover:bg-secondary/50',
+              'hover:bg-muted/60',
               isCursor && 'bg-secondary',
             )}
             role="button"

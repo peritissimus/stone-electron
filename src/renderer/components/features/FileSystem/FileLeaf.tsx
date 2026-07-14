@@ -98,7 +98,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
         ref={rowRef}
         className={cn(
           'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
-          isActive ? 'bg-secondary text-foreground' : 'hover:bg-secondary/50',
+          isActive ? 'bg-secondary text-foreground' : 'hover:bg-muted/60',
           isCursor && 'bg-secondary',
         )}
         role="button"
