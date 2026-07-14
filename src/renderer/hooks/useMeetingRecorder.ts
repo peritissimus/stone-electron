@@ -33,6 +33,8 @@ const analyserFrameRef: { current: number | null } = { current: null };
 const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
 const systemAnalyserFrameRef: { current: number | null } = { current: null };
 const liveTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
+const liveSessionIdRef: { current: string | null } = { current: null };
+const liveChunkPromiseRef: { current: Promise<void> | null } = { current: null };
 
 /** Cadence for the live (raw) draft — long enough that each chunk is a few
  *  utterances of context, short enough to feel live. */
@@ -43,33 +45,33 @@ const MIN_LIVE_CHUNK_S = 0.6;
  *  one /inference at a time; without this, a slow or wedged server lets
  *  interval ticks pile up into dozens of concurrent requests. Skipping a tick
  *  while one is in flight just lets the next drain batch more audio. */
-let liveChunkInFlight = false;
-
 /** Drain new audio from each track (hook owns the hardware), encode it, and
  *  hand it to the store to transcribe + append. Best-effort. */
 async function streamLiveChunk(): Promise<void> {
-  if (liveChunkInFlight) return;
-  liveChunkInFlight = true;
-  try {
-    await drainAndTranscribe();
-  } finally {
-    liveChunkInFlight = false;
-  }
+  if (liveChunkPromiseRef.current) return liveChunkPromiseRef.current;
+  const sessionId = liveSessionIdRef.current;
+  if (!sessionId) return;
+  const work = drainAndTranscribe(sessionId).finally(() => {
+    if (liveChunkPromiseRef.current === work) liveChunkPromiseRef.current = null;
+  });
+  liveChunkPromiseRef.current = work;
+  return work;
 }
 
-async function drainAndTranscribe(): Promise<void> {
+async function drainAndTranscribe(sessionId: string): Promise<void> {
   const store = useMeetingRecorderStore.getState();
   const recorders: Array<['mic' | 'system', PcmRecording | null]> = [
     ['mic', micPcmRecorderRef.current],
     ['system', systemPcmRecorderRef.current],
   ];
   for (const [source, recorder] of recorders) {
+    if (liveSessionIdRef.current !== sessionId) return;
     if (!recorder) continue;
     const { samples, sampleRate } = recorder.drain();
     if (samples.length < sampleRate * MIN_LIVE_CHUNK_S) continue;
     try {
       const wav = await pcmToWavArrayBuffer(samples, sampleRate, WHISPER_SAMPLE_RATE);
-      await store.pushLiveChunk(source, wav);
+      await store.pushLiveChunk(sessionId, source, wav);
     } catch {
       // Live draft is best-effort; the clean transcript comes from finalize.
     }
@@ -78,16 +80,24 @@ async function drainAndTranscribe(): Promise<void> {
 
 function startLiveStreaming(): void {
   if (liveTimerRef.current) return;
-  useMeetingRecorderStore.getState().startLive(); // warm model + reset draft
+  const sessionId = crypto.randomUUID();
+  liveSessionIdRef.current = sessionId;
+  useMeetingRecorderStore.getState().startLive(sessionId); // warm model + reset draft
   liveTimerRef.current = setInterval(() => void streamLiveChunk(), LIVE_INTERVAL_MS);
 }
 
-function stopLiveStreaming(): void {
+async function stopLiveStreaming(): Promise<void> {
   if (liveTimerRef.current) {
     clearInterval(liveTimerRef.current);
     liveTimerRef.current = null;
   }
-  useMeetingRecorderStore.getState().stopLive();
+  const sessionId = liveSessionIdRef.current;
+  liveSessionIdRef.current = null;
+  if (!sessionId) return;
+
+  const stop = useMeetingRecorderStore.getState().stopLive(sessionId);
+  const inFlight = liveChunkPromiseRef.current;
+  await Promise.allSettled(inFlight ? [stop, inFlight] : [stop]);
 }
 
 /** Run a smoothed peak-level meter on a stream, writing each frame via setLevel. */
@@ -159,8 +169,8 @@ export function useMeetingRecorder() {
   // stop()/cancel() — releasing it when a transient surface (the inline panel)
   // unmounts would kill an in-flight recording the user navigated away from.
 
-  function releaseHardware() {
-    stopLiveStreaming();
+  async function releaseHardware() {
+    const liveStop = stopLiveStreaming();
     micPcmRecorderRef.current?.stop();
     micPcmRecorderRef.current = null;
     systemPcmRecorderRef.current?.stop();
@@ -174,6 +184,7 @@ export function useMeetingRecorder() {
       systemStreamRef.current = null;
     }
     stopLevelMeter();
+    await liveStop;
   }
 
   // Drive the green (mic) and teal (system) waveforms from the renderer
@@ -258,7 +269,7 @@ export function useMeetingRecorder() {
       startLiveStreaming();
     } catch (err) {
       logger.error('[useMeetingRecorder] start failed', err);
-      releaseHardware();
+      await releaseHardware();
       store.markError(describeMicError(err));
     }
   }, []);
@@ -269,7 +280,7 @@ export function useMeetingRecorder() {
     const durationMs = store.elapsedMs;
 
     // Stop the live draft loop + free the resident model.
-    stopLiveStreaming();
+    const liveStop = stopLiveStreaming();
 
     // Stop PCM capture first so the tail of audio is flushed before the
     // streams are torn down.
@@ -288,6 +299,7 @@ export function useMeetingRecorder() {
       systemStreamRef.current = null;
     }
     stopLevelMeter();
+    await liveStop;
 
     try {
       if (!micCaptured) throw new Error('Recording did not start correctly. Try again.');
@@ -315,7 +327,7 @@ export function useMeetingRecorder() {
   }, []);
 
   const cancel = useCallback(async () => {
-    releaseHardware();
+    await releaseHardware();
     await useMeetingRecorderStore.getState().cancelActive();
   }, []);
 

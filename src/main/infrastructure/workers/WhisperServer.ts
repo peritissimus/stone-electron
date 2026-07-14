@@ -41,6 +41,7 @@ const LIVE_THREADS = 2;
  *  re-decide a language that doesn't change mid-meeting — pinning it is ~2× less
  *  compute at identical quality. */
 const LANGUAGE_PIN_THRESHOLD = 0.6;
+const MAX_SESSION_FAILURES = 2;
 
 export interface WhisperServerDeps {
   /** Live-draft model; defaults to LIVE_WHISPER_MODEL (small/fast). */
@@ -62,6 +63,9 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
   /** Detected language, pinned after the first confident chunk to avoid a
    *  per-chunk re-detection pass. Reset per recording in stop(). */
   private pinnedLanguage: string | null = null;
+  private sessionActive = false;
+  private sessionFailures = 0;
+  private readonly inFlight = new Set<AbortController>();
   /** Owns spawn/health-check/restart/backoff/circuit-breaker for the binary. */
   private readonly supervisor: SupervisedProcess;
 
@@ -89,17 +93,24 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
   }
 
   async start(): Promise<void> {
+    this.sessionActive = true;
+    this.sessionFailures = 0;
     await this.supervisor.ensureReady();
   }
 
   async stop(): Promise<void> {
-    this.supervisor.stop();
+    this.sessionActive = false;
+    for (const controller of this.inFlight) controller.abort();
+    await this.supervisor.stop();
     this.port = 0;
     this.pinnedLanguage = null;
+    this.sessionFailures = 0;
   }
 
   async transcribeChunk(wav: Uint8Array): Promise<LiveChunkResult> {
+    if (!this.sessionActive) throw new Error('live transcription session is not active');
     await this.supervisor.ensureReady();
+    if (!this.sessionActive) throw new Error('live transcription session stopped');
 
     const form = new FormData();
     form.append('file', new Blob([wav as BlobPart], { type: 'audio/wav' }), 'chunk.wav');
@@ -109,22 +120,36 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
     form.append('language', this.pinnedLanguage ?? 'auto');
     form.append('temperature', '0');
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(new Error('live chunk timed out')), CHUNK_TIMEOUT_MS);
+    this.inFlight.add(controller);
     let res: Response;
     try {
       res = await fetch(`http://${this.host}:${this.port}/inference`, {
         method: 'POST',
         body: form,
-        signal: AbortSignal.timeout(CHUNK_TIMEOUT_MS),
+        signal: controller.signal,
       });
     } catch (err) {
+      if (!this.sessionActive) throw err;
       // The server hung or died: tell the supervisor so the next chunk respawns
       // a fresh process instead of piling onto a wedged one (each stuck fetch
       // would otherwise block for undici's 5-minute default). The circuit
       // breaker stops us relaunching a persistently-broken binary in a loop.
       // Live draft is best-effort — the clean transcript still comes from batch
       // finalize.
-      this.supervisor.markUnhealthy('chunk inference fetch failed');
+      this.sessionFailures += 1;
+      await this.supervisor.markUnhealthy('chunk inference fetch failed');
+      if (this.sessionFailures >= MAX_SESSION_FAILURES) {
+        this.sessionActive = false;
+        logger.error(
+          `[WhisperServer] disabling live transcription after ${this.sessionFailures} session failures`,
+        );
+      }
       throw err;
+    } finally {
+      clearTimeout(timeout);
+      this.inFlight.delete(controller);
     }
     if (!res.ok) throw new Error(`whisper-server inference failed (${res.status})`);
     const json = (await res.json()) as ServerResponse;

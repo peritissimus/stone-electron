@@ -101,11 +101,15 @@ interface MeetingRecorderState {
   appendLiveLine: (source: 'mic' | 'system', text: string) => void;
   clearLive: () => void;
   /** Warm the resident live model and reset the draft (recording start). */
-  startLive: () => void;
+  startLive: (sessionId: string) => void;
   /** Tear down the resident live model (recording stop). */
-  stopLive: () => void;
+  stopLive: (sessionId: string) => Promise<void>;
   /** Transcribe one live WAV chunk and append the result to the draft. */
-  pushLiveChunk: (source: 'mic' | 'system', wav: ArrayBuffer) => Promise<void>;
+  pushLiveChunk: (
+    sessionId: string,
+    source: 'mic' | 'system',
+    wav: ArrayBuffer,
+  ) => Promise<void>;
   reset: () => void;
 }
 
@@ -270,16 +274,16 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   appendLiveLine: (source, text) =>
     set((s) => ({ liveLines: [...s.liveLines, { id: s.liveLines.length, source, text }] })),
   clearLive: () => set({ liveLines: [] }),
-  startLive: () => {
+  startLive: (sessionId) => {
     get().clearLive();
-    void meetingAPI.liveStart();
+    void meetingAPI.liveStart(sessionId);
   },
-  stopLive: () => {
-    void meetingAPI.liveStop();
+  stopLive: async (sessionId) => {
+    await meetingAPI.liveStop(sessionId);
   },
-  pushLiveChunk: async (source, wav) => {
+  pushLiveChunk: async (sessionId, source, wav) => {
     try {
-      const res = await meetingAPI.transcribeLiveChunk(wav);
+      const res = await meetingAPI.transcribeLiveChunk(sessionId, wav);
       const text = res.success && res.data ? res.data.text.trim() : '';
       if (text) get().appendLiveLine(source, text);
     } catch {

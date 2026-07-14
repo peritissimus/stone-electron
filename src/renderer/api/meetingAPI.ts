@@ -112,16 +112,17 @@ export const meetingAPI = {
 
   /** Live draft: start/stop the resident model, transcribe raw WAV chunks
    *  during recording. Not zod-validated — small trusted payloads. */
-  liveStart: async (): Promise<IpcResponse<void>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_START, {});
+  liveStart: async (sessionId: string): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_START, { sessionId });
   },
   transcribeLiveChunk: async (
+    sessionId: string,
     wav: ArrayBuffer,
   ): Promise<IpcResponse<{ text: string; segments: MeetingTranscriptSegment[] }>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_CHUNK, { wav });
+    return invokeIpc(MEETING_CHANNELS.LIVE_CHUNK, { sessionId, wav });
   },
-  liveStop: async (): Promise<IpcResponse<void>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_STOP, {});
+  liveStop: async (sessionId: string): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_STOP, { sessionId });
   },
 
   /** Raw WAV bytes for playback (mic + optional system track). Not zod-validated
