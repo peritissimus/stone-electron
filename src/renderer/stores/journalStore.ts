@@ -3,7 +3,7 @@ import { journalAPI } from '@renderer/api';
 import { logger } from '@renderer/lib/logger';
 import type { JournalEntry } from '@shared/schemas';
 
-export const JOURNAL_FEED_WINDOW_DAYS = 7;
+export const JOURNAL_FEED_WINDOW_DAYS = 14;
 
 // Payload shape emitted by the journal-aware backend use cases. The
 // backend is the source of truth for whether a note is a journal entry

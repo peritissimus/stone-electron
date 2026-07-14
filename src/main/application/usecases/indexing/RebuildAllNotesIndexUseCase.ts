@@ -4,7 +4,12 @@ import type {
   RebuildAllNotesIndexRequest,
   RebuildAllNotesIndexResponse,
 } from '../../../domain/ports/in/IIndexUseCases';
-import type { INoteRepository, IWorkspaceRepository } from '../../../domain';
+import { type INoteRepository, type IWorkspaceRepository, mapWithConcurrency } from '../../../domain';
+
+/** Notes are processed in parallel; the embedder is a single worker thread, so keep this modest. */
+const REBUILD_CONCURRENCY = 4;
+
+type IndexOutcome = 'indexed' | 'skipped' | 'failed' | 'missing';
 
 export class RebuildAllNotesIndexUseCase implements IRebuildAllNotesIndexUseCase {
   constructor(
@@ -33,12 +38,28 @@ export class RebuildAllNotesIndexUseCase implements IRebuildAllNotesIndexUseCase
     let failed = 0;
     let missing = 0;
 
-    for (const note of allNotes) {
-      const result = await this.indexNote.execute({
-        noteId: note.id,
-        force: request.force ?? false,
-      });
-      switch (result.status) {
+    // Process notes in parallel (modest concurrency — the embedder is a single
+    // worker thread). Each worker isolates its own errors so one bad note never
+    // aborts the whole rebuild; a thrown/failed indexNote counts as `failed`,
+    // matching the previous switch behavior.
+    const outcomes = await mapWithConcurrency(
+      allNotes,
+      async (note): Promise<IndexOutcome> => {
+        try {
+          const result = await this.indexNote.execute({
+            noteId: note.id,
+            force: request.force ?? false,
+          });
+          return result.status;
+        } catch {
+          return 'failed';
+        }
+      },
+      { concurrency: REBUILD_CONCURRENCY },
+    );
+
+    for (const status of outcomes) {
+      switch (status) {
         case 'indexed':
           indexed += 1;
           break;

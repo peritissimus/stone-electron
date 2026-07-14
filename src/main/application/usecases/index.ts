@@ -212,6 +212,8 @@ export {
   ReserveRecordingSlotUseCase,
   AppendRecordingAudioUseCase,
   FinalizeRecordingUseCase,
+  RequestFinalizeRecordingUseCase,
+  MEETING_FINALIZE_JOB,
   ListMeetingRecordingsUseCase,
   GetMeetingRecordingUseCase,
   DeleteMeetingRecordingUseCase,

@@ -122,7 +122,7 @@ export function GitSyncButton() {
         disabled={syncing || !status.hasRemote}
         className={cn(
           'flex items-center justify-between w-full px-2 py-1.5 rounded text-xs',
-          'hover:bg-accent/50 transition-colors',
+          'hover:bg-muted/60 transition-colors',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           needsSync && status.hasRemote && 'bg-accent/30',
         )}

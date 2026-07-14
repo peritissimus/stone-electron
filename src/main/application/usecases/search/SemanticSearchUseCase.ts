@@ -14,7 +14,11 @@ export class SemanticSearchUseCase implements ISemanticSearchUseCase {
 
   async execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse> {
     const queryEmbedding = await this.embedder.generateEmbedding(request.query);
-    if (!queryEmbedding) return { results: [] };
+    if (!queryEmbedding) {
+      // Embedder failed or is uninitialized → no semantic results. (Observability
+      // for this belongs in the embedder adapter, not this pure use case.)
+      return { results: [] };
+    }
 
     const similar = await this.indexRepository.findSimilarNotesByVector(
       Array.from(queryEmbedding),

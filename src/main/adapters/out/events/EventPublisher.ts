@@ -35,6 +35,7 @@ const DOMAIN_TO_IPC_EVENT: Partial<Record<AppDomainEvent['type'], string>> = {
   'db:vacuum:progress': EVENTS.DB_VACUUM_PROGRESS,
   'db:vacuum:complete': EVENTS.DB_VACUUM_COMPLETE,
   'settings:changed': EVENTS.SETTINGS_CHANGED,
+  'meeting:statusChanged': EVENTS.MEETING_STATUS_CHANGED,
 };
 
 export class EventPublisher implements IEventPublisher {

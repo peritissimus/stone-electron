@@ -17,7 +17,11 @@ import {
   type RetranscribeMeetingRequest,
   type RetranscribeMeetingResponse,
 } from '../../../domain/ports/in/IMeetingUseCases';
-import { reprocessRecordingAudio, type MeetingReprocessDeps } from './meetingReprocess';
+import {
+  reprocessRecordingAudio,
+  publishMeetingStatus,
+  type MeetingReprocessDeps,
+} from './meetingReprocess';
 
 export interface RetranscribeMeetingUseCaseDeps extends MeetingReprocessDeps {
   workspaceRepository: IWorkspaceRepository;
@@ -55,6 +59,7 @@ export class RetranscribeMeetingUseCase implements IRetranscribeMeetingUseCase {
       const message = error instanceof Error ? error.message : String(error);
       recording.markFailed(message);
       await this.deps.meetingRepository.save(recording);
+      publishMeetingStatus(this.deps.eventPublisher, recording);
     }
 
     return { recording: recording.toPersistence() };

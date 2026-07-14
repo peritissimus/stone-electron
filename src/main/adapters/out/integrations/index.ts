@@ -28,7 +28,6 @@ export {
   type WhisperCppTranscriberDeps,
 } from './WhisperCppTranscriber';
 export { OnnxEchoCanceller, type OnnxEchoCancellerDeps } from './OnnxEchoCanceller';
-export { WhisperServer, type WhisperServerDeps } from './WhisperServer';
 export {
   SingleShotSummarizer,
   type SingleShotSummarizerDeps,
@@ -37,3 +36,5 @@ export {
 export { LinearSource, type LinearSourceDeps } from './LinearSource';
 export { AppleCalendarSource } from './AppleCalendarSource';
 export { AppleMailSource } from './AppleMailSource';
+export { LoggerJobTracer } from './LoggerJobTracer';
+export { OtelJobTracer } from './OtelJobTracer';

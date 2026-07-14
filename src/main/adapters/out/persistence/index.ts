@@ -28,3 +28,4 @@ export {
   FileSystemTemplateRepository,
   type FileSystemTemplateRepositoryDeps,
 } from './FileSystemTemplateRepository';
+export { JobRepository, type JobRepositoryDeps } from './JobRepository';

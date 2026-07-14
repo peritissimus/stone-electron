@@ -19,17 +19,13 @@ import type {
   TranscriptSegment,
 } from '../../../domain';
 import { collapseRepeatedSegments } from '../../../domain';
-import { logger } from '../../../shared/utils';
 import {
   WHISPER_MODEL,
-  WHISPER_MODEL_URL,
-  VAD_MODEL_FILE,
-  VAD_MODEL_URL,
   vadModelPath,
   whisperBinaryPath,
-  whisperModelDir,
   whisperModelPath,
-} from './whisperPaths';
+} from '../../../shared/whisper/whisperPaths';
+import { ensureVadModel, ensureWhisperModel } from '../../../shared/whisper/whisperModelDownload';
 
 export interface WhisperCppTranscriberDeps {
   /** Broadcast model-download progress to the renderer (wired in DI). */
@@ -128,63 +124,8 @@ export class WhisperCppTranscriber implements ITranscriber {
 
   /** Ensure both the transcription model and the VAD model are present. */
   private async ensureModels(): Promise<void> {
-    await fs.mkdir(whisperModelDir(this.deps.modelDir), { recursive: true });
-    // VAD model is tiny — download silently and best-effort: if it fails,
-    // transcription still runs (without silence-skipping) rather than breaking.
-    await this.download(
-      VAD_MODEL_URL,
-      vadModelPath(this.deps.modelDir),
-      VAD_MODEL_FILE,
-      false,
-    ).catch((err) =>
-      logger.warn(`[WhisperCpp] VAD model unavailable, continuing without it: ${err}`),
-    );
-    await this.download(
-      WHISPER_MODEL_URL(this.model),
-      whisperModelPath(this.model, this.deps.modelDir),
-      `ggml-${this.model}.bin`,
-      true,
-    );
-  }
-
-  /** Download `url` to `dest` if missing, optionally broadcasting progress. */
-  private async download(
-    url: string,
-    dest: string,
-    file: string,
-    withProgress: boolean,
-  ): Promise<void> {
-    try {
-      const stat = await fs.stat(dest);
-      if (stat.size > 0) return; // already downloaded
-    } catch {
-      // missing — download below
-    }
-
-    const tmp = `${dest}.download`;
-    logger.info(`[WhisperCpp] downloading ${file}`);
-
-    const res = await fetch(url);
-    if (!res.ok || !res.body) {
-      throw new Error(`Failed to download ${file} (${res.status})`);
-    }
-    const total = Number(res.headers.get('content-length')) || 0;
-    const reader = res.body.getReader();
-    const handle = await fs.open(tmp, 'w');
-    try {
-      let loaded = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        await handle.write(value);
-        loaded += value.length;
-        if (withProgress) this.deps.onDownloadProgress?.({ file, loaded, total });
-      }
-    } finally {
-      await handle.close();
-    }
-    await fs.rename(tmp, dest);
-    logger.info(`[WhisperCpp] ready: ${dest}`);
+    await ensureVadModel(this.deps.modelDir);
+    await ensureWhisperModel(this.model, this.deps.modelDir, this.deps.onDownloadProgress);
   }
 }
 

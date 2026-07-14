@@ -198,16 +198,19 @@ export interface IWarmUpTranscriberUseCase {
 
 export interface ILiveTranscriptionUseCases {
   /** Spawn/warm the resident model so chunks transcribe without a reload. */
-  start(): Promise<void>;
+  start(request: { sessionId: string }): Promise<void>;
   /** Transcribe one 16 kHz mono WAV chunk for the live draft. */
-  transcribeChunk(request: { wav: ArrayBuffer }): Promise<LiveChunkResult>;
+  transcribeChunk(request: { sessionId: string; wav: ArrayBuffer }): Promise<LiveChunkResult>;
   /** Tear down the resident model (frees memory after recording). */
-  stop(): Promise<void>;
+  stop(request: { sessionId: string }): Promise<void>;
 }
 
 export interface IMeetingUseCases {
   reserveRecordingSlot: IReserveRecordingSlotUseCase;
   appendRecordingAudio: IAppendRecordingAudioUseCase;
+  /** Producer: enqueues the finalize job and returns immediately (IPC-facing). */
+  requestFinalize: IFinalizeRecordingUseCase;
+  /** The actual pipeline; invoked by the background job handler, not over IPC. */
   finalizeRecording: IFinalizeRecordingUseCase;
   listMeetingRecordings: IListMeetingRecordingsUseCase;
   getMeetingRecording: IGetMeetingRecordingUseCase;

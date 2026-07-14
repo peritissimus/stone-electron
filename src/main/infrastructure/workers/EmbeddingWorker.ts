@@ -16,6 +16,7 @@ import path from 'node:path';
 import { app } from 'electron';
 import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
+import type { ManagedWorker, WorkerStatus } from './WorkerManager';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
@@ -23,7 +24,16 @@ const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
+  timer?: ReturnType<typeof setTimeout>;
 }
+
+// Per-request timeouts for the FAST inference paths. If the worker stops
+// responding to one of these, the caller must not hang forever (an orphaned
+// pending request). Deliberately NOT applied to init/transcriber/transcribe —
+// those can legitimately take minutes (model download / long audio).
+const PING_TIMEOUT_MS = 10_000;
+const EMBED_TIMEOUT_MS = 60_000;
+const RERANK_TIMEOUT_MS = 60_000;
 
 interface WorkerResponse {
   id?: string;
@@ -33,7 +43,8 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class EmbeddingWorker {
+export class EmbeddingWorker implements ManagedWorker {
+  readonly name = 'embeddings';
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -134,6 +145,7 @@ export class EmbeddingWorker {
 
         const pending = this.pendingRequests.get(id);
         if (pending) {
+          if (pending.timer) clearTimeout(pending.timer);
           this.pendingRequests.delete(id);
           if (success) {
             pending.resolve(data);
@@ -147,6 +159,7 @@ export class EmbeddingWorker {
         logger.error('[Embedder] Worker error:', err);
         // Reject all pending requests
         for (const [id, pending] of this.pendingRequests) {
+          if (pending.timer) clearTimeout(pending.timer);
           pending.reject(err);
           this.pendingRequests.delete(id);
         }
@@ -185,7 +198,11 @@ export class EmbeddingWorker {
   /**
    * Send a message to the worker and wait for response
    */
-  private sendMessage<T>(type: string, payload: Record<string, unknown>): Promise<T> {
+  private sendMessage<T>(
+    type: string,
+    payload: Record<string, unknown>,
+    timeoutMs?: number,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       if (!this.worker || !this.workerReady) {
         reject(new Error('Worker not ready'));
@@ -193,10 +210,21 @@ export class EmbeddingWorker {
       }
 
       const id = String(++this.requestId);
-      this.pendingRequests.set(id, {
+      const pending: PendingRequest = {
         resolve: resolve as (value: unknown) => void,
         reject,
-      });
+      };
+      // Guard the fast paths against a wedged worker: if no response arrives in
+      // time, reject and drop the orphaned request instead of hanging forever.
+      if (timeoutMs && timeoutMs > 0) {
+        pending.timer = setTimeout(() => {
+          if (this.pendingRequests.get(id) === pending) {
+            this.pendingRequests.delete(id);
+            reject(new Error(`Worker request '${type}' timed out after ${timeoutMs}ms`));
+          }
+        }, timeoutMs);
+      }
+      this.pendingRequests.set(id, pending);
 
       this.worker.postMessage({ type, id, ...payload });
     });
@@ -235,7 +263,7 @@ export class EmbeddingWorker {
       await this.initialize();
     }
 
-    return this.sendMessage<{ model: string; dims: number }>('ping', {});
+    return this.sendMessage<{ model: string; dims: number }>('ping', {}, PING_TIMEOUT_MS);
   }
 
   /**
@@ -246,7 +274,7 @@ export class EmbeddingWorker {
       await this.initialize();
     }
 
-    return this.sendMessage<number[]>('embed', { text });
+    return this.sendMessage<number[]>('embed', { text }, EMBED_TIMEOUT_MS);
   }
 
   /**
@@ -257,7 +285,7 @@ export class EmbeddingWorker {
       await this.initialize();
     }
 
-    return this.sendMessage<number[][]>('batchEmbed', { texts });
+    return this.sendMessage<number[][]>('batchEmbed', { texts }, EMBED_TIMEOUT_MS);
   }
 
   /**
@@ -297,7 +325,7 @@ export class EmbeddingWorker {
     if (!this.rerankerReady) {
       await this.initializeReranker();
     }
-    return this.sendMessage<number[]>('rerank', { query, texts });
+    return this.sendMessage<number[]>('rerank', { query, texts }, RERANK_TIMEOUT_MS);
   }
 
   /** Whether the reranker model has been loaded. */
@@ -357,6 +385,26 @@ export class EmbeddingWorker {
    */
   isReady(): boolean {
     return this.initialized && this.workerReady && this.worker !== null;
+  }
+
+  // --- ManagedWorker ---
+
+  /** ManagedWorker alias for shutdown() so the WorkerManager can stop it. */
+  stop(): Promise<void> {
+    return this.shutdown();
+  }
+
+  status(): WorkerStatus {
+    const state = this.isReady() ? 'ready' : this.initializing ? 'starting' : 'idle';
+    return {
+      name: this.name,
+      state,
+      metrics: {
+        pendingRequests: this.pendingRequests.size,
+        rerankerReady: this.rerankerReady ? 1 : 0,
+        transcriberReady: this.transcriberReady ? 1 : 0,
+      },
+    };
   }
 
   /**

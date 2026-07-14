@@ -7,7 +7,11 @@
 
 // Shared Layer
 import type { Database } from '@main/shared';
+import { isDev } from '@main/infrastructure/utils/environment';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
+import { JobRunner } from '@main/infrastructure/workers/JobRunner';
+import { WhisperServer } from '@main/infrastructure/workers/WhisperServer';
+import { WorkerManager } from '@main/infrastructure/workers/WorkerManager';
 import { getMLStatusTracker } from '@main/infrastructure/workers/MLStatusTracker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
@@ -45,6 +49,8 @@ import type {
   IPathService,
   IPerformanceMonitor,
   ITextGenerator,
+  IJobRepository,
+  IJobTracer,
   // Inbound Ports (Use Cases)
   INoteUseCases,
   INotebookUseCases,
@@ -68,6 +74,7 @@ import type {
   IAIUseCases,
   IIndexUseCases,
   IMeetingUseCases,
+  FinalizeRecordingRequest,
   ITemplateUseCases,
   IDailyReviewUseCases,
   IStatusReportUseCases,
@@ -97,6 +104,7 @@ import {
   createAIUseCases,
   createIndexUseCases,
   createMeetingUseCases,
+  MEETING_FINALIZE_JOB,
   createTemplateUseCases,
   createDailyReviewUseCases,
   createStatusReportUseCases,
@@ -189,12 +197,14 @@ import {
   AISDKTextGenerator,
   LocalReranker,
   WhisperCppTranscriber,
-  WhisperServer,
   OnnxEchoCanceller,
   SingleShotSummarizer,
   LinearSource,
   AppleCalendarSource,
   AppleMailSource,
+  JobRepository,
+  LoggerJobTracer,
+  OtelJobTracer,
   // Outbound (Secondary) - Events
   EventPublisher,
 } from '@adapters';
@@ -236,6 +246,11 @@ export interface Container {
   settingsRepository: ISettingsRepository;
   appConfigRepository: IAppConfigRepository;
   aiProviderKeyStore: IAIProviderKeyStore;
+  jobRepository: IJobRepository;
+
+  // Workers
+  jobRunner: JobRunner;
+  workerManager: WorkerManager;
 
   // Ports - Services
   perfMonitor: IPerformanceMonitor;
@@ -424,6 +439,30 @@ export function createContainer(deps: ContainerDeps): Container {
   // on demand when a recording begins; the clean transcript is still the batch
   // finalize pass.
   const liveTranscriber = new WhisperServer();
+
+  // Durable background-job queue (libSQL-backed). The runner polls for due
+  // jobs, executes registered handlers, and self-cleans: bounded retries →
+  // dead-letter, adaptive idle backoff, crash recovery, retention prune.
+  // Started/stopped by the app lifecycle (index.ts). Register handlers via
+  // jobRunner.register(type, handler) before/after start.
+  const jobRepository: IJobRepository = new JobRepository({ db });
+  // Dev: real OTel spans (the SDK bootstrap is active and exports to Tempo).
+  // Prod: structured log spans only — no OTel runs in production.
+  const jobTracer: IJobTracer = isDev ? new OtelJobTracer() : new LoggerJobTracer();
+  const jobRunner = new JobRunner({
+    repository: jobRepository,
+    tracer: jobTracer,
+    idGenerator,
+  });
+
+  // Unified management of the resident background engines — one place to
+  // observe their status and stop them on shutdown (start triggers stay
+  // per-engine). EmbeddingWorker self-loads lazily; WhisperServer starts when
+  // a recording begins; JobRunner starts at boot.
+  const workerManager = new WorkerManager();
+  workerManager.register(jobRunner);
+  workerManager.register(embeddingWorker);
+  workerManager.register(liveTranscriber);
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
@@ -667,10 +706,19 @@ export function createContainer(deps: ContainerDeps): Container {
     transcriber,
     summarizer,
     appConfigRepository,
+    eventPublisher,
+    jobQueue: jobRunner,
     echoCanceller,
     liveTranscriber,
     appendToJournal: (content, workspaceId) =>
       quickCaptureUseCases.appendToJournal(content, workspaceId),
+  });
+
+  // The meeting finalize pipeline runs as a durable background job: the IPC
+  // producer (requestFinalize) enqueues; this handler executes the actual
+  // (idempotent) pipeline so it survives restarts and retries on failure.
+  jobRunner.register(MEETING_FINALIZE_JOB, async (payload) => {
+    await meetingUseCases.finalizeRecording.execute(payload as FinalizeRecordingRequest);
   });
 
   // Template use cases — composes the existing CreateNote use case
@@ -739,6 +787,11 @@ export function createContainer(deps: ContainerDeps): Container {
     settingsRepository,
     appConfigRepository,
     aiProviderKeyStore,
+    jobRepository,
+
+    // Workers
+    jobRunner,
+    workerManager,
 
     // Ports - Services
     perfMonitor,

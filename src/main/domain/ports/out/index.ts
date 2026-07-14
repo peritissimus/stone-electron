@@ -43,3 +43,6 @@ export * from './IDatabaseManager';
 export * from './ICalendarSource';
 export * from './IMailSource';
 export * from './ILinearSource';
+export * from './IJobRepository';
+export * from './IJobTracer';
+export * from './IJobQueue';

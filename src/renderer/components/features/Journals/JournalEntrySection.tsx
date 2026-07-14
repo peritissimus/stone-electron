@@ -121,7 +121,7 @@ export function JournalEntrySection({
                 weight="fill"
                 className="mx-[5.5px] shrink-0 text-muted-foreground/50"
               />
-              <span>{materializing ? 'Starting...' : 'Start writing'}</span>
+              <span>{materializing ? 'Creating entry…' : 'Write about this day'}</span>
             </button>
           )}
         </div>

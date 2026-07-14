@@ -23,7 +23,7 @@ export const OpenOrCreateJournalResponseSchema = z.object({
 export const ListJournalRangeRequestSchema = z
   .object({
     /** Number of recent days to include (going back from today). */
-    limit: z.number().int().min(1).max(31).default(7),
+    limit: z.number().int().min(1).max(31).default(14),
     workspaceId: z.string().optional(),
   })
   .strict();

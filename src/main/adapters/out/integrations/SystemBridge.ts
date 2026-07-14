@@ -97,20 +97,11 @@ export class SystemBridge implements ISystemBridge {
   }
 
   getScreenCaptureAccessStatus(): 'granted' | 'denied' | 'unsupported' {
-    // 'screen' TCC is macOS-only; on Windows/Linux loopback audio needs no
-    // such grant, so report 'unsupported' (the UI hides the row). There's no
-    // clean programmatic prompt — the grant happens via System Settings or the
-    // first getDisplayMedia call, so this is status-only.
-    if (process.platform !== 'darwin' || !systemPreferences?.getMediaAccessStatus) {
-      return 'unsupported';
-    }
-    try {
-      return systemPreferences.getMediaAccessStatus('screen') === 'granted'
-        ? 'granted'
-        : 'denied';
-    } catch {
-      return 'unsupported';
-    }
+    // Core Audio Tap uses macOS's System Audio Recording permission, which
+    // Electron cannot query through getMediaAccessStatus. Do not substitute
+    // Screen Recording status: that points users at the wrong TCC grant. The
+    // real permission prompt is driven by the first capture attempt.
+    return 'unsupported';
   }
 
   async selectFolder(options?: FolderPickerOptions): Promise<string | null> {

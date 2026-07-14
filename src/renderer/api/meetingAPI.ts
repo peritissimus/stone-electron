@@ -8,7 +8,10 @@
 
 import { z } from 'zod';
 import { invokeIpc } from '@renderer/lib/ipc';
-import { MEETING_CHANNELS } from '@shared/constants/ipcChannels';
+import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
+
+/** Unsubscribe handle returned by event subscriptions. */
+type Unsubscribe = () => void;
 import type {
   IpcResponse,
   MeetingRecording,
@@ -109,16 +112,17 @@ export const meetingAPI = {
 
   /** Live draft: start/stop the resident model, transcribe raw WAV chunks
    *  during recording. Not zod-validated — small trusted payloads. */
-  liveStart: async (): Promise<IpcResponse<void>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_START, {});
+  liveStart: async (sessionId: string): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_START, { sessionId });
   },
   transcribeLiveChunk: async (
+    sessionId: string,
     wav: ArrayBuffer,
   ): Promise<IpcResponse<{ text: string; segments: MeetingTranscriptSegment[] }>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_CHUNK, { wav });
+    return invokeIpc(MEETING_CHANNELS.LIVE_CHUNK, { sessionId, wav });
   },
-  liveStop: async (): Promise<IpcResponse<void>> => {
-    return invokeIpc(MEETING_CHANNELS.LIVE_STOP, {});
+  liveStop: async (sessionId: string): Promise<IpcResponse<void>> => {
+    return invokeIpc(MEETING_CHANNELS.LIVE_STOP, { sessionId });
   },
 
   /** Raw WAV bytes for playback (mic + optional system track). Not zod-validated
@@ -192,5 +196,22 @@ export const meetingAPI = {
     } catch {
       // best-effort — tray state isn't worth surfacing failures for.
     }
+  },
+
+  /**
+   * Subscribe to background-pipeline status pushes. `finalize()` now enqueues
+   * a durable job and returns immediately; the main process pushes the
+   * recording on each transition ('transcribing' → 'summarizing' →
+   * 'ready' | 'failed') over EVENTS.MEETING_STATUS_CHANGED.
+   *
+   * Returns an unsubscribe function. The payload is zod-validated; malformed
+   * events are dropped silently rather than crashing a listener.
+   */
+  onStatusChanged: (cb: (recording: MeetingRecording) => void): Unsubscribe => {
+    const off = window.electron.on(EVENTS.MEETING_STATUS_CHANGED, (payload: unknown) => {
+      const parsed = FinalizeResponseSchema.safeParse(payload);
+      if (parsed.success) cb(parsed.data.recording);
+    });
+    return () => off?.();
   },
 };
