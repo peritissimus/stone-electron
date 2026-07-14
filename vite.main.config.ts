@@ -26,10 +26,14 @@ export default defineConfig({
     rollupOptions: {
       external: [
         'electron',
-        // OpenTelemetry is dev-only (loaded via a dev-gated dynamic import).
-        // Externalised so its require-in-the-middle auto-instrumentation works
-        // and the devDependency SDK never gets bundled into prod.
-        /^@opentelemetry\//,
+        // The telemetry SDK is dev-only and loaded through a dev-gated dynamic
+        // import. Keep those packages external so they do not ship in prod.
+        // Do not externalise @opentelemetry/api: drizzle-orm imports its no-op
+        // tracing facade in production, so Vite must bundle that tiny module.
+        '@opentelemetry/exporter-trace-otlp-http',
+        '@opentelemetry/instrumentation-http',
+        '@opentelemetry/instrumentation-undici',
+        '@opentelemetry/sdk-node',
         '@libsql/client',
         '@libsql/client/sqlite3',
         'vectra',
