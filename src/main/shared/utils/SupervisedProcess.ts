@@ -47,6 +47,8 @@ export interface SupervisedProcessOptions {
   restartWindowMs?: number;
   backoffBaseMs?: number;
   backoffMaxMs?: number;
+  /** Grace period for SIGTERM before escalating to SIGKILL. */
+  terminationGraceMs?: number;
 }
 
 const DEFAULTS = {
@@ -55,6 +57,7 @@ const DEFAULTS = {
   restartWindowMs: 60_000,
   backoffBaseMs: 500,
   backoffMaxMs: 10_000,
+  terminationGraceMs: 2_000,
 } as const;
 
 export class SupervisedProcess {
@@ -64,6 +67,8 @@ export class SupervisedProcess {
   private proc: SupervisableProcess | null = null;
   private ready = false;
   private starting: Promise<void> | null = null;
+  private terminating: Promise<void> | null = null;
+  private generation = 0;
   /** Timestamps of recent spawn attempts — the circuit-breaker window. */
   private spawnTimes: number[] = [];
 
@@ -77,6 +82,7 @@ export class SupervisedProcess {
       restartWindowMs: options.restartWindowMs ?? DEFAULTS.restartWindowMs,
       backoffBaseMs: options.backoffBaseMs ?? DEFAULTS.backoffBaseMs,
       backoffMaxMs: options.backoffMaxMs ?? DEFAULTS.backoffMaxMs,
+      terminationGraceMs: options.terminationGraceMs ?? DEFAULTS.terminationGraceMs,
     };
   }
 
@@ -86,8 +92,9 @@ export class SupervisedProcess {
 
   /** Ensure the process is up and healthy, spawning it if needed. */
   async ensureReady(): Promise<void> {
+    if (this.terminating) await this.terminating;
     if (this.isReady()) return;
-    this.starting ??= this.doStart();
+    this.starting ??= this.doStart(this.generation);
     try {
       await this.starting;
     } finally {
@@ -100,34 +107,59 @@ export class SupervisedProcess {
    * `ensureReady()` will respawn it (subject to the circuit breaker). Counts as
    * a fault — the respawn is what trips the breaker if it keeps happening.
    */
-  markUnhealthy(reason: string): void {
+  async markUnhealthy(reason: string): Promise<void> {
     if (!this.proc && !this.ready) return;
     logger.warn(`[${this.name}] marked unhealthy: ${reason} — will respawn on next use`);
-    this.kill();
+    await this.terminate(false);
   }
 
   /** Graceful, full stop (app shutdown). Clears the circuit-breaker memory. */
-  stop(): void {
-    this.kill();
+  async stop(): Promise<void> {
+    this.generation += 1;
+    await this.terminate(false);
+    if (this.starting) {
+      try {
+        await this.starting;
+      } catch {
+        // A stop intentionally cancels an in-flight start.
+      }
+    }
+    await this.terminate(false);
     this.spawnTimes = [];
   }
 
   // ===========================================================================
 
-  private kill(): void {
+  private async terminate(clearSpawnTimes: boolean): Promise<void> {
+    if (clearSpawnTimes) this.spawnTimes = [];
+    if (this.terminating) {
+      await this.terminating;
+      return;
+    }
+
     const proc = this.proc;
-    this.proc = null;
     this.ready = false;
-    if (proc && !proc.killed) {
-      try {
-        proc.kill('SIGTERM');
-      } catch {
-        // already gone
-      }
+    if (!proc) return;
+
+    this.terminating = this.terminateProcess(proc).finally(() => {
+      if (this.proc === proc) this.proc = null;
+      this.terminating = null;
+    });
+    await this.terminating;
+  }
+
+  private async terminateProcess(proc: SupervisableProcess): Promise<void> {
+    const exitedAfterTerm = await signalAndWait(proc, 'SIGTERM', this.opts.terminationGraceMs);
+    if (exitedAfterTerm) return;
+
+    logger.warn(`[${this.name}] did not exit after SIGTERM; escalating to SIGKILL`);
+    const exitedAfterKill = await signalAndWait(proc, 'SIGKILL', this.opts.terminationGraceMs);
+    if (!exitedAfterKill) {
+      logger.error(`[${this.name}] did not report exit after SIGKILL`);
     }
   }
 
-  private async doStart(): Promise<void> {
+  private async doStart(generation: number): Promise<void> {
     const now = Date.now();
     // Drop spawn attempts older than the window, then check the breaker.
     this.spawnTimes = this.spawnTimes.filter((t) => now - t < this.opts.restartWindowMs);
@@ -146,6 +178,7 @@ export class SupervisedProcess {
       );
       await sleep(delay);
     }
+    if (generation !== this.generation) throw new Error(`[${this.name}] start cancelled`);
     this.spawnTimes.push(now);
 
     const proc = await this.opts.spawn();
@@ -158,6 +191,10 @@ export class SupervisedProcess {
       }
       if (code) logger.warn(`[${this.name}] exited with code ${code}`);
     });
+    if (generation !== this.generation) {
+      await this.terminate(false);
+      throw new Error(`[${this.name}] start cancelled`);
+    }
 
     try {
       await withTimeout(
@@ -166,13 +203,36 @@ export class SupervisedProcess {
         `[${this.name}] health check timed out after ${this.opts.healthCheckTimeoutMs}ms`,
       );
     } catch (err) {
-      this.kill();
+      await this.terminate(false);
       throw err;
     }
 
     this.ready = true;
     logger.info(`[${this.name}] ready`);
   }
+}
+
+function signalAndWait(
+  proc: SupervisableProcess,
+  signal: NodeJS.Signals,
+  timeoutMs: number,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (exited: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(exited);
+    };
+    proc.once('exit', () => finish(true));
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    try {
+      proc.kill(signal);
+    } catch {
+      finish(true);
+    }
+  });
 }
 
 function sleep(ms: number): Promise<void> {
