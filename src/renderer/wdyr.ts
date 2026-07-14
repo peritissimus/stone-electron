@@ -1,9 +1,6 @@
 /**
  * Development profiling tools
  *
- * React DevTools: Run `pnpm react-devtools` in a separate terminal FIRST,
- *                 then start the app with `pnpm dev`
- *
  * why-did-you-render: Enable with VITE_WDYR=1 pnpm dev
  */
 

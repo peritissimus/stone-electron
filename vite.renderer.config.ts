@@ -3,6 +3,37 @@ import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import path from 'path'
 
+const rendererChunks: Array<[string, string[]]> = [
+  ['react-vendor', ['react', 'react-dom']],
+  ['tiptap-core', ['@tiptap/core', '@tiptap/react', '@tiptap/starter-kit']],
+  ['mermaid', ['mermaid']],
+  ['highlight', ['highlight.js']],
+  ['icons', ['@phosphor-icons/react', 'lucide-react']],
+  [
+    'radix-ui',
+    [
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-slot',
+    ],
+  ],
+  ['zustand', ['zustand']],
+]
+
+function rendererManualChunks(id: string): string | undefined {
+  const normalizedId = id.replaceAll('\\', '/')
+
+  for (const [chunkName, packages] of rendererChunks) {
+    if (packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}/`))) {
+      return chunkName
+    }
+  }
+
+  return undefined
+}
+
 export default defineConfig({
   plugins: [
     react(),
@@ -68,7 +99,9 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'ES2020',
+    // Electron 41+ embeds Chromium 146+, so target the actual renderer runtime.
+    target: 'chrome146',
+    cssTarget: 'chrome146',
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for smaller bundle
@@ -76,26 +109,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Better code splitting for lazy loading
-        manualChunks: {
-          // Core React
-          'react-vendor': ['react', 'react-dom'],
-          // Editor core
-          'tiptap-core': ['@tiptap/core', '@tiptap/react', '@tiptap/starter-kit'],
-          // Heavy features - loaded on demand
-          'mermaid': ['mermaid'],
-          'highlight': ['highlight.js'],
-          // UI libraries
-          'icons': ['@phosphor-icons/react', 'lucide-react'],
-          'radix-ui': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-            '@radix-ui/react-toggle',
-            '@radix-ui/react-slot',
-          ],
-          // State management
-          'zustand': ['zustand'],
-        },
+        manualChunks: rendererManualChunks,
       },
     },
   },

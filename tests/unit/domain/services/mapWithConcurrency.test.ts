@@ -55,7 +55,7 @@ describe('mapWithConcurrency', () => {
 
   it('calls onProgress total times ending with (total, total)', async () => {
     const items = [1, 2, 3, 4, 5];
-    const onProgress = vi.fn<[number, number], void>();
+    const onProgress = vi.fn<(done: number, total: number) => void>();
 
     await mapWithConcurrency(items, async (item) => item, {
       concurrency: 2,
@@ -71,7 +71,7 @@ describe('mapWithConcurrency', () => {
   });
 
   it('resolves to [] for an empty array without invoking worker', async () => {
-    const worker = vi.fn<[number, number], Promise<number>>();
+    const worker = vi.fn<(item: number, index: number) => Promise<number>>();
     const results = await mapWithConcurrency([], worker, { concurrency: 4 });
     expect(results).toEqual([]);
     expect(worker).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe('mapWithConcurrency', () => {
     const controller = new AbortController();
     const reason = new Error('pre-aborted');
     controller.abort(reason);
-    const worker = vi.fn<[number, number], Promise<number>>();
+    const worker = vi.fn<(item: number, index: number) => Promise<number>>();
 
     await expect(
       mapWithConcurrency([1, 2, 3], worker, {
