@@ -99,9 +99,9 @@ export default defineConfig({
     },
   },
   build: {
-    // Electron 41+ embeds Chromium 146+, so target the actual renderer runtime.
-    target: 'chrome146',
-    cssTarget: 'chrome146',
+    // Electron 43 embeds Chromium 150, so target the actual renderer runtime.
+    target: 'chrome150',
+    cssTarget: 'chrome150',
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for smaller bundle

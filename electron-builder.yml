@@ -94,7 +94,7 @@ mac:
       Stone captures system audio so meeting recordings include other
       participants. Audio is transcribed locally and deleted afterward.
   # Minimize app size
-  minimumSystemVersion: "10.15"
+  minimumSystemVersion: "12.0"
   # whisper.cpp CLI for local transcription (built by scripts/build-whisper.sh).
   extraResources:
     - from: vendor/whisper/bin
