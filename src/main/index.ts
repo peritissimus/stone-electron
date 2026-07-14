@@ -5,7 +5,7 @@
  */
 
 import 'dotenv/config';
-import { app, BrowserWindow, desktopCapturer, globalShortcut, ipcMain, session } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron';
 import path from 'node:path';
 import net from 'node:net';
 import { lookup as dnsLookup } from 'node:dns';
@@ -36,19 +36,6 @@ import { relocateUserData } from '@main/infrastructure/electron/appPaths';
 // database manager, repositories, or first file-log write read userData — so it
 // is the very first thing the main process does.
 relocateUserData();
-
-// Enable Chromium's macOS system-audio loopback via ScreenCaptureKit. Must be
-// set before app `ready`. With these on, getDisplayMedia + the
-// setDisplayMediaRequestHandler({ audio: 'loopback' }) below capture system
-// audio in-process — attributed to the app itself, no separate helper binary.
-// macOS 13+. NB: Sck and the Core Audio tap (MacCatapSystemAudioLoopbackCapture)
-// are mutually-exclusive backends — enable exactly one (Sck is the default).
-if (process.platform === 'darwin') {
-  app.commandLine.appendSwitch(
-    'enable-features',
-    'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride',
-  );
-}
 
 // E2E-only: automated tests have no user gesture, so AudioContexts would start
 // suspended and the recording capture graph (including the renderer's mocked
@@ -409,30 +396,17 @@ app.on('ready', async () => {
       },
     );
 
-    // Auto-grant the renderer's getDisplayMedia() requests so the
-    // meeting recorder can capture system audio without forcing the
-    // user through Electron's source-picker every time. We grant the
-    // primary screen + loopback audio. macOS still gates this behind
-    // its own Screen Recording permission prompt the first time; once
-    // granted, subsequent calls just work.
-    session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
-      desktopCapturer
-        .getSources({ types: ['screen'] })
-        .then((sources) => {
-          if (sources.length === 0) {
-            callback({});
-            return;
-          }
-          callback({ video: sources[0], audio: 'loopback' });
-        })
-        .catch((error) => {
-          // Surface the real reason — usually Screen Recording not granted to
-          // the *running* process (granting after launch needs a restart).
-          logger.error(
-            `[DisplayMedia] failed to enumerate sources: ${error instanceof Error ? error.message : String(error)}`,
-          );
-          callback({});
-        });
+    // Chromium requires a video source for getDisplayMedia(), even though the
+    // recorder only needs audio. Use Stone's own frame as that disposable
+    // source instead of enumerating a monitor. The renderer stops the video
+    // track immediately; only loopback audio is recorded.
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      if (!request.frame) {
+        logger.warn('[DisplayMedia] request has no originating frame');
+        callback({});
+        return;
+      }
+      callback({ video: request.frame, audio: 'loopback' });
     });
 
     // Create window
