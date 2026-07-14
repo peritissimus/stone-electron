@@ -60,27 +60,27 @@ export function JournalEntrySection({
   };
 
   return (
-    <article className="group grid grid-cols-[4.5rem_minmax(0,1fr)] gap-4 border-b border-border/30 py-7 last:border-b-0 sm:grid-cols-[5.25rem_minmax(0,1fr)] sm:gap-6">
-      <aside className="pt-1 text-right">
+    <article className="group grid grid-cols-[3.75rem_minmax(0,1fr)] gap-4 border-b border-border/20 py-7 last:border-b-0 sm:grid-cols-[4.25rem_minmax(0,1fr)] sm:gap-5">
+      <aside className="pt-1 text-left">
         <button
           type="button"
           onClick={handlePrimaryAction}
           disabled={!entry.exists && materializing}
           className={cn(
-            'inline-flex min-w-0 flex-col items-end rounded-md px-1 py-0.5 transition-colors',
+            'inline-flex min-w-0 flex-col items-start rounded-md px-1 py-0.5 transition-colors',
             'hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             'disabled:cursor-progress disabled:opacity-60',
             today ? 'text-primary' : 'text-muted-foreground',
           )}
           aria-label={entry.exists ? `Open ${entry.date}` : `Start ${entry.date}`}
         >
-          <span className="text-[0.68rem] font-semibold uppercase tracking-[0.12em]">
+          <span className="text-[0.68rem] font-medium text-muted-foreground">
             {formatMonth(entry.date)}
           </span>
-          <span className="font-mono text-2xl font-semibold leading-none">
+          <span className="text-2xl font-semibold leading-none tabular-nums">
             {formatDayOfMonth(entry.date)}
           </span>
-          <span className="mt-1 max-w-full truncate text-[0.68rem] font-medium uppercase tracking-[0.08em]">
+          <span className="mt-1 max-w-full truncate text-[0.68rem] text-muted-foreground">
             {today ? 'Today' : formatDayName(entry.date)}
           </span>
         </button>
@@ -111,8 +111,8 @@ export function JournalEntrySection({
               onClick={handleStart}
               disabled={materializing}
               className={cn(
-                'group/empty flex min-h-10 w-full items-center gap-2 rounded-md px-1 py-1 text-left text-sm text-muted-foreground',
-                'transition-colors hover:bg-muted/35 hover:text-foreground',
+                'group/empty flex min-h-12 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted-foreground',
+                'transition-[background-color,color,transform] hover:bg-muted/35 hover:text-foreground active:scale-[0.99]',
                 'disabled:cursor-progress disabled:opacity-60',
               )}
             >
@@ -121,7 +121,16 @@ export function JournalEntrySection({
                 weight="fill"
                 className="mx-[5.5px] shrink-0 text-muted-foreground/50"
               />
-              <span>{materializing ? 'Creating entry…' : 'Write about this day'}</span>
+              <span>
+                <span className="block font-medium text-foreground/80">
+                  {materializing ? 'Creating entry…' : today ? 'Write today’s entry' : 'Add a reflection'}
+                </span>
+                {!materializing && (
+                  <span className="mt-0.5 block text-xs text-muted-foreground/75">
+                    {today ? 'Capture what is on your mind.' : 'Return to this day and add what you remember.'}
+                  </span>
+                )}
+              </span>
             </button>
           )}
         </div>

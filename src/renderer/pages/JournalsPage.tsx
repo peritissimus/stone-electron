@@ -41,11 +41,11 @@ export default function JournalsPage() {
             onClick={toggleSidebar}
           />
         )}
-        <h1 className="text-sm font-medium text-muted-foreground">Journals</h1>
+        <h1 className="text-sm font-semibold text-foreground">Journals</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-[54rem] px-4 pb-16 pt-3 sm:px-8">
+        <div className="mx-auto w-full max-w-[48rem] px-4 pb-16 pt-3 sm:px-8">
           {loading && !loadedOnce ? (
             <JournalSkeleton />
           ) : (

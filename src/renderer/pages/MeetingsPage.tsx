@@ -114,22 +114,22 @@ export default function MeetingsPage() {
       <InlineRecordingPanel />
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-[300px] shrink-0 overflow-y-auto border-r border-border bg-background">
+        <aside className="w-[320px] shrink-0 overflow-y-auto border-r border-border/50 bg-muted/[0.025]">
           {!loadedOnce && loading && <ListSkeleton />}
           {loadedOnce && recordings.length === 0 && <EmptyState onStart={startRecording} />}
           {recordings.length > 0 && (
-            <ul className="p-2">
+            <ul className="space-y-0.5 p-2.5">
               {recordings.map((r) => (
                 <li key={r.id}>
                   <button
                     type="button"
                     onClick={() => select(r.id)}
                     className={cn(
-                      'group w-full rounded-lg px-2.5 py-2 text-left',
+                      'group w-full rounded-xl px-3 py-2.5 text-left',
                       'transition-[background-color,transform] duration-150 active:scale-[0.99]',
                       selected?.id === r.id
-                        ? 'bg-primary/10'
-                        : 'hover:bg-muted',
+                        ? 'bg-background shadow-[0_1px_2px_hsl(var(--foreground)/0.06),inset_0_0_0_1px_hsl(var(--border)/0.45)]'
+                        : 'hover:bg-background/70',
                     )}
                   >
                     <div className="flex items-center gap-2">
@@ -169,9 +169,9 @@ export default function MeetingsPage() {
           )}
         </aside>
 
-        <section className="flex-1 overflow-y-auto bg-background">
+        <section className="min-w-0 flex-1 overflow-y-auto bg-background">
           {!selected ? (
-            <DetailPlaceholder hasAny={recordings.length > 0} />
+            <DetailPlaceholder hasAny={recordings.length > 0} onStart={startRecording} />
           ) : (
             <DetailPanel
               recording={selected}
@@ -680,17 +680,34 @@ function EmptyLine({ children }: { children: React.ReactNode }) {
   return <p className="mt-2 text-[13px] italic text-muted-foreground/70">{children}</p>;
 }
 
-function DetailPlaceholder({ hasAny }: { hasAny: boolean }) {
+function DetailPlaceholder({ hasAny, onStart }: { hasAny: boolean; onStart: () => void }) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-8 text-center text-muted-foreground">
-      <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground/60">
-        <Microphone size={24} />
+    <div className="flex h-full items-center justify-center px-8 py-12">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <Waveform size={21} weight="duotone" />
+        </div>
+        <h2 className="mt-4 text-balance text-base font-semibold text-foreground">
+          {hasAny ? 'Choose a conversation' : 'Turn conversations into notes'}
+        </h2>
+        <p className="mt-1.5 text-pretty text-[13px] leading-relaxed text-muted-foreground">
+          {hasAny
+            ? 'Select a meeting to revisit its summary, transcript, and recording.'
+            : 'Stone records and transcribes on your device, then shapes the useful parts into a journal-ready summary.'}
+        </p>
+        <button
+          type="button"
+          onClick={onStart}
+          className={cn(
+            'mt-5 inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5',
+            'text-xs font-medium text-primary-foreground shadow-[0_1px_2px_rgba(0,0,0,0.08)]',
+            'transition-[transform,opacity] duration-150 hover:opacity-90 active:scale-[0.96]',
+          )}
+        >
+          <Microphone size={13} weight="fill" />
+          New recording
+        </button>
       </div>
-      <p className="mt-4 text-balance text-sm">
-        {hasAny
-          ? 'Select a recording to view its transcript and summary.'
-          : 'Recordings you make will appear here.'}
-      </p>
     </div>
   );
 }
