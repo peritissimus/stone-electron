@@ -16,6 +16,12 @@ import { useSidebarCursor } from '@renderer/hooks/useSidebarCursor';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { normalizePath, getDisplayName } from '@renderer/lib/path';
+import {
+  fileTreeIconClassName,
+  fileTreeLabelClassName,
+  fileTreeRowClassName,
+  getFileTreeRowStyle,
+} from './fileTreeStyles';
 
 interface FileLeafProps {
   node: FileTreeNode;
@@ -97,7 +103,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
       <div
         ref={rowRef}
         className={cn(
-          'relative flex items-center h-7 px-2 rounded cursor-pointer transition-colors duration-150',
+          fileTreeRowClassName,
           isActive ? 'bg-secondary text-foreground' : 'hover:bg-muted/60',
           isCursor && 'bg-secondary',
         )}
@@ -110,19 +116,19 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
             handleOpen();
           }
         }}
-        style={{ paddingLeft: `${level * 20 + 8}px` }}
+        style={getFileTreeRowStyle(level)}
       >
         <FileText
-          size={14}
+          size={16}
           className={cn(
-            'mr-2 flex-shrink-0 transition-colors duration-150',
+            fileTreeIconClassName,
             isActive ? 'text-foreground' : 'text-muted-foreground',
             isHovered && !isActive && 'text-foreground/70',
           )}
         />
         <span
           className={cn(
-            'flex-1 text-xs truncate transition-colors duration-150',
+            fileTreeLabelClassName,
             isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
           )}
         >
@@ -131,7 +137,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
 
         <div
           className={cn(
-            'ml-auto opacity-0 transition-opacity duration-150',
+            'ml-auto opacity-0 transition-opacity duration-150 group-focus-within:opacity-100',
             isHovered && 'opacity-100',
           )}
           onClick={(e) => e.stopPropagation()}
@@ -142,7 +148,7 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
                 size="compact"
                 icon={<DotsThreeVertical size={14} />}
                 label="File options"
-                className="size-5 hover:bg-foreground/10"
+                className="size-6 hover:bg-foreground/10"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">

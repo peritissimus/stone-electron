@@ -38,7 +38,7 @@ export function Sidebar() {
     >
       <WorkspaceSelectorHeader />
       <SidebarNavList />
-      <div className="flex-1 overflow-y-auto px-1.5 py-1">
+      <div className="flex-1 overflow-y-auto px-2 py-1.5">
         <FileTree />
       </div>
       <SidebarStatusRail />
