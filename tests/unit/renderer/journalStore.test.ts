@@ -22,6 +22,17 @@ describe('journalStore', () => {
     useJournalStore.getState().reset();
   });
 
+  it('loads a 14-day journal window', async () => {
+    listRange.mockResolvedValueOnce({
+      success: true,
+      data: { entries: [] },
+    });
+
+    await useJournalStore.getState().load();
+
+    expect(listRange).toHaveBeenCalledWith({ limit: 14 });
+  });
+
   it('ignores note events without a journalDate or known id', async () => {
     listRange.mockResolvedValueOnce({
       success: true,

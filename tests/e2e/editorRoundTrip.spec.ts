@@ -151,8 +151,15 @@ test('editor feature round-trip matrix', async ({ app }) => {
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
 
+  // The round-trip helper deliberately opens each scratch document. Wait for
+  // the application shell here, not for a journal editor that no longer opens
+  // automatically on Today.
+  await expect(window.locator('#root')).toBeVisible();
+  await expect(
+    window.getByRole('button', { name: /^Expand( sidebar)?$/ }).first(),
+  ).toBeVisible();
+
   const editor = window.locator('.ProseMirror');
-  await expect(editor).toBeVisible({ timeout: 15_000 });
 
   const cleanups: Array<() => void> = [];
 

@@ -1,6 +1,6 @@
 import { test, expect, primaryModifier } from './fixtures/electron';
 
-// Startup is timing-sensitive (cold DB init + workspace scan + journal open).
+// Startup is timing-sensitive (cold DB init + workspace scan + Today render).
 // Tripling Playwright's per-test timeout keeps this reasonable on slower boxes.
 test.slow();
 
@@ -13,8 +13,9 @@ test('measures full startup time', async ({ app }) => {
   const window = await app.firstWindow();
 
   await expect(window.locator('#root')).toBeVisible();
-  // Today's journal auto-opens; wait for the editor surface.
-  await expect(window.locator('.ProseMirror')).toBeVisible();
+  // Today is the landing page. Its header control proves the application shell
+  // and initial route are interactive without creating/opening a journal entry.
+  await expect(window.getByRole('button', { name: /^Expand( sidebar)?$/ }).first()).toBeVisible();
 
   await window.keyboard.press(`${primaryModifier}+k`);
   await expect(window.locator('input[placeholder="Search notes and commands..."]')).toBeVisible();

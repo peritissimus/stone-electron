@@ -21,13 +21,14 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   window.on('pageerror', (err) => rendererErrors.push(`pageerror: ${err.message}`));
 
   await expect(window.locator('#root')).toBeVisible();
-  // Today's journal auto-opens, signalling the app is ready for input.
-  await expect(window.locator('.ProseMirror')).toBeVisible();
 
   // Sidebar starts collapsed (uiStore default). Open it via the "Expand" button
-  // in the page header before clicking the Topics nav link.
-  await window.getByRole('button', { name: /^Expand( sidebar)?$/ }).first().click();
-  await window.getByRole('button', { name: 'Topics' }).click();
+  // in the Today page header. The visible control is also our signal that the
+  // application shell and initial route are ready for input.
+  const expandSidebar = window.getByRole('button', { name: /^Expand( sidebar)?$/ }).first();
+  await expect(expandSidebar).toBeVisible();
+  await expandSidebar.click();
+  await window.getByRole('button', { name: 'Knowledge' }).click();
 
   // The page header always shows "Topics"; the spinner is the only child until
   // the initialize → loadTopics → getEmbeddingStatus chain resolves.
@@ -35,11 +36,14 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   await expect(spinner).toBeVisible();
   await expect(spinner).toBeHidden({ timeout: 60_000 });
 
-  // Footer reports the embedder state — "Ready" or "Not initialized".
-  const statusFooter = window.locator('text=/Ready|Not initialized/').first();
-  await expect(statusFooter).toBeVisible({ timeout: 30_000 });
-  const statusText = await statusFooter.textContent();
-  console.log(`[topics] status footer: ${statusText}`);
+  // Once initialization completes, the Knowledge page exposes the semantic
+  // index and search surface. The former "Ready" footer no longer exists.
+  await expect(window.getByText('Semantic Index', { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    window.getByRole('textbox', { name: 'Find notes by meaning, not just keywords…' }),
+  ).toBeEnabled();
 
   // Dump captured logs so we can see the embedder boot path even on success.
   const embedderLogs = mainLogs.filter((l) => /Embedder|xenova|onnx|worker/i.test(l));
@@ -51,9 +55,6 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
     console.log('--- renderer errors ---');
     for (const e of rendererErrors) console.log(e);
   }
-
-  // Soft assertion: surface the failure but keep collecting evidence.
-  expect.soft(statusText).toContain('Ready');
 
   // Hard assertions: nothing crashed loudly.
   const fatalRendererErrors = rendererErrors.filter(

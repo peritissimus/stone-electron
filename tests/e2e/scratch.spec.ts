@@ -32,12 +32,14 @@ test('scratch editor: open, edit, save, round-trip through disk', async ({ app }
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
 
-  // Wait for the app's initial auto-opened journal editor to render. This
-  // also proves MainLayout is mounted — without it, the SCRATCH_OPEN_PATH
-  // subscriber wouldn't be attached yet and our `app.evaluate` below
-  // would arrive into a void.
+  // Wait for the Today shell to become interactive. MainLayout owns this
+  // control and the SCRATCH_OPEN_PATH subscription used below.
+  await expect(window.locator('#root')).toBeVisible();
+  await expect(
+    window.getByRole('button', { name: /^Expand( sidebar)?$/ }).first(),
+  ).toBeVisible();
+
   const editor = window.locator('.ProseMirror');
-  await expect(editor).toBeVisible({ timeout: 15_000 });
 
   // Intentionally outside any workspace — scratch must work on absolute
   // paths that Stone has never seen before.
@@ -54,6 +56,10 @@ test('scratch editor: open, edit, save, round-trip through disk', async ({ app }
     }, filePath);
 
     // Scratch editor now shows the file's content.
+    await expect(window.getByText('round-trip.md', { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(editor).toBeVisible({ timeout: 5_000 });
     await expect(editor).toContainText('baseline prose', { timeout: 10_000 });
     await expect(editor).toContainText('Trailing paragraph', { timeout: 5_000 });
 
