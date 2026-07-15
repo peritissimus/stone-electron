@@ -45,6 +45,10 @@ files:
   - "!**/node_modules/**/{tsconfig,jest,webpack,rollup,vite}*.json"
   - "!**/node_modules/**/LICENSE*"
   - "!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**"
+  # Transformers.js selects the native onnxruntime-node backend in Stone's
+  # worker thread. Its browser-only ONNX WASM engines are never loaded, but
+  # account for ~37 MB when every production dependency is unpacked.
+  - "!**/node_modules/@xenova/transformers/dist/*.wasm"
 
 # Enable asar for app code, but unpack all node_modules. Selective unpacking
 # breaks once a native module needs to require() a sibling dep — Node's

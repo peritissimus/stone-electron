@@ -1,6 +1,14 @@
 import barlow400Url from '@fontsource/barlow/files/barlow-latin-400-normal.woff2?url';
+import barlow500Url from '@fontsource/barlow/files/barlow-latin-500-normal.woff2?url';
 import barlow600Url from '@fontsource/barlow/files/barlow-latin-600-normal.woff2?url';
 import barlow700Url from '@fontsource/barlow/files/barlow-latin-700-normal.woff2?url';
+import barlowCondensed400Url from '@fontsource/barlow-condensed/files/barlow-condensed-latin-400-normal.woff2?url';
+import barlowCondensed500Url from '@fontsource/barlow-condensed/files/barlow-condensed-latin-500-normal.woff2?url';
+import barlowCondensed600Url from '@fontsource/barlow-condensed/files/barlow-condensed-latin-600-normal.woff2?url';
+import barlowCondensed700Url from '@fontsource/barlow-condensed/files/barlow-condensed-latin-700-normal.woff2?url';
+import barlowSemiCondensed400Url from '@fontsource/barlow-semi-condensed/files/barlow-semi-condensed-latin-400-normal.woff2?url';
+import barlowSemiCondensed500Url from '@fontsource/barlow-semi-condensed/files/barlow-semi-condensed-latin-500-normal.woff2?url';
+import barlowSemiCondensed600Url from '@fontsource/barlow-semi-condensed/files/barlow-semi-condensed-latin-600-normal.woff2?url';
 import barlowSemiCondensed700Url from '@fontsource/barlow-semi-condensed/files/barlow-semi-condensed-latin-700-normal.woff2?url';
 import inter400Url from '@fontsource/inter/files/inter-latin-400-normal.woff2?url';
 import inter500Url from '@fontsource/inter/files/inter-latin-500-normal.woff2?url';
@@ -8,6 +16,7 @@ import inter600Url from '@fontsource/inter/files/inter-latin-600-normal.woff2?ur
 import inter700Url from '@fontsource/inter/files/inter-latin-700-normal.woff2?url';
 import firaCode400Url from '@fontsource/fira-code/files/fira-code-latin-400-normal.woff2?url';
 import firaCode500Url from '@fontsource/fira-code/files/fira-code-latin-500-normal.woff2?url';
+import firaCode600Url from '@fontsource/fira-code/files/fira-code-latin-600-normal.woff2?url';
 import patrickHand400Url from '@fontsource/patrick-hand/files/patrick-hand-latin-400-normal.woff2?url';
 
 interface EmbeddedFont {
@@ -17,7 +26,7 @@ interface EmbeddedFont {
   style?: 'normal' | 'italic';
 }
 
-const fontDefinitions: EmbeddedFont[] = [
+const exportFontDefinitions: EmbeddedFont[] = [
   { family: 'Barlow', weight: 400, url: barlow400Url },
   { family: 'Barlow', weight: 600, url: barlow600Url },
   { family: 'Barlow', weight: 700, url: barlow700Url },
@@ -31,7 +40,33 @@ const fontDefinitions: EmbeddedFont[] = [
   { family: 'Patrick Hand', weight: 400, url: patrickHand400Url },
 ];
 
+const appFontDefinitions: EmbeddedFont[] = [
+  ...exportFontDefinitions,
+  { family: 'Barlow', weight: 500, url: barlow500Url },
+  { family: 'Barlow Condensed', weight: 400, url: barlowCondensed400Url },
+  { family: 'Barlow Condensed', weight: 500, url: barlowCondensed500Url },
+  { family: 'Barlow Condensed', weight: 600, url: barlowCondensed600Url },
+  { family: 'Barlow Condensed', weight: 700, url: barlowCondensed700Url },
+  { family: 'Barlow Semi Condensed', weight: 400, url: barlowSemiCondensed400Url },
+  { family: 'Barlow Semi Condensed', weight: 500, url: barlowSemiCondensed500Url },
+  { family: 'Barlow Semi Condensed', weight: 600, url: barlowSemiCondensed600Url },
+  { family: 'Fira Code', weight: 600, url: firaCode600Url },
+];
+
 const fontCache = new Map<string, Promise<string>>();
+
+export async function loadAppFonts(): Promise<void> {
+  await Promise.allSettled(
+    appFontDefinitions.map(async ({ family, weight, url, style = 'normal' }) => {
+      const face = new FontFace(family, `url(${url})`, {
+        weight: weight.toString(),
+        style,
+        display: 'swap',
+      });
+      document.fonts.add(await face.load());
+    }),
+  );
+}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -64,7 +99,7 @@ async function loadFontBase64(url: string): Promise<string> {
 
 export async function getEmbeddedFontFaces(): Promise<string> {
   const rules = await Promise.all(
-    fontDefinitions.map(async (font) => {
+    exportFontDefinitions.map(async (font) => {
       const data = await loadFontBase64(font.url);
       return `
         @font-face {
