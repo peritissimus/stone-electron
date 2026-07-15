@@ -33,7 +33,9 @@ export class SingleShotSummarizer implements ISummarizationStrategy {
       // Override the generic markdown system prompt — which suggests
       // "headings where useful" — so it doesn't fight the user prompt.
       system:
-        'You produce only the markdown the user asks for. Output the result directly with no preamble or closing remarks.',
+        'You produce only the markdown the user asks for, sized to the information ' +
+        'available — never padded to fill a structure. Terse, active voice. Output ' +
+        'the result directly with no preamble or closing remarks.',
     });
 
     request.onProgress?.({ step: 'finalizing', current: 1, total: 1 });
