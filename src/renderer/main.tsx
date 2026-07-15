@@ -34,27 +34,11 @@ if (!isQuickCapture) {
 
 if (!isQuickCapture) {
   // Defer font loading - not critical for initial render
-  // Fonts will load in background after app mounts
+  // Load only the Latin WOFF2 files used by the app. Fontsource's generic
+  // weight CSS also pulls WOFF plus Cyrillic, Greek, Vietnamese, and extended
+  // subsets into the bundle even though Electron only needs these assets.
   requestIdleCallback(() => {
-    import('@fontsource/inter/400.css');
-    import('@fontsource/inter/500.css');
-    import('@fontsource/inter/600.css');
-    import('@fontsource/inter/700.css');
-    import('@fontsource/barlow/400.css');
-    import('@fontsource/barlow/500.css');
-    import('@fontsource/barlow/600.css');
-    import('@fontsource/barlow-condensed/400.css');
-    import('@fontsource/barlow-condensed/500.css');
-    import('@fontsource/barlow-condensed/600.css');
-    import('@fontsource/barlow-condensed/700.css');
-    import('@fontsource/barlow-semi-condensed/400.css');
-    import('@fontsource/barlow-semi-condensed/500.css');
-    import('@fontsource/barlow-semi-condensed/600.css');
-    import('@fontsource/barlow-semi-condensed/700.css');
-    import('@fontsource/patrick-hand/latin.css');
-    import('@fontsource/fira-code/400.css');
-    import('@fontsource/fira-code/500.css');
-    import('@fontsource/fira-code/600.css');
+    void import('@renderer/lib/fontLoader').then(({ loadAppFonts }) => loadAppFonts());
   });
 }
 
