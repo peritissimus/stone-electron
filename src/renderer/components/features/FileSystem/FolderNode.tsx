@@ -1,20 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  FolderSimple,
-  FolderOpen,
-  DotsThreeVertical,
-  PencilSimple,
-  Trash,
-  Plus,
-} from '@phosphor-icons/react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@renderer/components/base/ui/dropdown-menu';
-import { IconButton } from '@renderer/components/composites';
-import { Text } from '@renderer/components/base/ui/text';
+import { FolderSimple, FolderOpen, Plus } from '@phosphor-icons/react';
 import { useFileTree, type FileTreeNode } from '@renderer/hooks/useFileTree';
 import { useSidebarCursor } from '@renderer/hooks/useSidebarCursor';
 import { cn } from '@renderer/lib/utils';
@@ -35,8 +20,6 @@ interface FolderNodeProps {
   onRenameFile: (noteId: string, currentTitle: string) => void;
   onDeleteFile: (noteId: string) => Promise<void>;
   onMoveFile: (noteId: string, destinationPath: string | null) => Promise<void>;
-  onRenameFolder: (folderPath: string, currentName: string) => void;
-  onDeleteFolder: (folderPath: string) => Promise<void>;
   onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
 }
 
@@ -52,8 +35,6 @@ export const FolderNode = React.memo<FolderNodeProps>(
     onRenameFile,
     onDeleteFile,
     onMoveFile,
-    onRenameFolder,
-    onDeleteFolder,
     onMoveFolder,
   }) => {
     const normalizedPath = normalizePath(node.path);
@@ -171,10 +152,8 @@ export const FolderNode = React.memo<FolderNodeProps>(
         >
           <div
             ref={rowRef}
-            className={cn(
-              fileTreeRowClassName,
-              isCursor && 'bg-secondary',
-            )}
+            className={fileTreeRowClassName}
+            data-sidebar-cursor={isCursor ? 'true' : undefined}
             role="button"
             tabIndex={-1}
             onClick={handleClick}
@@ -219,48 +198,15 @@ export const FolderNode = React.memo<FolderNodeProps>(
               )}
               onClick={(e) => e.stopPropagation()}
             >
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    size="compact"
-                    icon={<DotsThreeVertical size={14} />}
-                    label="Folder options"
-                    className="size-6 hover:bg-foreground/10"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem
-                    onSelect={async () => {
-                      await onCreateNote(normalizedPath);
-                    }}
-                  >
-                    <Plus size={14} className="mr-2 text-muted-foreground" />
-                    <Text size="xs">New Note Here</Text>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={isRootFolder}
-                    onSelect={() => {
-                      if (!isRootFolder) {
-                        onRenameFolder(normalizedPath, node.name);
-                      }
-                    }}
-                  >
-                    <PencilSimple size={14} className="mr-2 text-muted-foreground" />
-                    <Text size="xs">Rename Folder</Text>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={isRootFolder}
-                    onSelect={async () => {
-                      if (!isRootFolder) {
-                        await onDeleteFolder(normalizedPath);
-                      }
-                    }}
-                  >
-                    <Trash size={14} className="mr-2 text-muted-foreground" />
-                    <Text size="xs">Delete Folder</Text>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <button
+                type="button"
+                onClick={() => void onCreateNote(normalizedPath)}
+                className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 ease-out hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
+                title={`New note in ${node.name}`}
+                aria-label={`Create note in ${node.name}`}
+              >
+                <Plus size={14} weight="bold" />
+              </button>
             </div>
           </div>
         </div>
@@ -276,8 +222,6 @@ export const FolderNode = React.memo<FolderNodeProps>(
                   onRenameFile={onRenameFile}
                   onDeleteFile={onDeleteFile}
                   onMoveFile={onMoveFile}
-                  onRenameFolder={onRenameFolder}
-                  onDeleteFolder={onDeleteFolder}
                   onMoveFolder={onMoveFolder}
                 />
               ) : (

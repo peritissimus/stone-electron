@@ -1,14 +1,12 @@
-import { CheckSquare, CaretRight } from '@phosphor-icons/react';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { CheckSquare } from '@phosphor-icons/react';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 
 interface TasksHeaderProps {
-  sidebarOpen: boolean;
-  toggleSidebar: () => void;
   counts: { visible: number; total: number };
 }
 
-export function TasksHeader({ sidebarOpen, toggleSidebar, counts }: TasksHeaderProps) {
+export function TasksHeader({ counts }: TasksHeaderProps) {
   return (
     <div
       className={cn(
@@ -16,14 +14,6 @@ export function TasksHeader({ sidebarOpen, toggleSidebar, counts }: TasksHeaderP
         sizeHeightClasses['spacious'],
       )}
     >
-      {!sidebarOpen && (
-        <IconButton
-          size="normal"
-          icon={<CaretRight size={16} weight="bold" />}
-          tooltip="Expand sidebar"
-          onClick={toggleSidebar}
-        />
-      )}
       <CheckSquare className="size-4 text-muted-foreground" />
       <span className="text-sm font-medium">Tasks</span>
       <div className="flex-1" />

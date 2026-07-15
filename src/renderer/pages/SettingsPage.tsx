@@ -3,7 +3,6 @@ import { Navigate, NavLink, useParams } from 'react-router-dom';
 import {
   Pulse,
   Brain,
-  CaretRight,
   Database,
   Gear,
   GitBranch,
@@ -15,9 +14,8 @@ import {
   PuzzlePiece,
 } from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
-import { useSidebarUI } from '@renderer/hooks/useUI';
 import { toSettings } from '@renderer/navigation/routes';
 import { AboutSettings } from '@renderer/components/features/Settings/AboutSettings';
 import { AISettings } from '@renderer/components/features/Settings/AISettings';
@@ -95,7 +93,6 @@ function isSettingsSectionId(value: string | undefined): value is SettingsSectio
 
 export default function SettingsPage() {
   const { section } = useParams<{ section?: string }>();
-  const { sidebarOpen, toggleSidebar } = useSidebarUI();
 
   if (!section) {
     return <Navigate to={toSettings('appearance')} replace />;
@@ -115,14 +112,6 @@ export default function SettingsPage() {
           sizeHeightClasses.spacious,
         )}
       >
-        {!sidebarOpen && (
-          <IconButton
-            size="normal"
-            icon={<CaretRight size={16} weight="bold" />}
-            tooltip="Expand sidebar"
-            onClick={toggleSidebar}
-          />
-        )}
         <Gear size={16} className="text-muted-foreground" />
         <span className="text-sm font-medium">Settings</span>
       </div>

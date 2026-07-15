@@ -10,7 +10,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Microphone,
-  CaretRight,
   CaretDown,
   ArrowsClockwise,
   PaperPlaneTilt,
@@ -27,8 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
 import { renderMarkdown } from '@renderer/lib/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
-import { useSidebarUI } from '@renderer/hooks/useUI';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { useMeetings } from '@renderer/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/hooks/useMeetingRecorder';
 import { useMeetingPlayback, type MeetingPlayback } from '@renderer/hooks/useMeetingPlayback';
@@ -37,7 +35,6 @@ import { toNote } from '@renderer/navigation';
 import type { MeetingRecording, MeetingRecordingStatus } from '@shared/types';
 
 export default function MeetingsPage() {
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const navigate = useNavigate();
   const {
     recordings,
@@ -89,14 +86,6 @@ export default function MeetingsPage() {
           sizeHeightClasses['spacious'],
         )}
       >
-        {!sidebarOpen && (
-          <IconButton
-            size="normal"
-            icon={<CaretRight size={16} weight="bold" />}
-            tooltip="Expand sidebar"
-            onClick={toggleSidebar}
-          />
-        )}
         <Microphone size={16} className="text-muted-foreground" />
         <h1 className="text-sm font-semibold">Meetings</h1>
         {recordings.length > 0 && (
@@ -124,11 +113,12 @@ export default function MeetingsPage() {
                   <button
                     type="button"
                     onClick={() => select(r.id)}
+                    aria-pressed={selected?.id === r.id}
                     className={cn(
                       'group w-full rounded-xl px-3 py-2.5 text-left',
                       'transition-[background-color,transform] duration-150 active:scale-[0.99]',
                       selected?.id === r.id
-                        ? 'bg-background shadow-[0_1px_2px_hsl(var(--foreground)/0.06),inset_0_0_0_1px_hsl(var(--border)/0.45)]'
+                        ? 'bg-foreground/[0.075] shadow-[inset_0_0_0_1px_hsl(var(--foreground)/0.06)]'
                         : 'hover:bg-background/70',
                     )}
                   >

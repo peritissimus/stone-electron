@@ -17,18 +17,16 @@ import { useState, useCallback, useMemo } from 'react';
 import {
   ArrowsClockwise,
   Brain,
-  CaretRight,
   CloudArrowDown,
   MagnifyingGlass,
   Plus,
   WarningCircle,
 } from '@phosphor-icons/react';
 import { useNavigateToNote } from '@renderer/navigation';
-import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTopicsData } from '@renderer/hooks/useTopicsData';
 import { useWorkspaceSync } from '@renderer/hooks/useWorkspaceSync';
 import { useIndexStats } from '@renderer/hooks/useIndexStats';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { Checkbox } from '@renderer/components/base/ui/checkbox';
@@ -107,7 +105,6 @@ function IndexStatusCard({ stats, rebuilding, onReindex }: IndexStatusCardProps)
 
 export default function TopicsPage() {
   const navigateToNote = useNavigateToNote();
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const syncWorkspace = useWorkspaceSync();
   const [reconciling, setReconciling] = useState(false);
 
@@ -172,8 +169,6 @@ export default function TopicsPage() {
     return (
       <div className="flex h-full flex-col bg-background">
         <PageHeader
-          sidebarOpen={sidebarOpen}
-          toggleSidebar={toggleSidebar}
           indexedPercent={null}
           onCreate={() => setShowCreateDialog(true)}
           reconciling={reconciling}
@@ -189,8 +184,6 @@ export default function TopicsPage() {
   return (
     <div className="flex h-full flex-col bg-background">
       <PageHeader
-        sidebarOpen={sidebarOpen}
-        toggleSidebar={toggleSidebar}
         indexedPercent={indexStats ? indexedPercent : null}
         onCreate={() => setShowCreateDialog(true)}
         reconciling={reconciling}
@@ -330,8 +323,6 @@ export default function TopicsPage() {
 }
 
 interface PageHeaderProps {
-  sidebarOpen: boolean;
-  toggleSidebar: () => void;
   indexedPercent: number | null;
   reconciling: boolean;
   onCreate: () => void;
@@ -339,8 +330,6 @@ interface PageHeaderProps {
 }
 
 function PageHeader({
-  sidebarOpen,
-  toggleSidebar,
   indexedPercent,
   reconciling,
   onCreate,
@@ -364,14 +353,6 @@ function PageHeader({
         sizeHeightClasses.spacious,
       )}
     >
-      {!sidebarOpen && (
-        <IconButton
-          size="normal"
-          icon={<CaretRight size={16} weight="bold" />}
-          tooltip="Expand sidebar"
-          onClick={toggleSidebar}
-        />
-      )}
       <Brain size={16} className="text-muted-foreground" />
       <span className="text-sm font-medium">Knowledge</span>
 

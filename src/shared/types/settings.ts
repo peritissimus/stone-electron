@@ -32,7 +32,7 @@ export const DEFAULT_FONT_SETTINGS: FontSettings = {
   // UI - Inter with system fallbacks
   uiFont:
     'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  uiFontSize: 13,
+  uiFontSize: 14,
 
   // Editor headings - Barlow Semi Condensed
   editorHeadingFont:

@@ -115,14 +115,14 @@ export function GitSyncButton() {
   const needsSync = hasLocalChanges || hasRemoteChanges;
 
   return (
-    <div className="px-2 py-1.5 border-t border-border">
+    <div>
       <button
         type="button"
         onClick={handleSync}
         disabled={syncing || !status.hasRemote}
         className={cn(
-          'flex items-center justify-between w-full px-2 py-1.5 rounded text-xs',
-          'hover:bg-muted/60 transition-colors',
+          'flex h-8 items-center justify-between w-full px-2 rounded-lg text-xs',
+          'text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-[background-color,color,scale] duration-150 ease-out active:scale-[0.96]',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           needsSync && status.hasRemote && 'bg-accent/30',
         )}
@@ -134,8 +134,10 @@ export function GitSyncButton() {
               : `Sync workspace (commit, pull --rebase, push)${formatLastSync(status.lastSyncAt)}`
         }
       >
-        <div className="flex items-center gap-2">
-          <GitBranch size={14} className="text-muted-foreground" />
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex size-4 shrink-0 items-center justify-center">
+            <GitBranch size={14} className="text-muted-foreground" />
+          </span>
           <span className="text-muted-foreground truncate max-w-[80px]">
             {status.branch || 'main'}
           </span>

@@ -16,6 +16,8 @@ import type { LinearIssue } from '../out/ILinearSource';
 export interface DailyReviewTodayJournal {
   /** YYYY-MM-DD for today's local date. */
   date: string;
+  /** True when today's markdown file exists, even if it is not indexed yet. */
+  exists: boolean;
   /** Null when no journal entry exists for today yet. */
   noteId: string | null;
   /** First few lines of the journal body; null if empty / not created. */

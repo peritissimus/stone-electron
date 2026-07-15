@@ -4,18 +4,14 @@
 
 import { ResizablePanel } from './ResizablePanel';
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Heading3 } from '@renderer/components/base/ui/text';
-import { Gear } from '@phosphor-icons/react';
-import { Header, IconButton, ControlGroup } from '@renderer/components/composites';
-import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
-import { toSettings } from '@renderer/navigation/routes';
+import { TitlebarNavigationControls } from './TitlebarNavigationControls';
 
 export interface LayoutContainerProps {
   sidebar?: React.ReactNode;
   sidebarWidth: number;
   onSidebarWidthChange: (width: number) => void;
   showSidebar: boolean;
+  onToggleSidebar: () => void;
 
   mainContent: React.ReactNode;
 
@@ -29,34 +25,21 @@ export function LayoutContainer({
   sidebarWidth,
   onSidebarWidthChange,
   showSidebar,
+  onToggleSidebar,
 
   mainContent,
   overlayContent,
 
   className = '',
 }: LayoutContainerProps) {
-  const navigate = useNavigate();
-
   return (
     <>
-      <Header
-        size="normal"
-        className="fixed top-0 left-0 right-0 z-10"
-        left={<Heading3 className="ml-[64px] text-xs">Stone</Heading3>}
-        right={
-          <ControlGroup gap="sm" background="bg-transparent">
-            <IconButton
-              size="compact"
-              icon={<Gear size={12} />}
-              label="Settings"
-              tooltip={`Settings (${formatShortcut(',', true)})`}
-              onClick={() => navigate(toSettings())}
-            />
-          </ControlGroup>
-        }
-      />
-
-      <div className={`flex h-screen pt-8 bg-background overflow-hidden ${className}`}>
+      <div className={`relative flex h-screen bg-background overflow-hidden ${className}`}>
+        <TitlebarNavigationControls
+          sidebarOpen={showSidebar}
+          toggleSidebar={onToggleSidebar}
+          className="absolute left-0 top-0 z-20"
+        />
         {/* Sidebar Panel */}
         {showSidebar && sidebar && (
           <ResizablePanel
@@ -71,7 +54,11 @@ export function LayoutContainer({
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-h-0">{mainContent}</div>
+        <div
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden ${showSidebar ? '' : 'persistent-titlebar-collapsed'}`}
+        >
+          {mainContent}
+        </div>
 
         {/* Overlay Content (modals, etc.) */}
         {overlayContent}

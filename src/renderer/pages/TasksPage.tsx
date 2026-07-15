@@ -5,7 +5,6 @@
 import { useCallback } from 'react';
 import { CheckSquare, Funnel } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
-import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useTasks, TASK_STATES } from '@renderer/hooks/useTasks';
 import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
@@ -36,7 +35,6 @@ export default function TasksPage() {
     handleToggleTask,
   } = useTasks();
 
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
 
   const handleTodoClick = useCallback(
     (todo: TodoItem) => {
@@ -49,7 +47,7 @@ export default function TasksPage() {
   if (loading) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <TasksHeader sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} counts={counts} />
+        <TasksHeader counts={counts} />
         <div className="flex-1 overflow-auto p-6">
           <div className="max-w-2xl mx-auto space-y-4">
             {[1, 2, 3, 4].map((i) => (
@@ -67,7 +65,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <TasksHeader sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar} counts={counts} />
+      <TasksHeader counts={counts} />
 
       <TasksFilterBar
         searchQuery={searchQuery}

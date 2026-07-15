@@ -9,6 +9,7 @@ import { MainLayout } from '@renderer/components/composites';
 import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
 import { ACCENT_COLORS } from '@renderer/stores/uiStore';
 import { useSettingsStore } from '@renderer/stores/settingsStore';
+import { ZoomControlHUD } from '@renderer/components/composites/layout/ZoomControlHUD';
 
 export const App: React.FC = () => {
   // Check if this is the quick capture window FIRST (before any store access)
@@ -112,6 +113,7 @@ export const App: React.FC = () => {
         {/* All routes render within MainLayout */}
         <Route path="/*" element={<MainLayout />} />
       </Routes>
+      <ZoomControlHUD />
       <Toaster
         position="bottom-right"
         closeButton

@@ -32,8 +32,7 @@ import {
 import { cn } from '@renderer/lib/utils';
 import { renderMarkdown } from '@renderer/lib/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
-import { useSidebarUI } from '@renderer/hooks/useUI';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { useDailyReview } from '@renderer/hooks/useDailyReview';
 import { useStatusReport } from '@renderer/hooks/useStatusReport';
 import { useVoiceCaptureTrigger } from '@renderer/hooks/useVoiceCapture';
@@ -51,7 +50,6 @@ import type {
 } from '@shared/types';
 
 export default function DailyReviewPage() {
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { snapshot, loading, loadedOnce, refreshing, error, reload, summary, summarizing, summaryError, summarize, clearSummary } =
     useDailyReview();
   const { openAndGenerate: openStatusReport } = useStatusReport();
@@ -70,14 +68,6 @@ export default function DailyReviewPage() {
           sizeHeightClasses['spacious'],
         )}
       >
-        {!sidebarOpen && (
-          <IconButton
-            size="normal"
-            icon={<CaretRight size={16} weight="bold" />}
-            tooltip="Expand sidebar"
-            onClick={toggleSidebar}
-          />
-        )}
         <Sun size={16} className="shrink-0 text-muted-foreground" />
         <div className="flex min-w-0 items-baseline gap-2 max-[900px]:gap-0">
           <h1 className="shrink-0 text-sm font-semibold">Today</h1>
@@ -90,14 +80,15 @@ export default function DailyReviewPage() {
           <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
         )}
         <Button
-          variant="secondary"
+          variant="ghost"
           size="sm"
           onClick={() => void reload()}
+          disabled={refreshing}
           className="shrink-0 text-xs"
           aria-label="Refresh today"
           title="Refresh today"
         >
-          <ArrowClockwise size={14} />
+          <ArrowClockwise size={14} className={refreshing ? 'animate-spin' : undefined} />
           <span className="max-[1100px]:sr-only">Refresh</span>
         </Button>
         <Button
@@ -221,14 +212,14 @@ function JournalSection({
   onOpen: (id: string) => void;
   onStartWriting: () => void;
 }) {
-  const has = Boolean(journal.noteId);
+  const has = journal.exists;
   return (
     <section>
       <SectionLabel icon={<BookOpen size={12} />}>Today's journal</SectionLabel>
       {has ? (
         <button
           type="button"
-          onClick={() => journal.noteId && onOpen(journal.noteId)}
+          onClick={() => (journal.noteId ? onOpen(journal.noteId) : onStartWriting())}
           className={cn(
             'mt-2 w-full rounded-xl border border-border bg-card px-5 py-4 text-left',
             'shadow-[0_1px_2px_rgba(0,0,0,0.04)]',

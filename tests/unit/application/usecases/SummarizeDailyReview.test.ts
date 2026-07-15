@@ -5,7 +5,7 @@ import type { DailyReviewSnapshot, IGetDailyReviewUseCase, ITextGenerator } from
 function snapshot(over: Partial<DailyReviewSnapshot> = {}): DailyReviewSnapshot {
   return {
     date: '2026-06-16',
-    todayJournal: { date: '2026-06-16', noteId: null, contentPreview: null },
+    todayJournal: { date: '2026-06-16', exists: false, noteId: null, contentPreview: null },
     todayMeetings: [],
     openTasks: [],
     recentNotes: [],

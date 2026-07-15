@@ -1,7 +1,5 @@
-import { CaretRight } from '@phosphor-icons/react';
 import { useJournalTimeline } from '@renderer/hooks/useJournalTimeline';
-import { useSidebarUI } from '@renderer/hooks/useUI';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { JournalEntrySection } from '@renderer/components/features/Journals/JournalEntrySection';
 import { cn } from '@renderer/lib/utils';
@@ -21,7 +19,6 @@ function JournalSkeleton() {
 }
 
 export default function JournalsPage() {
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { entries, loading, loadedOnce, error, handleEntryOpen, handleMaterialize } =
     useJournalTimeline();
 
@@ -33,14 +30,6 @@ export default function JournalsPage() {
           sizeHeightClasses.spacious,
         )}
       >
-        {!sidebarOpen && (
-          <IconButton
-            size="normal"
-            icon={<CaretRight size={16} weight="bold" />}
-            tooltip="Expand sidebar"
-            onClick={toggleSidebar}
-          />
-        )}
         <h1 className="text-sm font-semibold text-foreground">Journals</h1>
       </div>
 

@@ -12,7 +12,6 @@ import { useEffect, useRef } from 'react';
 import { FileTree } from '@renderer/components/features/FileSystem';
 import { useSidebarFocusHandoff } from '@renderer/hooks/useSidebarFocusHandoff';
 import { useSidebarKeyboardNav } from '@renderer/hooks/useSidebarKeyboardNav';
-import { WorkspaceSelectorHeader } from './WorkspaceSelectorHeader';
 import { SidebarNavList } from './SidebarNavList';
 import { SidebarStatusRail } from './SidebarStatusRail';
 
@@ -34,11 +33,12 @@ export function Sidebar() {
       tabIndex={-1}
       data-sidebar-root="true"
       onKeyDown={handleKeyDown}
-      className="flex flex-col h-full bg-sidebar outline-none"
+      className="relative flex h-full flex-col bg-sidebar outline-none"
     >
-      <WorkspaceSelectorHeader />
+      <div className="h-10 shrink-0 border-b border-border/70" />
       <SidebarNavList />
-      <div className="flex-1 overflow-y-auto px-2 py-1.5">
+      <div className="mx-3 h-px bg-border/55" />
+      <div className="flex-1 overflow-y-auto px-2 pb-2 pt-3">
         <FileTree />
       </div>
       <SidebarStatusRail />

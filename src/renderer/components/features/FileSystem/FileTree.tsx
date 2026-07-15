@@ -12,7 +12,6 @@ import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/hooks/useFileTreeAPI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { logger } from '@renderer/lib/logger';
-import { normalizePath } from '@renderer/lib/path';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
@@ -20,12 +19,8 @@ export function FileTree() {
   const navigateToNote = useNavigateToNote();
   const { tree } = useFileTree();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
-  const { loadFileTree, renameFolder, deleteFolder, moveFolder } = useFileTreeAPI();
+  const { loadFileTree, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
-  const [renameFolderTarget, setRenameFolderTarget] = useState<{
-    path: string;
-    name: string;
-  } | null>(null);
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string | null) => {
@@ -81,42 +76,6 @@ export function FileTree() {
     [deleteNote, loadFileTree],
   );
 
-  const handleRenameFolder = useCallback(
-    async (folderPath: string, newName: string) => {
-      const trimmed = newName.trim();
-      if (!trimmed) return;
-      try {
-        await renameFolder(folderPath, trimmed);
-        await loadFileTree();
-      } catch (error) {
-        logger.error('Failed to rename folder', error);
-      }
-    },
-    [renameFolder, loadFileTree],
-  );
-
-  const handleDeleteFolder = useCallback(
-    async (folderPath: string) => {
-      const confirmed = window.confirm(
-        'Delete this folder and all notes within it? This action cannot be undone.',
-      );
-      if (!confirmed) return;
-
-      try {
-        const success = await deleteFolder(folderPath);
-        if (success) {
-          await loadFileTree();
-          if (renameFolderTarget?.path === folderPath) {
-            setRenameFolderTarget(null);
-          }
-        }
-      } catch (error) {
-        logger.error('Failed to delete folder', error);
-      }
-    },
-    [deleteFolder, loadFileTree, renameFolderTarget],
-  );
-
   const handleMoveNote = useCallback(
     async (noteId: string, destinationPath: string | null) => {
       logger.info('[FileTree] Moving note', { noteId, destinationPath });
@@ -145,6 +104,11 @@ export function FileTree() {
 
   return (
     <div className="space-y-0.5">
+      <div className="mb-1 flex h-8 items-center px-2">
+        <span className="text-[11px] font-medium tracking-wide text-muted-foreground/80">
+          Files
+        </span>
+      </div>
       {tree.map((node) =>
         node.type === 'folder' ? (
           <FolderNode
@@ -155,10 +119,6 @@ export function FileTree() {
             onRenameFile={(noteId, title) => setRenameTarget({ noteId, title })}
             onDeleteFile={handleDeleteNote}
             onMoveFile={handleMoveNote}
-            onRenameFolder={(path, name) =>
-              setRenameFolderTarget({ path: normalizePath(path), name })
-            }
-            onDeleteFolder={handleDeleteFolder}
             onMoveFolder={handleMoveFolder}
           />
         ) : (
@@ -186,20 +146,6 @@ export function FileTree() {
         placeholder="Note title"
         submitLabel="Rename"
         defaultValue={renameTarget?.title ?? ''}
-      />
-      <InputModal
-        isOpen={!!renameFolderTarget}
-        onClose={() => setRenameFolderTarget(null)}
-        onSubmit={async (value) => {
-          if (renameFolderTarget) {
-            await handleRenameFolder(renameFolderTarget.path, value);
-            setRenameFolderTarget(null);
-          }
-        }}
-        left={<Heading3>Rename Folder</Heading3>}
-        placeholder="Folder name"
-        submitLabel="Rename"
-        defaultValue={renameFolderTarget?.name ?? ''}
       />
     </div>
   );

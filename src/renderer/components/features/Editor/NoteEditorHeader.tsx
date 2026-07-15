@@ -12,7 +12,6 @@ import {
   Check,
   Trash,
   FloppyDisk,
-  CaretRight,
   Export,
   FilePdf,
   FileHtml,
@@ -33,7 +32,7 @@ import {
 } from '@renderer/components/base/ui/dropdown-menu';
 import { cn } from '@renderer/lib/utils';
 import { formatShortcut } from '@renderer/hooks/useKeyboardShortcuts';
-import { useSidebarUI, useEditorUI } from '@renderer/hooks/useUI';
+import { useEditorUI } from '@renderer/hooks/useUI';
 
 export interface NoteEditorHeaderProps {
   title: string;
@@ -70,7 +69,6 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
   onExportMarkdown,
   onModeToggle,
 }: NoteEditorHeaderProps) {
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const { editorMode, toggleEditorMode } = useEditorUI();
 
   const handleModeToggle = useCallback(async () => {
@@ -141,14 +139,6 @@ export const NoteEditorHeader = memo(function NoteEditorHeader({
         sizeHeightClasses['spacious'],
       )}
     >
-      {!sidebarOpen && (
-        <IconButton
-          size="normal"
-          icon={<CaretRight size={16} weight="bold" />}
-          tooltip="Expand sidebar"
-          onClick={toggleSidebar}
-        />
-      )}
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <input

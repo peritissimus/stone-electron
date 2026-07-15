@@ -7,7 +7,7 @@ export function SidebarNavList() {
   const location = useLocation();
 
   return (
-    <div className="p-2 border-b border-border space-y-0.5">
+    <div className="space-y-0.5 px-2 py-2">
       {PRIMARY_DESTINATIONS.map((destination) => (
         <QuickLink
           key={destination.id}
@@ -15,6 +15,7 @@ export function SidebarNavList() {
           label={destination.label}
           onClick={() => navigate(destination.path)}
           isActive={destination.isActive(location.pathname)}
+          className="h-8 rounded-lg px-2 text-sm"
         />
       ))}
     </div>

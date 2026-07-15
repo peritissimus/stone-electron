@@ -42,6 +42,8 @@ export function createJournalUseCases(deps: JournalUseCasesDeps): IJournalUseCas
     deps.journalReader,
     deps.workspaceRepository,
     deps.appConfigRepository,
+    deps.fileStorage,
+    deps.pathService,
   );
 
   return {

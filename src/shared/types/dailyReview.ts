@@ -8,6 +8,7 @@ import type { Note, TodoItem } from './index';
 
 export interface DailyReviewTodayJournal {
   date: string;
+  exists: boolean;
   noteId: string | null;
   contentPreview: string | null;
 }

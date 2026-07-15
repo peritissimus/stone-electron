@@ -3,13 +3,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { GitFork, CaretRight, CirclesThree, RadioButton } from '@phosphor-icons/react';
+import { GitFork, CirclesThree, RadioButton } from '@phosphor-icons/react';
 import { useNoteAPI } from '@renderer/hooks/useNoteAPI';
 import { useNotes } from '@renderer/hooks/useNotes';
-import { useSidebarUI } from '@renderer/hooks/useUI';
 import { useNavigateToNote } from '@renderer/navigation';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
-import { IconButton, sizeHeightClasses } from '@renderer/components/composites';
+import { sizeHeightClasses } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/lib/logger';
 import { NoteForceGraph } from '@renderer/components/features/Graph/NoteForceGraph';
@@ -23,7 +22,6 @@ export default function GraphPage() {
   const navigateToNote = useNavigateToNote();
   const { getGraphData } = useNoteAPI();
   const { activeNoteId } = useNotes();
-  const { toggleSidebar, sidebarOpen } = useSidebarUI();
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] });
   const [showOrphans, setShowOrphans] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -73,14 +71,6 @@ export default function GraphPage() {
             sizeHeightClasses['spacious'],
           )}
         >
-          {!sidebarOpen && (
-            <IconButton
-              size="normal"
-              icon={<CaretRight size={16} weight="bold" />}
-              tooltip="Expand sidebar"
-              onClick={toggleSidebar}
-            />
-          )}
           <GitFork size={16} className="text-muted-foreground" />
           <span className="text-sm font-medium">Graph</span>
           <div className="flex-1" />
@@ -101,14 +91,6 @@ export default function GraphPage() {
           sizeHeightClasses['spacious'],
         )}
       >
-        {!sidebarOpen && (
-          <IconButton
-            size="normal"
-            icon={<CaretRight size={16} weight="bold" />}
-            tooltip="Expand sidebar"
-            onClick={toggleSidebar}
-          />
-        )}
         <GitFork size={16} className="text-muted-foreground" />
         <span className="text-sm font-medium">Graph</span>
         <div className="flex-1" />

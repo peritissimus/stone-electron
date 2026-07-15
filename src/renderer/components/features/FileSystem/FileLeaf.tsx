@@ -105,8 +105,8 @@ export const FileLeaf = React.memo<FileLeafProps>(({ node, level, onRename, onDe
         className={cn(
           fileTreeRowClassName,
           isActive ? 'bg-secondary text-foreground' : 'hover:bg-muted/60',
-          isCursor && 'bg-secondary',
         )}
+        data-sidebar-cursor={isCursor ? 'true' : undefined}
         role="button"
         tabIndex={-1}
         onClick={handleOpen}

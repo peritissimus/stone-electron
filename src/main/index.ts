@@ -236,7 +236,7 @@ async function createWindow() {
       backgroundColor: process.platform === 'darwin' ? undefined : '#ffffff',
       vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
       visualEffectState: 'active',
-      trafficLightPosition: { x: 12, y: 8 },
+      trafficLightPosition: { x: 12, y: 12 },
     });
 
     logger.info('BrowserWindow created successfully');

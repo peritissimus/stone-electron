@@ -144,14 +144,15 @@ export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
         workspaceId,
       });
       const entry = entries.find((e) => e.date === date) ?? entries[0] ?? null;
-      if (!entry) return { date, noteId: null, contentPreview: null };
+      if (!entry) return { date, exists: false, noteId: null, contentPreview: null };
       return {
         date: entry.date,
+        exists: entry.exists,
         noteId: entry.noteId,
         contentPreview: entry.content ? trimPreview(entry.content) : null,
       };
     } catch {
-      return { date, noteId: null, contentPreview: null };
+      return { date, exists: false, noteId: null, contentPreview: null };
     }
   }
 
@@ -254,7 +255,7 @@ export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
 function emptySnapshot(date: string): DailyReviewSnapshot {
   return {
     date,
-    todayJournal: { date, noteId: null, contentPreview: null },
+    todayJournal: { date, exists: false, noteId: null, contentPreview: null },
     todayMeetings: [],
     openTasks: [],
     recentNotes: [],

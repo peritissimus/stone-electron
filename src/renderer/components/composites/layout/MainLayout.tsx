@@ -348,6 +348,7 @@ export function MainLayout() {
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={setSidebarWidth}
         showSidebar={sidebarOpen && !editorFullscreen}
+        onToggleSidebar={toggleSidebar}
         mainContent={
           <MainContentArea>
             <MainLayoutRoutes editorRef={editorRef} onEditorChange={handleEditorChange} />

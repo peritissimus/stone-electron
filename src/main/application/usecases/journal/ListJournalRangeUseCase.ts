@@ -1,4 +1,9 @@
-import type { IAppConfigRepository, IJournalReader } from '../../../domain';
+import type {
+  IAppConfigRepository,
+  IFileStorage,
+  IJournalReader,
+  IPathService,
+} from '../../../domain';
 import type { IWorkspaceRepository } from '../../../domain/ports/out/IWorkspaceRepository';
 import type {
   JournalEntryDTO,
@@ -14,6 +19,8 @@ export class ListJournalRangeUseCase {
     private readonly journalReader: IJournalReader,
     private readonly workspaceRepository: IWorkspaceRepository,
     private readonly appConfigRepository: IAppConfigRepository,
+    private readonly fileStorage: IFileStorage,
+    private readonly pathService: IPathService,
   ) {}
 
   async execute(request: ListJournalRangeRequest): Promise<ListJournalRangeResponse> {
@@ -43,20 +50,27 @@ export class ListJournalRangeUseCase {
     });
 
     const recordsByDate = new Map(records.map((record) => [record.date, record]));
-    const entries: JournalEntryDTO[] = dateStrings.map((date) => {
-      const record = recordsByDate.get(date);
-      // Strip the leading `# Title` heading the same way GetNoteContentUseCase
-      // does — the note's title is rendered in the page chrome (and round-
-      // tripped on save by UpdateNoteUseCase), so the editor body should
-      // never contain a duplicate H1.
-      const body = record?.content != null ? stripFirstHeading(record.content) : null;
-      return {
-        date,
-        noteId: record?.noteId ?? null,
-        exists: Boolean(record),
-        content: body,
-      };
-    });
+    const entries: JournalEntryDTO[] = await Promise.all(
+      dateStrings.map(async (date) => {
+        const record = recordsByDate.get(date);
+        // Strip the leading `# Title` heading the same way GetNoteContentUseCase
+        // does — the note's title is rendered in the page chrome (and round-
+        // tripped on save by UpdateNoteUseCase), so the editor body should
+        // never contain a duplicate H1.
+        const relativePath = `${journalFolder}/${date}.md`;
+        const absolutePath = this.pathService.join(workspace.folderPath, relativePath);
+        const exists = Boolean(record) || (await this.fileStorage.exists(absolutePath));
+        const diskContent =
+          record?.content ?? (exists ? await this.fileStorage.read(absolutePath) : null);
+        const body = diskContent != null ? stripFirstHeading(diskContent) : null;
+        return {
+          date,
+          noteId: record?.noteId ?? null,
+          exists,
+          content: body,
+        };
+      }),
+    );
 
     return { entries };
   }

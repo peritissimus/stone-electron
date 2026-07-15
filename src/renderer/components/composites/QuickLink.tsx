@@ -31,7 +31,7 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
     const height = sizeHeightClasses[size];
     const padding = size === 'compact' ? 'px-1.5' : size === 'spacious' ? 'px-3' : 'px-2';
     const textSize = sizeTextClasses[size];
-    const gap = size === 'compact' ? 'gap-1' : 'gap-1.5';
+    const gap = size === 'compact' ? 'gap-1' : 'gap-2';
 
     return (
       <button
@@ -44,9 +44,9 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
           textSize,
           gap,
           'flex items-center justify-start',
-          'rounded-md',
+          'rounded-lg',
           'transition-[background-color,transform] duration-150 ease-out active:scale-[0.96]',
-          isActive ? 'bg-secondary' : 'hover:bg-muted/60',
+          isActive ? 'bg-foreground/[0.075] shadow-[inset_0_0_0_1px_hsl(var(--foreground)/0.035)]' : 'hover:bg-muted/60',
           isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
           className,
         )}
@@ -55,14 +55,14 @@ export const QuickLink = React.forwardRef<HTMLButtonElement, QuickLinkProps>(
         {icon && (
           <div
             className={cn(
-              'flex-shrink-0 flex items-center transition-colors duration-150',
+              'flex size-4 flex-shrink-0 items-center justify-center transition-colors duration-150',
               isActive ? 'text-foreground' : 'text-muted-foreground',
             )}
           >
             {icon}
           </div>
         )}
-        <span className="flex-1 text-left">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left leading-4">{label}</span>
       </button>
     );
   },

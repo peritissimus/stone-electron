@@ -20,7 +20,7 @@ export interface FontSettings {
 export const DEFAULT_FONT_SETTINGS: FontSettings = {
   uiFont:
     'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  uiFontSize: 13,
+  uiFontSize: 14,
   editorHeadingFont:
     '"Barlow Semi Condensed", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   editorBodyFont:
