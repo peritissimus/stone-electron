@@ -6,7 +6,7 @@
  */
 
 import { IpcResponse } from '@shared/types';
-import { logger } from '@renderer/lib/logger';
+import { logger } from '@renderer/services/telemetry/logger';
 
 /**
  * Result of handling an IPC response

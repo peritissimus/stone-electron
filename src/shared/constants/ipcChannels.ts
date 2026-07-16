@@ -151,6 +151,7 @@ export const TEMPLATE_CHANNELS = {
 // Daily Review operations
 export const DAILY_REVIEW_CHANNELS = {
   GET: 'dailyReview:get',
+  LOAD_INTEGRATION: 'dailyReview:loadIntegration',
   SUMMARIZE: 'dailyReview:summarize',
 } as const;
 

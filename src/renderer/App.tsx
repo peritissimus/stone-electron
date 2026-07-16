@@ -5,11 +5,10 @@
 import React, { useEffect, useState } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { MainLayout } from '@renderer/components/composites';
-import { QuickCaptureWindow } from '@renderer/components/features/QuickCapture';
-import { ACCENT_COLORS } from '@renderer/stores/uiStore';
-import { useSettingsStore } from '@renderer/stores/settingsStore';
-import { ZoomControlHUD } from '@renderer/components/composites/layout/ZoomControlHUD';
+import { Workbench } from '@renderer/workbench/Workbench';
+import { QuickCaptureWindow } from '@renderer/features/quick-capture/views/components';
+import { ACCENT_COLORS, useTheme } from '@renderer/services/view-state/hooks/useUI';
+import { ZoomControlHUD } from '@renderer/workbench/overlays/ZoomControlHUD';
 
 export const App: React.FC = () => {
   // Check if this is the quick capture window FIRST (before any store access)
@@ -18,10 +17,7 @@ export const App: React.FC = () => {
     return hash === '#/quick-capture' || hash === '/quick-capture';
   });
 
-  const hydrateSettings = useSettingsStore((state) => state.hydrate);
-  const theme = useSettingsStore((state) => state.appearance.theme);
-  const accentColor = useSettingsStore((state) => state.appearance.accentColor);
-  const fontSettings = useSettingsStore((state) => state.appearance.fontSettings);
+  const { hydrateSettings, theme, accentColor, fontSettings } = useTheme();
 
   useEffect(() => {
     if (isQuickCapture) return;
@@ -110,8 +106,8 @@ export const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        {/* All routes render within MainLayout */}
-        <Route path="/*" element={<MainLayout />} />
+        {/* All routes render within the persistent desktop workbench. */}
+        <Route path="/*" element={<Workbench />} />
       </Routes>
       <ZoomControlHUD />
       <Toaster

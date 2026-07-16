@@ -168,7 +168,11 @@ function pickFilePathFromArgv(argv: string[]): string | null {
   return null;
 }
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+// Automated desktop tests run against an isolated user-data directory and may
+// coexist with a developer's live Stone window. Do not let that production
+// instance lock make the test process quit before Playwright can attach.
+const gotSingleInstanceLock =
+  process.env.E2E_TEST === 'true' || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   // Another Stone already owns the lock — our argv has been forwarded to
   // that instance via second-instance; quit quietly.

@@ -1,0 +1,226 @@
+/**
+ * IntegrationsSettings — Settings → Integrations. Connects third-party
+ * sources the Today page pulls from. Currently: a Linear personal API key.
+ * Apple Calendar/Mail need no config here — they run on macOS via Automation
+ * permission, prompted on first use.
+ */
+
+import { useEffect, useState, type ReactNode } from 'react';
+import {
+  ArrowSquareOut,
+  CalendarBlank,
+  Check,
+  CheckCircle,
+  CircleNotch,
+  Envelope,
+  LinkSimple,
+  Warning,
+} from '@phosphor-icons/react';
+import { ContainerStack } from '@renderer/components/base/ui';
+import { Button } from '@renderer/components/base/ui/button';
+import { Input } from '@renderer/components/base/ui/input';
+import { Caption } from '@renderer/components/base/ui/text';
+import { useIntegrationsSettings } from '@renderer/features/settings/hooks/useIntegrationsSettings';
+import {
+  useDailyReviewIntegrations,
+  type IntegrationLoadState,
+} from '@renderer/features/daily-review/hooks/useDailyReviewIntegrations';
+import type { DailyReviewIntegrationSource } from '@shared/types';
+import { SettingsSection } from './SettingsSection';
+
+export function IntegrationsSettings() {
+  const { integrations, loaded, saving, error, setLinearApiKey } = useIntegrationsSettings();
+  const {
+    integrations: access,
+    checkAccess,
+    openAutomationSettings,
+  } = useDailyReviewIntegrations();
+  const [draft, setDraft] = useState('');
+  const [justSaved, setJustSaved] = useState(false);
+
+  // Seed the field from the stored key once it loads (and after external changes).
+  useEffect(() => {
+    setDraft(integrations.linearApiKey);
+  }, [integrations.linearApiKey]);
+
+  const dirty = draft.trim() !== integrations.linearApiKey;
+
+  const save = async () => {
+    await setLinearApiKey(draft.trim());
+    setJustSaved(true);
+    window.setTimeout(() => setJustSaved(false), 1500);
+  };
+
+  return (
+    <ContainerStack gap="xl">
+      <SettingsSection
+        title="Linear"
+        description="Show your assigned open issues on the Today page."
+      >
+        <div className="rounded-xl bg-muted/40 p-3">
+          <div className="flex items-center gap-2">
+            <Input
+              type="password"
+              value={draft}
+              disabled={!loaded || saving}
+              placeholder="Linear personal API key (lin_api_…)"
+              spellCheck={false}
+              autoComplete="off"
+              className="flex-1 font-mono text-xs"
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && dirty) void save();
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!dirty || saving}
+              onClick={() => void save()}
+              className="shrink-0 transition-transform active:scale-[0.96]"
+            >
+              {justSaved ? (
+                <Check size={12} weight="bold" />
+              ) : (
+                <LinkSimple size={12} weight="bold" />
+              )}
+              {justSaved ? 'Saved' : integrations.linearApiKey ? 'Update' : 'Connect'}
+            </Button>
+          </div>
+          <Caption className="mt-2 block text-pretty text-muted-foreground">
+            Create a personal API key at linear.app → Settings → Security & access → Personal API
+            keys. Stored locally on this device.
+          </Caption>
+          {error && <Caption className="mt-1 block text-destructive">{error}</Caption>}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Apple Calendar & Mail"
+        description="Control which macOS applications can contribute to Today. Data stays on this Mac."
+      >
+        <div className="grid gap-3">
+          <IntegrationPermissionRow
+            source="calendar"
+            title="Calendar"
+            description="Show today's events and locations."
+            icon={<CalendarBlank size={18} />}
+            state={access.calendar}
+            onCheck={() => void checkAccess('calendar')}
+            onOpenSettings={() => void openAutomationSettings()}
+          />
+          <IntegrationPermissionRow
+            source="mail"
+            title="Mail"
+            description="Show recent unread messages."
+            icon={<Envelope size={18} />}
+            state={access.mail}
+            onCheck={() => void checkAccess('mail')}
+            onOpenSettings={() => void openAutomationSettings()}
+          />
+        </div>
+        <Caption className="text-pretty text-muted-foreground">
+          macOS asks for Automation access the first time Stone checks an application. If access was
+          denied, enable it under Privacy &amp; Security → Automation, then check again.
+        </Caption>
+      </SettingsSection>
+    </ContainerStack>
+  );
+}
+
+function IntegrationPermissionRow({
+  source,
+  title,
+  description,
+  icon,
+  state,
+  onCheck,
+  onOpenSettings,
+}: {
+  source: DailyReviewIntegrationSource;
+  title: string;
+  description: string;
+  icon: ReactNode;
+  state: IntegrationLoadState;
+  onCheck: () => void;
+  onOpenSettings: () => void;
+}) {
+  const denied = state.status === 'denied';
+  const loading = state.status === 'loading';
+  const unavailable = state.status === 'unavailable';
+  const connected = state.status === 'connected';
+  const statusLabel = connected
+    ? 'Connected'
+    : denied
+      ? 'Access denied'
+      : unavailable
+        ? 'Unavailable'
+        : state.status === 'error'
+          ? 'Needs attention'
+          : loading
+            ? 'Checking access…'
+            : 'Not checked';
+
+  return (
+    <div className="flex min-h-20 items-center gap-3 rounded-xl bg-muted/40 p-3 shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-sm">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">{title}</span>
+          <span
+            className={
+              connected
+                ? 'inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400'
+                : denied || state.status === 'error'
+                  ? 'inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400'
+                  : 'inline-flex items-center gap-1 text-[11px] text-muted-foreground'
+            }
+          >
+            {loading ? (
+              <CircleNotch size={11} className="animate-spin" />
+            ) : connected ? (
+              <CheckCircle size={11} weight="fill" />
+            ) : denied || state.status === 'error' ? (
+              <Warning size={11} weight="fill" />
+            ) : null}
+            {statusLabel}
+          </span>
+        </div>
+        <Caption className="mt-0.5 block text-pretty text-muted-foreground">
+          {state.message ?? description}
+        </Caption>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {denied && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-10"
+            onClick={onOpenSettings}
+          >
+            <ArrowSquareOut size={13} />
+            System Settings
+          </Button>
+        )}
+        {!unavailable && (
+          <Button
+            type="button"
+            variant={denied ? 'ghost' : 'outline'}
+            size="sm"
+            className="h-10"
+            disabled={loading}
+            onClick={onCheck}
+            aria-label={`Check ${source} access`}
+          >
+            {loading && <CircleNotch size={13} className="animate-spin" />}
+            {state.status === 'idle' ? 'Request access' : 'Check again'}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SummarizeDailyReviewUseCase } from '../../../../src/main/application/usecases/dailyReview/SummarizeDailyReviewUseCase';
-import type { DailyReviewSnapshot, IGetDailyReviewUseCase, ITextGenerator } from '../../../../src/main/domain';
+import type {
+  DailyReviewSnapshot,
+  IGetDailyReviewUseCase,
+  ITextGenerator,
+} from '../../../../src/main/domain';
 
 function snapshot(over: Partial<DailyReviewSnapshot> = {}): DailyReviewSnapshot {
   return {
@@ -15,13 +19,29 @@ function snapshot(over: Partial<DailyReviewSnapshot> = {}): DailyReviewSnapshot 
 }
 
 function make(over: Partial<DailyReviewSnapshot> = {}) {
-  const getDailyReview = { execute: vi.fn(async () => snapshot(over)) } as unknown as IGetDailyReviewUseCase;
+  const getDailyReview = {
+    execute: vi.fn(async () => snapshot(over)),
+  } as unknown as IGetDailyReviewUseCase;
   const generateMarkdown = vi.fn(async (_req: { prompt: string; system?: string }) => ({
     text: '- did things',
   }));
   const textGenerator = { generateMarkdown } as unknown as ITextGenerator;
+  const loadIntegration = {
+    execute: vi.fn(async ({ source }: { source: 'calendar' | 'mail' | 'linear' }) => ({
+      source,
+      status: 'connected' as const,
+      ...(source === 'calendar' ? { calendarEvents: over.calendarEvents ?? [] } : {}),
+      ...(source === 'mail' ? { mailMessages: over.mailMessages ?? [] } : {}),
+      ...(source === 'linear' ? { linearIssues: over.linearIssues ?? [] } : {}),
+    })),
+  };
   const appendToJournal = vi.fn(async () => ({ noteId: 'journal-1', appended: true }));
-  const useCase = new SummarizeDailyReviewUseCase({ getDailyReview, textGenerator, appendToJournal });
+  const useCase = new SummarizeDailyReviewUseCase({
+    getDailyReview,
+    loadIntegration,
+    textGenerator,
+    appendToJournal,
+  });
   return { useCase, generateMarkdown, appendToJournal };
 }
 
@@ -29,7 +49,14 @@ describe('SummarizeDailyReviewUseCase', () => {
   it('summarizes the snapshot without touching the journal by default', async () => {
     const { useCase, generateMarkdown, appendToJournal } = make({
       linearIssues: [
-        { identifier: 'ENG-1', title: 'Ship it', state: 'In Progress', priority: 1, url: 'u', dueDate: null },
+        {
+          identifier: 'ENG-1',
+          title: 'Ship it',
+          state: 'In Progress',
+          priority: 1,
+          url: 'u',
+          dueDate: null,
+        },
       ],
     });
 

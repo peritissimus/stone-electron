@@ -19,11 +19,8 @@ import './index.css';
 // editor-settings overrides are visible on initial mount. Fire-and-forget;
 // stores fall back to defaults on failure, and re-sync on settings:changed.
 if (!isQuickCapture) {
-  void import('@renderer/stores/shortcutsStore').then((m) =>
-    m.useShortcutsStore.getState().hydrate(),
-  );
-  void import('@renderer/stores/editorConfigStore').then((m) =>
-    m.useEditorConfigStore.getState().hydrate(),
+  void import('@renderer/services/bootstrap/hydrateRenderer').then(({ hydrateRendererServices }) =>
+    hydrateRendererServices(),
   );
 }
 

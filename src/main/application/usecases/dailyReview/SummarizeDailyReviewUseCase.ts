@@ -10,6 +10,7 @@
 import type {
   DailyReviewSnapshot,
   IGetDailyReviewUseCase,
+  ILoadDailyReviewIntegrationUseCase,
   ISummarizeDailyReviewUseCase,
   ITextGenerator,
   SummarizeDailyReviewRequest,
@@ -21,6 +22,7 @@ const SYSTEM_PROMPT =
 
 export interface SummarizeDailyReviewUseCaseDeps {
   getDailyReview: IGetDailyReviewUseCase;
+  loadIntegration: ILoadDailyReviewIntegrationUseCase;
   textGenerator: ITextGenerator;
   appendToJournal: (
     content: string,
@@ -31,13 +33,20 @@ export interface SummarizeDailyReviewUseCaseDeps {
 export class SummarizeDailyReviewUseCase implements ISummarizeDailyReviewUseCase {
   constructor(private readonly deps: SummarizeDailyReviewUseCaseDeps) {}
 
-  async execute(
-    request: SummarizeDailyReviewRequest = {},
-  ): Promise<SummarizeDailyReviewResponse> {
-    const snapshot = await this.deps.getDailyReview.execute({
-      workspaceId: request.workspaceId,
-      date: request.date,
-    });
+  async execute(request: SummarizeDailyReviewRequest = {}): Promise<SummarizeDailyReviewResponse> {
+    const [snapshot, calendar, mail, linear] = await Promise.all([
+      this.deps.getDailyReview.execute({
+        workspaceId: request.workspaceId,
+        date: request.date,
+      }),
+      this.deps.loadIntegration.execute({ source: 'calendar', date: request.date }),
+      this.deps.loadIntegration.execute({ source: 'mail', date: request.date }),
+      this.deps.loadIntegration.execute({ source: 'linear', date: request.date }),
+    ]);
+
+    if (calendar.status === 'connected') snapshot.calendarEvents = calendar.calendarEvents;
+    if (mail.status === 'connected') snapshot.mailMessages = mail.mailMessages;
+    if (linear.status === 'connected') snapshot.linearIssues = linear.linearIssues;
 
     const prompt = buildPrompt(snapshot);
     const result = await this.deps.textGenerator.generateMarkdown({
@@ -92,7 +101,9 @@ function buildPrompt(s: DailyReviewSnapshot): string {
   if (s.linearIssues?.length) {
     lines.push('## Linear');
     for (const i of s.linearIssues) {
-      lines.push(`- ${i.identifier} ${i.title} (${i.state}${i.dueDate ? `, due ${i.dueDate}` : ''})`);
+      lines.push(
+        `- ${i.identifier} ${i.title} (${i.state}${i.dueDate ? `, due ${i.dueDate}` : ''})`,
+      );
     }
     lines.push('');
   }

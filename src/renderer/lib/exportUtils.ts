@@ -5,7 +5,7 @@
  * including Mermaid diagrams as SVGs, syntax-highlighted code, and all applied styles.
  */
 
-import type { RichTextEditor } from '@renderer/editor';
+import type { RichTextEditor } from '@renderer/features/notes/editor';
 import { decodeBase64ToUtf8 } from '@renderer/lib/base64';
 import { getEmbeddedFontFaces } from '@renderer/lib/fontLoader';
 

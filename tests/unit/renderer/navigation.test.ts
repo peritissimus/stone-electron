@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PRIMARY_DESTINATIONS } from '@renderer/navigation';
+import { PRIMARY_DESTINATIONS } from '@renderer/services/navigation';
 
 describe('navigation/destinations', () => {
   it('lists the visible primary destinations', () => {

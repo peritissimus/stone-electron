@@ -1,0 +1,148 @@
+/**
+ * Workspace API Hook - sync and workspace operations
+ */
+
+import { useCallback } from 'react';
+import { useWorkspaceStore } from '@renderer/services/workspace/model/workspaceStore';
+import { useNavigateHome } from '@renderer/services/navigation';
+import { workspaceAPI } from '@renderer/api';
+import { clearPathCache } from '@renderer/lib/pathCache';
+import { clearMermaidCache } from '@renderer/features/notes/editor/mermaid';
+import { useFileTreeAPI } from '@renderer/services/workspace/commands/useFileTreeAPI';
+import { useTagAPI } from '@renderer/features/notes/commands/useTagAPI';
+import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
+
+export function useWorkspaceAPI() {
+  const navigateHome = useNavigateHome();
+  const setWorkspaces = useWorkspaceStore((state) => state.setWorkspaces);
+  const setActiveWorkspaceId = useWorkspaceStore((state) => state.setActiveWorkspaceId);
+  const setLoading = useWorkspaceStore((state) => state.setLoading);
+  const setError = useWorkspaceStore((state) => state.setError);
+  const { loadFileTree } = useFileTreeAPI();
+  const { loadTags } = useTagAPI();
+  const { loadNotes } = useNoteAPI();
+
+  const loadWorkspaces = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await workspaceAPI.getAll();
+
+      if (response.success && response.data) {
+        setWorkspaces(response.data.workspaces);
+      } else {
+        setError(response.error?.message || 'Failed to load workspaces');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to load workspaces');
+    } finally {
+      setLoading(false);
+    }
+  }, [setLoading, setError, setWorkspaces]);
+
+  const setActiveWorkspace = useCallback(
+    async (workspaceId: string) => {
+      try {
+        const response = await workspaceAPI.setActive(workspaceId);
+        if (response.success) {
+          clearPathCache();
+          clearMermaidCache();
+          setActiveWorkspaceId(workspaceId);
+          // Tree selection is derived from the route; navigating home
+          // drops the active note and the derivation follows automatically.
+          navigateHome();
+          // The sidebar tree, tags, and notes all belong to the previous
+          // workspace until reloaded — nothing subscribes to the
+          // WORKSPACE_SWITCHED event, so refresh them here at the seam.
+          await Promise.all([loadWorkspaces(), loadFileTree(), loadTags()]);
+          // Notes are the heaviest load and nothing above the fold needs
+          // them synchronously — refresh in the background.
+          void loadNotes();
+        } else {
+          setError(response.error?.message || 'Failed to switch workspace');
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to switch workspace');
+      }
+    },
+    [
+      loadWorkspaces,
+      loadFileTree,
+      loadTags,
+      loadNotes,
+      setActiveWorkspaceId,
+      navigateHome,
+      setError,
+    ],
+  );
+
+  const syncWorkspace = useCallback(
+    async (workspaceId?: string) => {
+      const response = await workspaceAPI.sync(workspaceId);
+
+      if (response.success) {
+        await loadWorkspaces();
+      }
+
+      return response;
+    },
+    [loadWorkspaces],
+  );
+
+  const selectFolder = useCallback(async () => {
+    try {
+      const response = await workspaceAPI.selectFolder();
+      if (response.success && response.data) {
+        return response.data;
+      }
+      return null;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to select folder');
+      return null;
+    }
+  }, [setError]);
+
+  const getDefaultWorkspacePath = useCallback(async () => {
+    try {
+      const response = await workspaceAPI.getDefaultPath();
+      if (response.success && response.data) {
+        return response.data.path;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const createWorkspace = useCallback(
+    async (data: { name: string; path: string }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await workspaceAPI.create(data);
+        if (response.success && response.data) {
+          await loadWorkspaces();
+          return response.data;
+        } else {
+          setError(response.error?.message || 'Failed to create workspace');
+          return null;
+        }
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Failed to create workspace');
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [loadWorkspaces, setLoading, setError],
+  );
+
+  return {
+    syncWorkspace,
+    loadWorkspaces,
+    setActiveWorkspace,
+    selectFolder,
+    getDefaultWorkspacePath,
+    createWorkspace,
+  };
+}

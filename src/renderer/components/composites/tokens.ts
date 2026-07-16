@@ -11,7 +11,7 @@
  * - roomy: Extra spacing, larger text (16px)
  */
 
-import { tw } from '@renderer/lib/tokenMap';
+import { tw } from '@renderer/features/notes/editor/tokenMap';
 import type { SizeVariant } from '@renderer/specs';
 
 // Re-export SizeVariant from specs

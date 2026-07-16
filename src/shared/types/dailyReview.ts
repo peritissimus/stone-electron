@@ -53,6 +53,18 @@ export interface LinearIssue {
   dueDate: string | null;
 }
 
+export type DailyReviewIntegrationSource = 'calendar' | 'mail' | 'linear';
+export type DailyReviewIntegrationStatus = 'connected' | 'denied' | 'unavailable' | 'error';
+
+export interface DailyReviewIntegrationResult {
+  source: DailyReviewIntegrationSource;
+  status: DailyReviewIntegrationStatus;
+  message?: string;
+  calendarEvents?: CalendarEvent[];
+  mailMessages?: MailMessage[];
+  linearIssues?: LinearIssue[];
+}
+
 export interface DailyReviewSnapshot {
   date: string;
   todayJournal: DailyReviewTodayJournal;

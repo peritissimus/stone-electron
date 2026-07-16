@@ -18,9 +18,13 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-import { useNavigateToNote, useNavigateHome, toToday, toNote } from '@renderer/navigation';
+import { useNavigateToNote, useNavigateHome, toToday, toNote } from '@renderer/services/navigation';
 
-function renderHook<T>(callback: () => T): { current: T; unmount: () => void; rerender: () => void } {
+function renderHook<T>(callback: () => T): {
+  current: T;
+  unmount: () => void;
+  rerender: () => void;
+} {
   const container = document.createElement('div');
   const root = createRoot(container);
   const ref: { current: T | undefined } = { current: undefined };

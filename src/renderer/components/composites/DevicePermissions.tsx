@@ -12,7 +12,10 @@ import { useEffect, useState } from 'react';
 import { Check, CircleNotch, Microphone, SpeakerHigh, Warning } from '@phosphor-icons/react';
 import { Button } from '@renderer/components/base/ui/button';
 import { Caption } from '@renderer/components/base/ui/text';
-import { useMicPermission, useSystemAudioPermission } from '@renderer/hooks/useOnboarding';
+import {
+  useMicPermission,
+  useSystemAudioPermission,
+} from '@renderer/features/onboarding/hooks/useOnboarding';
 
 type PermissionRowState = 'granted' | 'ask' | 'denied' | 'hidden';
 

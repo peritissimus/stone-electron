@@ -4,7 +4,12 @@
 
 import { invokeIpc } from '@renderer/lib/ipc';
 import { DAILY_REVIEW_CHANNELS } from '@shared/constants/ipcChannels';
-import type { DailyReviewSnapshot, IpcResponse } from '@shared/types';
+import type {
+  DailyReviewIntegrationResult,
+  DailyReviewIntegrationSource,
+  DailyReviewSnapshot,
+  IpcResponse,
+} from '@shared/types';
 
 export interface DailyReviewSummary {
   summary: string;
@@ -17,6 +22,12 @@ export const dailyReviewAPI = {
     date?: string;
   }): Promise<IpcResponse<DailyReviewSnapshot>> =>
     invokeIpc(DAILY_REVIEW_CHANNELS.GET, input ?? {}),
+
+  loadIntegration: (input: {
+    source: DailyReviewIntegrationSource;
+    date?: string;
+  }): Promise<IpcResponse<DailyReviewIntegrationResult>> =>
+    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, input),
 
   summarize: (input?: {
     workspaceId?: string;

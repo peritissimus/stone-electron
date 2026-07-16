@@ -36,11 +36,10 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   await expect(spinner).toBeVisible();
   await expect(spinner).toBeHidden({ timeout: 60_000 });
 
-  // Once initialization completes, the Knowledge page exposes the semantic
-  // index and search surface. The former "Ready" footer no longer exists.
-  await expect(window.getByText('Semantic Index', { exact: true })).toBeVisible({
-    timeout: 30_000,
-  });
+  // Once initialization completes, the Knowledge page exposes its semantic
+  // search surface and reports the index state in the page header.
+  await expect(window.getByText('Knowledge', { exact: true }).last()).toBeVisible();
+  await expect(window.getByText(/^(Indexed|\d+% indexed)$/)).toBeVisible({ timeout: 30_000 });
   await expect(
     window.getByRole('textbox', { name: 'Find notes by meaning, not just keywords…' }),
   ).toBeEnabled();
@@ -57,8 +56,8 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   }
 
   // Hard assertions: nothing crashed loudly.
-  const fatalRendererErrors = rendererErrors.filter(
-    (e) => /xenova|transformers|onnx|worker/i.test(e),
+  const fatalRendererErrors = rendererErrors.filter((e) =>
+    /xenova|transformers|onnx|worker/i.test(e),
   );
   expect(fatalRendererErrors, fatalRendererErrors.join('\n')).toHaveLength(0);
 

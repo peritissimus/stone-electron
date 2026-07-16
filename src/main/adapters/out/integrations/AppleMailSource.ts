@@ -4,7 +4,7 @@
  * is denied. Triggers a one-time macOS Automation prompt on first use.
  */
 
-import type { IMailSource, MailMessage } from '../../../domain/ports/out/IMailSource';
+import type { IMailSource } from '../../../domain/ports/out/IMailSource';
 import { runJxa } from './osascriptJxa';
 
 interface RawMessage {
@@ -49,13 +49,25 @@ function script(limit: number): string {
 }
 
 export class AppleMailSource implements IMailSource {
-  async getUnreadMessages(limit: number): Promise<MailMessage[]> {
-    const raw = await runJxa<RawMessage[]>(script(limit), 12000);
-    if (!raw) return [];
-    return raw.map((m) => ({
-      subject: String(m.subject ?? '(no subject)'),
-      sender: String(m.sender ?? ''),
-      receivedAt: String(m.receivedAt ?? ''),
-    }));
+  async getUnreadMessages(limit: number) {
+    const result = await runJxa<RawMessage[]>(script(limit), {
+      target: 'Mail',
+      timeoutMs: 5000,
+    });
+    if (!result.ok) {
+      return {
+        status: result.reason === 'timeout' ? ('error' as const) : result.reason,
+        data: [],
+        message: result.message,
+      };
+    }
+    return {
+      status: 'connected' as const,
+      data: result.data.map((m) => ({
+        subject: String(m.subject ?? '(no subject)'),
+        sender: String(m.sender ?? ''),
+        receivedAt: String(m.receivedAt ?? ''),
+      })),
+    };
   }
 }

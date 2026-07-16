@@ -5,6 +5,7 @@
  */
 
 import type { CalendarEvent, ICalendarSource } from '../../../domain/ports/out/ICalendarSource';
+import type { ExternalSourceResult } from '../../../domain/ports/out/externalSourceResult';
 import { runJxa } from './osascriptJxa';
 
 interface RawEvent {
@@ -55,16 +56,28 @@ function script(date: string): string {
 }
 
 export class AppleCalendarSource implements ICalendarSource {
-  async getEventsForDate(date: string): Promise<CalendarEvent[]> {
-    const raw = await runJxa<RawEvent[]>(script(date), 12000);
-    if (!raw) return [];
-    return raw.map((e) => ({
-      title: String(e.title ?? '(no title)'),
-      start: String(e.start ?? ''),
-      end: String(e.end ?? ''),
-      allDay: Boolean(e.allDay),
-      calendar: String(e.calendar ?? ''),
-      location: e.location ? String(e.location) : null,
-    }));
+  async getEventsForDate(date: string): Promise<ExternalSourceResult<CalendarEvent[]>> {
+    const result = await runJxa<RawEvent[]>(script(date), {
+      target: 'Calendar',
+      timeoutMs: 8000,
+    });
+    if (!result.ok) {
+      return {
+        status: result.reason === 'timeout' ? 'error' : result.reason,
+        data: [],
+        message: result.message,
+      };
+    }
+    return {
+      status: 'connected',
+      data: result.data.map((e) => ({
+        title: String(e.title ?? '(no title)'),
+        start: String(e.start ?? ''),
+        end: String(e.end ?? ''),
+        allDay: Boolean(e.allDay),
+        calendar: String(e.calendar ?? ''),
+        location: e.location ? String(e.location) : null,
+      })),
+    };
   }
 }

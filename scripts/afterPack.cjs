@@ -100,11 +100,18 @@ async function afterPack(context) {
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);
+  const entitlementsPath = path.join(
+    context.packager.projectDir,
+    'build',
+    'entitlements.mac.plist',
+  );
 
   console.log(`  • ad-hoc signing ${appName}.app`);
-  execFileSync('codesign', ['--force', '--deep', '--sign', '-', appPath], {
-    stdio: 'inherit',
-  });
+  execFileSync(
+    'codesign',
+    ['--force', '--deep', '--sign', '-', '--entitlements', entitlementsPath, appPath],
+    { stdio: 'inherit' },
+  );
   // Fail the build if the signature didn't take — a broken signature is the
   // exact failure mode this hook exists to prevent.
   execFileSync('codesign', ['--verify', '--deep', '--strict', appPath], {

@@ -81,7 +81,7 @@ mac:
   # To notarize later: set identity to a "Developer ID Application" cert,
   # flip hardenedRuntime back to true, and add the notarize block plus
   # CSC_LINK / APPLE_* credentials.
-  # electron-builder skips its own signing here; scripts/afterPack.js then
+  # electron-builder skips its own signing here; scripts/afterPack.cjs then
   # ad-hoc signs the assembled bundle so the signature is valid (see hook).
   identity: null
   entitlements: build/entitlements.mac.plist
@@ -97,6 +97,12 @@ mac:
     NSAudioCaptureUsageDescription: >-
       Stone captures system audio so meeting recordings include other
       participants. Audio is transcribed locally and deleted afterward.
+    NSAppleEventsUsageDescription: >-
+      Stone uses Apple Events to read today's Calendar events and unread Mail
+      messages for the Today view. This data stays on your Mac.
+    NSCalendarsFullAccessUsageDescription: >-
+      Stone reads today's events to show your schedule in the Today view. Stone
+      does not create or modify calendar events.
   # Minimize app size
   minimumSystemVersion: "12.0"
   # whisper.cpp CLI for local transcription (built by scripts/build-whisper.sh).

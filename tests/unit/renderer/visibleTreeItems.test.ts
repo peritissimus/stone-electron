@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { flattenVisibleTree } from '@renderer/hooks/useVisibleTreeItems';
-import type { FileTreeNode } from '@renderer/stores/fileTreeStore';
+import { flattenVisibleTree } from '@renderer/services/workspace/hooks/useVisibleTreeItems';
+import type { FileTreeNode } from '@renderer/services/workspace/model/fileTreeStore';
 
 function folder(path: string, children: FileTreeNode[] = []): FileTreeNode {
   const name = path.includes('/') ? path.slice(path.lastIndexOf('/') + 1) : path;
@@ -45,11 +45,7 @@ describe('flattenVisibleTree', () => {
     // Only Journal expanded
     const result = flattenVisibleTree(tree, new Set(['Journal']));
 
-    expect(result.map((i) => i.path)).toEqual([
-      'Journal',
-      'Journal/2026-04-22.md',
-      'Work',
-    ]);
+    expect(result.map((i) => i.path)).toEqual(['Journal', 'Journal/2026-04-22.md', 'Work']);
   });
 
   it('tags each item with its parent folder path, using null for root items', () => {

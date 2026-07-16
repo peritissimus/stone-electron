@@ -2,7 +2,7 @@ node_modules
 dist
 dist-electron
 release
-data
+/data/
 # build/ folder is committed (icons, entitlements)
 # Only ignore temp files during icon generation
 build/icons/

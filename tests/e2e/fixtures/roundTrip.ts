@@ -62,6 +62,11 @@ export async function roundTripMarkdown(
     timeout: 10_000,
   });
   await expect(editor).toBeVisible({ timeout: 5_000 });
+  // The filename intentionally paints before a large Markdown parse. Wait on
+  // the document sentinel before editing so this helper synchronizes with
+  // content readiness rather than the faster navigation-feedback contract.
+  await expect(editor).toContainText('scratch-test-tail-paragraph', { timeout: 20_000 });
+  await expect(window.locator('[data-scratch-status="ready"]')).toBeVisible({ timeout: 20_000 });
 
   // Force a save by appending a unique marker paragraph. Using Selection
   // API + execCommand is the most reliable way to place the caret at
