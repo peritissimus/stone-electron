@@ -37,14 +37,7 @@ export {
 export { InputModal, type InputModalProps } from './InputModal';
 export { CommandMenuItem, type CommandMenuItemProps } from './CommandMenuItem';
 
-// Layout components
-export { LayoutContainer, type LayoutContainerProps } from './layout/LayoutContainer';
-export { MainContentArea } from './layout/MainContentArea';
-export { MainLayout } from './layout/MainLayout';
+// Reusable modal layout components. Application-shell components live in workbench/.
 export { ModalLayout, type ModalLayoutProps } from './layout/ModalLayout';
-export { ResizablePanel, type ResizablePanelProps } from './layout/ResizablePanel';
-export { SidebarPanel } from './layout/SidebarPanel';
 export { TabbedModal, type TabbedModalProps, type TabItem } from './layout/TabbedModal';
-export { Sidebar } from './layout/Sidebar';
-export { GitSyncButton } from './layout/GitSyncButton';
 export { DevicePermissions } from './DevicePermissions';

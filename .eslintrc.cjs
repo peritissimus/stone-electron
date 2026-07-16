@@ -25,28 +25,35 @@ module.exports = {
   },
   ignorePatterns: ['dist', 'node_modules'],
   overrides: [
-    // Components: cannot import stores or api directly. Must go through hooks.
+    // Feature views are renderer leaves: data and mutations arrive through hooks/commands.
     {
-      files: ['src/renderer/components/**/*.{ts,tsx}'],
+      files: ['src/renderer/features/*/views/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
           {
             patterns: [
               {
-                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
+                group: [
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
+                ],
                 message:
-                  'Components must not import stores or API directly. Use a hook from @renderer/hooks.',
+                  'Feature views must use focused hooks or commands, not API or models directly.',
               },
             ],
           },
         ],
       },
     },
-    // Stores: must stay framework-agnostic. No React runtime, no hooks, no components.
-    // Type-only react imports are allowed for UI contract types like ReactNode.
+    // Models own serializable application state and remain independent of React and UI code.
     {
-      files: ['src/renderer/stores/**/*.{ts,tsx}'],
+      files: [
+        'src/renderer/features/*/model/**/*.{ts,tsx}',
+        'src/renderer/services/*/model/**/*.{ts,tsx}',
+      ],
       rules: {
         'no-restricted-imports': 'off',
         '@typescript-eslint/no-restricted-imports': [
@@ -55,19 +62,102 @@ module.exports = {
             paths: [
               {
                 name: 'react',
-                message: 'Stores must stay React-free. Move React state into a hook.',
+                message: 'Models must remain free of the React runtime.',
                 allowTypeImports: true,
               },
             ],
             patterns: [
               {
                 group: [
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
+                  '@renderer/**/hooks',
+                  '@renderer/**/hooks/*',
+                  '@renderer/**/views',
+                  '@renderer/**/views/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
                   '@renderer/components',
                   '@renderer/components/*',
                 ],
-                message: 'Stores must not depend on hooks or components.',
+                message: 'Models must not depend on hooks, views, workbench, or components.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    // The persistent shell coordinates feature views through hooks and view contracts only.
+    {
+      files: ['src/renderer/workbench/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
+                ],
+                message: 'Workbench code must not import API or feature/service models directly.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    // Shared components are renderer leaves. State and IPC arrive through focused hooks.
+    {
+      files: ['src/renderer/components/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
+                ],
+                message:
+                  'Shared components must not import models or API directly. Use a focused hook.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    // Model contracts also cover nested model folders not matched by the feature override above.
+    {
+      files: ['src/renderer/**/model/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': 'off',
+        '@typescript-eslint/no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: 'react',
+                message: 'Models must stay React-free. Move React lifecycle state into a hook.',
+                allowTypeImports: true,
+              },
+            ],
+            patterns: [
+              {
+                group: [
+                  '@renderer/**/hooks',
+                  '@renderer/**/hooks/*',
+                  '@renderer/**/views',
+                  '@renderer/**/views/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
+                  '@renderer/components',
+                  '@renderer/components/*',
+                ],
+                message: 'Models must not depend on hooks, views, the workbench, or components.',
               },
             ],
           },
@@ -86,14 +176,14 @@ module.exports = {
                 group: [
                   '@renderer/api',
                   '@renderer/api/*',
-                  '@renderer/stores',
-                  '@renderer/stores/*',
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
+                  '@renderer/features',
+                  '@renderer/features/*',
+                  '@renderer/services',
+                  '@renderer/services/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
                   '@renderer/components',
                   '@renderer/components/*',
-                  '@renderer/pages',
-                  '@renderer/pages/*',
                   '@renderer/lib',
                   '@renderer/lib/*',
                 ],
@@ -121,39 +211,39 @@ module.exports = {
             patterns: [
               {
                 group: [
-                  '@renderer/stores',
-                  '@renderer/stores/*',
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
+                  '@renderer/features',
+                  '@renderer/features/*',
+                  '@renderer/services',
+                  '@renderer/services/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
                   '@renderer/components',
                   '@renderer/components/*',
-                  '@renderer/pages',
-                  '@renderer/pages/*',
                 ],
-                message: 'API modules must only depend on specs and lib utilities.',
+                message: 'API modules must only depend on shared contracts and IPC utilities.',
               },
             ],
           },
         ],
       },
     },
-    // Features: must be leaves. No imports from sibling features.
+    // Service-owned views follow the same rendering boundary as feature views.
     {
-      files: ['src/renderer/components/features/**/*.{ts,tsx}'],
+      files: ['src/renderer/services/*/views/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
           {
             patterns: [
               {
-                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
+                group: [
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
+                ],
                 message:
-                  'Components must not import stores or API directly. Use a hook from @renderer/hooks.',
-              },
-              {
-                group: ['@renderer/components/features', '@renderer/components/features/*'],
-                message:
-                  'features/ are leaves — no sibling-feature imports. Promote shared pieces to composites/.',
+                  'Service views must not import models or API directly. Use a focused hook.',
               },
             ],
           },
@@ -172,14 +262,14 @@ module.exports = {
                 group: [
                   '@renderer/components/composites',
                   '@renderer/components/composites/*',
-                  '@renderer/components/features',
-                  '@renderer/components/features/*',
-                  '@renderer/stores',
-                  '@renderer/stores/*',
+                  '@renderer/features',
+                  '@renderer/features/*',
+                  '@renderer/services',
+                  '@renderer/services/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
                   '@renderer/api',
                   '@renderer/api/*',
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
                 ],
                 message:
                   'base/ primitives must stay leaf-level. Only import from other base primitives or lib utilities.',
@@ -189,9 +279,12 @@ module.exports = {
         ],
       },
     },
-    // Hooks: combine stores + api + lifecycle. Cannot reach into components or pages.
+    // Hooks and commands integrate models/API with React, but never reach into UI surfaces.
     {
-      files: ['src/renderer/hooks/**/*.{ts,tsx}'],
+      files: [
+        'src/renderer/features/*/{hooks,commands}/**/*.{ts,tsx}',
+        'src/renderer/services/*/{hooks,commands}/**/*.{ts,tsx}',
+      ],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -201,29 +294,34 @@ module.exports = {
                 group: [
                   '@renderer/components',
                   '@renderer/components/*',
-                  '@renderer/pages',
-                  '@renderer/pages/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
+                  '@renderer/**/views',
+                  '@renderer/**/views/*',
                 ],
-                message:
-                  'Hooks must not depend on components or pages. Dependency direction is components → hooks, not the reverse.',
+                message: 'Hooks and commands must not depend on components, views, or workbench.',
               },
             ],
           },
         ],
       },
     },
-    // Pages: route-level. Same rules as features — no sibling pages, no direct stores/api.
+    // The workbench editor group is a composition root, not a data-access layer.
     {
-      files: ['src/renderer/pages/**/*.{ts,tsx}'],
+      files: ['src/renderer/workbench/editor-group/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
           {
             patterns: [
               {
-                group: ['@renderer/stores', '@renderer/stores/*', '@renderer/api', '@renderer/api/*'],
-                message:
-                  'Pages must not import stores or API directly. Use a hook from @renderer/hooks.',
+                group: [
+                  '@renderer/api',
+                  '@renderer/api/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
+                ],
+                message: 'Workbench composition must not import models or API directly.',
               },
             ],
           },
@@ -233,7 +331,6 @@ module.exports = {
     // Lib: leaf utilities. No renderer runtime dependencies.
     {
       files: ['src/renderer/lib/**/*.{ts,tsx}'],
-      excludedFiles: ['src/renderer/lib/extensions/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -243,27 +340,21 @@ module.exports = {
                 group: [
                   '@renderer/components',
                   '@renderer/components/*',
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
-                  '@renderer/stores',
-                  '@renderer/stores/*',
                   '@renderer/api',
                   '@renderer/api/*',
-                  '@renderer/pages',
-                  '@renderer/pages/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
                 ],
-                message:
-                  'lib/ utilities must stay leaf-level. Only import from other lib utilities, specs, or external packages.',
+                message: 'lib/ utilities must stay independent of API, workbench, and rendered UI.',
               },
             ],
           },
         ],
       },
     },
-    // TipTap extensions: known exception. Extensions wrap React components as node views.
-    // TODO: move to components/features/Editor/extensions/ to eliminate this exception.
+    // TipTap extensions may wrap React node views, but cannot own application state or IPC.
     {
-      files: ['src/renderer/lib/extensions/**/*.{ts,tsx}'],
+      files: ['src/renderer/features/notes/editor/extensions/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': [
           'error',
@@ -271,15 +362,15 @@ module.exports = {
             patterns: [
               {
                 group: [
-                  '@renderer/stores',
-                  '@renderer/stores/*',
+                  '@renderer/**/model',
+                  '@renderer/**/model/*',
                   '@renderer/api',
                   '@renderer/api/*',
-                  '@renderer/hooks',
-                  '@renderer/hooks/*',
+                  '@renderer/**/hooks',
+                  '@renderer/**/hooks/*',
                 ],
                 message:
-                  'Extensions may import components for node views, but not stores, api, or hooks directly.',
+                  'Extensions may import node-view components, but not models, API, or hooks directly.',
               },
             ],
           },

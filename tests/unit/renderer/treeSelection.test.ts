@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveTreeSelection } from '@renderer/hooks/useTreeSelection';
+import { deriveTreeSelection } from '@renderer/services/workspace/hooks/useTreeSelection';
 import type { Note } from '@shared/types';
 
 // The derivation only reads id and filePath; avoid coupling the test to

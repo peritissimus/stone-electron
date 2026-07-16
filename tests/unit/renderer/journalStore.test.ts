@@ -14,7 +14,7 @@ vi.mock('@renderer/api', () => ({
   },
 }));
 
-const { useJournalStore } = await import('../../../src/renderer/stores/journalStore');
+const { useJournalStore } = await import('@renderer/features/journals/model/journalStore');
 
 describe('journalStore', () => {
   beforeEach(() => {

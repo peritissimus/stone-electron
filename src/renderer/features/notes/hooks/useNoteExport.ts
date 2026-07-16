@@ -1,0 +1,45 @@
+/**
+ * useNoteExport Hook - Handles note export operations
+ *
+ * Encapsulates HTML, PDF, and Markdown export handlers
+ */
+
+import { useCallback } from 'react';
+import type { RichTextEditor } from '@renderer/features/notes/editor';
+import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
+import { getRenderedEditorContent, buildExportHTML } from '@renderer/lib/exportUtils';
+
+interface UseNoteExportOptions {
+  activeNoteId: string | null;
+  editor: RichTextEditor | null;
+  title: string;
+}
+
+export function useNoteExport({ activeNoteId, editor, title }: UseNoteExportOptions) {
+  const { exportHtml, exportPdf, exportMarkdown } = useNoteAPI();
+
+  const handleExportHtml = useCallback(async () => {
+    if (!activeNoteId || !editor) return;
+    const renderedContent = getRenderedEditorContent(editor);
+    const fullHtml = await buildExportHTML(title, renderedContent);
+    await exportHtml(activeNoteId, fullHtml, title);
+  }, [activeNoteId, editor, exportHtml, title]);
+
+  const handleExportPdf = useCallback(async () => {
+    if (!activeNoteId || !editor) return;
+    const renderedContent = getRenderedEditorContent(editor);
+    const fullHtml = await buildExportHTML(title, renderedContent);
+    await exportPdf(activeNoteId, fullHtml, title);
+  }, [activeNoteId, editor, exportPdf, title]);
+
+  const handleExportMarkdown = useCallback(async () => {
+    if (!activeNoteId) return;
+    await exportMarkdown(activeNoteId, title);
+  }, [activeNoteId, exportMarkdown, title]);
+
+  return {
+    exportHtml: handleExportHtml,
+    exportPdf: handleExportPdf,
+    exportMarkdown: handleExportMarkdown,
+  };
+}

@@ -5,7 +5,7 @@
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RichTextEditor } from '@renderer/editor/types';
+import type { RichTextEditor } from '@renderer/features/notes/editor/types';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -22,15 +22,15 @@ const editorUI = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock('@renderer/editor/document', () => editorDocument);
-vi.mock('@renderer/hooks/useUI', () => ({
+vi.mock('@renderer/features/notes/editor/document', () => editorDocument);
+vi.mock('@renderer/services/view-state/hooks/useUI', () => ({
   useEditorUI: () => ({
     editorMode: editorUI.editorMode,
     setEditorMode: editorUI.setEditorMode,
   }),
 }));
 
-import { useEditorMode } from '@renderer/hooks/useEditorMode';
+import { useEditorMode } from '@renderer/features/notes/hooks/useEditorMode';
 
 interface HookProps {
   editor: RichTextEditor | null;

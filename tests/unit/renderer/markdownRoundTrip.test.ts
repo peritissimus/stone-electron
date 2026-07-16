@@ -15,8 +15,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseMarkdown } from '@renderer/lib/markdownParser';
-import { serializeMarkdown } from '@renderer/lib/markdownSerializer';
+import { parseMarkdown } from '@renderer/features/notes/editor/markdownParser';
+import { serializeMarkdown } from '@renderer/features/notes/editor/markdownSerializer';
 
 /** One file→editor→save cycle. */
 function roundTrip(markdown: string): string {
@@ -285,9 +285,7 @@ describe('serializeMarkdown — editor-built docs', () => {
             {
               type: 'taskItem',
               attrs: { state: 'doing' },
-              content: [
-                { type: 'paragraph', content: [{ type: 'text', text: 'in progress' }] },
-              ],
+              content: [{ type: 'paragraph', content: [{ type: 'text', text: 'in progress' }] }],
             },
           ],
         },

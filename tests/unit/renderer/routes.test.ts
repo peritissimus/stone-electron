@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toToday, toTasks, toGraph, toTopics, toNote } from '@renderer/navigation';
+import { toToday, toTasks, toGraph, toTopics, toNote } from '@renderer/services/navigation';
 
 describe('navigation/routes', () => {
   it('builds canonical destination paths', () => {

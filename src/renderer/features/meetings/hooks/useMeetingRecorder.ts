@@ -1,0 +1,392 @@
+/**
+ * useMeetingRecorder — owns the renderer-side capture lifecycle.
+ *
+ * MediaRecorder and AudioContext live here; all IPC + state lives in
+ * meetingRecorderStore so this hook stays a stateful hook by the
+ * architecture rules (state hooks go through stores).
+ */
+
+import { useCallback, useEffect } from 'react';
+import { useMeetingRecorderStore } from '@renderer/features/meetings/model/meetingRecorderStore';
+import { pcmToWavArrayBuffer } from '@renderer/lib/audioEncoding';
+import { startPcmRecording, type PcmRecording } from '@renderer/lib/pcmRecorder';
+import { describeMicError } from '@renderer/lib/micErrors';
+import { logger } from '@renderer/services/telemetry/logger';
+
+export type {
+  RecorderPhase,
+  LiveLine,
+} from '@renderer/features/meetings/model/meetingRecorderStore';
+
+const WHISPER_SAMPLE_RATE = 16_000;
+
+// Recording hardware is a SINGLE shared session, not per-component state. The
+// dock and the inline Meetings panel each call useMeetingRecorder(), and
+// start() may fire from one surface while stop() fires from another — so these
+// must be module-level (a useRef would scope them to one component instance and
+// the refs wouldn't line up across start/stop). Mirrors the global store.
+// Mic and system audio are captured as SEPARATE PCM tracks (not mixed) so each
+// can be transcribed on its own for "You" vs "Others" attribution.
+const micPcmRecorderRef: { current: PcmRecording | null } = { current: null };
+const systemPcmRecorderRef: { current: PcmRecording | null } = { current: null };
+const micStreamRef: { current: MediaStream | null } = { current: null };
+const systemStreamRef: { current: MediaStream | null } = { current: null };
+const analyserCtxRef: { current: AudioContext | null } = { current: null };
+const analyserFrameRef: { current: number | null } = { current: null };
+const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
+const systemAnalyserFrameRef: { current: number | null } = { current: null };
+const liveTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
+const liveSessionIdRef: { current: string | null } = { current: null };
+const liveChunkPromiseRef: { current: Promise<void> | null } = { current: null };
+
+/** Cadence for the live (raw) draft — long enough that each chunk is a few
+ *  utterances of context, short enough to feel live. */
+const LIVE_INTERVAL_MS = 6_000;
+const MIN_LIVE_CHUNK_S = 0.6;
+
+/** Guards against overlapping live ticks. The resident whisper-server handles
+ *  one /inference at a time; without this, a slow or wedged server lets
+ *  interval ticks pile up into dozens of concurrent requests. Skipping a tick
+ *  while one is in flight just lets the next drain batch more audio. */
+/** Drain new audio from each track (hook owns the hardware), encode it, and
+ *  hand it to the store to transcribe + append. Best-effort. */
+async function streamLiveChunk(): Promise<void> {
+  if (liveChunkPromiseRef.current) return liveChunkPromiseRef.current;
+  const sessionId = liveSessionIdRef.current;
+  if (!sessionId) return;
+  const work = drainAndTranscribe(sessionId).finally(() => {
+    if (liveChunkPromiseRef.current === work) liveChunkPromiseRef.current = null;
+  });
+  liveChunkPromiseRef.current = work;
+  return work;
+}
+
+async function drainAndTranscribe(sessionId: string): Promise<void> {
+  const store = useMeetingRecorderStore.getState();
+  const recorders: Array<['mic' | 'system', PcmRecording | null]> = [
+    ['mic', micPcmRecorderRef.current],
+    ['system', systemPcmRecorderRef.current],
+  ];
+  for (const [source, recorder] of recorders) {
+    if (liveSessionIdRef.current !== sessionId) return;
+    if (!recorder) continue;
+    const { samples, sampleRate } = recorder.drain();
+    if (samples.length < sampleRate * MIN_LIVE_CHUNK_S) continue;
+    try {
+      const wav = await pcmToWavArrayBuffer(samples, sampleRate, WHISPER_SAMPLE_RATE);
+      await store.pushLiveChunk(sessionId, source, wav);
+    } catch {
+      // Live draft is best-effort; the clean transcript comes from finalize.
+    }
+  }
+}
+
+function startLiveStreaming(): void {
+  if (liveTimerRef.current) return;
+  const sessionId = crypto.randomUUID();
+  liveSessionIdRef.current = sessionId;
+  useMeetingRecorderStore.getState().startLive(sessionId); // warm model + reset draft
+  liveTimerRef.current = setInterval(() => void streamLiveChunk(), LIVE_INTERVAL_MS);
+}
+
+async function stopLiveStreaming(): Promise<void> {
+  if (liveTimerRef.current) {
+    clearInterval(liveTimerRef.current);
+    liveTimerRef.current = null;
+  }
+  const sessionId = liveSessionIdRef.current;
+  liveSessionIdRef.current = null;
+  if (!sessionId) return;
+
+  const stop = useMeetingRecorderStore.getState().stopLive(sessionId);
+  const inFlight = liveChunkPromiseRef.current;
+  await Promise.allSettled(inFlight ? [stop, inFlight] : [stop]);
+}
+
+/** Run a smoothed peak-level meter on a stream, writing each frame via setLevel. */
+function runAnalyser(
+  stream: MediaStream,
+  setLevel: (level: number) => void,
+  ctxRef: { current: AudioContext | null },
+  frameRef: { current: number | null },
+): void {
+  const AudioCtx =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+  const ctx = new AudioCtx();
+  const source = ctx.createMediaStreamSource(stream);
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.6;
+  source.connect(analyser);
+  ctxRef.current = ctx;
+
+  const buffer = new Uint8Array(analyser.frequencyBinCount);
+  let smoothed = 0;
+  const tick = () => {
+    analyser.getByteTimeDomainData(buffer);
+    // RMS-style peak — deviation from 128 (silence midpoint).
+    let peak = 0;
+    for (let i = 0; i < buffer.length; i += 1) {
+      const v = Math.abs(buffer[i] - 128) / 128;
+      if (v > peak) peak = v;
+    }
+    smoothed = smoothed * 0.7 + peak * 0.3;
+    setLevel(Math.min(1, smoothed));
+    frameRef.current = requestAnimationFrame(tick);
+  };
+  frameRef.current = requestAnimationFrame(tick);
+}
+
+export function useMeetingRecorder() {
+  const phase = useMeetingRecorderStore((s) => s.phase);
+  const dock = useMeetingRecorderStore((s) => s.dock);
+  const elapsedMs = useMeetingRecorderStore((s) => s.elapsedMs);
+  const audioLevel = useMeetingRecorderStore((s) => s.audioLevel);
+  const systemAudioLevel = useMeetingRecorderStore((s) => s.systemAudioLevel);
+  const captureMode = useMeetingRecorderStore((s) => s.captureMode);
+  const error = useMeetingRecorderStore((s) => s.error);
+  const lastRecording = useMeetingRecorderStore((s) => s.lastRecording);
+  const finalizeStage = useMeetingRecorderStore((s) => s.finalizeStage);
+  const liveLines = useMeetingRecorderStore((s) => s.liveLines);
+
+  const openDock = useMeetingRecorderStore((s) => s.openDock);
+  const closeDock = useMeetingRecorderStore((s) => s.closeDock);
+  const reset = useMeetingRecorderStore((s) => s.reset);
+
+  // Tick the elapsed timer while recording. Reads the shared startedAt from the
+  // store so every mounted surface (dock + inline panel) agrees on the time —
+  // and so the timer survives navigation between them.
+  useEffect(() => {
+    if (phase !== 'recording') return;
+    const id = window.setInterval(() => {
+      const startedAt = useMeetingRecorderStore.getState().startedAt;
+      if (startedAt !== null) {
+        useMeetingRecorderStore.getState().tickElapsed(Date.now() - startedAt);
+      }
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [phase]);
+
+  // NOTE: no unmount cleanup. Hardware is a shared singleton released on
+  // stop()/cancel() — releasing it when a transient surface (the inline panel)
+  // unmounts would kill an in-flight recording the user navigated away from.
+
+  async function releaseHardware() {
+    const liveStop = stopLiveStreaming();
+    micPcmRecorderRef.current?.stop();
+    micPcmRecorderRef.current = null;
+    systemPcmRecorderRef.current?.stop();
+    systemPcmRecorderRef.current = null;
+    if (micStreamRef.current) {
+      for (const track of micStreamRef.current.getTracks()) track.stop();
+      micStreamRef.current = null;
+    }
+    if (systemStreamRef.current) {
+      for (const track of systemStreamRef.current.getTracks()) track.stop();
+      systemStreamRef.current = null;
+    }
+    stopLevelMeter();
+    await liveStop;
+  }
+
+  // Drive the green (mic) and teal (system) waveforms from the renderer
+  // streams. Both sources are now MediaStreams in the renderer (system audio
+  // via getDisplayMedia loopback), so each gets its own analyser.
+  function startLevelMeter(micStream: MediaStream, systemStream: MediaStream | null) {
+    runAnalyser(
+      micStream,
+      (level) => useMeetingRecorderStore.getState().setAudioLevel(level),
+      analyserCtxRef,
+      analyserFrameRef,
+    );
+    if (systemStream) {
+      runAnalyser(
+        systemStream,
+        (level) => useMeetingRecorderStore.getState().setSystemAudioLevel(level),
+        systemAnalyserCtxRef,
+        systemAnalyserFrameRef,
+      );
+    }
+  }
+
+  function stopLevelMeter() {
+    for (const [ctxRef, frameRef] of [
+      [analyserCtxRef, analyserFrameRef],
+      [systemAnalyserCtxRef, systemAnalyserFrameRef],
+    ] as const) {
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current);
+        frameRef.current = null;
+      }
+      if (ctxRef.current) {
+        void ctxRef.current.close();
+        ctxRef.current = null;
+      }
+    }
+    useMeetingRecorderStore.getState().setAudioLevel(0);
+    useMeetingRecorderStore.getState().setSystemAudioLevel(0);
+  }
+
+  const start = useCallback(async () => {
+    const store = useMeetingRecorderStore.getState();
+    if (store.phase !== 'idle' && store.phase !== 'done' && store.phase !== 'error') return;
+
+    const slot = await store.reserveSlot();
+    if (!slot) return;
+
+    try {
+      // Mic is required — fail the whole start if it's denied. Echo
+      // cancellation is critical for meetings on speakers: the other
+      // participants come out of the speakers and bleed into the mic,
+      // contaminating the "You" track. Chromium's AEC references the system
+      // output and removes it; noise suppression + AGC also clean the mic for
+      // transcription. (On headphones there's no bleed, and this is a no-op.)
+      const micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      micStreamRef.current = micStream;
+
+      // System audio via getDisplayMedia loopback — now enabled on macOS too
+      // (Chromium ScreenCaptureKit/Core Audio tap, gated by the feature flags
+      // set in main). setDisplayMediaRequestHandler auto-grants the request, so
+      // there's no picker. Null when unsupported or the user denied Screen
+      // Recording → we fall back to mic-only.
+      const systemStream = await tryCaptureSystemAudio();
+      systemStreamRef.current = systemStream;
+      const captureMode: 'mic-only' | 'mic+system' =
+        systemStream || slot.systemAudio ? 'mic+system' : 'mic-only';
+
+      // Capture each source as its own PCM track — transcribed separately for
+      // speaker attribution. No mixing.
+      micPcmRecorderRef.current = startPcmRecording(micStream);
+      systemPcmRecorderRef.current = systemStream ? startPcmRecording(systemStream) : null;
+      // Green meter follows the mic, teal follows the system stream.
+      startLevelMeter(micStream, systemStream);
+      store.markRecordingStarted({ ...slot, captureMode });
+      // Live (raw) draft: stream chunks to the resident model while recording.
+      startLiveStreaming();
+    } catch (err) {
+      logger.error('[useMeetingRecorder] start failed', err);
+      await releaseHardware();
+      store.markError(describeMicError(err));
+    }
+  }, []);
+
+  const stop = useCallback(async () => {
+    const store = useMeetingRecorderStore.getState();
+    if (store.phase !== 'recording') return;
+    const durationMs = store.elapsedMs;
+
+    // Stop the live draft loop + free the resident model.
+    const liveStop = stopLiveStreaming();
+
+    // Stop PCM capture first so the tail of audio is flushed before the
+    // streams are torn down.
+    const micCaptured = micPcmRecorderRef.current?.stop() ?? null;
+    const systemCaptured = systemPcmRecorderRef.current?.stop() ?? null;
+    micPcmRecorderRef.current = null;
+    systemPcmRecorderRef.current = null;
+
+    // Stop both source streams.
+    if (micStreamRef.current) {
+      for (const track of micStreamRef.current.getTracks()) track.stop();
+      micStreamRef.current = null;
+    }
+    if (systemStreamRef.current) {
+      for (const track of systemStreamRef.current.getTracks()) track.stop();
+      systemStreamRef.current = null;
+    }
+    stopLevelMeter();
+    await liveStop;
+
+    try {
+      if (!micCaptured) throw new Error('Recording did not start correctly. Try again.');
+      const micWav = await pcmToWavArrayBuffer(
+        micCaptured.samples,
+        micCaptured.sampleRate,
+        WHISPER_SAMPLE_RATE,
+      );
+      const systemWav =
+        systemCaptured && systemCaptured.samples.length > 0
+          ? await pcmToWavArrayBuffer(
+              systemCaptured.samples,
+              systemCaptured.sampleRate,
+              WHISPER_SAMPLE_RATE,
+            )
+          : null;
+      await store.uploadAndFinalize(micWav, systemWav, durationMs);
+    } catch (err) {
+      logger.error('[useMeetingRecorder] finalize failed', err);
+      store.markError(err instanceof Error ? err.message : 'Recording failed');
+    } finally {
+      micPcmRecorderRef.current = null;
+      systemPcmRecorderRef.current = null;
+    }
+  }, []);
+
+  const cancel = useCallback(async () => {
+    await releaseHardware();
+    await useMeetingRecorderStore.getState().cancelActive();
+  }, []);
+
+  return {
+    phase,
+    dock,
+    elapsedMs,
+    audioLevel,
+    systemAudioLevel,
+    captureMode,
+    error,
+    lastRecording,
+    finalizeStage,
+    liveLines,
+    start,
+    stop,
+    cancel,
+    openDock,
+    closeDock,
+    reset,
+  };
+}
+
+// ============================================================================
+// System audio capture + mixing
+// ============================================================================
+
+/**
+ * Try to grab the system-audio stream via getDisplayMedia. We request
+ * video too because Chromium requires it for getDisplayMedia. The main
+ * process supplies Stone's own frame rather than a monitor, and we immediately
+ * stop that disposable track. Returns null on any failure
+ * (user denied, platform doesn't support, etc.).
+ */
+async function tryCaptureSystemAudio(): Promise<MediaStream | null> {
+  if (!navigator.mediaDevices?.getDisplayMedia) return null;
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      audio: true,
+      video: true,
+    });
+    // We only want audio. Drop the video tracks immediately so the
+    // composite engine isn't capturing pixels.
+    for (const track of stream.getVideoTracks()) {
+      track.stop();
+      stream.removeTrack(track);
+    }
+    // If the platform handed us a stream with no audio at all, treat
+    // as a fallback case rather than a partial success.
+    if (stream.getAudioTracks().length === 0) {
+      for (const track of stream.getTracks()) track.stop();
+      return null;
+    }
+    return stream;
+  } catch (err) {
+    logger.warn('[useMeetingRecorder] system audio unavailable; falling back to mic-only', err);
+    return null;
+  }
+}
