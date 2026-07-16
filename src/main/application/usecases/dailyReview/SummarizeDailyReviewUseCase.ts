@@ -45,7 +45,10 @@ export class SummarizeDailyReviewUseCase implements ISummarizeDailyReviewUseCase
     ]);
 
     if (calendar.status === 'connected') snapshot.calendarEvents = calendar.calendarEvents;
-    if (mail.status === 'connected') snapshot.mailMessages = mail.mailMessages;
+    if (mail.status === 'connected') {
+      snapshot.mailUnreadCount = mail.mailUnreadCount;
+      snapshot.mailMessages = mail.mailMessages;
+    }
     if (linear.status === 'connected') snapshot.linearIssues = linear.linearIssues;
 
     const prompt = buildPrompt(snapshot);
@@ -108,9 +111,10 @@ function buildPrompt(s: DailyReviewSnapshot): string {
     lines.push('');
   }
 
-  if (s.mailMessages?.length) {
+  if (s.mailUnreadCount || s.mailMessages?.length) {
     lines.push('## Unread mail');
-    for (const m of s.mailMessages) lines.push(`- ${m.subject} — ${m.sender}`);
+    if (s.mailUnreadCount) lines.push(`- ${s.mailUnreadCount} unread messages`);
+    for (const m of s.mailMessages ?? []) lines.push(`- ${m.subject} — ${m.sender}`);
     lines.push('');
   }
 

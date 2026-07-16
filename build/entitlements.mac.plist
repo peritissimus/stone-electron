@@ -20,8 +20,8 @@
          for packaged builds running under hardened runtime. -->
     <key>com.apple.security.device.audio-input</key>
     <true/>
-    <!-- Calendar and Mail are read through Apple Events. Required when the
-         packaged app later enables the hardened runtime. -->
+    <!-- Mail uses Apple Events. Calendar uses EventKit. These entitlements
+         also prepare the packaged app for a future hardened runtime. -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
     <key>com.apple.security.personal-information.calendars</key>

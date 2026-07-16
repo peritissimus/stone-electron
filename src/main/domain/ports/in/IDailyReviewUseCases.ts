@@ -52,6 +52,7 @@ export interface DailyReviewSnapshot {
   onThisDay: DailyReviewOnThisDayEntry[];
   /** External integrations — present only when the source is available. */
   calendarEvents?: CalendarEvent[];
+  mailUnreadCount?: number;
   mailMessages?: MailMessage[];
   linearIssues?: LinearIssue[];
 }
@@ -79,6 +80,7 @@ export interface DailyReviewIntegrationResult {
   status: ExternalSourceStatus;
   message?: string;
   calendarEvents?: CalendarEvent[];
+  mailUnreadCount?: number;
   mailMessages?: MailMessage[];
   linearIssues?: LinearIssue[];
 }

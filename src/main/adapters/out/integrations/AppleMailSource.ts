@@ -7,67 +7,41 @@
 import type { IMailSource } from '../../../domain/ports/out/IMailSource';
 import { runJxa } from './osascriptJxa';
 
-interface RawMessage {
-  subject?: string;
-  sender?: string;
-  receivedAt?: string;
+interface RawMailSummary {
+  unreadCount?: number;
 }
 
-/** JXA: the most-recent `limit` unread messages across all inbox accounts. */
-function script(limit: number): string {
+/** Mail can return the unified unread count quickly, while resolving message
+ * objects may block for minutes on large or syncing inboxes. Provider-backed
+ * adapters can add previews later without making Apple Mail block Today. */
+function script(): string {
   return `
     (() => {
       const Mail = Application('Mail');
-      const out = [];
-      let boxes;
-      try {
-        boxes = Mail.inbox.mailboxes();
-      } catch (e) {
-        boxes = [];
-      }
-      // Mail.app exposes a unified inbox; fall back to per-account inboxes.
-      const inboxes = boxes.length ? boxes : [Mail.inbox];
-      for (const box of inboxes) {
-        let msgs;
-        try {
-          msgs = box.messages.whose({ readStatus: false })();
-        } catch (e) {
-          continue;
-        }
-        for (const msg of msgs) {
-          out.push({
-            subject: msg.subject(),
-            sender: msg.sender(),
-            receivedAt: msg.dateReceived().toISOString(),
-          });
-        }
-      }
-      out.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
-      return JSON.stringify(out.slice(0, ${Math.max(1, Math.floor(limit))}));
+      return JSON.stringify({ unreadCount: Number(Mail.inbox.unreadCount()) });
     })();
   `;
 }
 
 export class AppleMailSource implements IMailSource {
-  async getUnreadMessages(limit: number) {
-    const result = await runJxa<RawMessage[]>(script(limit), {
+  async getUnreadMessages(_limit: number) {
+    const result = await runJxa<RawMailSummary>(script(), {
       target: 'Mail',
-      timeoutMs: 5000,
+      timeoutMs: 3000,
     });
     if (!result.ok) {
       return {
         status: result.reason === 'timeout' ? ('error' as const) : result.reason,
-        data: [],
+        data: { unreadCount: 0, messages: [] },
         message: result.message,
       };
     }
     return {
       status: 'connected' as const,
-      data: result.data.map((m) => ({
-        subject: String(m.subject ?? '(no subject)'),
-        sender: String(m.sender ?? ''),
-        receivedAt: String(m.receivedAt ?? ''),
-      })),
+      data: {
+        unreadCount: Math.max(0, Number(result.data.unreadCount ?? 0)),
+        messages: [],
+      },
     };
   }
 }

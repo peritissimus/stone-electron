@@ -226,6 +226,9 @@ function preserveIntegrationData(
   return {
     ...next,
     ...(previous.calendarEvents ? { calendarEvents: previous.calendarEvents } : {}),
+    ...(previous.mailUnreadCount !== undefined
+      ? { mailUnreadCount: previous.mailUnreadCount }
+      : {}),
     ...(previous.mailMessages ? { mailMessages: previous.mailMessages } : {}),
     ...(previous.linearIssues ? { linearIssues: previous.linearIssues } : {}),
   };
@@ -240,7 +243,11 @@ function mergeIntegrationResult(
     case 'calendar':
       return { ...snapshot, calendarEvents: result.calendarEvents ?? [] };
     case 'mail':
-      return { ...snapshot, mailMessages: result.mailMessages ?? [] };
+      return {
+        ...snapshot,
+        mailUnreadCount: result.mailUnreadCount ?? 0,
+        mailMessages: result.mailMessages ?? [],
+      };
     case 'linear':
       return { ...snapshot, linearIssues: result.linearIssues ?? [] };
   }

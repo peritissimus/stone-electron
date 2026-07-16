@@ -35,7 +35,7 @@ describe('LoadDailyReviewIntegrationUseCase', () => {
     const mailSource: IMailSource = {
       getUnreadMessages: vi.fn(async () => ({
         status: 'denied' as const,
-        data: [],
+        data: { unreadCount: 0, messages: [] },
         message: 'Access is blocked in macOS Automation settings.',
       })),
     };
@@ -46,8 +46,26 @@ describe('LoadDailyReviewIntegrationUseCase', () => {
     expect(result).toEqual({
       source: 'mail',
       status: 'denied',
+      mailUnreadCount: 0,
       mailMessages: [],
       message: 'Access is blocked in macOS Automation settings.',
+    });
+  });
+
+  it('returns Apple Mail unread count without requiring message previews', async () => {
+    const mailSource: IMailSource = {
+      getUnreadMessages: vi.fn(async () => ({
+        status: 'connected' as const,
+        data: { unreadCount: 352, messages: [] },
+      })),
+    };
+    const useCase = new LoadDailyReviewIntegrationUseCase({ mailSource });
+
+    await expect(useCase.execute({ source: 'mail' })).resolves.toMatchObject({
+      source: 'mail',
+      status: 'connected',
+      mailUnreadCount: 352,
+      mailMessages: [],
     });
   });
 

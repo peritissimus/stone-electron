@@ -51,7 +51,8 @@ export class LoadDailyReviewIntegrationUseCase implements ILoadDailyReviewIntegr
       return {
         source: 'mail',
         status: result.status,
-        mailMessages: result.data,
+        mailUnreadCount: result.data.unreadCount,
+        mailMessages: result.data.messages,
         ...(result.message ? { message: result.message } : {}),
       };
     } catch {

@@ -98,8 +98,8 @@ mac:
       Stone captures system audio so meeting recordings include other
       participants. Audio is transcribed locally and deleted afterward.
     NSAppleEventsUsageDescription: >-
-      Stone uses Apple Events to read today's Calendar events and unread Mail
-      messages for the Today view. This data stays on your Mac.
+      Stone uses Apple Events to read the unread count from Apple Mail for the
+      Today view. This data stays on your Mac.
     NSCalendarsFullAccessUsageDescription: >-
       Stone reads today's events to show your schedule in the Today view. Stone
       does not create or modify calendar events.
@@ -107,6 +107,8 @@ mac:
   minimumSystemVersion: "12.0"
   # whisper.cpp CLI for local transcription (built by scripts/build-whisper.sh).
   extraResources:
+    - from: dist/native/StoneCalendarBridge
+      to: calendar/StoneCalendarBridge
     - from: vendor/whisper/bin
       to: whisper
     # AEC model (ICASSP-2022 baseline) for offline echo cancellation.

@@ -197,6 +197,7 @@ function Sections({
   const goToNote = (id: string) => navigate(toNote(id));
 
   const calendarEvents = snapshot.calendarEvents ?? [];
+  const mailUnreadCount = snapshot.mailUnreadCount ?? 0;
   const mailMessages = snapshot.mailMessages ?? [];
   const linearIssues = snapshot.linearIssues ?? [];
 
@@ -207,6 +208,7 @@ function Sections({
     snapshot.recentNotes.length === 0 &&
     snapshot.onThisDay.length === 0 &&
     calendarEvents.length === 0 &&
+    mailUnreadCount === 0 &&
     mailMessages.length === 0 &&
     linearIssues.length === 0;
 
@@ -247,7 +249,9 @@ function Sections({
           onManage={() => navigate(toSettings('integrations'))}
         />
       )}
-      {mailMessages.length > 0 && <MailSection messages={mailMessages} />}
+      {(mailUnreadCount > 0 || mailMessages.length > 0) && (
+        <MailSection unreadCount={mailUnreadCount} messages={mailMessages} />
+      )}
       {snapshot.openTasks.length > 0 && (
         <TasksSection tasks={snapshot.openTasks} onOpenNote={goToNote} />
       )}
@@ -592,26 +596,39 @@ function LinearSection({ issues }: { issues: LinearIssue[] }) {
   );
 }
 
-function MailSection({ messages }: { messages: MailMessage[] }) {
+function MailSection({
+  unreadCount,
+  messages,
+}: {
+  unreadCount: number;
+  messages: MailMessage[];
+}) {
+  const count = Math.max(unreadCount, messages.length);
   return (
     <section>
       <SectionLabel icon={<Envelope size={12} />}>
         Unread mail{' '}
-        <span className="ml-1 text-muted-foreground/70 tabular-nums">({messages.length})</span>
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">({count})</span>
       </SectionLabel>
-      <ul className="mt-2 space-y-1">
-        {messages.map((m, i) => (
-          <li
-            key={`${m.receivedAt}-${i}`}
-            className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
-          >
-            <span className="min-w-0 flex-1 truncate text-foreground">{m.subject}</span>
-            <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
-              {m.sender}
-            </span>
-          </li>
-        ))}
-      </ul>
+      {messages.length > 0 ? (
+        <ul className="mt-2 space-y-1">
+          {messages.map((m, i) => (
+            <li
+              key={`${m.receivedAt}-${i}`}
+              className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
+            >
+              <span className="min-w-0 flex-1 truncate text-foreground">{m.subject}</span>
+              <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
+                {m.sender}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 px-2 text-xs text-muted-foreground">
+          Apple Mail is connected. Message previews require a direct mail provider connection.
+        </p>
+      )}
     </section>
   );
 }

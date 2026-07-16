@@ -1,8 +1,8 @@
 /**
  * IntegrationsSettings — Settings → Integrations. Connects third-party
  * sources the Today page pulls from. Currently: a Linear personal API key.
- * Apple Calendar/Mail need no config here — they run on macOS via Automation
- * permission, prompted on first use.
+ * Apple Calendar/Mail need no account config here. Calendar uses macOS
+ * Calendar privacy access; Mail uses Automation access.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -33,7 +33,7 @@ export function IntegrationsSettings() {
   const {
     integrations: access,
     checkAccess,
-    openAutomationSettings,
+    openIntegrationSettings,
   } = useDailyReviewIntegrations();
   const [draft, setDraft] = useState('');
   const [justSaved, setJustSaved] = useState(false);
@@ -98,7 +98,7 @@ export function IntegrationsSettings() {
 
       <SettingsSection
         title="Apple Calendar & Mail"
-        description="Control which macOS applications can contribute to Today. Data stays on this Mac."
+        description="Control which local Apple data can contribute to Today. Data stays on this Mac."
       >
         <div className="grid gap-3">
           <IntegrationPermissionRow
@@ -108,21 +108,21 @@ export function IntegrationsSettings() {
             icon={<CalendarBlank size={18} />}
             state={access.calendar}
             onCheck={() => void checkAccess('calendar')}
-            onOpenSettings={() => void openAutomationSettings()}
+            onOpenSettings={() => void openIntegrationSettings('calendar')}
           />
           <IntegrationPermissionRow
             source="mail"
             title="Mail"
-            description="Show recent unread messages."
+            description="Show the unified unread count from Apple Mail."
             icon={<Envelope size={18} />}
             state={access.mail}
             onCheck={() => void checkAccess('mail')}
-            onOpenSettings={() => void openAutomationSettings()}
+            onOpenSettings={() => void openIntegrationSettings('mail')}
           />
         </div>
         <Caption className="text-pretty text-muted-foreground">
-          macOS asks for Automation access the first time Stone checks an application. If access was
-          denied, enable it under Privacy &amp; Security → Automation, then check again.
+          Calendar access is managed under Privacy &amp; Security → Calendars. Apple Mail access is
+          managed under Privacy &amp; Security → Automation.
         </Caption>
       </SettingsSection>
     </ContainerStack>
