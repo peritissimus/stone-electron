@@ -210,6 +210,7 @@ export const MeetingsConfigSchema = z.object({
 
 export const IntegrationsConfigSchema = z.object({
   linearApiKey: z.string(),
+  selectedCalendarIds: z.array(z.string()).nullable(),
 });
 
 // ----- onboarding -----

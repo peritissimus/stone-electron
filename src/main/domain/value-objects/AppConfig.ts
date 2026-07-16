@@ -367,10 +367,13 @@ export const DEFAULT_QUICK_CAPTURE_CONFIG: QuickCaptureConfig = {
  */
 export interface IntegrationsConfig {
   linearApiKey: string;
+  /** null means all calendars; an empty array intentionally disables calendar events. */
+  selectedCalendarIds: string[] | null;
 }
 
 export const DEFAULT_INTEGRATIONS_CONFIG: IntegrationsConfig = {
   linearApiKey: '',
+  selectedCalendarIds: null,
 };
 
 export interface AppConfig {

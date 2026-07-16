@@ -1,83 +1,112 @@
-/**
- * AppleCalendarSource — reads a day's events from Calendar.app via JXA.
- * macOS-only; returns [] on any other platform or when Automation permission
- * is denied. Triggers a one-time macOS Automation prompt on first use.
- */
+/** AppleCalendarSource — reads calendar metadata and bounded event ranges from
+ * EventKit through Stone's signed native bridge. */
 
-import type { CalendarEvent, ICalendarSource } from '../../../domain/ports/out/ICalendarSource';
+import { execFile } from 'node:child_process';
+import type {
+  CalendarDescriptor,
+  CalendarEvent,
+  ICalendarSource,
+} from '../../../domain/ports/out/ICalendarSource';
 import type { ExternalSourceResult } from '../../../domain/ports/out/externalSourceResult';
-import { runJxa } from './osascriptJxa';
+import { logger } from '../../../shared/utils';
 
-interface RawEvent {
-  title?: string;
-  start?: string;
-  end?: string;
-  allDay?: boolean;
-  calendar?: string;
-  location?: string | null;
-}
-
-/** JXA: collect events intersecting the local day [start, nextDay). The date
- *  is injected as YYYY-MM-DD and parsed into a local Date inside the script. */
-function script(date: string): string {
-  return `
-    (() => {
-      const [y, m, d] = ${JSON.stringify(date)}.split('-').map(Number);
-      const dayStart = new Date(y, m - 1, d, 0, 0, 0, 0);
-      const dayEnd = new Date(y, m - 1, d + 1, 0, 0, 0, 0);
-      const Cal = Application('Calendar');
-      const out = [];
-      const cals = Cal.calendars();
-      for (const cal of cals) {
-        let events;
-        try {
-          events = cal.events.whose({
-            _and: [{ startDate: { _lessThan: dayEnd } }, { endDate: { _greaterThan: dayStart } }],
-          })();
-        } catch (e) {
-          continue;
-        }
-        const calName = cal.name();
-        for (const ev of events) {
-          out.push({
-            title: ev.summary(),
-            start: ev.startDate().toISOString(),
-            end: ev.endDate().toISOString(),
-            allDay: ev.alldayEvent(),
-            calendar: calName,
-            location: ev.location() || null,
-          });
-        }
-      }
-      out.sort((a, b) => a.start.localeCompare(b.start));
-      return JSON.stringify(out);
-    })();
-  `;
+interface BridgeResponse<T> {
+  status?: ExternalSourceResult<T[]>['status'];
+  data?: unknown[];
+  message?: string;
 }
 
 export class AppleCalendarSource implements ICalendarSource {
-  async getEventsForDate(date: string): Promise<ExternalSourceResult<CalendarEvent[]>> {
-    const result = await runJxa<RawEvent[]>(script(date), {
-      target: 'Calendar',
-      timeoutMs: 8000,
-    });
-    if (!result.ok) {
-      return {
-        status: result.reason === 'timeout' ? 'error' : result.reason,
-        data: [],
-        message: result.message,
-      };
-    }
-    return {
-      status: 'connected',
-      data: result.data.map((e) => ({
-        title: String(e.title ?? '(no title)'),
-        start: String(e.start ?? ''),
-        end: String(e.end ?? ''),
-        allDay: Boolean(e.allDay),
-        calendar: String(e.calendar ?? ''),
-        location: e.location ? String(e.location) : null,
-      })),
-    };
+  constructor(private readonly bridgePath: string) {}
+
+  async listCalendars(): Promise<ExternalSourceResult<CalendarDescriptor[]>> {
+    const result = await this.runBridge<CalendarDescriptor>(['list'], mapCalendar);
+    return result;
   }
+
+  async getEventsForDate(
+    date: string,
+    calendarIds: readonly string[] | null,
+  ): Promise<ExternalSourceResult<CalendarEvent[]>> {
+    if (calendarIds !== null && calendarIds.length === 0) {
+      return { status: 'connected', data: [] };
+    }
+    return this.runBridge<CalendarEvent>(
+      ['events', date, ...(calendarIds === null ? ['--all'] : calendarIds)],
+      mapEvent,
+    );
+  }
+
+  private runBridge<T>(
+    args: string[],
+    mapItem: (value: unknown) => T,
+  ): Promise<ExternalSourceResult<T[]>> {
+    if (process.platform !== 'darwin') {
+      return Promise.resolve({
+        status: 'unavailable',
+        data: [],
+        message: 'Available on macOS only.',
+      });
+    }
+
+    return new Promise((resolve) => {
+      execFile(
+        this.bridgePath,
+        args,
+        { timeout: 30_000, maxBuffer: 1024 * 1024 },
+        (error, stdout) => {
+          if (error) {
+            logger.warn('[CalendarBridge] request failed', {
+              code: error.code ?? null,
+              killed: Boolean(error.killed),
+            });
+            resolve({
+              status: error.killed ? 'error' : 'unavailable',
+              data: [],
+              message: error.killed
+                ? 'Calendar permission was not completed in time.'
+                : 'The Calendar connection is unavailable.',
+            });
+            return;
+          }
+
+          try {
+            const response = JSON.parse(stdout.trim()) as BridgeResponse<T>;
+            resolve({
+              status: response.status ?? 'error',
+              data: Array.isArray(response.data) ? response.data.map(mapItem) : [],
+              ...(response.message ? { message: response.message } : {}),
+            });
+          } catch {
+            resolve({ status: 'error', data: [], message: 'Calendar returned invalid data.' });
+          }
+        },
+      );
+    });
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function mapCalendar(value: unknown): CalendarDescriptor {
+  const calendar = asRecord(value);
+  return {
+    id: String(calendar.id ?? ''),
+    title: String(calendar.title ?? 'Untitled calendar'),
+    source: String(calendar.source ?? ''),
+  };
+}
+
+function mapEvent(value: unknown): CalendarEvent {
+  const event = asRecord(value);
+  return {
+    title: String(event.title ?? '(no title)'),
+    start: String(event.start ?? ''),
+    end: String(event.end ?? ''),
+    allDay: Boolean(event.allDay),
+    calendar: String(event.calendar ?? ''),
+    location: event.location ? String(event.location) : null,
+  };
 }

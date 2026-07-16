@@ -9,7 +9,7 @@
 
 import type { NoteProps } from '../../entities';
 import type { TaskItem } from './ITaskUseCases';
-import type { CalendarEvent } from '../out/ICalendarSource';
+import type { CalendarDescriptor, CalendarEvent } from '../out/ICalendarSource';
 import type { MailMessage } from '../out/IMailSource';
 import type { LinearIssue } from '../out/ILinearSource';
 import type { ExternalSourceStatus } from '../out/externalSourceResult';
@@ -52,6 +52,7 @@ export interface DailyReviewSnapshot {
   onThisDay: DailyReviewOnThisDayEntry[];
   /** External integrations — present only when the source is available. */
   calendarEvents?: CalendarEvent[];
+  mailUnreadCount?: number;
   mailMessages?: MailMessage[];
   linearIssues?: LinearIssue[];
 }
@@ -79,12 +80,23 @@ export interface DailyReviewIntegrationResult {
   status: ExternalSourceStatus;
   message?: string;
   calendarEvents?: CalendarEvent[];
+  mailUnreadCount?: number;
   mailMessages?: MailMessage[];
   linearIssues?: LinearIssue[];
 }
 
 export interface ILoadDailyReviewIntegrationUseCase {
   execute(request: LoadDailyReviewIntegrationRequest): Promise<DailyReviewIntegrationResult>;
+}
+
+export interface ListDailyReviewCalendarsResult {
+  status: ExternalSourceStatus;
+  calendars: CalendarDescriptor[];
+  message?: string;
+}
+
+export interface IListDailyReviewCalendarsUseCase {
+  execute(): Promise<ListDailyReviewCalendarsResult>;
 }
 
 export interface SummarizeDailyReviewRequest {
@@ -107,6 +119,7 @@ export interface ISummarizeDailyReviewUseCase {
 
 export interface IDailyReviewUseCases {
   getDailyReview: IGetDailyReviewUseCase;
+  listCalendars: IListDailyReviewCalendarsUseCase;
   loadIntegration: ILoadDailyReviewIntegrationUseCase;
   summarizeDailyReview: ISummarizeDailyReviewUseCase;
 }

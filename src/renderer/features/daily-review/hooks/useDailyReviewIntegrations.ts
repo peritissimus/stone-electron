@@ -7,6 +7,8 @@ export type { IntegrationLoadState } from '@renderer/features/daily-review/model
 
 const AUTOMATION_SETTINGS_URL =
   'x-apple.systempreferences:com.apple.preference.security?Privacy_Automation';
+const CALENDAR_SETTINGS_URL =
+  'x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars';
 
 export function useDailyReviewIntegrations() {
   const integrations = useDailyReviewStore((state) => state.integrations);
@@ -17,9 +19,11 @@ export function useDailyReviewIntegrations() {
     [loadIntegration],
   );
 
-  const openAutomationSettings = useCallback(async () => {
-    await systemAPI.openExternal(AUTOMATION_SETTINGS_URL);
+  const openIntegrationSettings = useCallback(async (source: DailyReviewIntegrationSource) => {
+    await systemAPI.openExternal(
+      source === 'calendar' ? CALENDAR_SETTINGS_URL : AUTOMATION_SETTINGS_URL,
+    );
   }, []);
 
-  return { integrations, checkAccess, openAutomationSettings };
+  return { integrations, checkAccess, openIntegrationSettings };
 }

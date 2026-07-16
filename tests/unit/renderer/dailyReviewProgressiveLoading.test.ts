@@ -78,4 +78,24 @@ describe('dailyReviewStore progressive integration loading', () => {
       message: 'Access is blocked in macOS Automation settings.',
     });
   });
+
+  it('stores a Mail unread count even when Apple Mail supplies no previews', async () => {
+    useDailyReviewStore.setState({ snapshot: snapshot() });
+    loadIntegration.mockResolvedValue({
+      success: true,
+      data: {
+        source: 'mail',
+        status: 'connected',
+        mailUnreadCount: 352,
+        mailMessages: [],
+      },
+    });
+
+    await useDailyReviewStore.getState().loadIntegration('mail');
+
+    expect(useDailyReviewStore.getState().snapshot).toMatchObject({
+      mailUnreadCount: 352,
+      mailMessages: [],
+    });
+  });
 });

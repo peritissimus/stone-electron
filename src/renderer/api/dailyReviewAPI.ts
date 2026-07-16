@@ -8,6 +8,7 @@ import type {
   DailyReviewIntegrationResult,
   DailyReviewIntegrationSource,
   DailyReviewSnapshot,
+  ListDailyReviewCalendarsResult,
   IpcResponse,
 } from '@shared/types';
 
@@ -22,6 +23,9 @@ export const dailyReviewAPI = {
     date?: string;
   }): Promise<IpcResponse<DailyReviewSnapshot>> =>
     invokeIpc(DAILY_REVIEW_CHANNELS.GET, input ?? {}),
+
+  listCalendars: (): Promise<IpcResponse<ListDailyReviewCalendarsResult>> =>
+    invokeIpc(DAILY_REVIEW_CHANNELS.LIST_CALENDARS),
 
   loadIntegration: (input: {
     source: DailyReviewIntegrationSource;

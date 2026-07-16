@@ -2,7 +2,7 @@ import type { ExternalSourceResult } from './externalSourceResult';
 
 /**
  * IMailSource — read-only access to the user's unread inbox.
- * Implemented on macOS via Mail.app (JXA); other platforms return [].
+ * Implemented on macOS via a bounded Mail.app summary call.
  */
 
 export interface MailMessage {
@@ -12,7 +12,13 @@ export interface MailMessage {
   receivedAt: string;
 }
 
+export interface MailSnapshot {
+  unreadCount: number;
+  /** Message previews are populated only by providers that can fetch them reliably. */
+  messages: MailMessage[];
+}
+
 export interface IMailSource {
-  /** Up to `limit` most-recent unread messages plus an actionable access status. */
-  getUnreadMessages(limit: number): Promise<ExternalSourceResult<MailMessage[]>>;
+  /** Unread summary plus any previews supplied by the active provider. */
+  getUnreadMessages(limit: number): Promise<ExternalSourceResult<MailSnapshot>>;
 }

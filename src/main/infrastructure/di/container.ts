@@ -15,6 +15,7 @@ import { WorkerManager } from '@main/infrastructure/workers/WorkerManager';
 import { getMLStatusTracker } from '@main/infrastructure/workers/MLStatusTracker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
+import { calendarBridgePath } from '@main/infrastructure/utils/calendarBridgePath';
 
 // Domain Layer - Ports
 import type {
@@ -732,10 +733,10 @@ export function createContainer(deps: ContainerDeps): Container {
 
   // Daily Review use cases — pure read aggregation over journal +
   // meetings + tasks + notes for the /today page.
-  // Today-page external sources. Apple Calendar/Mail are macOS-only and
-  // self-guard (return [] off-platform or without Automation permission);
+  // Today-page external sources. Calendar uses the signed EventKit bridge;
+  // Mail uses a bounded Apple Events summary; both self-guard off-platform.
   // Linear reads its key from config and returns [] when unset.
-  const calendarSource = new AppleCalendarSource();
+  const calendarSource = new AppleCalendarSource(calendarBridgePath());
   const mailSource = new AppleMailSource();
   const linearSource = new LinearSource({ appConfigRepository });
 

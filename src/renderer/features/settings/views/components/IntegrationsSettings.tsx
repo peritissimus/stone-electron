@@ -1,8 +1,8 @@
 /**
  * IntegrationsSettings — Settings → Integrations. Connects third-party
  * sources the Today page pulls from. Currently: a Linear personal API key.
- * Apple Calendar/Mail need no config here — they run on macOS via Automation
- * permission, prompted on first use.
+ * Apple Calendar/Mail need no account config here. Calendar uses macOS
+ * Calendar privacy access; Mail uses Automation access.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -16,7 +16,7 @@ import {
   LinkSimple,
   Warning,
 } from '@phosphor-icons/react';
-import { ContainerStack } from '@renderer/components/base/ui';
+import { Checkbox, ContainerStack } from '@renderer/components/base/ui';
 import { Button } from '@renderer/components/base/ui/button';
 import { Input } from '@renderer/components/base/ui/input';
 import { Caption } from '@renderer/components/base/ui/text';
@@ -25,15 +25,26 @@ import {
   useDailyReviewIntegrations,
   type IntegrationLoadState,
 } from '@renderer/features/daily-review/hooks/useDailyReviewIntegrations';
-import type { DailyReviewIntegrationSource } from '@shared/types';
+import type { CalendarDescriptor, DailyReviewIntegrationSource } from '@shared/types';
 import { SettingsSection } from './SettingsSection';
 
 export function IntegrationsSettings() {
-  const { integrations, loaded, saving, error, setLinearApiKey } = useIntegrationsSettings();
+  const {
+    integrations,
+    loaded,
+    saving,
+    error,
+    calendarError,
+    availableCalendars,
+    calendarAccess,
+    refreshCalendars,
+    setLinearApiKey,
+    setSelectedCalendarIds,
+  } = useIntegrationsSettings();
   const {
     integrations: access,
     checkAccess,
-    openAutomationSettings,
+    openIntegrationSettings,
   } = useDailyReviewIntegrations();
   const [draft, setDraft] = useState('');
   const [justSaved, setJustSaved] = useState(false);
@@ -98,7 +109,7 @@ export function IntegrationsSettings() {
 
       <SettingsSection
         title="Apple Calendar & Mail"
-        description="Control which macOS applications can contribute to Today. Data stays on this Mac."
+        description="Control which local Apple data can contribute to Today. Data stays on this Mac."
       >
         <div className="grid gap-3">
           <IntegrationPermissionRow
@@ -106,26 +117,121 @@ export function IntegrationsSettings() {
             title="Calendar"
             description="Show today's events and locations."
             icon={<CalendarBlank size={18} />}
-            state={access.calendar}
-            onCheck={() => void checkAccess('calendar')}
-            onOpenSettings={() => void openAutomationSettings()}
+            state={calendarAccess}
+            onCheck={() => void refreshCalendars()}
+            onOpenSettings={() => void openIntegrationSettings('calendar')}
           />
+          {calendarAccess.status === 'connected' && availableCalendars.length > 0 && (
+            <CalendarSelectionPanel
+              calendars={availableCalendars}
+              selectedIds={integrations.selectedCalendarIds}
+              saving={saving}
+              error={calendarError}
+              onChange={(ids) => void setSelectedCalendarIds(ids)}
+            />
+          )}
           <IntegrationPermissionRow
             source="mail"
             title="Mail"
-            description="Show recent unread messages."
+            description="Show the unified unread count from Apple Mail."
             icon={<Envelope size={18} />}
             state={access.mail}
             onCheck={() => void checkAccess('mail')}
-            onOpenSettings={() => void openAutomationSettings()}
+            onOpenSettings={() => void openIntegrationSettings('mail')}
           />
         </div>
         <Caption className="text-pretty text-muted-foreground">
-          macOS asks for Automation access the first time Stone checks an application. If access was
-          denied, enable it under Privacy &amp; Security → Automation, then check again.
+          Calendar access is managed under Privacy &amp; Security → Calendars. Apple Mail access is
+          managed under Privacy &amp; Security → Automation.
         </Caption>
       </SettingsSection>
     </ContainerStack>
+  );
+}
+
+function CalendarSelectionPanel({
+  calendars,
+  selectedIds,
+  saving,
+  error,
+  onChange,
+}: {
+  calendars: CalendarDescriptor[];
+  selectedIds: string[] | null;
+  saving: boolean;
+  error: string | null;
+  onChange: (ids: string[] | null) => void;
+}) {
+  const allIds = calendars.map((calendar) => calendar.id);
+  const selected = selectedIds === null ? new Set(allIds) : new Set(selectedIds);
+  const selectedCount = allIds.filter((id) => selected.has(id)).length;
+
+  const toggleCalendar = (id: string, checked: boolean) => {
+    const next = new Set(selected);
+    if (checked) next.add(id);
+    else next.delete(id);
+    onChange(next.size === allIds.length ? null : allIds.filter((item) => next.has(item)));
+  };
+
+  return (
+    <div className="rounded-xl bg-muted/30 p-2 shadow-[inset_0_0_0_1px_hsl(var(--border)/0.35)]">
+      <div className="flex min-h-10 items-center justify-between gap-3 px-2">
+        <div className="min-w-0">
+          <span className="text-sm font-medium">Calendars included in Today</span>
+          <Caption className="ml-2 tabular-nums text-muted-foreground">
+            {selectedCount === allIds.length
+              ? `All ${allIds.length}`
+              : `${selectedCount} of ${allIds.length}`}
+          </Caption>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-10 transition-transform active:scale-[0.96]"
+            disabled={saving || selectedIds === null}
+            onClick={() => onChange(null)}
+          >
+            Select all
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-10 transition-transform active:scale-[0.96]"
+            disabled={saving || selectedCount === 0}
+            onClick={() => onChange([])}
+          >
+            Clear
+          </Button>
+        </div>
+      </div>
+      <div className="grid gap-1">
+        {calendars.map((calendar) => {
+          const checked = selected.has(calendar.id);
+          return (
+            <label
+              key={calendar.id}
+              className="flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 transition-colors hover:bg-background/70"
+            >
+              <Checkbox
+                checked={checked}
+                disabled={saving}
+                onCheckedChange={(value) => toggleCalendar(calendar.id, value === true)}
+              />
+              <span className="min-w-0 flex-1 text-pretty text-sm">{calendar.title}</span>
+              {calendar.source && (
+                <Caption className="max-w-40 truncate text-muted-foreground">
+                  {calendar.source}
+                </Caption>
+              )}
+            </label>
+          );
+        })}
+      </div>
+      {error && <Caption className="block px-2 py-1 text-destructive">{error}</Caption>}
+    </div>
   );
 }
 

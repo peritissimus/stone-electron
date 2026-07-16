@@ -29,7 +29,9 @@ function createMockSettingsRepository(): ISettingsRepository {
  * Stateful AppConfig mock — preserves mutations between calls so that
  * sequences like "set → get → set" reflect real repository behavior.
  */
-function createMockAppConfigRepository(initial: AppConfig = DEFAULT_APP_CONFIG): IAppConfigRepository {
+function createMockAppConfigRepository(
+  initial: AppConfig = DEFAULT_APP_CONFIG,
+): IAppConfigRepository {
   let state: AppConfig = initial;
   return {
     get: vi.fn(async () => state),
@@ -123,6 +125,29 @@ describe('SettingsUseCases', () => {
       const result = await useCases.get.execute({ key: 'empty' });
 
       expect(result.value).toBeNull();
+    });
+  });
+
+  describe('calendar integration selection', () => {
+    it('persists a normalized subset without changing the Linear key', async () => {
+      await useCases.updateIntegrations.execute({
+        integrations: { linearApiKey: ' lin_api_existing ' },
+      });
+
+      const result = await useCases.updateIntegrations.execute({
+        integrations: { selectedCalendarIds: [' work ', 'family', 'work'] },
+      });
+
+      expect(result).toEqual({
+        linearApiKey: 'lin_api_existing',
+        selectedCalendarIds: ['work', 'family'],
+      });
+      expect(eventPublisher.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'settings:changed',
+          payload: { scope: 'integrations' },
+        }),
+      );
     });
   });
 
@@ -228,7 +253,9 @@ describe('SettingsUseCases', () => {
     });
 
     it('accepts the -1 "delete after transcribing" sentinel', async () => {
-      const result = await useCases.updateMeetings.execute({ meetings: { audioRetentionDays: -1 } });
+      const result = await useCases.updateMeetings.execute({
+        meetings: { audioRetentionDays: -1 },
+      });
       expect(result.audioRetentionDays).toBe(-1);
     });
 

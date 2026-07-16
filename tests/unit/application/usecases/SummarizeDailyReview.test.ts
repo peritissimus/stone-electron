@@ -31,7 +31,12 @@ function make(over: Partial<DailyReviewSnapshot> = {}) {
       source,
       status: 'connected' as const,
       ...(source === 'calendar' ? { calendarEvents: over.calendarEvents ?? [] } : {}),
-      ...(source === 'mail' ? { mailMessages: over.mailMessages ?? [] } : {}),
+      ...(source === 'mail'
+        ? {
+            mailUnreadCount: over.mailUnreadCount ?? 0,
+            mailMessages: over.mailMessages ?? [],
+          }
+        : {}),
       ...(source === 'linear' ? { linearIssues: over.linearIssues ?? [] } : {}),
     })),
   };
@@ -79,5 +84,13 @@ describe('SummarizeDailyReviewUseCase', () => {
       undefined,
     );
     expect(result.journalNoteId).toBe('journal-1');
+  });
+
+  it('includes the bounded Apple Mail unread count in the briefing', async () => {
+    const { useCase, generateMarkdown } = make({ mailUnreadCount: 12 });
+
+    await useCase.execute();
+
+    expect(generateMarkdown.mock.calls[0][0].prompt).toContain('12 unread messages');
   });
 });

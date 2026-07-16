@@ -17,6 +17,12 @@ function mergeIntegrationsPatch(
   return {
     linearApiKey:
       patch.linearApiKey === undefined ? current.linearApiKey : patch.linearApiKey.trim(),
+    selectedCalendarIds:
+      patch.selectedCalendarIds === undefined
+        ? current.selectedCalendarIds
+        : patch.selectedCalendarIds === null
+          ? null
+          : [...new Set(patch.selectedCalendarIds.map((id) => id.trim()).filter(Boolean))],
   };
 }
 

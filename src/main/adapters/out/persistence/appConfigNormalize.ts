@@ -121,7 +121,9 @@ function mergeEditorIndent(value: unknown): EditorIndentConfig {
   return {
     types: isStringArray(value.types) ? value.types : DEFAULT_APP_CONFIG.editor.indent.types,
     maxIndent:
-      typeof value.maxIndent === 'number' && Number.isInteger(value.maxIndent) && value.maxIndent >= 0
+      typeof value.maxIndent === 'number' &&
+      Number.isInteger(value.maxIndent) &&
+      value.maxIndent >= 0
         ? value.maxIndent
         : DEFAULT_APP_CONFIG.editor.indent.maxIndent,
   };
@@ -168,7 +170,9 @@ function mergeEditorTask(value: unknown): EditorTaskConfig {
 
   let states: EditorTaskStateDef[] = DEFAULT_APP_CONFIG.editor.task.states;
   if (Array.isArray(value.states)) {
-    const cleaned = value.states.map(mergeTaskStateDef).filter((s): s is EditorTaskStateDef => s !== null);
+    const cleaned = value.states
+      .map(mergeTaskStateDef)
+      .filter((s): s is EditorTaskStateDef => s !== null);
     if (cleaned.length > 0) {
       states = cleaned;
     }
@@ -334,19 +338,14 @@ function mergeAIIndexing(value: unknown): AIIndexingConfig {
   return {
     enabled: typeof value.enabled === 'boolean' ? value.enabled : defaults.enabled,
     providerMode: isProviderMode(value.providerMode) ? value.providerMode : defaults.providerMode,
-    chunkMaxCharacters: sanitizePositiveInt(
-      value.chunkMaxCharacters,
-      defaults.chunkMaxCharacters,
-    ),
+    chunkMaxCharacters: sanitizePositiveInt(value.chunkMaxCharacters, defaults.chunkMaxCharacters),
     chunkOverlapCharacters: sanitizeNonNegativeInt(
       value.chunkOverlapCharacters,
       defaults.chunkOverlapCharacters,
     ),
     batchSize: sanitizePositiveInt(value.batchSize, defaults.batchSize),
     autoIndexOnSave:
-      typeof value.autoIndexOnSave === 'boolean'
-        ? value.autoIndexOnSave
-        : defaults.autoIndexOnSave,
+      typeof value.autoIndexOnSave === 'boolean' ? value.autoIndexOnSave : defaults.autoIndexOnSave,
   };
 }
 
@@ -464,6 +463,12 @@ function mergeIntegrations(value: unknown): AppConfig['integrations'] {
       typeof value.linearApiKey === 'string'
         ? value.linearApiKey.trim()
         : DEFAULT_APP_CONFIG.integrations.linearApiKey,
+    selectedCalendarIds:
+      value.selectedCalendarIds === null
+        ? null
+        : isStringArray(value.selectedCalendarIds)
+          ? [...new Set(value.selectedCalendarIds.map((id) => id.trim()).filter(Boolean))]
+          : DEFAULT_APP_CONFIG.integrations.selectedCalendarIds,
   };
 }
 
@@ -479,11 +484,11 @@ function mergeMeetings(value: unknown): AppConfig['meetings'] {
 
 function mergeOnboarding(value: unknown): AppConfig['onboarding'] {
   const defaults = DEFAULT_APP_CONFIG.onboarding;
-  if (!isRecord(value)) return { completed: false, completedAt: null, steps: { ...defaults.steps } };
+  if (!isRecord(value))
+    return { completed: false, completedAt: null, steps: { ...defaults.steps } };
 
   const stepsValue = isRecord(value.steps) ? value.steps : {};
-  const bool = (v: unknown, fallback: boolean): boolean =>
-    typeof v === 'boolean' ? v : fallback;
+  const bool = (v: unknown, fallback: boolean): boolean => (typeof v === 'boolean' ? v : fallback);
 
   return {
     completed: bool(value.completed, defaults.completed),
