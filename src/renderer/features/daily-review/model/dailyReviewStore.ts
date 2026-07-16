@@ -166,7 +166,7 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
     }
   },
 
-s  loadIntegrations: async () => {
+  loadIntegrations: async () => {
     // Apple Events are serialized deliberately. Calendar can generate many
     // TCC checks on newer macOS releases; running it beside Mail can starve
     // Mail until both child processes hit their timeout.
