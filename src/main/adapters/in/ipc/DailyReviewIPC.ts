@@ -45,6 +45,12 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
     });
   });
 
+  ipcMain.handle(DAILY_REVIEW_CHANNELS.LIST_CALENDARS, async () =>
+    handleRequest(async () => dailyReviewUseCases.listCalendars.execute(), {
+      channel: DAILY_REVIEW_CHANNELS.LIST_CALENDARS,
+    }),
+  );
+
   ipcMain.handle(DAILY_REVIEW_CHANNELS.SUMMARIZE, async (_event, request) =>
     handleRequest(
       async () =>

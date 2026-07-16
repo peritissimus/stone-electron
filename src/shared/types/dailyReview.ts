@@ -56,6 +56,18 @@ export interface LinearIssue {
 export type DailyReviewIntegrationSource = 'calendar' | 'mail' | 'linear';
 export type DailyReviewIntegrationStatus = 'connected' | 'denied' | 'unavailable' | 'error';
 
+export interface CalendarDescriptor {
+  id: string;
+  title: string;
+  source: string;
+}
+
+export interface ListDailyReviewCalendarsResult {
+  status: DailyReviewIntegrationStatus;
+  calendars: CalendarDescriptor[];
+  message?: string;
+}
+
 export interface DailyReviewIntegrationResult {
   source: DailyReviewIntegrationSource;
   status: DailyReviewIntegrationStatus;

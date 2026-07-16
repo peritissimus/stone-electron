@@ -511,3 +511,30 @@ describe('mergeQuickCapture', () => {
     expect(result.quickCapture.shortcut).toBe('');
   });
 });
+
+describe('integrations normalization', () => {
+  it('defaults missing calendar selection to all calendars', () => {
+    expect(normalizeConfig({ integrations: { linearApiKey: '' } }).integrations).toEqual({
+      linearApiKey: '',
+      selectedCalendarIds: null,
+    });
+  });
+
+  it('trims, deduplicates, and preserves an explicit calendar selection', () => {
+    expect(
+      normalizeConfig({
+        integrations: {
+          linearApiKey: '',
+          selectedCalendarIds: [' work ', 'family', 'work', ''],
+        },
+      }).integrations.selectedCalendarIds,
+    ).toEqual(['work', 'family']);
+  });
+
+  it('preserves an empty selection so Calendar can be intentionally disabled', () => {
+    expect(
+      normalizeConfig({ integrations: { selectedCalendarIds: [] } }).integrations
+        .selectedCalendarIds,
+    ).toEqual([]);
+  });
+});

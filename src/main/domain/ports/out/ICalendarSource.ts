@@ -2,7 +2,7 @@ import type { ExternalSourceResult } from './externalSourceResult';
 
 /**
  * ICalendarSource — read-only access to the user's calendar for a given day.
- * Implemented on macOS via Calendar.app (JXA); other platforms return [].
+ * Implemented on macOS via EventKit; other platforms report unavailable.
  */
 
 export interface CalendarEvent {
@@ -17,7 +17,20 @@ export interface CalendarEvent {
   location: string | null;
 }
 
+export interface CalendarDescriptor {
+  /** Stable EventKit identifier used to persist the user's selection. */
+  id: string;
+  title: string;
+  /** Account/source name, used to disambiguate calendars with the same title. */
+  source: string;
+}
+
 export interface ICalendarSource {
+  /** Calendars available to the app after access is granted. */
+  listCalendars(): Promise<ExternalSourceResult<CalendarDescriptor[]>>;
   /** Events on the given local date plus an actionable access status. */
-  getEventsForDate(date: string): Promise<ExternalSourceResult<CalendarEvent[]>>;
+  getEventsForDate(
+    date: string,
+    calendarIds: readonly string[] | null,
+  ): Promise<ExternalSourceResult<CalendarEvent[]>>;
 }

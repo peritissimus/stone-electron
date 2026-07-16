@@ -13,10 +13,12 @@ import type { IMailSource } from '../../../domain/ports/out/IMailSource';
 import type { ILinearSource } from '../../../domain/ports/out/ILinearSource';
 import { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
 import { LoadDailyReviewIntegrationUseCase } from './LoadDailyReviewIntegrationUseCase';
+import { ListDailyReviewCalendarsUseCase } from './ListDailyReviewCalendarsUseCase';
 import { SummarizeDailyReviewUseCase } from './SummarizeDailyReviewUseCase';
 
 export { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
 export { LoadDailyReviewIntegrationUseCase } from './LoadDailyReviewIntegrationUseCase';
+export { ListDailyReviewCalendarsUseCase } from './ListDailyReviewCalendarsUseCase';
 export { SummarizeDailyReviewUseCase } from './SummarizeDailyReviewUseCase';
 
 export interface DailyReviewUseCasesDeps {
@@ -41,6 +43,7 @@ export function createDailyReviewUseCases(deps: DailyReviewUseCasesDeps): IDaily
   const loadIntegration = new LoadDailyReviewIntegrationUseCase(deps);
   return {
     getDailyReview,
+    listCalendars: new ListDailyReviewCalendarsUseCase(deps.calendarSource),
     loadIntegration,
     summarizeDailyReview: new SummarizeDailyReviewUseCase({
       getDailyReview,

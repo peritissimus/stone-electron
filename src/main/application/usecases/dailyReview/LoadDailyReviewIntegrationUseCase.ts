@@ -4,6 +4,7 @@ import type {
   ILinearSource,
   ILoadDailyReviewIntegrationUseCase,
   IMailSource,
+  IAppConfigRepository,
   LoadDailyReviewIntegrationRequest,
 } from '../../../domain';
 
@@ -13,6 +14,7 @@ export interface LoadDailyReviewIntegrationUseCaseDeps {
   calendarSource?: ICalendarSource;
   mailSource?: IMailSource;
   linearSource?: ILinearSource;
+  appConfigRepository?: IAppConfigRepository;
 }
 
 export class LoadDailyReviewIntegrationUseCase implements ILoadDailyReviewIntegrationUseCase {
@@ -32,7 +34,9 @@ export class LoadDailyReviewIntegrationUseCase implements ILoadDailyReviewIntegr
   private async loadCalendar(date: string): Promise<DailyReviewIntegrationResult> {
     if (!this.deps.calendarSource) return unavailable('calendar');
     try {
-      const result = await this.deps.calendarSource.getEventsForDate(date);
+      const config = await this.deps.appConfigRepository?.get();
+      const calendarIds = config?.integrations.selectedCalendarIds ?? null;
+      const result = await this.deps.calendarSource.getEventsForDate(date, calendarIds);
       return {
         source: 'calendar',
         status: result.status,

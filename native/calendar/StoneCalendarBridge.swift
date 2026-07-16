@@ -1,6 +1,12 @@
 import EventKit
 import Foundation
 
+private struct CalendarDescriptorPayload: Encodable {
+    let id: String
+    let title: String
+    let source: String
+}
+
 private struct CalendarEventPayload: Encodable {
     let title: String
     let start: String
@@ -10,29 +16,25 @@ private struct CalendarEventPayload: Encodable {
     let location: String?
 }
 
-private struct BridgeResponse: Encodable {
+private struct BridgeResponse<Payload: Encodable>: Encodable {
     let status: String
-    let data: [CalendarEventPayload]
+    let data: [Payload]
     let message: String?
 }
 
 @main
 private struct StoneCalendarBridge {
     static func main() async {
-        guard CommandLine.arguments.count == 2,
-              let dayRange = parseLocalDay(CommandLine.arguments[1]) else {
-            emit(BridgeResponse(
-                status: "error",
-                data: [],
-                message: "Expected a calendar date in YYYY-MM-DD format."
-            ))
+        let arguments = Array(CommandLine.arguments.dropFirst())
+        guard let command = arguments.first, command == "list" || command == "events" else {
+            emitError("Expected 'list' or 'events YYYY-MM-DD [--all|calendar-id …]'.")
             return
         }
 
         let store = EKEventStore()
         do {
             guard try await requestAccessIfNeeded(store) else {
-                emit(BridgeResponse(
+                emit(BridgeResponse<CalendarDescriptorPayload>(
                     status: "denied",
                     data: [],
                     message: "Calendar access is blocked in macOS Privacy & Security settings."
@@ -40,10 +42,49 @@ private struct StoneCalendarBridge {
                 return
             }
 
+            if command == "list" {
+                let calendars = store.calendars(for: .event)
+                    .map { calendar in
+                        CalendarDescriptorPayload(
+                            id: calendar.calendarIdentifier,
+                            title: calendar.title,
+                            source: calendar.source.title
+                        )
+                    }
+                    .sorted {
+                        let titleOrder = $0.title.localizedCaseInsensitiveCompare($1.title)
+                        return titleOrder == .orderedSame
+                            ? $0.source.localizedCaseInsensitiveCompare($1.source) == .orderedAscending
+                            : titleOrder == .orderedAscending
+                    }
+                emit(BridgeResponse(status: "connected", data: calendars, message: nil))
+                return
+            }
+
+            guard arguments.count >= 2, let dayRange = parseLocalDay(arguments[1]) else {
+                emitError("Expected a calendar date in YYYY-MM-DD format.")
+                return
+            }
+
+            let requestedIds = Set(arguments.dropFirst(2))
+            let calendars: [EKCalendar]?
+            if requestedIds.contains("--all") {
+                calendars = nil
+            } else {
+                calendars = store.calendars(for: .event).filter {
+                    requestedIds.contains($0.calendarIdentifier)
+                }
+            }
+
+            if calendars?.isEmpty == true {
+                emit(BridgeResponse<CalendarEventPayload>(status: "connected", data: [], message: nil))
+                return
+            }
+
             let predicate = store.predicateForEvents(
                 withStart: dayRange.start,
                 end: dayRange.end,
-                calendars: nil
+                calendars: calendars
             )
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -62,11 +103,7 @@ private struct StoneCalendarBridge {
 
             emit(BridgeResponse(status: "connected", data: events, message: nil))
         } catch {
-            emit(BridgeResponse(
-                status: "error",
-                data: [],
-                message: "Could not read Calendar: \(error.localizedDescription)"
-            ))
+            emitError("Could not read Calendar: \(error.localizedDescription)")
         }
     }
 
@@ -107,7 +144,11 @@ private struct StoneCalendarBridge {
         return (start, end)
     }
 
-    private static func emit(_ response: BridgeResponse) {
+    private static func emitError(_ message: String) {
+        emit(BridgeResponse<CalendarDescriptorPayload>(status: "error", data: [], message: message))
+    }
+
+    private static func emit<Payload>(_ response: BridgeResponse<Payload>) {
         let encoder = JSONEncoder()
         guard let data = try? encoder.encode(response),
               let output = String(data: data, encoding: .utf8) else {
