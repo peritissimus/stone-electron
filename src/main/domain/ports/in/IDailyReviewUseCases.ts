@@ -12,6 +12,7 @@ import type { TaskItem } from './ITaskUseCases';
 import type { CalendarEvent } from '../out/ICalendarSource';
 import type { MailMessage } from '../out/IMailSource';
 import type { LinearIssue } from '../out/ILinearSource';
+import type { ExternalSourceStatus } from '../out/externalSourceResult';
 
 export interface DailyReviewTodayJournal {
   /** YYYY-MM-DD for today's local date. */
@@ -27,12 +28,7 @@ export interface DailyReviewTodayJournal {
 export interface DailyReviewMeetingSummary {
   id: string;
   title: string;
-  status:
-    | 'recording'
-    | 'transcribing'
-    | 'summarizing'
-    | 'ready'
-    | 'failed';
+  status: 'recording' | 'transcribing' | 'summarizing' | 'ready' | 'failed';
   durationMs: number;
   summary: string | null;
   createdAt: Date;
@@ -70,6 +66,27 @@ export interface IGetDailyReviewUseCase {
   execute(request?: GetDailyReviewRequest): Promise<DailyReviewSnapshot>;
 }
 
+export type DailyReviewIntegrationSource = 'calendar' | 'mail' | 'linear';
+
+export interface LoadDailyReviewIntegrationRequest {
+  source: DailyReviewIntegrationSource;
+  /** Optional date override (YYYY-MM-DD); defaults to today's local date. */
+  date?: string;
+}
+
+export interface DailyReviewIntegrationResult {
+  source: DailyReviewIntegrationSource;
+  status: ExternalSourceStatus;
+  message?: string;
+  calendarEvents?: CalendarEvent[];
+  mailMessages?: MailMessage[];
+  linearIssues?: LinearIssue[];
+}
+
+export interface ILoadDailyReviewIntegrationUseCase {
+  execute(request: LoadDailyReviewIntegrationRequest): Promise<DailyReviewIntegrationResult>;
+}
+
 export interface SummarizeDailyReviewRequest {
   workspaceId?: string;
   date?: string;
@@ -90,5 +107,6 @@ export interface ISummarizeDailyReviewUseCase {
 
 export interface IDailyReviewUseCases {
   getDailyReview: IGetDailyReviewUseCase;
+  loadIntegration: ILoadDailyReviewIntegrationUseCase;
   summarizeDailyReview: ISummarizeDailyReviewUseCase;
 }

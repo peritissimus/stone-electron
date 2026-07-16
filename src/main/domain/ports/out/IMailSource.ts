@@ -1,3 +1,5 @@
+import type { ExternalSourceResult } from './externalSourceResult';
+
 /**
  * IMailSource — read-only access to the user's unread inbox.
  * Implemented on macOS via Mail.app (JXA); other platforms return [].
@@ -11,7 +13,6 @@ export interface MailMessage {
 }
 
 export interface IMailSource {
-  /** Up to `limit` most-recent unread messages. Returns [] when unavailable
-   *  (unsupported platform, permission denied, no mail app). */
-  getUnreadMessages(limit: number): Promise<MailMessage[]>;
+  /** Up to `limit` most-recent unread messages plus an actionable access status. */
+  getUnreadMessages(limit: number): Promise<ExternalSourceResult<MailMessage[]>>;
 }

@@ -142,7 +142,12 @@ describe('DailyReviewUseCases', () => {
 
     expect(result).toEqual({
       date: '2026-04-21',
-      todayJournal: { date: '2026-04-21', noteId: null, contentPreview: null },
+      todayJournal: {
+        date: '2026-04-21',
+        exists: false,
+        noteId: null,
+        contentPreview: null,
+      },
       todayMeetings: [],
       openTasks: [],
       recentNotes: [],
@@ -209,9 +214,21 @@ describe('DailyReviewUseCases', () => {
     ]);
 
     vi.mocked(noteRepository.findRecentlyUpdated).mockResolvedValue([
-      note({ id: 'recent', filePath: 'Notes/recent.md', updatedAt: new Date('2026-04-20T12:30:00') }),
-      note({ id: 'journal', filePath: 'Journal/2026-04-21.md', updatedAt: new Date('2026-04-21T08:00:00') }),
-      note({ id: 'old-edit', filePath: 'Notes/old.md', updatedAt: new Date('2026-04-19T23:59:59') }),
+      note({
+        id: 'recent',
+        filePath: 'Notes/recent.md',
+        updatedAt: new Date('2026-04-20T12:30:00'),
+      }),
+      note({
+        id: 'journal',
+        filePath: 'Journal/2026-04-21.md',
+        updatedAt: new Date('2026-04-21T08:00:00'),
+      }),
+      note({
+        id: 'old-edit',
+        filePath: 'Notes/old.md',
+        updatedAt: new Date('2026-04-19T23:59:59'),
+      }),
     ]);
 
     vi.mocked(noteRepository.findAll).mockResolvedValue([
@@ -240,6 +257,7 @@ describe('DailyReviewUseCases', () => {
     expect(journalUseCases.listRange).toHaveBeenCalledWith({ limit: 1, workspaceId: 'ws-1' });
     expect(result.todayJournal).toEqual({
       date: '2026-04-21',
+      exists: true,
       noteId: 'journal-1',
       contentPreview: 'Worked on release notes.\n\nCaptured follow-up.',
     });
@@ -264,6 +282,7 @@ describe('DailyReviewUseCases', () => {
 
     expect(result.todayJournal).toEqual({
       date: '2026-04-21',
+      exists: false,
       noteId: null,
       contentPreview: null,
     });

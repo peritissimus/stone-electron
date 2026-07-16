@@ -19,7 +19,10 @@ import {
   TEMPLATE_CHANNELS,
   TOPIC_CHANNELS,
 } from '../../../../../src/shared/constants/ipcChannels';
-import { registerAIHandlers, unregisterAIHandlers } from '../../../../../src/main/adapters/in/ipc/AIIPC';
+import {
+  registerAIHandlers,
+  unregisterAIHandlers,
+} from '../../../../../src/main/adapters/in/ipc/AIIPC';
 import {
   registerAttachmentHandlers,
   unregisterAttachmentHandlers,
@@ -36,7 +39,10 @@ import {
   registerExportHandlers,
   unregisterExportHandlers,
 } from '../../../../../src/main/adapters/in/ipc/ExportIPC';
-import { registerGitHandlers, unregisterGitHandlers } from '../../../../../src/main/adapters/in/ipc/GitIPC';
+import {
+  registerGitHandlers,
+  unregisterGitHandlers,
+} from '../../../../../src/main/adapters/in/ipc/GitIPC';
 import {
   registerGraphHandlers,
   unregisterGraphHandlers,
@@ -82,7 +88,10 @@ import {
   registerSystemHandlers,
   unregisterSystemHandlers,
 } from '../../../../../src/main/adapters/in/ipc/SystemIPC';
-import { registerTaskHandlers, unregisterTaskHandlers } from '../../../../../src/main/adapters/in/ipc/TaskIPC';
+import {
+  registerTaskHandlers,
+  unregisterTaskHandlers,
+} from '../../../../../src/main/adapters/in/ipc/TaskIPC';
 import {
   registerTemplateHandlers,
   unregisterTemplateHandlers,
@@ -160,7 +169,9 @@ describe('function-style IPC adapters', () => {
     registerAIHandlers({ aiUseCases } as any);
 
     expectRegistered(Object.values(AI_CHANNELS));
-    await expect(invoke(AI_CHANNELS.ASK_NOTES, { query: 'q', workspaceId: 'ws-1' })).resolves.toEqual({
+    await expect(
+      invoke(AI_CHANNELS.ASK_NOTES, { query: 'q', workspaceId: 'ws-1' }),
+    ).resolves.toEqual({
       success: true,
       data: { answer: 'answer', sources: [] },
     });
@@ -203,7 +214,9 @@ describe('function-style IPC adapters', () => {
       success: true,
       data: { id: 'att-1', createdAt: date.toISOString() },
     });
-    await expect(invoke(ATTACHMENT_CHANNELS.DELETE, { id: 'att-1', deleteFile: true })).resolves.toEqual({
+    await expect(
+      invoke(ATTACHMENT_CHANNELS.DELETE, { id: 'att-1', deleteFile: true }),
+    ).resolves.toEqual({
       success: true,
       data: { success: true },
     });
@@ -258,7 +271,11 @@ describe('function-style IPC adapters', () => {
   });
 
   it('delegates daily review, status report, and template channels', async () => {
-    const dailyReviewUseCases = { getDailyReview: execute({ today: true }) };
+    const dailyReviewUseCases = {
+      getDailyReview: execute({ today: true }),
+      loadIntegration: execute({ source: 'calendar', status: 'connected', calendarEvents: [] }),
+      summarizeDailyReview: execute({ summary: 'Today', journalNoteId: null }),
+    };
     const statusReportUseCases = { generate: execute({ markdown: '# Weekly' }) };
     const templateUseCases = {
       listTemplates: execute({ templates: [] }),
@@ -270,6 +287,10 @@ describe('function-style IPC adapters', () => {
     registerTemplateHandlers({ templateUseCases } as any);
 
     await invoke(DAILY_REVIEW_CHANNELS.GET, { workspaceId: 'ws-1', date: '2026-04-21' });
+    await invoke(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, {
+      source: 'calendar',
+      date: '2026-04-21',
+    });
     await invoke(STATUS_REPORT_CHANNELS.GENERATE, { workspaceId: 'ws-1', windowDays: 7 });
     await invoke(TEMPLATE_CHANNELS.LIST, { workspaceId: 'ws-1' });
     await invoke(TEMPLATE_CHANNELS.CREATE_NOTE_FROM_TEMPLATE, {
@@ -281,6 +302,10 @@ describe('function-style IPC adapters', () => {
 
     expect(dailyReviewUseCases.getDailyReview.execute).toHaveBeenCalledWith({
       workspaceId: 'ws-1',
+      date: '2026-04-21',
+    });
+    expect(dailyReviewUseCases.loadIntegration.execute).toHaveBeenCalledWith({
+      source: 'calendar',
       date: '2026-04-21',
     });
     expect(statusReportUseCases.generate.execute).toHaveBeenCalledWith({
@@ -371,7 +396,10 @@ describe('function-style IPC adapters', () => {
       workspaceId: 'ws-1',
     });
     await invoke(JOURNAL_CHANNELS.LIST_RANGE, { limit: 7, workspaceId: 'ws-1' });
-    await invoke(QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, { text: 'capture', workspaceId: 'ws-1' });
+    await invoke(QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, {
+      text: 'capture',
+      workspaceId: 'ws-1',
+    });
     await invoke(QUICK_CAPTURE_CHANNELS.TRANSCRIBE_VOICE, {
       wav: new Uint8Array([1, 2, 3]),
       workspaceId: 'ws-1',
@@ -445,7 +473,10 @@ describe('function-style IPC adapters', () => {
     await invoke(MEETING_CHANNELS.GET, { recordingId: 'rec-1' });
     await invoke(MEETING_CHANNELS.DELETE, { recordingId: 'rec-1' });
     await invoke(MEETING_CHANNELS.RESUMMARIZE, { recordingId: 'rec-1', promptTemplate: 'short' });
-    await invoke(MEETING_CHANNELS.SEND_TO_JOURNAL, { recordingId: 'rec-1', journalDate: '2026-04-21' });
+    await invoke(MEETING_CHANNELS.SEND_TO_JOURNAL, {
+      recordingId: 'rec-1',
+      journalDate: '2026-04-21',
+    });
     await invoke(MEETING_CHANNELS.WARM_TRANSCRIBER);
     await expect(invoke(PERFORMANCE_CHANNELS.GET_SNAPSHOT, 500)).resolves.toMatchObject({
       success: true,
@@ -667,7 +698,11 @@ describe('function-style IPC adapters', () => {
     expect(electronMock.dialog.showSaveDialog).toHaveBeenCalledTimes(3);
 
     unregisterExportHandlers();
-    expectUnregistered([NOTE_CHANNELS.EXPORT_HTML, NOTE_CHANNELS.EXPORT_PDF, NOTE_CHANNELS.EXPORT_MARKDOWN]);
+    expectUnregistered([
+      NOTE_CHANNELS.EXPORT_HTML,
+      NOTE_CHANNELS.EXPORT_PDF,
+      NOTE_CHANNELS.EXPORT_MARKDOWN,
+    ]);
   });
 
   it('delegates git channels and maps git response shapes', async () => {
@@ -700,7 +735,9 @@ describe('function-style IPC adapters', () => {
       data: { isRepo: true, hasRemote: true, staged: 1, unstaged: 1, untracked: 1 },
     });
     await invoke(GIT_CHANNELS.INIT, { workspaceId: 'ws-1' });
-    await expect(invoke(GIT_CHANNELS.COMMIT, { workspaceId: 'ws-1', message: 'commit' })).resolves.toMatchObject({
+    await expect(
+      invoke(GIT_CHANNELS.COMMIT, { workspaceId: 'ws-1', message: 'commit' }),
+    ).resolves.toMatchObject({
       success: true,
       data: { hash: 'abc', date: date.toISOString() },
     });
@@ -708,7 +745,9 @@ describe('function-style IPC adapters', () => {
     await invoke(GIT_CHANNELS.PUSH, { workspaceId: 'ws-1' });
     await invoke(GIT_CHANNELS.SYNC, { workspaceId: 'ws-1', message: 'sync' });
     await invoke(GIT_CHANNELS.SET_REMOTE, { workspaceId: 'ws-1', url: 'git@example.com:repo.git' });
-    await expect(invoke(GIT_CHANNELS.GET_COMMITS, { workspaceId: 'ws-1', limit: 5 })).resolves.toMatchObject({
+    await expect(
+      invoke(GIT_CHANNELS.GET_COMMITS, { workspaceId: 'ws-1', limit: 5 }),
+    ).resolves.toMatchObject({
       success: true,
       data: { commits: [{ hash: 'abc', date: date.toISOString() }] },
     });
@@ -763,7 +802,9 @@ describe('function-style IPC adapters', () => {
     await invoke(TOPIC_CHANNELS.GET_SUGGESTIONS, { workspaceId: 'ws-1' });
     await invoke(TOPIC_CHANNELS.ADOPT_SUGGESTION, { name: 'Idea', noteIds: ['note-1'] });
     await invoke(TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, { topicId: 'topic-1', limit: 10 });
-    await expect(invoke(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId: 'note-1' })).resolves.toMatchObject({
+    await expect(
+      invoke(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId: 'note-1' }),
+    ).resolves.toMatchObject({
       success: true,
       data: { topics: [{ id: 'topic-1', createdAt: date.toISOString() }] },
     });

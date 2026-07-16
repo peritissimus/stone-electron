@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
+import { z } from 'zod';
 import { DAILY_REVIEW_CHANNELS } from '@shared/constants/ipcChannels';
 import { handleIpcRequest } from '@main/shared/utils';
 import type { IDailyReviewUseCases } from '../../../domain';
@@ -30,6 +31,19 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
       { channel: DAILY_REVIEW_CHANNELS.GET, date: request?.date },
     ),
   );
+
+  const LoadIntegrationRequestSchema = z.object({
+    source: z.enum(['calendar', 'mail', 'linear']),
+    date: z.string().optional(),
+  });
+
+  ipcMain.handle(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, async (_event, rawRequest) => {
+    const request = LoadIntegrationRequestSchema.parse(rawRequest);
+    return handleRequest(async () => dailyReviewUseCases.loadIntegration.execute(request), {
+      channel: DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION,
+      source: request.source,
+    });
+  });
 
   ipcMain.handle(DAILY_REVIEW_CHANNELS.SUMMARIZE, async (_event, request) =>
     handleRequest(
