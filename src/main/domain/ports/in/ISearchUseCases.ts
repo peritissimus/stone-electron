@@ -34,7 +34,8 @@ export interface SemanticSearchRequest {
 export interface VectorSearchResult {
   noteId: string;
   title: string;
-  distance: number;
+  /** Cosine similarity in [-1, 1]; higher is a closer match. */
+  similarity: number;
 }
 
 export interface SemanticSearchResponse {
