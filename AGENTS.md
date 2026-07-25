@@ -10,7 +10,7 @@
 
 ```
 src/main/
-├── domain/            # Core business logic (ZERO deps)
+├── domain/            # Core business logic (pure; only `effect` data modules — ADR-0001)
 ├── application/       # Use cases (orchestration)
 ├── adapters/          # External world connections
 ├── infrastructure/    # Bootstrap & wiring
@@ -32,7 +32,7 @@ src/main/
 ```
 ALLOWED IMPORTS (→ means "can import")
 
-domain/          → NOTHING
+domain/          → `effect` data modules ONLY (see §3 allowlist; ADR-0001)
 application/     → domain/
 adapters/        → domain/, application/
 infrastructure/  → Everything
@@ -57,7 +57,7 @@ adapters/        ✗ infrastructure/
 │              (imports domain)                   │
 ├─────────────────────────────────────────────────┤
 │                   DOMAIN                        │
-│              (imports NOTHING)                  │
+│    (imports only `effect` data modules)         │
 └─────────────────────────────────────────────────┘
 
         Dependencies point INWARD only
@@ -87,10 +87,20 @@ domain/
 | **Ports/In**        | Interfaces that USE CASES implement                                |
 | **Ports/Out**       | Interfaces that ADAPTERS implement                                 |
 
+**What the domain is** (ADR-0001):
+
+> The domain is everything about the product that stays true when every technology choice changes. It states facts (entities, value objects), rules (invariants, transitions, calculations), failures (domain errors), and contracts (ports) — and it **computes, but never executes**: no I/O, no clock, no concurrency, no runtime. The domain **decides; it never does.**
+
+Litmus tests:
+
+1. **Rewrite test** — swap Electron for a CLI, libSQL for Postgres, whisper for a cloud transcriber: if a domain file would change, it's not domain.
+2. **Synchronous test** — everything in domain runs synchronously and deterministically. If it wants `await`, `Date.now()`, or randomness, it belongs a layer up — or the need is a missing port.
+3. **No-mocks test** — domain tests need no mocks, fakes, or layers, ever. The moment a domain test wants a fake, something impure leaked in.
+
 **Domain MUST:**
 
 - Be pure (no side effects in entities/value objects/services)
-- Have zero external imports (no npm packages)
+- Import nothing except the `effect` allowlist below (no other npm packages)
 - Define all contracts (ports) for external needs
 - Contain all business rules and validations
 
@@ -100,6 +110,21 @@ domain/
 - Contain infrastructure concerns (DB, HTTP, IPC)
 - Know how it's being used
 - Have any I/O operations
+
+### Effect import allowlist for domain (ADR-0001)
+
+Domain may import from the `effect` package **only** these modules, each for a specific job:
+
+| Module           | Allowed for                                                        | Where                    |
+| ---------------- | ------------------------------------------------------------------ | ------------------------ |
+| `Effect` (type)  | Port method signatures only — `Effect<A, E>` with `R = never`      | `ports/`                 |
+| `Context`        | Ports as `Context.Tag`s                                            | `ports/`                 |
+| `Data`           | `Data.TaggedError` for domain errors; structural equality for VOs  | `errors/`, `entities/`   |
+| `Schema`         | Value-object validation on creation; branded types                 | `value-objects/`         |
+| `Option`         | Absence as part of a pure contract                                 | anywhere in domain       |
+| `Either`         | Pure fallible transitions (e.g. entity state changes)              | `entities/`, `services/` |
+
+**Banned from domain, permanently:** `Layer`, `Schedule`, `Semaphore`, `Queue`, `Ref`, `Fiber`, `Clock`, every `Effect.run*`, and all `@effect/*` scoped packages. Those are ways of *doing*; domain only *states and decides*. `domain/services/` should ideally import nothing at all — pure functions stay plain functions; never wrap pure computation in `Effect.gen`.
 
 ---
 
@@ -128,6 +153,7 @@ domain/
 - Ports live in `domain/ports/`
 - Ports define the contract, not the implementation
 - Naming: `I{Name}` prefix
+- Effect-native ports (ADR-0001): defined as `Context.Tag`s; methods return `Effect<A, E>` with **`R = never`** — a port describes a capability and its failure modes, never its own dependencies. Requirements accumulate only in application-layer compositions and are discharged by `Layer` in infrastructure.
 
 ---
 
@@ -369,6 +395,8 @@ export function createContainer(db: Database) {
 - Only infrastructure creates concrete instances
 - Dependencies flow via constructor injection
 - Always inject interfaces, never concrete classes
+
+**Effect migration note (ADR-0001):** as subsystems migrate, `Layer` composition replaces hand-wiring in `container.ts` — adapters are provided as layers, test fakes as alternative layers, and dependency order is checked by the compiler instead of a comment. The rules above continue to govern any not-yet-migrated code. The Effect runtime (`Effect.run*`) is invoked only at edges: IPC handlers, the entry point, worker bootstraps.
 
 ---
 
@@ -883,7 +911,8 @@ BACKEND (Hexagonal):
    Infrastructure → Adapters → Application → Domain
 
 2. DOMAIN IS SACRED
-   Zero external deps, pure business logic only
+   Pure business logic; only `effect` data modules (ADR-0001).
+   The domain decides; it never does.
 
 3. PORTS ARE CONTRACTS
    IN = what app does, OUT = what app needs
@@ -949,6 +978,8 @@ Editor settings, keyboard shortcuts, and any other typed user preferences live *
 | Anti-Pattern                   | Layer    | Solution                      |
 | ------------------------------ | -------- | ----------------------------- |
 | Domain imports adapter         | Backend  | Use ports                     |
+| Effect machinery in domain (`Layer`, `Schedule`, `Effect.run*`, `Effect.gen` in entities/services) | Backend | Data modules only (§3 allowlist); execution lives at edges |
+| Pure function wrapped in `Effect.gen` | Backend | Keep pure computation as plain functions |
 | Business logic in adapter      | Backend  | Move to domain/use case       |
 | Use case knows IPC/HTTP        | Backend  | Use DTOs                      |
 | Component calls API directly   | Frontend | Use hooks                     |
