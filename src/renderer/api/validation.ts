@@ -1,19 +1,19 @@
 /**
  * API Response Validation Utilities
  *
- * Helper functions for validating API responses with Zod schemas
+ * Helper functions for validating API responses with Effect schemas
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import type { IpcResponse } from '@shared/types';
 import { IpcResponseSchema } from './schemas';
 
 /**
- * Validates an IPC response against a Zod schema
+ * Validates an IPC response against an Effect schema
  * @param response - The IPC response to validate
  * @param schema - The Zod schema for the response data
  * @returns The validated and typed response
- * @throws ZodError if validation fails
+ * @throws SchemaParseError if validation fails
  */
 export function validateResponse<T>(
   response: unknown,

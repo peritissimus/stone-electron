@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Tag, TagWithCount, IpcResponse } from '@shared/types';
@@ -39,7 +39,7 @@ export const tagAPI = {
    */
   delete: async (id: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TAG_CHANNELS.DELETE, { id });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -58,6 +58,6 @@ export const tagAPI = {
    */
   removeFromNote: async (noteId: string, tagId: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TAG_CHANNELS.REMOVE_FROM_NOTE, { noteId, tagId });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 };

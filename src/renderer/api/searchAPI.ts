@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { RelatedNotesResponseSchema } from '@shared/schemas';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { SEARCH_CHANNELS } from '@shared/constants/ipcChannels';
 import type { SearchResults, IpcResponse, RelatedNoteMatch } from '@shared/types';
@@ -81,19 +81,3 @@ export const searchAPI = {
     return validateResponse(response, RelatedNotesResponseSchema);
   },
 };
-
-const RelatedNotesResponseSchema = z.object({
-  results: z.array(
-    z.object({
-      noteId: z.string(),
-      title: z.string(),
-      similarity: z.number(),
-      matchedChunks: z.number(),
-      bestChunk: z.object({
-        chunkId: z.string(),
-        headingPath: z.array(z.string()),
-        excerpt: z.string(),
-      }),
-    }),
-  ),
-});

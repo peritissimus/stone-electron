@@ -5,18 +5,13 @@
 import { invokeIpc } from '@renderer/lib/ipc';
 import { STATUS_REPORT_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
+import {
+  StatusReportResultSchema,
+  type StatusReportResult,
+} from '@shared/schemas';
+import { validateResponse } from './validation';
 
-export interface StatusReportResult {
-  windowStart: string;
-  windowEnd: string;
-  evidence: {
-    journalEntries: number;
-    meetings: number;
-    completedTasks: number;
-    modifiedNotes: number;
-  };
-  report: string;
-}
+export type { StatusReportResult };
 
 export const statusReportAPI = {
   generate: (input?: {
@@ -24,5 +19,7 @@ export const statusReportAPI = {
     windowDays?: number;
     promptTemplate?: string;
   }): Promise<IpcResponse<StatusReportResult>> =>
-    invokeIpc(STATUS_REPORT_CHANNELS.GENERATE, input ?? {}),
+    invokeIpc(STATUS_REPORT_CHANNELS.GENERATE, input ?? {}).then((response) =>
+      validateResponse(response, StatusReportResultSchema),
+    ),
 };

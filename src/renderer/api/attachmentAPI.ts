@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { ATTACHMENT_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Attachment, IpcResponse } from '@shared/types';
@@ -34,7 +34,7 @@ export const attachmentAPI = {
    */
   delete: async (id: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(ATTACHMENT_CHANNELS.DELETE, { id });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**

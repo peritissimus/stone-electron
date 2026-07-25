@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { Note, IpcResponse, TodoItem, GraphData } from '@shared/types';
@@ -109,7 +109,7 @@ export const noteAPI = {
    */
   delete: async (id: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(NOTE_CHANNELS.DELETE, { id });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -165,7 +165,7 @@ export const noteAPI = {
       taskIndex,
       newState,
     });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**

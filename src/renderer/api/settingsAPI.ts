@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import {
   SETTINGS_CHANNELS,
@@ -15,6 +15,11 @@ import {
 import {
   CheckDatabaseIntegrityResponseSchema,
   DatabaseStatusResponseSchema,
+  MicAccessStatusResponseSchema,
+  MicAccessStatusSchema,
+  RequestMicAccessResponseSchema,
+  SystemAudioAccessResponseSchema,
+  SystemAudioAccessSchema,
   SystemGetFontsResponseSchema,
   VacuumDatabaseResponseSchema,
 } from '@shared/schemas';
@@ -72,7 +77,7 @@ export const settingsAPI = {
    */
   set: async <T = string>(key: string, value: T): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.SET, { key, value });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -90,22 +95,22 @@ export const settingsAPI = {
 
   setTheme: async (theme: AppTheme): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.SET_THEME, { theme });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   setAccentColor: async (accentColor: AppAccentColor): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.SET_ACCENT_COLOR, { accentColor });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   updateFontSettings: async (fontSettings: Partial<FontSettings>): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.UPDATE_FONT_SETTINGS, { fontSettings });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   resetFontSettings: async (): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SETTINGS_CHANNELS.RESET_FONT_SETTINGS, {});
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   // ----- editor settings -----
@@ -297,17 +302,7 @@ export const databaseAPI = {
   },
 };
 
-const MicAccessStatusSchema = z.enum([
-  'granted',
-  'denied',
-  'not-determined',
-  'restricted',
-  'unknown',
-]);
-
 export type MicAccessStatus = z.infer<typeof MicAccessStatusSchema>;
-
-const SystemAudioAccessSchema = z.enum(['granted', 'denied', 'unsupported']);
 
 export type SystemAudioAccess = z.infer<typeof SystemAudioAccessSchema>;
 
@@ -325,7 +320,7 @@ export const systemAPI = {
    */
   getMicAccessStatus: async (): Promise<IpcResponse<{ status: MicAccessStatus }>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS, {});
-    return validateResponse(response, z.object({ status: MicAccessStatusSchema }));
+    return validateResponse(response, MicAccessStatusResponseSchema);
   },
 
   /**
@@ -337,7 +332,7 @@ export const systemAPI = {
     const response = await invokeIpc(SYSTEM_CHANNELS.REQUEST_MIC_ACCESS, {});
     return validateResponse(
       response,
-      z.object({ granted: z.boolean(), status: MicAccessStatusSchema }),
+      RequestMicAccessResponseSchema,
     );
   },
 
@@ -346,7 +341,7 @@ export const systemAPI = {
    */
   getSystemAudioAccess: async (): Promise<IpcResponse<{ status: SystemAudioAccess }>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.GET_SYSTEM_AUDIO_ACCESS, {});
-    return validateResponse(response, z.object({ status: SystemAudioAccessSchema }));
+    return validateResponse(response, SystemAudioAccessResponseSchema);
   },
 
   /**
@@ -354,7 +349,7 @@ export const systemAPI = {
    */
   requestSystemAudioAccess: async (): Promise<IpcResponse<{ status: SystemAudioAccess }>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS, {});
-    return validateResponse(response, z.object({ status: SystemAudioAccessSchema }));
+    return validateResponse(response, SystemAudioAccessResponseSchema);
   },
 
   /**
@@ -362,6 +357,6 @@ export const systemAPI = {
    */
   openExternal: async (url: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(SYSTEM_CHANNELS.OPEN_EXTERNAL, { url });
-    return validateResponse(response, z.void().or(z.object({}).transform(() => undefined)));
+    return validateResponse(response, z.voidSchema().or(z.object({}).transform(() => undefined)));
   },
 };

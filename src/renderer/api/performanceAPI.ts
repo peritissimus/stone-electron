@@ -5,7 +5,7 @@
  * No spec counterpart: dev/diagnostic telemetry, not a cross-platform contract.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { PERFORMANCE_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';

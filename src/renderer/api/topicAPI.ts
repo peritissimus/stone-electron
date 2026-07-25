@@ -5,7 +5,7 @@
  * Pure functions that wrap IPC channels. No React, no stores.
  */
 
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { TOPIC_CHANNELS } from '@shared/constants/ipcChannels';
 import type {
@@ -19,6 +19,8 @@ import type {
 } from '@shared/types';
 import { validateResponse } from './validation';
 import {
+  AdoptSuggestedTopicResponseSchema,
+  SuggestedTopicSchema,
   TopicSchema,
   TopicWithCountSchema,
   ClassificationResultSchema,
@@ -86,7 +88,7 @@ export const topicAPI = {
    */
   delete: async (id: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TOPIC_CHANNELS.DELETE, { id });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -127,7 +129,7 @@ export const topicAPI = {
    */
   assignToNote: async (noteId: string, topicId: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TOPIC_CHANNELS.ASSIGN_TO_NOTE, { noteId, topicId });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -135,7 +137,7 @@ export const topicAPI = {
    */
   removeFromNote: async (noteId: string, topicId: string): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TOPIC_CHANNELS.REMOVE_FROM_NOTE, { noteId, topicId });
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -211,7 +213,7 @@ export const topicAPI = {
    */
   recomputeCentroids: async (): Promise<IpcResponse<void>> => {
     const response = await invokeIpc(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, {});
-    return validateResponse(response, z.void());
+    return validateResponse(response, z.voidSchema());
   },
 
   /**
@@ -244,27 +246,7 @@ export const topicAPI = {
     const response = await invokeIpc(TOPIC_CHANNELS.ADOPT_SUGGESTION, request);
     return validateResponse(
       response,
-      z.object({ topicId: z.string(), assignedNoteCount: z.number() }),
+      AdoptSuggestedTopicResponseSchema,
     );
   },
 };
-
-const SuggestedTopicRepresentativeSchema = z.object({
-  chunkId: z.string(),
-  noteId: z.string(),
-  noteTitle: z.string(),
-  headingPath: z.array(z.string()),
-  excerpt: z.string(),
-});
-
-const SuggestedTopicSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  altLabels: z.array(z.string()),
-  noteIds: z.array(z.string()),
-  chunkIds: z.array(z.string()),
-  noteCount: z.number(),
-  chunkCount: z.number(),
-  cohesion: z.number(),
-  representatives: z.array(SuggestedTopicRepresentativeSchema),
-});

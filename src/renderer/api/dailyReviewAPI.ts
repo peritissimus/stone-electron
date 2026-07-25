@@ -11,37 +11,51 @@ import type {
   ListDailyReviewCalendarsResult,
   IpcResponse,
 } from '@shared/types';
-
-export interface DailyReviewSummary {
-  summary: string;
-  journalNoteId: string | null;
-}
+import {
+  DailyReviewIntegrationResultSchema,
+  DailyReviewIntegrationsResultSchema,
+  DailyReviewSnapshotSchema,
+  DailyReviewSummarySchema,
+  ListDailyReviewCalendarsResultSchema,
+  type DailyReviewSummary,
+} from '@shared/schemas';
+import { validateResponse } from './validation';
 
 export const dailyReviewAPI = {
   get: (input?: {
     workspaceId?: string;
     date?: string;
   }): Promise<IpcResponse<DailyReviewSnapshot>> =>
-    invokeIpc(DAILY_REVIEW_CHANNELS.GET, input ?? {}),
+    invokeIpc(DAILY_REVIEW_CHANNELS.GET, input ?? {}).then((response) =>
+      validateResponse(response, DailyReviewSnapshotSchema),
+    ),
 
   listCalendars: (): Promise<IpcResponse<ListDailyReviewCalendarsResult>> =>
-    invokeIpc(DAILY_REVIEW_CHANNELS.LIST_CALENDARS),
+    invokeIpc(DAILY_REVIEW_CHANNELS.LIST_CALENDARS).then((response) =>
+      validateResponse(response, ListDailyReviewCalendarsResultSchema),
+    ),
 
   loadIntegration: (input: {
     source: DailyReviewIntegrationSource;
     date?: string;
   }): Promise<IpcResponse<DailyReviewIntegrationResult>> =>
-    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, input),
+    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, input).then((response) =>
+      validateResponse(response, DailyReviewIntegrationResultSchema),
+    ),
 
   loadIntegrations: (input?: {
     date?: string;
   }): Promise<IpcResponse<DailyReviewIntegrationResult[]>> =>
-    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, input ?? {}),
+    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, input ?? {}).then((response) =>
+      validateResponse(response, DailyReviewIntegrationsResultSchema),
+    ),
 
   summarize: (input?: {
     workspaceId?: string;
     date?: string;
     saveToJournal?: boolean;
   }): Promise<IpcResponse<DailyReviewSummary>> =>
-    invokeIpc(DAILY_REVIEW_CHANNELS.SUMMARIZE, input ?? {}),
+    invokeIpc(DAILY_REVIEW_CHANNELS.SUMMARIZE, input ?? {}).then((response) =>
+      validateResponse(response, DailyReviewSummarySchema),
+    ),
 };

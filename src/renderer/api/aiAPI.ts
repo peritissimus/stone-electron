@@ -4,7 +4,12 @@
  * Thin renderer boundary only. Components must access this through hooks/stores.
  */
 
-import { z } from 'zod';
+import {
+  AIWarmupResponseSchema,
+  AskNotesResponseSchema,
+  SuggestLinksResponseSchema,
+  SummarizeNoteResponseSchema,
+} from '@shared/schemas';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { AI_CHANNELS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
 import type {
@@ -21,35 +26,6 @@ export type CitationSourceDTO = CitationSource;
 export type AskNotesResponseDTO = AskNotesResponse;
 export type SummarizeNoteResponseDTO = SummarizeNoteResponse;
 export type SuggestLinksResponseDTO = SuggestLinksResponse;
-
-const CitationSourceSchema = z.object({
-  chunkId: z.string(),
-  noteId: z.string(),
-  title: z.string(),
-  headingPath: z.array(z.string()).optional(),
-  excerpt: z.string(),
-});
-
-const AskNotesResponseSchema = z.object({
-  answer: z.string(),
-  sources: z.array(CitationSourceSchema),
-});
-
-const SummarizeNoteResponseSchema = z.object({
-  summary: z.string(),
-  sources: z.array(CitationSourceSchema),
-});
-
-const SuggestLinksResponseSchema = z.object({
-  links: z.array(
-    z.object({
-      noteId: z.string(),
-      title: z.string(),
-      reason: z.string(),
-      score: z.number(),
-    }),
-  ),
-});
 
 export const aiAPI = {
   askNotes: async (params: {
@@ -82,6 +58,6 @@ export const aiAPI = {
     // Whisper warmup is a meeting/transcriber concern (handler lives in
     // MeetingIPC); kept on aiAPI so onboarding's call site is unchanged.
     const response = await invokeIpc(MEETING_CHANNELS.WARM_TRANSCRIBER, {});
-    return validateResponse(response, z.object({ ready: z.boolean() }));
+    return validateResponse(response, AIWarmupResponseSchema);
   },
 };

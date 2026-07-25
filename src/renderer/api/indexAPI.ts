@@ -2,7 +2,11 @@
  * Index API — IPC wrappers for chunk-level retrieval index management.
  */
 
-import { z } from 'zod';
+import {
+  IndexNoteResultSchema,
+  IndexStatsSchema,
+  RebuildAllIndexResultSchema,
+} from '@shared/schemas';
 import { invokeIpc } from '@renderer/lib/ipc';
 import { INDEX_CHANNELS } from '@shared/constants/ipcChannels';
 import type { IpcResponse } from '@shared/types';
@@ -33,34 +37,12 @@ export interface RebuildAllResultDTO {
   missing: number;
 }
 
-const IndexStatsSchema = z.object({
-  workspaceId: z.string(),
-  totalNotes: z.number(),
-  indexedNotes: z.number(),
-  pendingNotes: z.number(),
-  failedNotes: z.number(),
-  chunkCount: z.number(),
-});
-
-const IndexNoteResultSchema = z.object({
-  noteId: z.string(),
-  status: z.enum(['indexed', 'skipped', 'failed', 'missing']),
-  chunkCount: z.number(),
-  error: z.string().optional(),
-});
-
-const RebuildAllResultSchema = z.object({
-  workspaceId: z.string(),
-  total: z.number(),
-  indexed: z.number(),
-  skipped: z.number(),
-  failed: z.number(),
-  missing: z.number(),
-});
-
 export const indexAPI = {
   getStats: async (workspaceId?: string): Promise<IpcResponse<IndexStatsDTO>> => {
-    const response = await invokeIpc(INDEX_CHANNELS.GET_STATS, { workspaceId });
+    const response = await invokeIpc(
+      INDEX_CHANNELS.GET_STATS,
+      workspaceId === undefined ? {} : { workspaceId },
+    );
     return validateResponse(response, IndexStatsSchema);
   },
 
@@ -76,7 +58,10 @@ export const indexAPI = {
     workspaceId?: string,
     force = false,
   ): Promise<IpcResponse<RebuildAllResultDTO>> => {
-    const response = await invokeIpc(INDEX_CHANNELS.REBUILD_ALL, { workspaceId, force });
-    return validateResponse(response, RebuildAllResultSchema);
+    const response = await invokeIpc(INDEX_CHANNELS.REBUILD_ALL, {
+      ...(workspaceId === undefined ? {} : { workspaceId }),
+      force,
+    });
+    return validateResponse(response, RebuildAllIndexResultSchema);
   },
 };
