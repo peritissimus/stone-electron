@@ -1,7 +1,7 @@
 /** AppleCalendarSource — reads calendar metadata and bounded event ranges from
  * EventKit through Stone's signed native bridge. */
 
-import { execFile } from 'node:child_process';
+import { Effect } from 'effect';
 import type {
   CalendarDescriptor,
   CalendarEvent,
@@ -13,6 +13,11 @@ import type {
 } from '../../../domain/ports/out/IExternalSource';
 import type { ExternalSourceResult } from '../../../domain/ports/out/externalSourceResult';
 import { logger } from '../../../shared/utils';
+import {
+  commandTimeout,
+  runCommand,
+  type CommandRunner,
+} from './commandRunner';
 
 interface BridgeResponse<T> {
   status?: ExternalSourceResult<T[]>['status'];
@@ -23,7 +28,14 @@ interface BridgeResponse<T> {
 export class AppleCalendarSource implements ICalendarSource, IExternalSource {
   readonly source = 'calendar' as const;
 
-  constructor(private readonly bridgePath: string) {}
+  constructor(
+    private readonly bridgePath: string,
+    private readonly runPromise: <A, E>(
+      effect: Effect.Effect<A, E>,
+      options?: { signal?: AbortSignal },
+    ) => Promise<A>,
+    private readonly commandRunner: CommandRunner = runCommand,
+  ) {}
 
   async listCalendars(): Promise<ExternalSourceResult<CalendarDescriptor[]>> {
     const result = await this.runBridge<CalendarDescriptor>(['list'], mapCalendar);
@@ -68,40 +80,47 @@ export class AppleCalendarSource implements ICalendarSource, IExternalSource {
       });
     }
 
-    return new Promise((resolve) => {
-      execFile(
+    return this.runPromise(
+      this.commandRunner(
         this.bridgePath,
         args,
-        { timeout: 30_000, maxBuffer: 1024 * 1024, signal },
-        (error, stdout) => {
-          if (error) {
+        { maxBuffer: 1024 * 1024 },
+      ).pipe(
+        Effect.timeoutFail({
+          duration: 30_000,
+          onTimeout: () => commandTimeout('Calendar bridge timed out'),
+        }),
+        Effect.match({
+          onFailure: (error): ExternalSourceResult<T[]> => {
+            const timedOut = error.name === 'CommandTimeoutError';
             logger.warn('[CalendarBridge] request failed', {
-              code: error.code ?? null,
-              killed: Boolean(error.killed),
+              code: 'code' in error ? (error as Error & { code?: unknown }).code ?? null : null,
+              killed: timedOut,
             });
-            resolve({
-              status: error.killed ? 'error' : 'unavailable',
+            return {
+              status: timedOut ? 'error' : 'unavailable',
               data: [],
-              message: error.killed
+              message: timedOut
                 ? 'Calendar permission was not completed in time.'
                 : 'The Calendar connection is unavailable.',
-            });
-            return;
-          }
-
+            };
+          },
+          onSuccess: ({ stdout }): ExternalSourceResult<T[]> => {
           try {
             const response = JSON.parse(stdout.trim()) as BridgeResponse<T>;
-            resolve({
+            return {
               status: response.status ?? 'error',
               data: Array.isArray(response.data) ? response.data.map(mapItem) : [],
               ...(response.message ? { message: response.message } : {}),
-            });
+            };
           } catch {
-            resolve({ status: 'error', data: [], message: 'Calendar returned invalid data.' });
+            return { status: 'error', data: [], message: 'Calendar returned invalid data.' };
           }
-        },
-      );
-    });
+          },
+        }),
+      ),
+      { signal },
+    );
   }
 }
 

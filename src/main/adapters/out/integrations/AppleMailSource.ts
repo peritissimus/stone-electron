@@ -9,6 +9,7 @@ import type {
   ExternalSourceLoadContext,
   IExternalSource,
 } from '../../../domain/ports/out/IExternalSource';
+import { Effect } from 'effect';
 import { runJxa } from './osascriptJxa';
 
 interface RawMailSummary {
@@ -30,11 +31,19 @@ function script(): string {
 export class AppleMailSource implements IMailSource, IExternalSource {
   readonly source = 'mail' as const;
 
+  constructor(
+    private readonly runPromise: <A, E>(
+      effect: Effect.Effect<A, E>,
+      options?: { signal?: AbortSignal },
+    ) => Promise<A>,
+  ) {}
+
   async getUnreadMessages(_limit: number, signal?: AbortSignal) {
     const result = await runJxa<RawMailSummary>(script(), {
       target: 'Mail',
       timeoutMs: 3000,
       signal,
+      runPromise: this.runPromise,
     });
     if (!result.ok) {
       return {

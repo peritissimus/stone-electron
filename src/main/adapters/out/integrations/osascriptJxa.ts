@@ -4,8 +4,13 @@
  * renderer to distinguish denied access from an empty Calendar or Mail inbox.
  */
 
-import { execFile } from 'node:child_process';
+import { Effect } from 'effect';
 import { logger } from '../../../shared/utils';
+import {
+  commandTimeout,
+  runCommand,
+  type CommandRunner,
+} from './commandRunner';
 
 export type JxaFailureReason = 'denied' | 'unavailable' | 'timeout' | 'error';
 
@@ -16,9 +21,14 @@ interface JxaRequestOptions {
   target: 'Calendar' | 'Mail';
   timeoutMs: number;
   signal?: AbortSignal;
+  commandRunner?: CommandRunner;
+  runPromise?: <A, E>(
+    effect: Effect.Effect<A, E>,
+    options?: { signal?: AbortSignal },
+  ) => Promise<A>;
 }
 
-function classifyFailure(message: string, killed: boolean): JxaFailureReason {
+function classifyFailure(message: string, timedOut: boolean): JxaFailureReason {
   const normalized = message.toLowerCase();
   if (
     normalized.includes('-1743') ||
@@ -28,30 +38,48 @@ function classifyFailure(message: string, killed: boolean): JxaFailureReason {
   ) {
     return 'denied';
   }
-  if (killed || normalized.includes('timed out')) return 'timeout';
+  if (timedOut || normalized.includes('timed out')) return 'timeout';
   return 'error';
 }
 
 export async function runJxa<T>(script: string, options: JxaRequestOptions): Promise<JxaResult<T>> {
+  if (!options.runPromise) throw new Error('JXA Promise facade requires an Effect runtime');
+  return options.runPromise(runJxaEffect<T>(script, options), { signal: options.signal });
+}
+
+export function runJxaEffect<T>(
+  script: string,
+  options: JxaRequestOptions,
+): Effect.Effect<JxaResult<T>> {
   const { target, timeoutMs } = options;
   if (process.platform !== 'darwin') {
-    return { ok: false, reason: 'unavailable', message: 'Available on macOS only.' };
+    return Effect.succeed({
+      ok: false as const,
+      reason: 'unavailable' as const,
+      message: 'Available on macOS only.',
+    });
   }
-  return new Promise<JxaResult<T>>((resolve) => {
-    execFile(
+  const commandRunner = options.commandRunner ?? runCommand;
+  return commandRunner(
       'osascript',
       ['-l', 'JavaScript', '-e', script],
-      { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024, signal: options.signal },
-      (error, stdout) => {
-        if (error) {
-          const reason = classifyFailure(error.message, Boolean(error.killed));
+      { maxBuffer: 4 * 1024 * 1024 },
+    ).pipe(
+      Effect.timeoutFail({
+        duration: timeoutMs,
+        onTimeout: () => commandTimeout(`${target} command timed out`),
+      }),
+      Effect.match({
+        onFailure: (error): JxaResult<T> => {
+          const timedOut = error.name === 'CommandTimeoutError';
+          const reason = classifyFailure(error.message, timedOut);
           logger.warn('[JXA] request failed', {
             target,
             reason,
-            code: error.code ?? null,
-            killed: Boolean(error.killed),
+            code: 'code' in error ? (error as Error & { code?: unknown }).code ?? null : null,
+            killed: timedOut,
           });
-          resolve({
+          return {
             ok: false,
             reason,
             message:
@@ -60,25 +88,24 @@ export async function runJxa<T>(script: string, options: JxaRequestOptions): Pro
                 : reason === 'timeout'
                   ? 'The application did not respond in time.'
                   : 'Could not read from the application.',
-          });
-          return;
-        }
+          };
+        },
+        onSuccess: ({ stdout }): JxaResult<T> => {
         const out = stdout.trim();
         if (!out) {
-          resolve({ ok: false, reason: 'error', message: 'The application returned no data.' });
-          return;
+          return { ok: false, reason: 'error', message: 'The application returned no data.' };
         }
         try {
-          resolve({ ok: true, data: JSON.parse(out) as T });
+          return { ok: true, data: JSON.parse(out) as T };
         } catch {
           logger.warn('[JXA] invalid response', { target });
-          resolve({
+          return {
             ok: false,
             reason: 'error',
             message: 'The application returned invalid data.',
-          });
+          };
         }
-      },
+        },
+      }),
     );
-  });
 }
