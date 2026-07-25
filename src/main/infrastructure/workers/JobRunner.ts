@@ -188,12 +188,10 @@ export class JobRunner implements IJobQueue {
         );
         this.loopFiber = null;
         this.pruneFiber = null;
-        yield* Effect.forEach(background, Fiber.interrupt, { discard: true });
+        yield* this.interruptWithinGrace(background, 'poller');
 
         const jobs = [...this.inFlight.values()];
-        yield* Effect.forEach(jobs, Fiber.interrupt, { discard: true }).pipe(
-          Effect.timeout(this.cfg.shutdownGraceMs),
-        );
+        yield* this.interruptWithinGrace(jobs, 'job');
         logger.info('[JobRunner] stopped');
       }),
     );
@@ -234,21 +232,66 @@ export class JobRunner implements IJobQueue {
         yield* Effect.sleep(this.cfg.minIdleMs);
         return true;
       }
-
-      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
-      const claimed = yield* promiseEffect(() => this.repo.claimDue(new Date(now), capacity)).pipe(
-        Effect.catchAll((error) =>
-          Effect.sync(() => {
-            logger.error('[JobRunner] claim failed:', error);
-            return [] as JobEntity[];
-          }),
-        ),
-      );
-      if (claimed.length === 0) return false;
-
-      for (const job of claimed) this.launch(job);
-      return true;
+      return yield* this.claimAndLaunch(capacity);
     });
+  }
+
+  /**
+   * Claiming flips rows to `running` inside the repository transaction, and the
+   * transaction commits even if this fiber is abandoned mid-await. An interrupt
+   * from wake() or stop() landing between the claim and launch() would strand
+   * those rows until the next start(), so interruption must wait at this
+   * region's edge. When stop() won the race, the claim is released back to
+   * pending here instead of running.
+   */
+  private claimAndLaunch(capacity: number): Effect.Effect<boolean, never> {
+    return Effect.uninterruptible(
+      Effect.gen(this, function* () {
+        const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+        const claimed = yield* promiseEffect(() =>
+          this.repo.claimDue(new Date(now), capacity),
+        ).pipe(
+          Effect.catchAll((error) =>
+            Effect.sync(() => {
+              logger.error('[JobRunner] claim failed:', error);
+              return [] as JobEntity[];
+            }),
+          ),
+        );
+        if (claimed.length === 0) return false;
+
+        if (!this.running) {
+          yield* Effect.forEach(claimed, (job) => this.persistInterrupted(job), {
+            discard: true,
+          });
+          return true;
+        }
+
+        for (const job of claimed) this.launch(job);
+        return true;
+      }),
+    );
+  }
+
+  /**
+   * Shutdown must not fail when a fiber outlives the grace period: anything
+   * still `running` in the DB is swept by recoverOrphaned() on next start.
+   */
+  private interruptWithinGrace<A, E>(
+    fibers: ReadonlyArray<Fiber.RuntimeFiber<A, E>>,
+    what: string,
+  ): Effect.Effect<void, never> {
+    if (fibers.length === 0) return Effect.void;
+    return Effect.forEach(fibers, Fiber.interrupt, { discard: true }).pipe(
+      Effect.timeout(this.cfg.shutdownGraceMs),
+      Effect.catchTag('TimeoutException', () =>
+        Effect.sync(() =>
+          logger.warn(
+            `[JobRunner] ${fibers.length} ${what} fiber(s) exceeded the ${this.cfg.shutdownGraceMs}ms shutdown grace`,
+          ),
+        ),
+      ),
+    );
   }
 
   private launch(job: JobEntity): void {

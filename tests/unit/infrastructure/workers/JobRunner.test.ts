@@ -167,6 +167,78 @@ describe('JobRunner', () => {
     expect(repository.jobs.get('job-1')?.status).toBe('pending');
   });
 
+  it('does not strand a job claimed while wake() interrupts the poller', async () => {
+    const inner = new InMemoryJobRepository();
+    const releases: Array<() => void> = [];
+    const repository: IJobRepository = {
+      save: (job) => inner.save(job),
+      findRunning: () => inner.findRunning(),
+      pruneTerminal: () => inner.pruneTerminal(),
+      findById: (id) => inner.findById(id),
+      claimDue: async (now, limit) => {
+        await new Promise<void>((resolve) => releases.push(resolve));
+        return inner.claimDue(now, limit);
+      },
+    };
+    const { runner } = createRunner(repository as InMemoryJobRepository);
+    const executed: string[] = [];
+    runner.register('test.race', async () => {
+      executed.push('ran');
+    });
+
+    await runner.start();
+    await eventually(() => expect(releases.length).toBe(1));
+
+    // enqueue() saves the job, then wake() forks a fresh poller and interrupts
+    // the one currently suspended inside claimDue.
+    await runner.enqueue('test.race');
+    await eventually(() => expect(releases.length).toBe(2));
+
+    // Releasing the interrupted poller's claim flips the row to running; the
+    // claim-and-launch region must still execute the job instead of dropping it.
+    releases[0]();
+    await eventually(() => {
+      expect(executed).toEqual(['ran']);
+      expect(inner.jobs.get('job-1')?.status).toBe('done');
+    });
+
+    releases.splice(0).forEach((release) => release());
+    await runner.stop();
+  });
+
+  it('resolves stop() when interruption exceeds the shutdown grace', async () => {
+    const inner = new InMemoryJobRepository();
+    let saves = 0;
+    const repository: IJobRepository = {
+      findRunning: () => inner.findRunning(),
+      pruneTerminal: () => inner.pruneTerminal(),
+      findById: (id) => inner.findById(id),
+      claimDue: (now, limit) => inner.claimDue(now, limit),
+      save: (job) => {
+        saves += 1;
+        // The save issued by persistInterrupted during shutdown never settles,
+        // so Fiber.interrupt hangs in the onInterrupt finalizer past the grace.
+        if (saves > 1) return new Promise<void>(() => undefined);
+        return inner.save(job);
+      },
+    };
+    const { runner } = createRunner(repository as InMemoryJobRepository);
+    let started = false;
+    runner.register(
+      'test.hang',
+      () =>
+        new Promise<void>(() => {
+          started = true;
+        }),
+    );
+
+    await runner.start();
+    await runner.enqueue('test.hang');
+    await eventually(() => expect(started).toBe(true));
+
+    await expect(runner.stop()).resolves.toBeUndefined();
+  });
+
   it('recovers every running job on startup, including a freshly claimed one', async () => {
     const { repository, runner } = createRunner();
     const claimedAt = new Date();
