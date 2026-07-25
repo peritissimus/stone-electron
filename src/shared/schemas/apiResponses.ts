@@ -36,29 +36,10 @@ export { NotebookSchema, NotebookWithCountSchema } from './notebooks';
 // wire-schema layer (src/shared/schemas/tags.ts).
 export { TagSchema, TagWithCountSchema } from './tags';
 
-export const TopicSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string().nullable(),
-  color: z.string().nullable(),
-  createdAt: z.union([z.string(), z.date(), z.number()]),
-  updatedAt: z.union([z.string(), z.date(), z.number()]),
-});
-
-export const TopicWithCountSchema = TopicSchema.extend({
-  noteCount: z.number(),
-});
-
-export const ClassificationResultSchema = z.object({
-  topicId: z.string(),
-  topicName: z.string(),
-  confidence: z.number(),
-});
-
 export const SimilarNoteSchema = z.object({
   noteId: z.string(),
   title: z.string(),
-  distance: z.number(),
+  similarity: z.number(),
 });
 
 // WorkspaceSchema is promoted to the shared IPC wire-schema layer
@@ -431,12 +412,3 @@ export const EmbeddingStatusSchema = z.object({
   pendingNotes: z.number(),
 });
 
-export const NoteTopicDetailsSchema = z.object({
-  noteId: z.string(),
-  topicId: z.string(),
-  confidence: z.number(),
-  isManual: z.boolean(),
-  createdAt: z.string(),
-  topicName: z.string(),
-  topicColor: z.string(),
-});
