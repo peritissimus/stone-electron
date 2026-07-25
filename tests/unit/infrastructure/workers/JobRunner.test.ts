@@ -206,6 +206,44 @@ describe('JobRunner', () => {
     await runner.stop();
   });
 
+  it('releases a stop-raced claim without charging an execution attempt', async () => {
+    const inner = new InMemoryJobRepository();
+    const releases: Array<() => void> = [];
+    const repository: IJobRepository = {
+      save: (job) => inner.save(job),
+      findRunning: () => inner.findRunning(),
+      pruneTerminal: () => inner.pruneTerminal(),
+      findById: (id) => inner.findById(id),
+      claimDue: async (now, limit) => {
+        await new Promise<void>((resolve) => releases.push(resolve));
+        return inner.claimDue(now, limit);
+      },
+    };
+    const { runner } = createRunner(repository as InMemoryJobRepository, undefined, {
+      shutdownGraceMs: 1_000,
+    });
+    const handler = vi.fn(async () => undefined);
+    runner.register('test.stop-race', handler);
+
+    await runner.start();
+    await eventually(() => expect(releases.length).toBe(1));
+    await runner.enqueue('test.stop-race', undefined, { maxAttempts: 1 });
+    await eventually(() => expect(releases.length).toBe(2));
+
+    const stopping = runner.stop();
+    await Promise.resolve();
+    releases.splice(0).forEach((release) => release());
+    await stopping;
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(inner.jobs.get('job-1')?.toPersistence()).toMatchObject({
+      status: 'pending',
+      attempts: 0,
+      claimedAt: null,
+      lastError: null,
+    });
+  });
+
   it('resolves stop() when interruption exceeds the shutdown grace', async () => {
     const inner = new InMemoryJobRepository();
     let saves = 0;

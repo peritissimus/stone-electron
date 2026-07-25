@@ -91,6 +91,19 @@ export class JobEntity {
   }
 
   /**
+   * Return a claimed job to the queue when execution never began.
+   *
+   * This is not a failed attempt: preserve its attempt count, previous error,
+   * and scheduled time so shutdown cannot exhaust retries or add backoff to
+   * work that no handler observed.
+   */
+  releaseClaim(now: Date): void {
+    this.props.status = 'pending';
+    this.props.claimedAt = null;
+    this.props.updatedAt = now;
+  }
+
+  /**
    * Handler threw. Counts the attempt, then either accepts the runner's next
    * scheduled time (status `pending`) or, once attempts are exhausted, gives
    * up (status `dead`). Returns the resulting status for dead-letter logging.

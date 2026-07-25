@@ -111,6 +111,7 @@ export class JobRunner implements IJobQueue {
 
   private readonly handlers = new Map<string, JobHandler>();
   private readonly inFlight = new Map<string, Fiber.RuntimeFiber<void, never>>();
+  private readonly pollFibers = new Set<Fiber.RuntimeFiber<never, never>>();
   private loopFiber: Fiber.RuntimeFiber<never, never> | null = null;
   private pruneFiber: Fiber.RuntimeFiber<never, never> | null = null;
   private semaphore: Effect.Semaphore | null = null;
@@ -183,7 +184,7 @@ export class JobRunner implements IJobQueue {
         if (!this.running) return;
         this.running = false;
 
-        const background = [this.loopFiber, this.pruneFiber].filter(
+        const background = [...this.pollFibers, this.pruneFiber].filter(
           (fiber): fiber is Fiber.RuntimeFiber<never, never> => fiber !== null,
         );
         this.loopFiber = null;
@@ -199,7 +200,7 @@ export class JobRunner implements IJobQueue {
 
   private startFibers(): void {
     if (!this.running) return;
-    this.loopFiber = this.runtime.runFork(this.pollProgram());
+    this.loopFiber = this.startPollFiber();
     this.pruneFiber = this.runtime.runFork(
       this.prune().pipe(
         Effect.repeat(Schedule.spaced(this.cfg.pruneIntervalMs)),
@@ -213,8 +214,23 @@ export class JobRunner implements IJobQueue {
   private wake(): void {
     if (!this.running) return;
     const previous = this.loopFiber;
-    this.loopFiber = this.runtime.runFork(this.pollProgram());
+    this.loopFiber = this.startPollFiber();
     if (previous) this.runtime.runFork(Fiber.interrupt(previous));
+  }
+
+  private startPollFiber(): Fiber.RuntimeFiber<never, never> {
+    let fiber!: Fiber.RuntimeFiber<never, never>;
+    fiber = this.runtime.runFork(
+      this.pollProgram().pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            this.pollFibers.delete(fiber);
+          }),
+        ),
+      ),
+    );
+    this.pollFibers.add(fiber);
+    return fiber;
   }
 
   private pollProgram(): Effect.Effect<never, never> {
@@ -261,7 +277,7 @@ export class JobRunner implements IJobQueue {
         if (claimed.length === 0) return false;
 
         if (!this.running) {
-          yield* Effect.forEach(claimed, (job) => this.persistInterrupted(job), {
+          yield* Effect.forEach(claimed, (job) => this.persistReleasedClaim(job), {
             discard: true,
           });
           return true;
@@ -374,6 +390,14 @@ export class JobRunner implements IJobQueue {
     return Effect.gen(this, function* () {
       const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
       job.markFailed('job runner interrupted', new Date(now), this.nextRetryAt(job, now));
+      yield* this.persistResult(job);
+    });
+  }
+
+  private persistReleasedClaim(job: JobEntity): Effect.Effect<void, never> {
+    return Effect.gen(this, function* () {
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      job.releaseClaim(new Date(now));
       yield* this.persistResult(job);
     });
   }

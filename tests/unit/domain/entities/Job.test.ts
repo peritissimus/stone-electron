@@ -61,6 +61,30 @@ describe('JobEntity', () => {
     expect(job.lastError).toBeNull();
   });
 
+  it('releases an unstarted claim without consuming an attempt or changing its schedule', () => {
+    const scheduledAt = new Date(NOW.getTime() + 30_000);
+    const releasedAt = new Date(NOW.getTime() + 500);
+    const job = JobEntity.fromPersistence({
+      ...newJob(1).toPersistence(),
+      status: 'running',
+      attempts: 0,
+      runAfter: scheduledAt,
+      claimedAt: NOW,
+      lastError: 'failure from an earlier attempt',
+    });
+
+    job.releaseClaim(releasedAt);
+
+    expect(job.toPersistence()).toMatchObject({
+      status: 'pending',
+      attempts: 0,
+      runAfter: scheduledAt,
+      claimedAt: null,
+      lastError: 'failure from an earlier attempt',
+      updatedAt: releasedAt,
+    });
+  });
+
   it('counts a stale recovery as an attempt so toxic jobs still die', () => {
     const job = newJob(1);
     const status = job.recoverFromStale(NOW, RETRY_AT);
