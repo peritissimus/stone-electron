@@ -146,12 +146,18 @@ export class CompatSchema<A = unknown> {
     return this.nullable().optional();
   }
 
-  /** Convert optional/default metadata into an Effect Struct property. */
+  /**
+   * Convert optional/default metadata into an Effect Struct property.
+   *
+   * zod's `.optional()` admits an explicitly-undefined value, not only a
+   * missing key — renderer callers spread partial payloads that way — so the
+   * property must not use `exact` optionality.
+   */
   toProperty(): any {
     if (!this.optionalValue) return this.effectSchema;
     return this.defaultValue
-      ? Schema.optionalWith(this.effectSchema, { exact: true, default: this.defaultValue })
-      : Schema.optionalWith(this.effectSchema, { exact: true });
+      ? Schema.optionalWith(this.effectSchema, { default: this.defaultValue })
+      : Schema.optional(this.effectSchema);
   }
 }
 
@@ -181,7 +187,7 @@ export function z(): never {
 }
 
 // Function/namespace merging provides both runtime builders (`z.object`) and
-// type helpers (`z.infer`) during the atomic schema migration.
+// type helpers (`z.infer`) under the single `z` export call sites expect.
 // eslint-disable-next-line no-redeclare
 export namespace z {
   export type infer<T> = T extends CompatSchema<infer A> ? A : never;
