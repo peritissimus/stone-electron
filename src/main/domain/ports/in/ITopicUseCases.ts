@@ -37,7 +37,8 @@ export interface ClassifyAllResult {
 export interface TopicSimilarNote {
   noteId: string;
   title: string;
-  distance: number;
+  /** Cosine similarity in [-1, 1]; higher is a closer match. */
+  similarity: number;
 }
 
 export interface EmbeddingStatus {
@@ -135,49 +136,29 @@ export interface IGetTopicsForNoteUseCase {
   execute(noteId: string): Effect.Effect<TopicForNote[], Error>;
 }
 
-// --- Suggestion use cases ---
+// --- Automatic organization ---
 
-export interface SuggestedTopicRepresentative {
-  chunkId: string;
-  noteId: string;
-  noteTitle: string;
-  headingPath: string[];
-  excerpt: string;
-}
-
-export interface SuggestedTopic {
-  id: string;
-  label: string;
-  altLabels: string[];
-  noteIds: string[];
-  chunkIds: string[];
-  noteCount: number;
-  chunkCount: number;
-  cohesion: number;
-  representatives: SuggestedTopicRepresentative[];
-}
-
-export interface SuggestTopicsRequest {
+export interface OrganizeTopicsRequest {
   workspaceId?: string;
 }
 
-export interface ISuggestTopicsUseCase {
-  execute(request?: SuggestTopicsRequest): Effect.Effect<SuggestedTopic[], Error>;
+export interface OrganizeTopicsResult {
+  /** False when there is no workspace to organize — the pass did nothing. */
+  ran: boolean;
+  topicsCreated: number;
+  /** Notes attached to the topics created by this pass. */
+  notesAssigned: number;
+  /** Previously untopiced notes matched against existing topics. */
+  notesClassified: number;
 }
 
-export interface AdoptSuggestedTopicRequest {
-  name: string;
-  color?: string;
-  noteIds: string[];
-}
-
-export interface AdoptSuggestedTopicResponse {
-  topicId: string;
-  assignedNoteCount: number;
-}
-
-export interface IAdoptSuggestedTopicUseCase {
-  execute(request: AdoptSuggestedTopicRequest): Effect.Effect<AdoptSuggestedTopicResponse, Error>;
+/**
+ * Clusters the workspace, promotes the clusters worth keeping to topics, and
+ * files unassigned notes under the topics that already exist. Runs on a timer
+ * in the background; topics are not user-managed.
+ */
+export interface IOrganizeTopicsUseCase {
+  execute(request?: OrganizeTopicsRequest): Effect.Effect<OrganizeTopicsResult, Error>;
 }
 
 /**
@@ -200,8 +181,7 @@ export interface ITopicUseCases {
   getEmbeddingStatus: IGetEmbeddingStatusUseCase;
   getNotesForTopic: IGetNotesForTopicUseCase;
   getTopicsForNote: IGetTopicsForNoteUseCase;
-  suggestTopics: ISuggestTopicsUseCase;
-  adoptSuggestedTopic: IAdoptSuggestedTopicUseCase;
+  organizeTopics: IOrganizeTopicsUseCase;
 }
 
 export const TopicUseCasesPort =
