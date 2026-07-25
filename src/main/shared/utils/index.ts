@@ -22,5 +22,3 @@ export {
   type SupervisedProcessOptions,
   type SupervisableProcess,
 } from './SupervisedProcess';
-export { withRetry, type RetryOptions } from './retry';
-export { delay, withTimeout, type DelayOptions } from './async';

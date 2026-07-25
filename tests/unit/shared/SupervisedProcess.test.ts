@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'node:events';
+import { Effect, Fiber, TestClock, TestContext } from 'effect';
 import {
   SupervisedProcess,
   type SupervisableProcess,
@@ -28,13 +29,14 @@ class StubbornProc extends FakeProc {
 
 function makeSupervisor(overrides: {
   spawn?: () => SupervisableProcess | Promise<SupervisableProcess>;
-  healthCheck?: () => Promise<void>;
+  healthCheck?: (signal?: AbortSignal) => Promise<void>;
   maxRestarts?: number;
   terminationGraceMs?: number;
 }) {
   const spawned: FakeProc[] = [];
   const sup = new SupervisedProcess({
     name: 'test',
+    runPromise: Effect.runPromise,
     spawn:
       overrides.spawn ??
       (() => {
@@ -54,6 +56,32 @@ function makeSupervisor(overrides: {
 }
 
 describe('SupervisedProcess', () => {
+  it('uses the Effect clock for health timeout and interrupts the probe', async () => {
+    let probeSignal: AbortSignal | undefined;
+    const proc = new FakeProc();
+    const { sup } = makeSupervisor({
+      spawn: () => proc,
+      healthCheck: (signal?: AbortSignal) =>
+        new Promise<void>((_resolve, reject) => {
+          probeSignal = signal;
+          signal?.addEventListener('abort', () => reject(signal.reason), { once: true });
+        }),
+    });
+
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fiber = yield* Effect.fork(sup.ensureReadyEffect());
+        yield* Effect.yieldNow();
+        yield* TestClock.adjust(100);
+        return yield* Fiber.join(fiber).pipe(Effect.flip);
+      }).pipe(Effect.provide(TestContext.TestContext)),
+    );
+
+    expect(error.message).toContain('health check timed out');
+    expect(probeSignal?.aborted).toBe(true);
+    expect(proc.killed).toBe(true);
+  });
+
   it('spawns once and becomes ready after a passing health check', async () => {
     const spawn = vi.fn(() => new FakeProc());
     const { sup } = makeSupervisor({ spawn });

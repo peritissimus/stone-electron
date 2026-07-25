@@ -1,54 +1,33 @@
 /**
- * SupervisedProcess — a reusable supervisor for a long-running child process.
+ * Effect-native lifecycle supervisor for a long-running child process.
  *
- * Owns the lifecycle that integration adapters keep hand-rolling: spawn the
- * process, wait for it to become healthy, restart it lazily when it dies or
- * wedges, and — crucially — STOP relaunching a process that keeps dying so a
- * broken binary can't pin a user's CPU in a respawn loop.
- *
- * Concretely:
- *   • Lazy start — `ensureReady()` spawns on first use (concurrent callers
- *     share one in-flight start).
- *   • Health gate — after spawn, `healthCheck()` must resolve within
- *     `healthCheckTimeoutMs`, else the process is killed and start fails.
- *   • Circuit breaker — at most `maxRestarts` (re)spawns within
- *     `restartWindowMs`; beyond that `ensureReady()` fails fast until the
- *     window clears, instead of hammering the machine.
- *   • Backoff — each successive respawn waits longer (capped), so a flapping
- *     process is retried gently, not in a tight loop.
- *   • markUnhealthy — a consumer that detects a wedge (e.g. a request timed
- *     out) tears the process down so the next `ensureReady()` respawns it;
- *     this counts toward the circuit breaker.
- *
- * The process is injected via a `spawn` callback and probed via a `healthCheck`
- * callback, so the supervisor is process-agnostic and unit-testable without a
- * real OS process.
+ * Promise methods are a temporary compatibility facade. The actual lifecycle
+ * is expressed with Scope/acquireRelease, Effect timeout/interruption, and the
+ * Effect clock so it is deterministic under TestClock.
  */
 
-import { delay, withTimeout } from './async';
+import { Effect, Exit, Scope } from 'effect';
 import { logger } from './logger';
 
-/** Minimal surface the supervisor needs — satisfied by Node's ChildProcess. */
 export interface SupervisableProcess {
   once(event: 'exit', listener: (code: number | null) => void): unknown;
   kill(signal?: NodeJS.Signals): boolean;
   readonly killed: boolean;
 }
 
+type RunPromise = <A, E>(effect: Effect.Effect<A, E>) => Promise<A>;
+
 export interface SupervisedProcessOptions {
-  /** Human-readable name for logs. */
   name: string;
-  /** Create (spawn) the process. Called on each (re)start. */
-  spawn: () => SupervisableProcess | Promise<SupervisableProcess>;
-  /** Resolve once the process is ready to serve; reject/throw if not. */
-  healthCheck: () => Promise<void>;
+  spawn: (signal?: AbortSignal) => SupervisableProcess | Promise<SupervisableProcess>;
+  healthCheck: (signal?: AbortSignal) => Promise<void>;
+  /** Supplied by the worker bootstrap; this utility never invokes a runtime. */
+  runPromise: RunPromise;
   healthCheckTimeoutMs?: number;
-  /** Max (re)spawn attempts within `restartWindowMs` before the breaker opens. */
   maxRestarts?: number;
   restartWindowMs?: number;
   backoffBaseMs?: number;
   backoffMaxMs?: number;
-  /** Grace period for SIGTERM before escalating to SIGKILL. */
   terminationGraceMs?: number;
 }
 
@@ -61,16 +40,20 @@ const DEFAULTS = {
   terminationGraceMs: 2_000,
 } as const;
 
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 export class SupervisedProcess {
   private readonly name: string;
   private readonly opts: Required<Omit<SupervisedProcessOptions, 'name'>>;
 
   private proc: SupervisableProcess | null = null;
+  private processScope: Scope.CloseableScope | null = null;
   private ready = false;
   private starting: Promise<void> | null = null;
   private terminating: Promise<void> | null = null;
   private generation = 0;
-  /** Timestamps of recent spawn attempts — the circuit-breaker window. */
   private spawnTimes: number[] = [];
 
   constructor(options: SupervisedProcessOptions) {
@@ -78,6 +61,7 @@ export class SupervisedProcess {
     this.opts = {
       spawn: options.spawn,
       healthCheck: options.healthCheck,
+      runPromise: options.runPromise,
       healthCheckTimeoutMs: options.healthCheckTimeoutMs ?? DEFAULTS.healthCheckTimeoutMs,
       maxRestarts: options.maxRestarts ?? DEFAULTS.maxRestarts,
       restartWindowMs: options.restartWindowMs ?? DEFAULTS.restartWindowMs,
@@ -91,147 +75,161 @@ export class SupervisedProcess {
     return this.proc !== null && this.ready;
   }
 
-  /** Ensure the process is up and healthy, spawning it if needed. */
-  async ensureReady(): Promise<void> {
-    if (this.terminating) await this.terminating;
-    if (this.isReady()) return;
-    this.starting ??= this.doStart(this.generation);
-    try {
-      await this.starting;
-    } finally {
-      this.starting = null;
+  ensureReady(): Promise<void> {
+    if (this.terminating) {
+      return this.terminating.then(() => this.ensureReady());
     }
+    if (this.isReady()) return Promise.resolve();
+    this.starting ??= this.opts.runPromise(this.ensureReadyEffect(this.generation));
+    return this.starting.finally(() => {
+      this.starting = null;
+    });
   }
 
-  /**
-   * Tear down the current process because it's wedged/misbehaving. The next
-   * `ensureReady()` will respawn it (subject to the circuit breaker). Counts as
-   * a fault — the respawn is what trips the breaker if it keeps happening.
-   */
-  async markUnhealthy(reason: string): Promise<void> {
-    if (!this.proc && !this.ready) return;
+  markUnhealthy(reason: string): Promise<void> {
+    if (!this.proc && !this.ready) return Promise.resolve();
     logger.warn(`[${this.name}] marked unhealthy: ${reason} — will respawn on next use`);
-    await this.terminate(false);
+    return this.terminate();
   }
 
-  /** Graceful, full stop (app shutdown). Clears the circuit-breaker memory. */
   async stop(): Promise<void> {
     this.generation += 1;
-    await this.terminate(false);
+    await this.terminate();
     if (this.starting) {
       try {
         await this.starting;
       } catch {
-        // A stop intentionally cancels an in-flight start.
+        // Closing the lifecycle intentionally invalidates the in-flight start.
       }
     }
-    await this.terminate(false);
+    await this.terminate();
     this.spawnTimes = [];
   }
 
-  // ===========================================================================
+  /** Public for deterministic Effect/TestClock suites. */
+  ensureReadyEffect(generation = this.generation): Effect.Effect<void, Error> {
+    return Effect.gen(this, function* () {
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      this.spawnTimes = this.spawnTimes.filter((time) => now - time < this.opts.restartWindowMs);
+      if (this.spawnTimes.length >= this.opts.maxRestarts) {
+        return yield* Effect.fail(
+          new Error(
+            `[${this.name}] circuit open: ${this.spawnTimes.length} spawn attempts within ` +
+              `${this.opts.restartWindowMs}ms`,
+          ),
+        );
+      }
 
-  private async terminate(clearSpawnTimes: boolean): Promise<void> {
-    if (clearSpawnTimes) this.spawnTimes = [];
-    if (this.terminating) {
-      await this.terminating;
-      return;
-    }
+      if (this.spawnTimes.length > 0) {
+        const backoffMs = Math.min(
+          this.opts.backoffBaseMs * 2 ** (this.spawnTimes.length - 1),
+          this.opts.backoffMaxMs,
+        );
+        yield* Effect.sleep(backoffMs);
+      }
+      if (generation !== this.generation) {
+        return yield* Effect.fail(new Error(`[${this.name}] start cancelled`));
+      }
+      this.spawnTimes.push(now);
 
-    const proc = this.proc;
+      const scope = yield* Scope.make();
+      this.processScope = scope;
+      const acquire = Effect.acquireRelease(
+        Effect.tryPromise({
+          try: (signal) => Promise.resolve(this.opts.spawn(signal)),
+          catch: asError,
+        }),
+        (proc) => this.terminateProcessEffect(proc),
+      );
+
+      const proc = yield* Scope.extend(acquire, scope).pipe(
+        Effect.onError(() => Scope.close(scope, Exit.void)),
+      );
+      this.proc = proc;
+      proc.once('exit', (code) => {
+        if (this.proc === proc) {
+          this.proc = null;
+          this.processScope = null;
+          this.ready = false;
+        }
+        if (code) logger.warn(`[${this.name}] exited with code ${code}`);
+      });
+
+      if (generation !== this.generation) {
+        yield* Scope.close(scope, Exit.void);
+        return yield* Effect.fail(new Error(`[${this.name}] start cancelled`));
+      }
+
+      yield* Effect.tryPromise({
+        try: (signal) => this.opts.healthCheck(signal),
+        catch: asError,
+      }).pipe(
+        Effect.timeoutFail({
+          duration: this.opts.healthCheckTimeoutMs,
+          onTimeout: () =>
+            new Error(
+              `[${this.name}] health check timed out after ${this.opts.healthCheckTimeoutMs}ms`,
+            ),
+        }),
+        Effect.onError(() => Scope.close(scope, Exit.void)),
+      );
+
+      this.ready = true;
+      logger.info(`[${this.name}] ready`);
+    });
+  }
+
+  private terminate(): Promise<void> {
+    if (this.terminating) return this.terminating;
+    const scope = this.processScope;
     this.ready = false;
-    if (!proc) return;
+    if (!scope) return Promise.resolve();
 
-    this.terminating = this.terminateProcess(proc).finally(() => {
-      if (this.proc === proc) this.proc = null;
+    this.processScope = null;
+    this.terminating = this.opts.runPromise(Scope.close(scope, Exit.void)).finally(() => {
+      this.proc = null;
       this.terminating = null;
     });
-    await this.terminating;
+    return this.terminating;
   }
 
-  private async terminateProcess(proc: SupervisableProcess): Promise<void> {
-    const exitedAfterTerm = await signalAndWait(proc, 'SIGTERM', this.opts.terminationGraceMs);
-    if (exitedAfterTerm) return;
-
-    logger.warn(`[${this.name}] did not exit after SIGTERM; escalating to SIGKILL`);
-    const exitedAfterKill = await signalAndWait(proc, 'SIGKILL', this.opts.terminationGraceMs);
-    if (!exitedAfterKill) {
-      logger.error(`[${this.name}] did not report exit after SIGKILL`);
-    }
-  }
-
-  private async doStart(generation: number): Promise<void> {
-    const now = Date.now();
-    // Drop spawn attempts older than the window, then check the breaker.
-    this.spawnTimes = this.spawnTimes.filter((t) => now - t < this.opts.restartWindowMs);
-    if (this.spawnTimes.length >= this.opts.maxRestarts) {
-      throw new Error(
-        `[${this.name}] circuit open: ${this.spawnTimes.length} spawn attempts within ` +
-          `${this.opts.restartWindowMs}ms — refusing to relaunch until it settles`,
+  private terminateProcessEffect(proc: SupervisableProcess): Effect.Effect<void> {
+    return Effect.gen(this, function* () {
+      const exitedAfterTerm = yield* signalAndWaitEffect(
+        proc,
+        'SIGTERM',
+        this.opts.terminationGraceMs,
       );
-    }
+      if (exitedAfterTerm) return;
 
-    // Back off proportionally to how many times we've spawned recently.
-    if (this.spawnTimes.length > 0) {
-      const backoffMs = Math.min(
-        this.opts.backoffBaseMs * 2 ** (this.spawnTimes.length - 1),
-        this.opts.backoffMaxMs,
+      logger.warn(`[${this.name}] did not exit after SIGTERM; escalating to SIGKILL`);
+      const exitedAfterKill = yield* signalAndWaitEffect(
+        proc,
+        'SIGKILL',
+        this.opts.terminationGraceMs,
       );
-      await delay(backoffMs);
-    }
-    if (generation !== this.generation) throw new Error(`[${this.name}] start cancelled`);
-    this.spawnTimes.push(now);
-
-    const proc = await this.opts.spawn();
-    this.proc = proc;
-    proc.once('exit', (code) => {
-      // Only react if this is still the live process (not one we replaced).
-      if (this.proc === proc) {
-        this.proc = null;
-        this.ready = false;
-      }
-      if (code) logger.warn(`[${this.name}] exited with code ${code}`);
+      if (!exitedAfterKill) logger.error(`[${this.name}] did not report exit after SIGKILL`);
     });
-    if (generation !== this.generation) {
-      await this.terminate(false);
-      throw new Error(`[${this.name}] start cancelled`);
-    }
-
-    try {
-      await withTimeout(
-        this.opts.healthCheck(),
-        this.opts.healthCheckTimeoutMs,
-        `[${this.name}] health check timed out after ${this.opts.healthCheckTimeoutMs}ms`,
-      );
-    } catch (err) {
-      await this.terminate(false);
-      throw err;
-    }
-
-    this.ready = true;
-    logger.info(`[${this.name}] ready`);
   }
 }
 
-function signalAndWait(
+function signalAndWaitEffect(
   proc: SupervisableProcess,
   signal: NodeJS.Signals,
   timeoutMs: number,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (exited: boolean) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(exited);
-    };
-    proc.once('exit', () => finish(true));
-    const timer = setTimeout(() => finish(false), timeoutMs);
+): Effect.Effect<boolean> {
+  const exited = Effect.async<boolean>((resume) => {
+    proc.once('exit', () => resume(Effect.succeed(true)));
     try {
       proc.kill(signal);
     } catch {
-      finish(true);
+      resume(Effect.succeed(true));
     }
   });
+  // acquireRelease finalizers are uninterruptible by default. Restore
+  // interruptibility around the race so the losing exit waiter is cancelled
+  // when the grace-period sleep wins.
+  return Effect.race(exited, Effect.sleep(timeoutMs).pipe(Effect.as(false))).pipe(
+    Effect.interruptible,
+  );
 }

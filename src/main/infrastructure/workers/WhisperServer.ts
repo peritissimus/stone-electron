@@ -14,9 +14,15 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import net from 'node:net';
-import type { ILiveTranscriber, LiveChunkResult, TranscriptSegment } from '../../domain';
-import { collapseRepeatedSegments } from '../../domain';
-import { delay, SupervisedProcess, logger } from '../../shared/utils';
+import { Effect, Layer, Schedule } from 'effect';
+import type {
+  ILiveTranscriber,
+  ILiveTranscriberEffect,
+  LiveChunkResult,
+  TranscriptSegment,
+} from '../../domain';
+import { collapseRepeatedSegments, LiveTranscriber } from '../../domain';
+import { SupervisedProcess, logger } from '../../shared/utils';
 import {
   vadModelPath,
   whisperBinaryPath,
@@ -63,6 +69,22 @@ export interface WhisperSupervisor {
 }
 
 export class WhisperServer implements ILiveTranscriber {
+  static layer(server: WhisperServer): Layer.Layer<ILiveTranscriberEffect> {
+    return Layer.scoped(
+      LiveTranscriber,
+      Effect.acquireRelease(Effect.succeed(server.effect), () =>
+        Effect.tryPromise({
+          try: () => server.shutdown(),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+        }).pipe(
+          Effect.catchAll((error) =>
+            Effect.sync(() => logger.error('[WhisperServer] finalizer failed:', error)),
+          ),
+        ),
+      ),
+    );
+  }
+
   private readonly model: string;
   private readonly host: string;
   private readonly threads: number;
@@ -78,6 +100,23 @@ export class WhisperServer implements ILiveTranscriber {
   /** Owns spawn/health-check/restart/backoff/circuit-breaker for the binary. */
   private readonly supervisor: WhisperSupervisor;
 
+  readonly effect: ILiveTranscriberEffect = {
+    isReady: Effect.sync(() => this.isReady()),
+    start: Effect.tryPromise({
+      try: () => this.start(),
+      catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+    }),
+    stop: Effect.tryPromise({
+      try: () => this.stop(),
+      catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+    }),
+    transcribeChunk: (wav) =>
+      Effect.tryPromise({
+        try: () => this.transcribeChunk(wav),
+        catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+      }),
+  };
+
   constructor(private readonly deps: WhisperServerDeps = {}) {
     this.model = deps.model ?? process.env.STONE_WHISPER_MODEL ?? LIVE_WHISPER_MODEL;
     this.host = deps.host ?? '127.0.0.1';
@@ -86,8 +125,10 @@ export class WhisperServer implements ILiveTranscriber {
       deps.supervisor ??
       new SupervisedProcess({
         name: 'whisper-server',
+        runPromise: Effect.runPromise,
         spawn: () => this.spawnServer(),
-        healthCheck: () => waitForReady(`http://${this.host}:${this.port}/`, 30_000),
+        healthCheck: (signal) =>
+          Effect.runPromise(waitForReady(`http://${this.host}:${this.port}/`), { signal }),
       });
   }
 
@@ -151,20 +192,32 @@ export class WhisperServer implements ILiveTranscriber {
     form.append('temperature', '0');
 
     const controller = new AbortController();
-    const timeout = setTimeout(
-      () => controller.abort(new Error('live chunk timed out')),
-      CHUNK_TIMEOUT_MS,
-    );
     this.inFlight.add(controller);
     let res: Response;
     try {
-      res = await fetch(`http://${this.host}:${this.port}/inference`, {
-        method: 'POST',
-        body: form,
-        signal: controller.signal,
-      });
+      res = await Effect.runPromise(
+        Effect.tryPromise({
+          try: (signal) =>
+            fetch(`http://${this.host}:${this.port}/inference`, {
+              method: 'POST',
+              body: form,
+              signal,
+            }),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+        }).pipe(
+          Effect.timeoutFail({
+            duration: CHUNK_TIMEOUT_MS,
+            onTimeout: () => new Error('live chunk timed out'),
+          }),
+        ),
+        { signal: controller.signal },
+      );
     } catch (err) {
-      if (!this.sessionActive || generation !== this.sessionGeneration) throw err;
+      const failure =
+        controller.signal.aborted && controller.signal.reason instanceof Error
+          ? controller.signal.reason
+          : err;
+      if (!this.sessionActive || generation !== this.sessionGeneration) throw failure;
       // The server hung or died: tell the supervisor so the next chunk respawns
       // a fresh process instead of piling onto a wedged one (each stuck fetch
       // would otherwise block for undici's 5-minute default). The circuit
@@ -180,9 +233,8 @@ export class WhisperServer implements ILiveTranscriber {
           `[WhisperServer] disabling live transcription after ${this.sessionFailures} session failures`,
         );
       }
-      throw err;
+      throw failure;
     } finally {
-      clearTimeout(timeout);
       this.inFlight.delete(controller);
     }
     if (!res.ok) {
@@ -313,16 +365,10 @@ function freePort(): Promise<number> {
   });
 }
 
-/** Poll a URL until it responds (any HTTP status) or times out. */
-async function waitForReady(url: string, timeoutMs: number): Promise<void> {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    try {
-      await fetch(url);
-      return;
-    } catch {
-      if (Date.now() > deadline) throw new Error('whisper-server did not become ready');
-      await delay(300);
-    }
-  }
+/** The supervisor owns the single health timeout; this probe only retries. */
+function waitForReady(url: string): Effect.Effect<void, Error> {
+  return Effect.tryPromise({
+    try: (signal) => fetch(url, { signal }),
+    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+  }).pipe(Effect.asVoid, Effect.retry(Schedule.spaced(300)));
 }
