@@ -1,7 +1,12 @@
+import { ManagedRuntime, Schema, TestClock, TestContext } from 'effect';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JobEntity } from '../../../../src/main/domain/entities/Job';
 import type { IJobRepository } from '../../../../src/main/domain/ports/out/IJobRepository';
-import { JobRunner } from '../../../../src/main/infrastructure/workers/JobRunner';
+import {
+  JobRunner,
+  type JobRunnerConfig,
+  type JobRunnerRuntime,
+} from '../../../../src/main/infrastructure/workers/JobRunner';
 import {
   createMeetingFinalizeJobHandler,
   MeetingFinalizeJobPayloadSchema,
@@ -21,8 +26,16 @@ class InMemoryJobRepository implements IJobRepository {
         return props.status === 'pending' && props.runAfter <= now;
       })
       .slice(0, limit);
-    for (const job of due) job.markRunning(now);
-    return due;
+    return due.map((job) => {
+      const running = JobEntity.fromPersistence({
+        ...job.toPersistence(),
+        status: 'running',
+        claimedAt: now,
+        updatedAt: now,
+      });
+      this.jobs.set(running.id, running);
+      return running;
+    });
   }
 
   async findRunning(): Promise<JobEntity[]> {
@@ -38,16 +51,15 @@ class InMemoryJobRepository implements IJobRepository {
   }
 }
 
-function createRunner(repository = new InMemoryJobRepository()) {
-  const span = {
-    setAttribute: vi.fn(),
-    recordError: vi.fn(),
-    end: vi.fn(),
-  };
+function createRunner(
+  repository = new InMemoryJobRepository(),
+  runtime?: JobRunnerRuntime,
+  config: JobRunnerConfig = {},
+) {
   const runner = new JobRunner({
     repository,
-    tracer: { startSpan: vi.fn(() => span) },
     idGenerator: { generate: vi.fn(() => 'job-1') },
+    runtime,
     config: {
       minIdleMs: 5,
       maxIdleMs: 10,
@@ -56,9 +68,10 @@ function createRunner(repository = new InMemoryJobRepository()) {
       jobTimeoutMs: 60_000,
       pruneIntervalMs: 60_000,
       shutdownGraceMs: 100,
+      ...config,
     },
   });
-  return { repository, runner, span };
+  return { repository, runner };
 }
 
 async function eventually(assertion: () => void): Promise<void> {
@@ -95,6 +108,41 @@ describe('JobRunner', () => {
     await runner.stop();
   });
 
+  it('retries with TestClock backoff and dead-letters at maxAttempts', async () => {
+    const runtime = ManagedRuntime.make(TestContext.TestContext);
+    const { repository, runner } = createRunner(
+      new InMemoryJobRepository(),
+      {
+        runPromise: (effect) => runtime.runPromise(effect),
+        runFork: (effect) => runtime.runFork(effect),
+      },
+      {
+        minIdleMs: 50,
+        maxIdleMs: 1_000,
+        backoffBaseMs: 100,
+        backoffMaxMs: 1_000,
+      },
+    );
+    runner.register('test.poison', async () => {
+      throw new Error('transcription failed');
+    });
+
+    await runner.start();
+    await runner.enqueue('test.poison', {}, { maxAttempts: 3 });
+    await eventually(() => expect(repository.jobs.get('job-1')?.attempts).toBe(1));
+
+    await runtime.runPromise(TestClock.adjust(200));
+    await eventually(() => expect(repository.jobs.get('job-1')?.attempts).toBe(2));
+
+    await runtime.runPromise(TestClock.adjust(400));
+    await eventually(() => expect(repository.jobs.get('job-1')?.status).toBe('dead'));
+    expect(repository.jobs.get('job-1')?.attempts).toBe(3);
+    expect(repository.jobs.get('job-1')?.lastError).toBe('transcription failed');
+
+    await runner.stop();
+    await runtime.dispose();
+  });
+
   it('aborts in-flight handlers when stopping', async () => {
     const { repository, runner } = createRunner();
     let receivedSignal: AbortSignal | undefined;
@@ -122,12 +170,15 @@ describe('JobRunner', () => {
   it('recovers every running job on startup, including a freshly claimed one', async () => {
     const { repository, runner } = createRunner();
     const claimedAt = new Date();
-    const orphan = JobEntity.create({
-      id: 'orphan-1',
-      type: 'test.orphan',
-      now: claimedAt,
+    const orphan = JobEntity.fromPersistence({
+      ...JobEntity.create({
+        id: 'orphan-1',
+        type: 'test.orphan',
+        now: claimedAt,
+      }).toPersistence(),
+      status: 'running',
+      claimedAt,
     });
-    orphan.markRunning(claimedAt);
     repository.jobs.set(orphan.id, orphan);
 
     await runner.start();
@@ -140,7 +191,7 @@ describe('JobRunner', () => {
 
 describe('meeting finalize job handler', () => {
   it('rejects malformed payloads before invoking the pipeline', async () => {
-    const finalizeRecording = { execute: vi.fn() };
+    const finalizeRecording = vi.fn();
     const handler = createMeetingFinalizeJobHandler(finalizeRecording);
 
     await expect(
@@ -149,12 +200,14 @@ describe('meeting finalize job handler', () => {
         { signal: new AbortController().signal, attempt: 1, jobId: 'job-1' },
       ),
     ).rejects.toThrow();
-    expect(finalizeRecording.execute).not.toHaveBeenCalled();
-    expect(MeetingFinalizeJobPayloadSchema.safeParse({ durationMs: 1 }).success).toBe(false);
+    expect(finalizeRecording).not.toHaveBeenCalled();
+    expect(
+      Schema.decodeUnknownEither(MeetingFinalizeJobPayloadSchema)({ durationMs: 1 })._tag,
+    ).toBe('Left');
   });
 
   it('passes validated payload and cancellation to the pipeline', async () => {
-    const finalizeRecording = { execute: vi.fn().mockResolvedValue({ recording: {} }) };
+    const finalizeRecording = vi.fn().mockResolvedValue(undefined);
     const handler = createMeetingFinalizeJobHandler(finalizeRecording);
     const signal = new AbortController().signal;
 
@@ -163,9 +216,9 @@ describe('meeting finalize job handler', () => {
       { signal, attempt: 1, jobId: 'job-1' },
     );
 
-    expect(finalizeRecording.execute).toHaveBeenCalledWith(
+    expect(finalizeRecording).toHaveBeenCalledWith(
       { recordingId: 'rec-1', durationMs: 1_500 },
-      { signal },
+      signal,
     );
   });
 });

@@ -1,22 +1,24 @@
-import { z } from 'zod';
-import type {
-  FinalizeRecordingRequest,
-  IFinalizeRecordingUseCase,
-} from '../../domain/ports/in/IMeetingUseCases';
+import { Schema } from 'effect';
+import type { FinalizeRecordingRequest } from '../../domain/ports/in/IMeetingUseCases';
 import type { JobHandler } from './JobRunner';
 
-export const MeetingFinalizeJobPayloadSchema = z
-  .object({
-    recordingId: z.string().trim().min(1),
-    durationMs: z.number().nonnegative(),
-  })
-  .strict();
+export const MeetingFinalizeJobPayloadSchema = Schema.Struct({
+  recordingId: Schema.NonEmptyTrimmedString,
+  durationMs: Schema.NonNegative,
+});
+
+const decodeMeetingFinalizeJobPayload = Schema.decodeUnknownSync(MeetingFinalizeJobPayloadSchema, {
+  onExcessProperty: 'error',
+});
 
 export function createMeetingFinalizeJobHandler(
-  finalizeRecording: IFinalizeRecordingUseCase,
+  finalizeRecording: (
+    request: FinalizeRecordingRequest,
+    signal: AbortSignal,
+  ) => Promise<void>,
 ): JobHandler {
   return async (payload, context) => {
-    const request: FinalizeRecordingRequest = MeetingFinalizeJobPayloadSchema.parse(payload);
-    await finalizeRecording.execute(request, { signal: context.signal });
+    const request: FinalizeRecordingRequest = decodeMeetingFinalizeJobPayload(payload);
+    await finalizeRecording(request, context.signal);
   };
 }

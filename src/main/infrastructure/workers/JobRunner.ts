@@ -1,38 +1,21 @@
 /**
- * JobRunner — the driver for the durable background-job queue.
+ * Effect-backed durable job runner.
  *
- * Polls the IJobRepository for due work, runs the registered handler for each
- * job's type, and persists the outcome. Designed to be a polite tenant on a
- * user's laptop — it must never busy-loop, pile up unbounded work, or retry a
- * poison job forever. Concretely:
- *
- *   • Adaptive idle backoff — when there's no work the poll interval doubles up
- *     to `maxIdleMs`, so an idle app isn't hammering the DB on a tight loop. It
- *     resets to `minIdleMs` (and is woken immediately) the moment work appears.
- *   • Concurrency cap — at most `maxConcurrency` handlers run at once; the
- *     runner only claims as many jobs as it has free slots.
- *   • Per-job timeout — a handler that hangs is aborted after `jobTimeoutMs`
- *     so it can't pin a slot indefinitely.
- *   • Bounded retries — failures back off exponentially and, once attempts are
- *     exhausted, the job is marked `dead` (dead-letter) and left alone.
- *   • Crash recovery — jobs orphaned in `running` by a previous crash are
- *     re-queued on startup (counted as an attempt, so they still die if toxic).
- *   • Retention prune — terminal rows are swept on an interval so the table
- *     never grows without bound.
- *   • Graceful stop — on shutdown the loop halts and in-flight work is given a
- *     short grace period; anything still running is recovered next launch.
+ * The class is the temporary Promise facade used by application features that
+ * have not reached migration Phase 3. All concurrency, time, interruption, and
+ * retry scheduling inside the worker are Effect-native.
  */
 
+import { Effect, Fiber, Layer, Schedule } from 'effect';
 import type {
-  BackoffPolicy,
   EnqueueJobOptions,
   IJobQueue,
+  IJobQueueEffect,
   IJobRepository,
-  IJobTracer,
   IIdGenerator,
 } from '../../domain';
-import { JobEntity } from '../../domain';
-import { delay, logger } from '../../shared/utils';
+import { JobEntity, JobQueue } from '../../domain';
+import { logger } from '../../shared/utils';
 
 export interface JobContext {
   /** Aborts when the per-job timeout fires or the runner is stopping. */
@@ -51,18 +34,22 @@ export interface JobRunnerConfig {
   jobTimeoutMs?: number;
   backoffBaseMs?: number;
   backoffMaxMs?: number;
-  /** Terminal rows older than this are pruned. */
   retentionMs?: number;
   pruneIntervalMs?: number;
-  /** Grace period to let in-flight handlers settle on stop(). */
   shutdownGraceMs?: number;
 }
 
 export interface JobRunnerDeps {
   repository: IJobRepository;
-  tracer: IJobTracer;
   idGenerator: IIdGenerator;
   config?: JobRunnerConfig;
+  /** Worker-bootstrap runtime; injectable so TestClock controls every fiber. */
+  runtime?: JobRunnerRuntime;
+}
+
+export interface JobRunnerRuntime {
+  runPromise<A, E>(effect: Effect.Effect<A, E>): Promise<A>;
+  runFork<A, E>(effect: Effect.Effect<A, E>): Fiber.RuntimeFiber<A, E>;
 }
 
 const DEFAULTS = {
@@ -77,32 +64,74 @@ const DEFAULTS = {
   shutdownGraceMs: 5_000,
 } as const;
 
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error));
+}
+
+function promiseEffect<A>(evaluate: (signal: AbortSignal) => Promise<A>): Effect.Effect<A, Error> {
+  return Effect.tryPromise({ try: evaluate, catch: asError });
+}
+
+/**
+ * The runner owns both schedules. `union(spaced(cap))` turns an unbounded
+ * exponential schedule into a capped one by always choosing the shorter delay.
+ */
+export function makeJobRunnerSchedules(config: Required<JobRunnerConfig>) {
+  return {
+    idle: Schedule.exponential(config.minIdleMs).pipe(
+      Schedule.union(Schedule.spaced(config.maxIdleMs)),
+    ),
+    retry: Schedule.exponential(config.backoffBaseMs).pipe(
+      Schedule.union(Schedule.spaced(config.backoffMaxMs)),
+    ),
+  } as const;
+}
+
 export class JobRunner implements IJobQueue {
+  static layer(runner: JobRunner): Layer.Layer<IJobQueueEffect, Error> {
+    return Layer.scoped(
+      JobQueue,
+      Effect.acquireRelease(
+        promiseEffect(() => runner.start()).pipe(Effect.as(runner.effect)),
+        () =>
+          promiseEffect(() => runner.stop()).pipe(
+            Effect.catchAll((error) =>
+              Effect.sync(() => logger.error('[JobRunner] finalizer failed:', error)),
+            ),
+          ),
+      ),
+    );
+  }
+
   private readonly repo: IJobRepository;
-  private readonly tracer: IJobTracer;
   private readonly ids: IIdGenerator;
   private readonly cfg: Required<JobRunnerConfig>;
-  private readonly backoff: BackoffPolicy;
+  private readonly runtime: JobRunnerRuntime;
+  readonly schedules: ReturnType<typeof makeJobRunnerSchedules>;
 
   private readonly handlers = new Map<string, JobHandler>();
-  private readonly inFlight = new Set<string>();
-  private readonly controllers = new Map<string, AbortController>();
-
+  private readonly inFlight = new Map<string, Fiber.RuntimeFiber<void, never>>();
+  private loopFiber: Fiber.RuntimeFiber<never, never> | null = null;
+  private pruneFiber: Fiber.RuntimeFiber<never, never> | null = null;
+  private semaphore: Effect.Semaphore | null = null;
   private running = false;
-  private idleMs: number;
-  private tickTimer: ReturnType<typeof setTimeout> | null = null;
-  private pruneTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(deps: JobRunnerDeps) {
     this.repo = deps.repository;
-    this.tracer = deps.tracer;
     this.ids = deps.idGenerator;
     this.cfg = { ...DEFAULTS, ...(deps.config ?? {}) };
-    this.backoff = { baseMs: this.cfg.backoffBaseMs, maxMs: this.cfg.backoffMaxMs };
-    this.idleMs = this.cfg.minIdleMs;
+    this.runtime = deps.runtime ?? {
+      runPromise: Effect.runPromise,
+      runFork: Effect.runFork,
+    };
+    this.schedules = makeJobRunnerSchedules(this.cfg);
   }
 
-  /** Register a handler for a job `type`. Throws on duplicate registration. */
+  /** Effect-native capability supplied by the Phase 1 layer. */
+  readonly effect: IJobQueueEffect = {
+    enqueue: (type, payload, options) => this.enqueueEffect(type, payload, options),
+  };
+
   register(type: string, handler: JobHandler): void {
     if (this.handlers.has(type)) {
       throw new Error(`[JobRunner] handler already registered for type "${type}"`);
@@ -110,182 +139,236 @@ export class JobRunner implements IJobQueue {
     this.handlers.set(type, handler);
   }
 
-  /** Persist a new job. Wakes the loop so it runs promptly when due. */
-  async enqueue(type: string, payload?: unknown, opts: EnqueueJobOptions = {}): Promise<string> {
-    const now = new Date();
-    const job = JobEntity.create({
-      id: this.ids.generate(),
-      type,
-      payload,
-      maxAttempts: opts.maxAttempts,
-      runAfter: opts.delayMs ? new Date(now.getTime() + opts.delayMs) : now,
-      now,
+  enqueue(type: string, payload?: unknown, options?: EnqueueJobOptions): Promise<string> {
+    return this.runtime.runPromise(this.enqueueEffect(type, payload, options));
+  }
+
+  private enqueueEffect(
+    type: string,
+    payload?: unknown,
+    options: EnqueueJobOptions = {},
+  ): Effect.Effect<string, Error> {
+    return Effect.gen(this, function* () {
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      const job = JobEntity.create({
+        id: this.ids.generate(),
+        type,
+        payload,
+        maxAttempts: options.maxAttempts,
+        runAfter: options.delayMs ? new Date(now + options.delayMs) : new Date(now),
+        now: new Date(now),
+      });
+      yield* promiseEffect(() => this.repo.save(job));
+      this.wake();
+      return job.id;
     });
-    await this.repo.save(job);
-    this.wake();
-    return job.id;
   }
 
-  async start(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    this.idleMs = this.cfg.minIdleMs;
-
-    await this.recoverOrphaned();
-
-    this.pruneTimer = setInterval(() => void this.prune(), this.cfg.pruneIntervalMs);
-    void this.prune();
-
-    this.scheduleTick(0);
-    logger.info('[JobRunner] started');
+  start(): Promise<void> {
+    return this.runtime.runPromise(
+      Effect.gen(this, function* () {
+        if (this.running) return;
+        this.running = true;
+        this.semaphore = yield* Effect.makeSemaphore(this.cfg.maxConcurrency);
+        yield* this.recoverOrphaned();
+        this.startFibers();
+        logger.info('[JobRunner] started');
+      }),
+    );
   }
 
-  async stop(): Promise<void> {
+  stop(): Promise<void> {
+    return this.runtime.runPromise(
+      Effect.gen(this, function* () {
+        if (!this.running) return;
+        this.running = false;
+
+        const background = [this.loopFiber, this.pruneFiber].filter(
+          (fiber): fiber is Fiber.RuntimeFiber<never, never> => fiber !== null,
+        );
+        this.loopFiber = null;
+        this.pruneFiber = null;
+        yield* Effect.forEach(background, Fiber.interrupt, { discard: true });
+
+        const jobs = [...this.inFlight.values()];
+        yield* Effect.forEach(jobs, Fiber.interrupt, { discard: true }).pipe(
+          Effect.timeout(this.cfg.shutdownGraceMs),
+        );
+        logger.info('[JobRunner] stopped');
+      }),
+    );
+  }
+
+  private startFibers(): void {
     if (!this.running) return;
-    this.running = false;
-    if (this.tickTimer) clearTimeout(this.tickTimer);
-    if (this.pruneTimer) clearInterval(this.pruneTimer);
-    this.tickTimer = null;
-    this.pruneTimer = null;
-
-    for (const controller of this.controllers.values()) {
-      controller.abort(new Error('job runner is stopping'));
-    }
-
-    // Best-effort: let aborted handlers persist their retry state. Anything
-    // still running after the grace period is recovered on the next launch.
-    const deadline = Date.now() + this.cfg.shutdownGraceMs;
-    while (this.inFlight.size > 0 && Date.now() < deadline) {
-      await delay(100);
-    }
-    logger.info('[JobRunner] stopped');
+    this.loopFiber = this.runtime.runFork(this.pollProgram());
+    this.pruneFiber = this.runtime.runFork(
+      this.prune().pipe(
+        Effect.repeat(Schedule.spaced(this.cfg.pruneIntervalMs)),
+        Effect.asVoid,
+        Effect.forever,
+      ),
+    );
   }
 
-  // ===========================================================================
-
-  private scheduleTick(ms: number): void {
-    if (!this.running) return;
-    if (this.tickTimer) clearTimeout(this.tickTimer);
-    this.tickTimer = setTimeout(() => {
-      this.tickTimer = null;
-      void this.tick();
-    }, ms);
-  }
-
-  /** Clear any pending wait and poll immediately (work arrived / a slot freed). */
+  /** Work arrival resets adaptive backoff by interrupting only the idle poll fiber. */
   private wake(): void {
     if (!this.running) return;
-    this.idleMs = this.cfg.minIdleMs;
-    this.scheduleTick(0);
+    const previous = this.loopFiber;
+    this.loopFiber = this.runtime.runFork(this.pollProgram());
+    if (previous) this.runtime.runFork(Fiber.interrupt(previous));
   }
 
-  private async tick(): Promise<void> {
-    if (!this.running) return;
-
-    const capacity = this.cfg.maxConcurrency - this.inFlight.size;
-    if (capacity <= 0) {
-      this.scheduleTick(this.cfg.minIdleMs);
-      return;
-    }
-
-    let claimed: JobEntity[];
-    try {
-      claimed = await this.repo.claimDue(new Date(), capacity);
-    } catch (err) {
-      logger.error('[JobRunner] claim failed:', err);
-      this.scheduleTick(this.idleMs);
-      return;
-    }
-
-    if (claimed.length === 0) {
-      // Nothing due — back off so an idle app isn't polling on a tight loop.
-      this.idleMs = Math.min(this.idleMs * 2, this.cfg.maxIdleMs);
-      this.scheduleTick(this.idleMs);
-      return;
-    }
-
-    this.idleMs = this.cfg.minIdleMs;
-    for (const job of claimed) void this.run(job);
-    // Keep draining while slots may remain; capacity gate stops a busy-loop.
-    this.scheduleTick(0);
+  private pollProgram(): Effect.Effect<never, never> {
+    const idleUntilWork = this.pollOnce().pipe(
+      Effect.repeat(this.schedules.idle.pipe(Schedule.whileInput((worked) => !worked))),
+    );
+    return Effect.forever(idleUntilWork);
   }
 
-  private async run(job: JobEntity): Promise<void> {
-    this.inFlight.add(job.id);
-    const span = this.tracer.startSpan(`job.${job.type}`, {
-      'job.id': job.id,
-      'job.type': job.type,
-      'job.attempt': job.attempts + 1,
+  private pollOnce(): Effect.Effect<boolean, never> {
+    return Effect.gen(this, function* () {
+      if (!this.running) return false;
+      const capacity = this.cfg.maxConcurrency - this.inFlight.size;
+      if (capacity <= 0) {
+        yield* Effect.sleep(this.cfg.minIdleMs);
+        return true;
+      }
+
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      const claimed = yield* promiseEffect(() => this.repo.claimDue(new Date(now), capacity)).pipe(
+        Effect.catchAll((error) =>
+          Effect.sync(() => {
+            logger.error('[JobRunner] claim failed:', error);
+            return [] as JobEntity[];
+          }),
+        ),
+      );
+      if (claimed.length === 0) return false;
+
+      for (const job of claimed) this.launch(job);
+      return true;
     });
+  }
 
-    const controller = new AbortController();
-    this.controllers.set(job.id, controller);
-    const timeout = setTimeout(
-      () => controller.abort(new Error(`job timed out after ${this.cfg.jobTimeoutMs}ms`)),
-      this.cfg.jobTimeoutMs,
+  private launch(job: JobEntity): void {
+    const semaphore = this.semaphore;
+    if (!semaphore) return;
+    const program = semaphore.withPermits(1)(
+      this.runJob(job).pipe(Effect.onInterrupt(() => this.persistInterrupted(job))),
+    ).pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          this.inFlight.delete(job.id);
+          this.wake();
+        }),
+      ),
+    );
+    const fiber = this.runtime.runFork(program);
+    this.inFlight.set(job.id, fiber);
+  }
+
+  private runJob(job: JobEntity): Effect.Effect<void, never> {
+    const execute = Effect.gen(this, function* () {
+      const handler = this.handlers.get(job.type);
+      if (!handler) return yield* Effect.fail(new Error(`no handler for job type "${job.type}"`));
+      yield* promiseEffect((signal) =>
+        handler(job.parsePayload(), {
+          signal,
+          attempt: job.attempts + 1,
+          jobId: job.id,
+        }),
+      );
+    }).pipe(
+      Effect.timeoutFail({
+        duration: this.cfg.jobTimeoutMs,
+        onTimeout: () => new Error(`job timed out after ${this.cfg.jobTimeoutMs}ms`),
+      }),
     );
 
-    try {
-      const handler = this.handlers.get(job.type);
-      if (!handler) throw new Error(`no handler registered for job type "${job.type}"`);
-
-      await handler(job.parsePayload(), {
-        signal: controller.signal,
-        attempt: job.attempts + 1,
-        jobId: job.id,
-      });
-
-      job.markSucceeded(new Date());
-      span.end('ok');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      const status = job.markFailed(message, new Date(), this.backoff);
-      span.setAttribute('job.outcome', status);
-      span.recordError(err);
-      span.end('error');
-      if (status === 'dead') {
-        logger.error(
-          `[JobRunner] job ${job.id} (${job.type}) gave up after ${job.attempts} attempts: ${message}`,
-        );
-      }
-    } finally {
-      clearTimeout(timeout);
-      try {
-        await this.repo.save(job);
-      } catch (err) {
-        logger.error(`[JobRunner] failed to persist result for job ${job.id}:`, err);
-      }
-      this.inFlight.delete(job.id);
-      this.controllers.delete(job.id);
-      this.wake();
-    }
+    return Effect.matchEffect(execute, {
+      onFailure: (error) =>
+        Effect.gen(this, function* () {
+          const message = error.message;
+          const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+          const status = job.markFailed(message, new Date(now), this.nextRetryAt(job, now));
+          yield* Effect.annotateCurrentSpan('job.outcome', status);
+          yield* Effect.annotateCurrentSpan('job.error', message);
+          if (status === 'dead') {
+            logger.error(
+              `[JobRunner] job ${job.id} (${job.type}) gave up after ${job.attempts} attempts: ${message}`,
+            );
+          }
+          yield* this.persistResult(job);
+        }),
+      onSuccess: () =>
+        Effect.gen(this, function* () {
+          const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+          job.markSucceeded(new Date(now));
+          yield* Effect.annotateCurrentSpan('job.outcome', 'done');
+          yield* this.persistResult(job);
+        }),
+    }).pipe(
+      Effect.withSpan(`job.${job.type}`, {
+        attributes: {
+          'job.id': job.id,
+          'job.type': job.type,
+          'job.attempt': job.attempts + 1,
+        },
+      }),
+    );
   }
 
-  private async recoverOrphaned(): Promise<void> {
-    try {
-      // This is a single-instance desktop process. At startup every persisted
-      // `running` row belongs to a previous process, even if it was claimed a
-      // millisecond before the crash.
-      const orphaned = await this.repo.findRunning();
+  private persistResult(job: JobEntity): Effect.Effect<void, never> {
+    return promiseEffect(() => this.repo.save(job)).pipe(
+      Effect.catchAll((error) =>
+        Effect.sync(() => logger.error(`[JobRunner] failed to persist job ${job.id}:`, error)),
+      ),
+    );
+  }
+
+  private persistInterrupted(job: JobEntity): Effect.Effect<void, never> {
+    return Effect.gen(this, function* () {
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      job.markFailed('job runner interrupted', new Date(now), this.nextRetryAt(job, now));
+      yield* this.persistResult(job);
+    });
+  }
+
+  private recoverOrphaned(): Effect.Effect<void, Error> {
+    return Effect.gen(this, function* () {
+      const orphaned = yield* promiseEffect(() => this.repo.findRunning());
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
       for (const job of orphaned) {
-        job.recoverFromStale(new Date(), this.backoff);
-        await this.repo.save(job);
+        job.recoverFromStale(new Date(now), this.nextRetryAt(job, now));
+        yield* promiseEffect(() => this.repo.save(job));
       }
       if (orphaned.length > 0) {
-        logger.info(`[JobRunner] recovered ${orphaned.length} orphaned job(s) from a previous run`);
+        logger.info(`[JobRunner] recovered ${orphaned.length} orphaned job(s)`);
       }
-    } catch (err) {
-      logger.error('[JobRunner] stale-job recovery failed:', err);
-    }
+    });
   }
 
-  private async prune(): Promise<void> {
-    try {
-      const cutoff = new Date(Date.now() - this.cfg.retentionMs);
-      const removed = await this.repo.pruneTerminal(cutoff);
+  private prune(): Effect.Effect<void, never> {
+    return Effect.gen(this, function* () {
+      const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+      const removed = yield* promiseEffect(() =>
+        this.repo.pruneTerminal(new Date(now - this.cfg.retentionMs)),
+      );
       if (removed > 0) logger.info(`[JobRunner] pruned ${removed} finished job(s)`);
-    } catch (err) {
-      logger.error('[JobRunner] retention prune failed:', err);
-    }
+    }).pipe(
+      Effect.catchAll((error) =>
+        Effect.sync(() => logger.error('[JobRunner] retention prune failed:', error)),
+      ),
+    );
+  }
+
+  /** Interpret the runner-owned exponential retry policy for durable storage. */
+  private nextRetryAt(job: JobEntity, now: number): Date {
+    const delay = Math.min(
+      this.cfg.backoffBaseMs * 2 ** job.attempts,
+      this.cfg.backoffMaxMs,
+    );
+    return new Date(now + delay);
   }
 }
