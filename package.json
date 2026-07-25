@@ -62,6 +62,7 @@
     "@libsql/client": "^0.15.15",
     "@xenova/transformers": "^2.6.5",
     "chokidar": "^4.0.3",
+    "effect": "^3.22.0",
     "electron-log": "^5.4.4",
     "font-list": "^2.1.0",
     "glob": "^13.0.6",
@@ -171,7 +172,6 @@
     "vite": "^8.1.4",
     "vitest": "^4.1.10",
     "wait-on": "^9.0.10",
-    "zod": "^3.25.76",
     "zustand": "^4.4.7"
   },
   "engines": {
