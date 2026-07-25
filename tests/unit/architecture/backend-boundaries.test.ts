@@ -106,7 +106,11 @@ function violationFor(
 ): string | null {
   switch (sourceLayer) {
     case 'domain':
-      return targetLayer === 'domain' ? null : 'domain must only import domain files';
+      if (targetLayer === 'domain') return null;
+      // ADR-0001: the bare `effect` package is domain vocabulary; the module-level
+      // allowlist is enforced by effect-domain-boundaries.test.ts.
+      if (targetLayer === 'external' && importPath === 'effect') return null;
+      return 'domain must only import domain files (plus `effect` per ADR-0001)';
     case 'application':
       return targetLayer === 'domain' || targetLayer === 'application'
         ? null
