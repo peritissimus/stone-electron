@@ -2,12 +2,15 @@
  * Domain Errors Index
  */
 
-export {
+export type {
   // Base classes
   DomainError,
   ValidationError,
   OperationError,
   NotFoundError,
+} from './DomainErrors';
+
+export {
   // Validation errors
   NoteValidationError,
   NotebookValidationError,
