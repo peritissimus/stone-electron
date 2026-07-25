@@ -1,12 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { IndexUseCasesLive } from '../../../../src/main/application/usecases/indexing';
 import {
-  createIndexUseCases,
-  GetIndexStatsUseCase,
-  RebuildAllNotesIndexUseCase,
-} from '../../../../src/main/application/usecases/indexing';
+  EmbedderPort,
+  FileStoragePort,
+  IndexRepositoryPort,
+  IndexUseCasesPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
-import type { IIndexNoteUseCase } from '../../../../src/main/domain/ports/in/IIndexUseCases';
+import type {
+  IIndexUseCases,
+  IndexNoteRequest,
+  IndexStatsRequest,
+  RebuildAllNotesIndexRequest,
+} from '../../../../src/main/domain/ports/in/IIndexUseCases';
 import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IIndexRepository } from '../../../../src/main/domain/ports/out/IIndexRepository';
@@ -105,14 +117,39 @@ describe('IndexingUseCases', () => {
   });
 
   function useCases() {
-    return createIndexUseCases({
-      noteRepository,
-      workspaceRepository,
-      fileStorage,
-      embedder,
-      indexRepository,
-      pathService: createMockPathService(),
-    });
+    const dependencies = Layer.mergeAll(
+      adapterLayer(NoteRepositoryPort, noteRepository),
+      adapterLayer(WorkspaceRepositoryPort, workspaceRepository),
+      adapterLayer(FileStoragePort, fileStorage),
+      adapterLayer(EmbedderPort, embedder),
+      adapterLayer(IndexRepositoryPort, indexRepository),
+      adapterLayer(PathServicePort, createMockPathService()),
+    );
+    const runtime = ManagedRuntime.make(
+      IndexUseCasesLive.pipe(Layer.provide(dependencies)),
+    );
+    const run = <A, E>(
+      use: (service: IIndexUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime.runPromise(
+        IndexUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
+      );
+    return {
+      indexNote: {
+        execute: (request: IndexNoteRequest) =>
+          run((service) => service.indexNote.execute(request)),
+      },
+      rebuildAll: {
+        execute: (
+          request?: RebuildAllNotesIndexRequest,
+        ) => run((service) => service.rebuildAll.execute(request)),
+      },
+      getStats: {
+        execute: (
+          request?: IndexStatsRequest,
+        ) => run((service) => service.getStats.execute(request)),
+      },
+    };
   }
 
   it('reports missing when the note cannot be indexed', async () => {
@@ -224,34 +261,43 @@ describe('IndexingUseCases', () => {
   });
 
   it('rebuilds all active-workspace notes and counts each result status', async () => {
-    const indexNote: IIndexNoteUseCase = {
-      execute: vi
-        .fn()
-        .mockResolvedValueOnce({ noteId: 'a', status: 'indexed', chunkCount: 2 })
-        .mockResolvedValueOnce({ noteId: 'b', status: 'skipped', chunkCount: 1 })
-        .mockResolvedValueOnce({ noteId: 'c', status: 'failed', chunkCount: 0 })
-        .mockResolvedValueOnce({ noteId: 'd', status: 'missing', chunkCount: 0 }),
-    };
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
-    vi.mocked(noteRepository.findAll).mockResolvedValue([
-      note({ id: 'a' }),
-      note({ id: 'b' }),
-      note({ id: 'c' }),
-      note({ id: 'd' }),
-    ]);
-    const useCase = new RebuildAllNotesIndexUseCase(
-      noteRepository,
-      workspaceRepository,
-      indexNote,
+    const notes = ['a', 'b', 'c', 'd'].map((id) =>
+      note({ id, filePath: `${id}.md` }),
+    );
+    vi.mocked(noteRepository.findAll).mockResolvedValue(notes);
+    vi.mocked(noteRepository.findById).mockImplementation(async (id) =>
+      id === 'd' ? null : notes.find((candidate) => candidate.id === id) ?? null,
+    );
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    const indexedMarkdown = '# Already indexed';
+    vi.mocked(fileStorage.read).mockImplementation(async (path) => {
+      if (path.endsWith('a.md')) return '';
+      if (path.endsWith('b.md')) return indexedMarkdown;
+      return null;
+    });
+    vi.mocked(indexRepository.getStatus).mockImplementation(async (noteId) =>
+      noteId === 'b'
+        ? {
+            noteId,
+            workspaceId: 'ws-1',
+            contentHash: hashText(indexedMarkdown),
+            chunkCount: 1,
+            indexedAt: new Date(),
+            model: 'model',
+            dimensions: 3,
+            status: 'indexed',
+            error: null,
+          }
+        : null,
     );
 
-    const result = await useCase.execute({ force: true });
+    const result = await useCases().rebuildAll.execute();
 
     expect(noteRepository.findAll).toHaveBeenCalledWith({
       workspaceId: 'ws-1',
       isDeleted: false,
     });
-    expect(indexNote.execute).toHaveBeenCalledWith({ noteId: 'a', force: true });
     expect(result).toEqual({
       workspaceId: 'ws-1',
       total: 4,
@@ -264,11 +310,8 @@ describe('IndexingUseCases', () => {
 
   it('returns empty rebuild stats when no workspace is active', async () => {
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(null);
-    const useCase = new RebuildAllNotesIndexUseCase(noteRepository, workspaceRepository, {
-      execute: vi.fn(),
-    });
 
-    await expect(useCase.execute()).resolves.toEqual({
+    await expect(useCases().rebuildAll.execute()).resolves.toEqual({
       workspaceId: '',
       total: 0,
       indexed: 0,
@@ -286,9 +329,9 @@ describe('IndexingUseCases', () => {
       failedNotes: 1,
       chunkCount: 42,
     });
-    const useCase = new GetIndexStatsUseCase(indexRepository, workspaceRepository);
+    const indexUseCases = useCases();
 
-    await expect(useCase.execute({ workspaceId: 'ws-explicit' })).resolves.toEqual({
+    await expect(indexUseCases.getStats.execute({ workspaceId: 'ws-explicit' })).resolves.toEqual({
       workspaceId: 'ws-explicit',
       totalNotes: 10,
       indexedNotes: 8,
@@ -298,7 +341,7 @@ describe('IndexingUseCases', () => {
     });
 
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace({ id: 'ws-active' }));
-    await useCase.execute();
+    await indexUseCases.getStats.execute();
     expect(indexRepository.getWorkspaceStats).toHaveBeenLastCalledWith('ws-active');
   });
 });

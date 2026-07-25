@@ -4,8 +4,22 @@
  * Tests use case orchestration with mocked OUT ports.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTopicUseCases } from '../../../../src/main/application/usecases/topic';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { TopicUseCasesLive } from '../../../../src/main/application/usecases/topic';
+import {
+  AppConfigRepositoryPort,
+  EmbedderPort,
+  EventPublisherPort,
+  IdGeneratorPort,
+  IndexRepositoryPort,
+  IndexUseCasesPort,
+  NoteRepositoryPort,
+  TopicRepositoryPort,
+  TopicUseCasesPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ITopicRepository } from '../../../../src/main/domain/ports/out/ITopicRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -166,8 +180,9 @@ describe('TopicUseCases', () => {
   let markdownProcessor: IMarkdownProcessor;
   let eventPublisher: IEventPublisher;
   let indexRepository: ReturnType<typeof createMockIndexRepository>;
-  let indexNote: { execute: ReturnType<typeof vi.fn> };
-  let useCases: ITopicUseCases;
+  let indexNote: { execute: any };
+  let useCases: any;
+  let runtime: ManagedRuntime.ManagedRuntime<any, never>;
 
   function createMockIndexRepository() {
     return {
@@ -206,20 +221,74 @@ describe('TopicUseCases', () => {
         chunkCount: 1,
       }),
     };
-    useCases = createTopicUseCases({
-      noteRepository: noteRepo,
-      topicRepository: topicRepo,
-      workspaceRepository: workspaceRepo,
-      appConfigRepository: appConfigRepo,
-      fileStorage,
-      embedder,
-      markdownProcessor,
-      idGenerator: createMockIdGenerator(),
-      pathService: createMockPathService(),
-      indexRepository: indexRepository as never,
-      indexNote: indexNote as never,
-      eventPublisher,
-    });
+    const indexUseCases = {
+      indexNote: {
+        execute: (request: unknown) =>
+          Effect.tryPromise({
+            try: () => indexNote.execute(request),
+            catch: (error) =>
+              error instanceof Error ? error : new Error(String(error)),
+          }),
+      },
+      rebuildAll: { execute: () => Effect.die('unused') },
+      getStats: { execute: () => Effect.die('unused') },
+    };
+    const layer = TopicUseCasesLive.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          adapterLayer(NoteRepositoryPort, noteRepo),
+          adapterLayer(TopicRepositoryPort, topicRepo),
+          adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+          adapterLayer(AppConfigRepositoryPort, appConfigRepo),
+          adapterLayer(EmbedderPort, embedder),
+          adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+          adapterLayer(IndexRepositoryPort, indexRepository as never),
+          adapterLayer(EventPublisherPort, eventPublisher),
+          Layer.succeed(IndexUseCasesPort, indexUseCases as never),
+        ),
+      ),
+    );
+    runtime = ManagedRuntime.make(layer);
+    const execute = (key: keyof ITopicUseCases) => (...args: unknown[]) =>
+      runtime.runPromise(
+        TopicUseCasesPort.pipe(
+          Effect.flatMap((service) =>
+            (
+              service[key].execute as (
+                ...values: unknown[]
+              ) => Effect.Effect<unknown, Error>
+            )(...args),
+          ),
+        ),
+      );
+    useCases = Object.fromEntries(
+      (
+        [
+          'initialize',
+          'getAllTopics',
+          'getTopicById',
+          'createTopic',
+          'updateTopic',
+          'deleteTopic',
+          'classifyNote',
+          'classifyAllNotes',
+          'assignTopicToNote',
+          'removeTopicFromNote',
+          'getSimilarNotes',
+          'semanticSearch',
+          'recomputeCentroids',
+          'getEmbeddingStatus',
+          'getNotesForTopic',
+          'getTopicsForNote',
+          'suggestTopics',
+          'adoptSuggestedTopic',
+        ] as const
+      ).map((key) => [key, { execute: execute(key) }]),
+    );
+  });
+
+  afterEach(async () => {
+    await runtime.dispose();
   });
 
   describe('initialize', () => {

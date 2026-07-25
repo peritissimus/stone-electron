@@ -5,15 +5,30 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGraphUseCases } from '../../../../src/main/application/usecases/graph';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { GraphUseCasesLive } from '../../../../src/main/application/usecases/graph';
+import {
+  GraphUseCasesPort,
+  NoteLinkRepositoryPort,
+  NoteRepositoryPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { INoteLinkRepository } from '../../../../src/main/domain/ports/out/INoteLinkRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IGraphUseCases } from '../../../../src/main/domain/ports/in/IGraphUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { NoteLinkProps } from '../../../../src/main/domain/entities/NoteLink';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -45,15 +60,6 @@ function createMockWorkspaceRepository(): IWorkspaceRepository {
     save: vi.fn(),
     delete: vi.fn(),
   } as unknown as IWorkspaceRepository;
-}
-
-function createMockFileStorage(): IFileStorage {
-  return {
-    read: vi.fn(),
-    write: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
-  } as unknown as IFileStorage;
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -99,20 +105,56 @@ describe('GraphUseCases', () => {
   let noteRepo: INoteRepository;
   let noteLinkRepo: INoteLinkRepository;
   let workspaceRepo: IWorkspaceRepository;
-  let fileStorage: IFileStorage;
-  let useCases: IGraphUseCases;
+  let useCases: PromiseFacade<IGraphUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     noteLinkRepo = createMockNoteLinkRepository();
     workspaceRepo = createMockWorkspaceRepository();
-    fileStorage = createMockFileStorage();
-    useCases = createGraphUseCases({
-      noteRepository: noteRepo,
-      noteLinkRepository: noteLinkRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-    });
+    const runtime = ManagedRuntime.make(
+      GraphUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(NoteLinkRepositoryPort, noteLinkRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IGraphUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          GraphUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      getBacklinks: {
+        execute: (noteId) =>
+          run((service) => service.getBacklinks.execute(noteId)),
+      },
+      getForwardLinks: {
+        execute: (noteId) =>
+          run((service) => service.getForwardLinks.execute(noteId)),
+      },
+      getGraphData: {
+        execute: (options) =>
+          run((service) => service.getGraphData.execute(options)),
+      },
+      updateNoteLinks: {
+        execute: (noteId, content) =>
+          run((service) =>
+            service.updateNoteLinks.execute(noteId, content),
+          ),
+      },
+    };
   });
 
   describe('getBacklinks', () => {

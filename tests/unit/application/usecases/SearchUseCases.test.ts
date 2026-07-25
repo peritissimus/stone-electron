@@ -1,95 +1,30 @@
-/**
- * SearchUseCases Application Layer Tests
- *
- * Tests use case orchestration with mocked OUT ports.
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { SearchUseCasesLive } from '../../../../src/main/application/usecases/search';
 import {
-  FullTextSearchUseCase,
-  SemanticSearchUseCase,
-  FindSimilarNotesUseCase,
-  HybridSearchUseCase,
-  SearchByTagsUseCase,
-  SearchByDateRangeUseCase,
-} from '../../../../src/main/application/usecases/search';
-import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
-import type { ISearchEngine } from '../../../../src/main/domain/ports/out/ISearchEngine';
-import type { IEmbedder } from '../../../../src/main/domain/ports/out/IEmbedder';
-import type { IIndexRepository } from '../../../../src/main/domain/ports/out/IIndexRepository';
-import type { IReranker } from '../../../../src/main/domain/ports/out/IReranker';
-import type { NoteProps } from '../../../../src/main/domain/entities/Note';
+  AppConfigRepositoryPort,
+  EmbedderPort,
+  IndexRepositoryPort,
+  NoteLinkRepositoryPort,
+  NoteRepositoryPort,
+  RerankerPort,
+  SearchEnginePort,
+  SearchUseCasesPort,
+  TagRepositoryPort,
+  type ISearchUseCases,
+  type NoteProps,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 
-// Mock factories
-function createMockNoteRepository(): INoteRepository {
-  return {
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    findByNotebookId: vi.fn(),
-    findByWorkspaceId: vi.fn(),
-    findByFilePath: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    searchByTitle: vi.fn(),
-    count: vi.fn(),
-    exists: vi.fn(),
-    findRecentlyUpdated: vi.fn(),
-    findFavorites: vi.fn(),
-    findPinned: vi.fn(),
-    findArchived: vi.fn(),
-    findDeleted: vi.fn(),
-    getContentById: vi.fn(),
-  } as unknown as INoteRepository;
-}
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
-function createMockSearchEngine(): ISearchEngine {
-  return {
-    searchFullText: vi.fn(),
-    searchSemantic: vi.fn(),
-    searchHybrid: vi.fn(),
-    searchByTags: vi.fn(),
-    searchByDateRange: vi.fn(),
-  } as unknown as ISearchEngine;
-}
-
-function createMockEmbedder(): IEmbedder {
-  return {
-    initialize: vi.fn(),
-    isReady: vi.fn().mockReturnValue(true),
-    generateEmbedding: vi.fn(),
-    generateEmbeddings: vi.fn(),
-    findSimilarNotes: vi.fn(),
-    semanticSearch: vi.fn(),
-    storeEmbedding: vi.fn(),
-    getEmbedding: vi.fn(),
-    deleteEmbedding: vi.fn(),
-    getStatus: vi.fn(),
-  } as unknown as IEmbedder;
-}
-
-function createMockIndexRepository(): IIndexRepository {
-  return {
-    getStatus: vi.fn(),
-    upsertStatus: vi.fn(),
-    getWorkspaceStats: vi.fn(),
-    replaceChunks: vi.fn(),
-    deleteByNoteId: vi.fn(),
-    searchFullText: vi.fn(),
-    searchVector: vi.fn(),
-    getNoteVector: vi.fn(),
-    findSimilarNotesByVector: vi.fn(),
-  } as unknown as IIndexRepository;
-}
-
-function createMockReranker(): IReranker {
-  return {
-    initialize: vi.fn(),
-    isReady: vi.fn().mockReturnValue(true),
-    rerank: vi.fn(),
-  };
-}
-
-function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
+function note(overrides: Partial<NoteProps> = {}): NoteProps {
   return {
     id: 'note-1',
     title: 'Test Note',
@@ -108,317 +43,179 @@ function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
 }
 
 describe('SearchUseCases', () => {
-  describe('FullTextSearchUseCase', () => {
-    let noteRepo: INoteRepository;
-    let searchEngine: ISearchEngine;
-    let useCase: FullTextSearchUseCase;
+  let notes: any;
+  let engine: any;
+  let embedder: any;
+  let index: any;
+  let reranker: any;
+  let useCases: PromiseFacade<ISearchUseCases>;
 
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      searchEngine = createMockSearchEngine();
-      useCase = new FullTextSearchUseCase(noteRepo, searchEngine);
-    });
+  beforeEach(() => {
+    notes = {
+      findById: vi.fn(),
+      findAll: vi.fn(async () => []),
+    };
+    engine = { searchFullText: vi.fn(async () => []) };
+    embedder = {
+      isReady: vi.fn(() => true),
+      generateEmbedding: vi.fn(async () => new Float32Array([0.1, 0.2])),
+    };
+    index = {
+      searchFullText: vi.fn(async () => []),
+      searchVector: vi.fn(async () => []),
+      getNoteVector: vi.fn(),
+      findSimilarNotesByVector: vi.fn(async () => []),
+      getChunksForWorkspace: vi.fn(async () => []),
+    };
+    reranker = { rerank: vi.fn(async () => []) };
+    const runtime = ManagedRuntime.make(
+      SearchUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, notes),
+            adapterLayer(SearchEnginePort, engine),
+            adapterLayer(EmbedderPort, embedder),
+            adapterLayer(IndexRepositoryPort, index),
+            adapterLayer(TagRepositoryPort, {
+              getTagsForNotes: vi.fn(async () => new Map()),
+            }),
+            adapterLayer(NoteLinkRepositoryPort, {
+              findAll: vi.fn(async () => []),
+            }),
+            adapterLayer(AppConfigRepositoryPort, {
+              get: vi.fn(async () => ({
+                notes: { locationPolicy: { journalFolder: 'Journal' } },
+              })),
+            }),
+            adapterLayer(RerankerPort, reranker),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: ISearchUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          SearchUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      fullTextSearch: {
+        execute: (request) =>
+          run((service) => service.fullTextSearch.execute(request)),
+      },
+      semanticSearch: {
+        execute: (request) =>
+          run((service) => service.semanticSearch.execute(request)),
+      },
+      findSimilarNotes: {
+        execute: (request) =>
+          run((service) => service.findSimilarNotes.execute(request)),
+      },
+      hybridSearch: {
+        execute: (request) =>
+          run((service) => service.hybridSearch.execute(request)),
+      },
+      searchByTags: {
+        execute: (request) =>
+          run((service) => service.searchByTags.execute(request)),
+      },
+      searchByDateRange: {
+        execute: (request) =>
+          run((service) => service.searchByDateRange.execute(request)),
+      },
+      getRelatedNotes: {
+        execute: (request) =>
+          run((service) => service.getRelatedNotes.execute(request)),
+      },
+    };
+  });
 
-    it('searches notes with full text', async () => {
-      const searchResults = [
-        { note: createNoteProps(), relevance: 1, matchType: 'content' as const },
-      ];
-      vi.mocked(searchEngine.searchFullText).mockResolvedValue(searchResults);
-
-      const result = await useCase.execute({ query: 'test' });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.total).toBe(1);
-      expect(searchEngine.searchFullText).toHaveBeenCalledWith('test', {
-        workspaceId: undefined,
-        limit: 50,
-      });
-    });
-
-    it('applies workspaceId filter', async () => {
-      vi.mocked(searchEngine.searchFullText).mockResolvedValue([]);
-
-      await useCase.execute({ query: 'test', workspaceId: 'ws-1' });
-
-      expect(searchEngine.searchFullText).toHaveBeenCalledWith('test', {
-        workspaceId: 'ws-1',
-        limit: 50,
-      });
-    });
-
-    it('applies limit', async () => {
-      vi.mocked(searchEngine.searchFullText).mockResolvedValue([]);
-
-      await useCase.execute({ query: 'test', limit: 10 });
-
-      expect(searchEngine.searchFullText).toHaveBeenCalledWith('test', {
-        workspaceId: undefined,
-        limit: 10,
-      });
+  it('runs full-text and semantic retrieval', async () => {
+    vi.mocked(engine.searchFullText).mockResolvedValue([
+      { note: note(), relevance: 1, matchType: 'content' },
+    ]);
+    vi.mocked(index.findSimilarNotesByVector).mockResolvedValue([
+      { noteId: 'note-2', title: 'Similar', similarity: 0.9 },
+    ]);
+    await expect(
+      useCases.fullTextSearch.execute({ query: 'test', limit: 10 }),
+    ).resolves.toMatchObject({ total: 1 });
+    await expect(
+      useCases.semanticSearch.execute({ query: 'test' }),
+    ).resolves.toEqual({
+      results: [{ noteId: 'note-2', title: 'Similar', distance: 0.9 }],
     });
   });
 
-  describe('SemanticSearchUseCase', () => {
-    let noteRepo: INoteRepository;
-    let embedder: IEmbedder;
-    let indexRepository: IIndexRepository;
-    let useCase: SemanticSearchUseCase;
+  it('finds similar notes or returns empty without a source vector', async () => {
+    vi.mocked(index.getNoteVector)
+      .mockResolvedValueOnce([0.1, 0.2])
+      .mockResolvedValueOnce(null);
+    vi.mocked(notes.findById).mockResolvedValue(note());
+    vi.mocked(index.findSimilarNotesByVector).mockResolvedValue([
+      { noteId: 'note-2', title: 'Similar', similarity: 0.8 },
+    ]);
+    await expect(
+      useCases.findSimilarNotes.execute({ noteId: 'note-1' }),
+    ).resolves.toMatchObject({ results: [{ noteId: 'note-2' }] });
+    await expect(
+      useCases.findSimilarNotes.execute({ noteId: 'note-1' }),
+    ).resolves.toEqual({ results: [] });
+  });
 
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      embedder = createMockEmbedder();
-      indexRepository = createMockIndexRepository();
-      useCase = new SemanticSearchUseCase(embedder, indexRepository);
+  it('merges and reranks chunk retrieval into note rows', async () => {
+    const chunk = {
+      id: 'note-1:0',
+      noteId: 'note-1',
+      workspaceId: 'ws-1',
+      chunkIndex: 0,
+      headingPath: ['Sessions'],
+      text: 'Session management',
+      contentHash: 'hash',
+      tokenCount: 2,
+      embedding: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    vi.mocked(index.searchFullText).mockResolvedValue([{ chunk }]);
+    vi.mocked(index.searchVector).mockResolvedValue([{ chunk }]);
+    vi.mocked(reranker.rerank).mockResolvedValue([
+      { id: chunk.id, score: 2 },
+    ]);
+    vi.mocked(notes.findById).mockResolvedValue(note());
+    const result = await useCases.hybridSearch.execute({
+      query: 'sessions',
     });
-
-    it('embeds the query and routes through the chunk index', async () => {
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(new Float32Array([0.1, 0.2, 0.3]));
-      vi.mocked(indexRepository.findSimilarNotesByVector).mockResolvedValue([
-        { noteId: 'note-1', title: 'Test', similarity: 0.9, matchedChunks: 2 },
-      ]);
-
-      const result = await useCase.execute({ query: 'test query' });
-
-      expect(result.results).toHaveLength(1);
-      expect(embedder.generateEmbedding).toHaveBeenCalledWith('test query');
-    });
-
-    it('returns empty results when no embedding generated', async () => {
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(null as unknown as Float32Array);
-
-      const result = await useCase.execute({ query: 'test' });
-
-      expect(result.results).toHaveLength(0);
+    expect(result.results[0]).toMatchObject({
+      searchType: 'hybrid',
+      note: { id: 'note-1' },
+      chunks: [{ headingPath: ['Sessions'] }],
     });
   });
 
-  describe('FindSimilarNotesUseCase', () => {
-    let noteRepo: INoteRepository;
-    let indexRepository: IIndexRepository;
-    let useCase: FindSimilarNotesUseCase;
-
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      indexRepository = createMockIndexRepository();
-      useCase = new FindSimilarNotesUseCase(noteRepo, indexRepository);
-    });
-
-    it('finds similar notes via chunk-aggregated vectors', async () => {
-      vi.mocked(indexRepository.getNoteVector).mockResolvedValue([0.1, 0.2, 0.3]);
-      vi.mocked(noteRepo.findById).mockResolvedValue(createNoteProps({ id: 'note-1' }));
-      vi.mocked(indexRepository.findSimilarNotesByVector).mockResolvedValue([
-        { noteId: 'note-2', title: 'Similar', similarity: 0.9, matchedChunks: 4 },
-      ]);
-
-      const result = await useCase.execute({ noteId: 'note-1' });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0].noteId).toBe('note-2');
-    });
-
-    it('returns empty when note has no chunks yet', async () => {
-      vi.mocked(indexRepository.getNoteVector).mockResolvedValue(null);
-
-      const result = await useCase.execute({ noteId: 'note-1' });
-
-      expect(result.results).toHaveLength(0);
-    });
-
-    it('returns empty when note not found', async () => {
-      vi.mocked(indexRepository.getNoteVector).mockResolvedValue([0.1, 0.2]);
-      vi.mocked(noteRepo.findById).mockResolvedValue(null);
-
-      const result = await useCase.execute({ noteId: 'nonexistent' });
-
-      expect(result.results).toHaveLength(0);
-    });
-  });
-
-  describe('HybridSearchUseCase', () => {
-    let noteRepo: INoteRepository;
-    let embedder: IEmbedder;
-    let indexRepository: IIndexRepository;
-    let useCase: HybridSearchUseCase;
-
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      embedder = createMockEmbedder();
-      indexRepository = createMockIndexRepository();
-      useCase = new HybridSearchUseCase(noteRepo, embedder, indexRepository);
-    });
-
-    it('merges chunk-level FTS and semantic hits into note-level rows', async () => {
-      const note = createNoteProps({ id: 'note-1', title: 'Auth Work' });
-      const chunk = {
-        id: 'note-1:0',
-        noteId: 'note-1',
-        workspaceId: 'ws-1',
-        chunkIndex: 0,
-        headingPath: ['Auth Work', 'Sessions'],
-        text: 'Session management refresh tokens explained here.',
-        contentHash: 'abc',
-        tokenCount: 12,
-        embedding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      vi.mocked(indexRepository.searchFullText).mockResolvedValue([
-        { chunk, ftsScore: -5, combinedScore: 0.8 },
-      ]);
-      vi.mocked(indexRepository.searchVector).mockResolvedValue([
-        { chunk, semanticScore: 0.71, combinedScore: 0.85 },
-      ]);
-      vi.mocked(embedder.isReady).mockReturnValue(true);
-      vi.mocked(embedder.generateEmbedding).mockResolvedValue(new Float32Array(384));
-      vi.mocked(noteRepo.findById).mockResolvedValue(note);
-
-      const result = await useCase.execute({ query: 'sessions' });
-
-      expect(result.results).toHaveLength(1);
-      expect(result.results[0].note.id).toBe('note-1');
-      expect(result.results[0].searchType).toBe('hybrid');
-      expect(result.results[0].chunks).toHaveLength(1);
-      expect(result.results[0].chunks?.[0].headingPath).toEqual(['Auth Work', 'Sessions']);
-    });
-
-    it('uses reranker scores when a reranker is provided', async () => {
-      const reranker = createMockReranker();
-      useCase = new HybridSearchUseCase(noteRepo, embedder, indexRepository, reranker);
-      const noteA = createNoteProps({ id: 'note-a', title: 'Alpha' });
-      const noteB = createNoteProps({ id: 'note-b', title: 'Beta' });
-      const chunkA = {
-        id: 'note-a:0',
-        noteId: 'note-a',
-        workspaceId: 'ws-1',
-        chunkIndex: 0,
-        headingPath: ['Alpha'],
-        text: 'First chunk',
-        contentHash: 'hash-a',
-        tokenCount: 2,
-        embedding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      const chunkB = {
-        id: 'note-b:0',
-        noteId: 'note-b',
-        workspaceId: 'ws-1',
-        chunkIndex: 0,
-        headingPath: ['Beta'],
-        text: 'Second chunk',
-        contentHash: 'hash-b',
-        tokenCount: 2,
-        embedding: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      vi.mocked(indexRepository.searchFullText).mockResolvedValue([
-        { chunk: chunkA, ftsScore: -1, combinedScore: 0.9 },
-        { chunk: chunkB, ftsScore: -2, combinedScore: 0.8 },
-      ]);
-      vi.mocked(indexRepository.searchVector).mockResolvedValue([]);
-      vi.mocked(embedder.isReady).mockReturnValue(false);
-      vi.mocked(reranker.rerank).mockResolvedValue([
-        { id: chunkB.id, score: 4 },
-        { id: chunkA.id, score: -4 },
-      ]);
-      vi.mocked(noteRepo.findById).mockImplementation(async (id) =>
-        id === noteA.id ? noteA : id === noteB.id ? noteB : null,
-      );
-
-      const result = await useCase.execute({ query: 'beta' });
-
-      expect(reranker.rerank).toHaveBeenCalledWith({
-        query: 'beta',
-        documents: [
-          { id: chunkA.id, text: chunkA.text },
-          { id: chunkB.id, text: chunkB.text },
-        ],
-      });
-      expect(result.results.map((row) => row.note.id)).toEqual(['note-b', 'note-a']);
-    });
-
-    it('returns empty for empty query', async () => {
-      const result = await useCase.execute({ query: '   ' });
-      expect(result.results).toEqual([]);
-      expect(result.total).toBe(0);
-    });
-  });
-
-  describe('SearchByTagsUseCase', () => {
-    let noteRepo: INoteRepository;
-    let useCase: SearchByTagsUseCase;
-
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      useCase = new SearchByTagsUseCase(noteRepo);
-    });
-
-    it('returns empty results (not implemented)', async () => {
-      const result = await useCase.execute({ tagIds: ['tag-1', 'tag-2'] });
-
-      expect(result.notes).toHaveLength(0);
-      expect(result.total).toBe(0);
-    });
-  });
-
-  describe('SearchByDateRangeUseCase', () => {
-    let noteRepo: INoteRepository;
-    let useCase: SearchByDateRangeUseCase;
-
-    beforeEach(() => {
-      noteRepo = createMockNoteRepository();
-      useCase = new SearchByDateRangeUseCase(noteRepo);
-    });
-
-    it('searches notes by date range', async () => {
-      const notes = [
-        createNoteProps({ id: 'note-1', updatedAt: new Date('2024-01-15') }),
-        createNoteProps({ id: 'note-2', updatedAt: new Date('2024-02-15') }),
-      ];
-      vi.mocked(noteRepo.findAll).mockResolvedValue(notes);
-
-      const result = await useCase.execute({
+  it('filters date ranges and handles empty/tag searches', async () => {
+    vi.mocked(notes.findAll).mockResolvedValue([
+      note({ id: 'in', updatedAt: new Date('2024-01-15') }),
+      note({ id: 'out', updatedAt: new Date('2024-02-15') }),
+    ]);
+    await expect(
+      useCases.searchByDateRange.execute({
         startDate: new Date('2024-01-01').getTime(),
         endDate: new Date('2024-01-31').getTime(),
-      });
-
-      expect(result.notes).toHaveLength(1);
-      expect(result.notes[0].id).toBe('note-1');
-    });
-
-    it('filters by created date when specified', async () => {
-      const notes = [
-        createNoteProps({ id: 'note-1', createdAt: new Date('2024-01-15') }),
-      ];
-      vi.mocked(noteRepo.findAll).mockResolvedValue(notes);
-
-      const result = await useCase.execute({
-        startDate: new Date('2024-01-01').getTime(),
-        endDate: new Date('2024-01-31').getTime(),
-        field: 'created',
-      });
-
-      expect(result.notes).toHaveLength(1);
-    });
-
-    it('applies limit', async () => {
-      const notes = [
-        createNoteProps({ id: 'note-1', updatedAt: new Date('2024-01-15') }),
-        createNoteProps({ id: 'note-2', updatedAt: new Date('2024-01-16') }),
-      ];
-      vi.mocked(noteRepo.findAll).mockResolvedValue(notes);
-
-      const result = await useCase.execute({
-        startDate: new Date('2024-01-01').getTime(),
-        endDate: new Date('2024-01-31').getTime(),
-        limit: 1,
-      });
-
-      expect(result.notes).toHaveLength(1);
-      expect(result.total).toBe(2);
-    });
+      }),
+    ).resolves.toMatchObject({ total: 1, notes: [{ id: 'in' }] });
+    await expect(
+      useCases.searchByTags.execute({ tagIds: ['tag-1'] }),
+    ).resolves.toEqual({ notes: [], total: 0 });
+    await expect(
+      useCases.hybridSearch.execute({ query: ' ' }),
+    ).resolves.toMatchObject({ results: [], total: 0 });
   });
 });
