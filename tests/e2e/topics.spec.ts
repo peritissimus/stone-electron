@@ -36,17 +36,15 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   );
   expect(indexResponse).toMatchObject({ success: true });
 
-  // The page header always shows "Topics"; the spinner is the only child until
-  // the initialize → loadTopics → getEmbeddingStatus chain resolves.
+  // The spinner is the page's only child until the initialize →
+  // getEmbeddingStatus chain resolves.
   const spinner = window.locator('.animate-spin').first();
   await expect(spinner).toBeHidden({ timeout: 60_000 });
 
-  // Once initialization completes, the Knowledge page exposes its semantic
-  // search surface and reports the index state in the page header.
-  await expect(window.getByText('Knowledge', { exact: true }).last()).toBeVisible();
-  await expect(window.getByText(/^(Indexed|\d+% indexed)$/)).toBeVisible({ timeout: 30_000 });
+  // Once initialization completes, the Knowledge page is its search field —
+  // topics themselves are maintained in the background with no UI.
   await expect(
-    window.getByRole('textbox', { name: 'Find notes by meaning, not just keywords…' }),
+    window.getByRole('textbox', { name: 'Search notes by meaning' }),
   ).toBeEnabled();
 
   // Dump captured logs so we can see the embedder boot path even on success.
