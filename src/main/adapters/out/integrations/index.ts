@@ -31,5 +31,3 @@ export { LinearSource, type LinearSourceDeps } from './LinearSource';
 export { AppleCalendarSource } from './AppleCalendarSource';
 export { AppleMailSource } from './AppleMailSource';
 export { ExternalSourceRegistry } from './ExternalSourceRegistry';
-export { LoggerJobTracer } from './LoggerJobTracer';
-export { OtelJobTracer } from './OtelJobTracer';

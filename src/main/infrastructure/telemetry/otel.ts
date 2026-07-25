@@ -8,7 +8,7 @@
  * Coverage = auto-instrumentation (monkey-patching) of the HTTP/fetch layer:
  * the whisper-server inference calls, AI SDK requests, and model downloads all
  * go through Node's built-in undici/http and get spans for free. App-specific
- * boundaries (jobs, IPC) are covered by manual spans (OtelJobTracer, etc.).
+ * boundaries (jobs, IPC) are covered by Effect and IPC instrumentation spans.
  *
  * Requires a local OTLP collector / Tempo at OTEL_EXPORTER_OTLP_ENDPOINT
  * (default http://localhost:4318). If nothing is listening, the exporter just
