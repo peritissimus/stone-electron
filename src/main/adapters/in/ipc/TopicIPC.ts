@@ -1,25 +1,15 @@
 /**
- * Topic IPC Adapter - Handles ML topic classification IPC channels
+ * Topic IPC Adapter — the renderer's window onto the semantic index.
+ *
+ * Topics themselves are maintained in the background (see TopicOrganizer):
+ * nothing out here creates, edits, assigns, or reclassifies them. What the
+ * renderer can do is warm the embedder and search by meaning.
  */
 
 import { ipcMain } from 'electron';
 import type { Effect } from 'effect';
 import { TOPIC_CHANNELS } from '@shared/constants/ipcChannels';
-import {
-  AdoptSuggestedTopicRequestSchema,
-  ClassifyAllRequestSchema,
-  ClassifyNoteRequestSchema,
-  CreateTopicRequestSchema,
-  NoteIdRequestSchema,
-  NoteIdWithLimitRequestSchema,
-  NotesByTopicRequestSchema,
-  ReclassifyAllRequestSchema,
-  SuggestTopicsRequestSchema,
-  TopicIdRequestSchema,
-  TopicNotePairRequestSchema,
-  TopicSemanticSearchRequestSchema,
-  UpdateTopicRequestSchema,
-} from '@shared/schemas';
+import { TopicSemanticSearchRequestSchema } from '@shared/schemas';
 import type { ITopicUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
@@ -43,134 +33,6 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     });
   });
 
-  ipcMain.handle(TOPIC_CHANNELS.GET_ALL, async () => {
-    return handleRequest(
-      async () => {
-        const topics = await run((service) => service.getAllTopics.execute());
-        return { topics };
-      },
-      { channel: TOPIC_CHANNELS.GET_ALL },
-    );
-  });
-
-  ipcMain.handle(TOPIC_CHANNELS.GET_BY_ID, async (_event, rawRequest) => {
-    const { id } = TopicIdRequestSchema.parse(rawRequest);
-    return handleRequest(async () => run((service) => service.getTopicById.execute(id)), {
-      channel: TOPIC_CHANNELS.GET_BY_ID,
-      topicId: id,
-    });
-  });
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.CREATE,
-    async (_event, rawRequest) => {
-      const data = CreateTopicRequestSchema.parse(rawRequest);
-      return handleRequest(async () => run((service) => service.createTopic.execute(data)), {
-        channel: TOPIC_CHANNELS.CREATE,
-        name: data.name,
-      });
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.UPDATE,
-    async (_event, rawRequest) => {
-      const { id, ...data } = UpdateTopicRequestSchema.parse(rawRequest);
-      return handleRequest(async () => run((service) => service.updateTopic.execute(id, data)), {
-        channel: TOPIC_CHANNELS.UPDATE,
-        topicId: id,
-      });
-    },
-  );
-
-  ipcMain.handle(TOPIC_CHANNELS.DELETE, async (_event, rawRequest) => {
-    const { id } = TopicIdRequestSchema.parse(rawRequest);
-    return handleRequest(
-      async () => {
-        await run((service) => service.deleteTopic.execute(id));
-        return { success: true };
-      },
-      { channel: TOPIC_CHANNELS.DELETE, topicId: id },
-    );
-  });
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.ASSIGN_TO_NOTE,
-    async (_event, rawRequest) => {
-      const { noteId, topicId } = TopicNotePairRequestSchema.parse(rawRequest);
-      return handleRequest(
-        async () => {
-          await run((service) =>
-            service.assignTopicToNote.execute(noteId, topicId),
-          );
-          return { success: true };
-        },
-        { channel: TOPIC_CHANNELS.ASSIGN_TO_NOTE, noteId, topicId },
-      );
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.REMOVE_FROM_NOTE,
-    async (_event, rawRequest) => {
-      const { noteId, topicId } = TopicNotePairRequestSchema.parse(rawRequest);
-      return handleRequest(
-        async () => {
-          await run((service) =>
-            service.removeTopicFromNote.execute(noteId, topicId),
-          );
-          return { success: true };
-        },
-        { channel: TOPIC_CHANNELS.REMOVE_FROM_NOTE, noteId, topicId },
-      );
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.CLASSIFY_NOTE,
-    async (_event, rawRequest) => {
-      const { noteId, force } = ClassifyNoteRequestSchema.parse(rawRequest);
-      return handleRequest(async () => run((service) => service.classifyNote.execute(noteId, force)), {
-        channel: TOPIC_CHANNELS.CLASSIFY_NOTE,
-        noteId,
-        force,
-      });
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.CLASSIFY_ALL,
-    async (_event, rawRequest) => {
-      const options = ClassifyAllRequestSchema.parse(rawRequest ?? {});
-      return handleRequest(async () => run((service) => service.classifyAllNotes.execute(options)), {
-        channel: TOPIC_CHANNELS.CLASSIFY_ALL,
-        force: options?.force,
-        excludeJournal: options?.excludeJournal,
-      });
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.RECLASSIFY_ALL,
-    async (_event, rawRequest) => {
-      const options = ReclassifyAllRequestSchema.parse(rawRequest ?? {});
-      return handleRequest(
-        async () =>
-          run((service) =>
-            service.classifyAllNotes.execute({
-              force: true,
-              excludeJournal: options?.excludeJournal,
-            }),
-          ),
-        {
-          channel: TOPIC_CHANNELS.RECLASSIFY_ALL,
-          force: true,
-          excludeJournal: options?.excludeJournal,
-        },
-      );
-    },
-  );
-
   ipcMain.handle(
     TOPIC_CHANNELS.SEMANTIC_SEARCH,
     async (_event, rawRequest) => {
@@ -187,95 +49,11 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
     },
   );
 
-  ipcMain.handle(
-    TOPIC_CHANNELS.GET_SIMILAR_NOTES,
-    async (_event, rawRequest) => {
-      const { noteId, limit } = NoteIdWithLimitRequestSchema.parse(rawRequest);
-      return handleRequest(
-        async () => {
-          const similar = await run((service) =>
-            service.getSimilarNotes.execute(noteId, limit),
-          );
-          return { similar };
-        },
-        { channel: TOPIC_CHANNELS.GET_SIMILAR_NOTES, noteId, limit },
-      );
-    },
-  );
-
-  ipcMain.handle(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, async () => {
-    return handleRequest(
-      async () => {
-        await run((service) => service.recomputeCentroids.execute());
-        return { success: true };
-      },
-      { channel: TOPIC_CHANNELS.RECOMPUTE_CENTROIDS },
-    );
-  });
-
   ipcMain.handle(TOPIC_CHANNELS.GET_EMBEDDING_STATUS, async () => {
     return handleRequest(async () => run((service) => service.getEmbeddingStatus.execute()), {
       channel: TOPIC_CHANNELS.GET_EMBEDDING_STATUS,
     });
   });
-
-  ipcMain.handle(TOPIC_CHANNELS.GET_SUGGESTIONS, async (_event, rawRequest) => {
-    const request = SuggestTopicsRequestSchema.parse(rawRequest ?? {});
-    return handleRequest(
-      async () => {
-        const suggestions = await run((service) =>
-          service.suggestTopics.execute(request ?? undefined),
-        );
-        return { suggestions };
-      },
-      { channel: TOPIC_CHANNELS.GET_SUGGESTIONS, workspaceId: request?.workspaceId },
-    );
-  });
-
-  ipcMain.handle(TOPIC_CHANNELS.ADOPT_SUGGESTION, async (_event, rawRequest) => {
-    const request = AdoptSuggestedTopicRequestSchema.parse(rawRequest);
-    return handleRequest(async () => run((service) => service.adoptSuggestedTopic.execute(request)), {
-      channel: TOPIC_CHANNELS.ADOPT_SUGGESTION,
-      noteCount: request?.noteIds?.length ?? 0,
-    });
-  });
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
-    async (_event, rawRequest) => {
-      const { topicId, ...options } = NotesByTopicRequestSchema.parse(rawRequest);
-      return handleRequest(
-        async () => {
-          const notes = await run((service) =>
-            service.getNotesForTopic.execute(topicId, options),
-          );
-          return { notes };
-        },
-        { channel: TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, topicId, ...options },
-      );
-    },
-  );
-
-  ipcMain.handle(
-    TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE,
-    async (_event, rawRequest) => {
-      const { noteId } = NoteIdRequestSchema.parse(rawRequest);
-      return handleRequest(
-        async () => {
-          const topics = await run((service) =>
-            service.getTopicsForNote.execute(noteId),
-          );
-          return {
-            topics: topics.map((t) => ({
-              ...t,
-              createdAt: t.createdAt.toISOString(),
-            })),
-          };
-        },
-        { channel: TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, noteId },
-      );
-    },
-  );
 
   logger.info('[IPC] Topic handlers registered');
 }

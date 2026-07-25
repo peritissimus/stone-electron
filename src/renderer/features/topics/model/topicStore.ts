@@ -19,8 +19,6 @@ interface TopicState {
   error: string | null;
   workspaceId: string | null;
   initialized: boolean;
-  excludeJournal: boolean;
-  loadedExcludeJournal: boolean | null;
 
   // Actions
   setTopics: (topics: TopicWithCount[]) => void;
@@ -34,8 +32,7 @@ interface TopicState {
   setLoading: (loading: boolean) => void;
   setClassifying: (classifying: boolean) => void;
   setError: (error: string | null) => void;
-  markInitialized: (workspaceId: string | null, excludeJournal: boolean) => void;
-  setExcludeJournal: (exclude: boolean) => void;
+  markInitialized: (workspaceId: string | null) => void;
   reset: () => void;
 
   // Computed
@@ -56,8 +53,6 @@ const initialState = {
   error: null,
   workspaceId: null,
   initialized: false,
-  excludeJournal: true,
-  loadedExcludeJournal: null,
 };
 
 export const useTopicStore = create<TopicState>((set, get) => ({
@@ -100,10 +95,7 @@ export const useTopicStore = create<TopicState>((set, get) => ({
 
   setError: (error) => set({ error }),
 
-  markInitialized: (workspaceId, loadedExcludeJournal) =>
-    set({ workspaceId, initialized: true, loadedExcludeJournal }),
-
-  setExcludeJournal: (excludeJournal) => set({ excludeJournal }),
+  markInitialized: (workspaceId) => set({ workspaceId, initialized: true }),
 
   reset: () => set(initialState),
 
