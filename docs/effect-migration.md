@@ -10,7 +10,7 @@ column as phases land; the ADR itself is immutable.
 | 1 | Jobs/workers subsystem | done (2026-07-25) |
 | 2 | Out-adapters as layers | done (2026-07-26) |
 | 3 | Use cases + container → `Layer` | done (2026-07-26) |
-| 4 | Effect Schema at the IPC edges | done (2026-07-25) |
+| 4 | Effect Schema at the IPC edges | landed via zod-compat shim (2026-07-25); idiomatic Schema pending |
 | R | Renderer deep store factory (separate track, no Effect) | separate follow-up |
 
 ## Ground rules for every phase
@@ -173,3 +173,32 @@ renderer refactor.
   subsystem; the e2e suite is the net.
 - If a phase stalls, stopping is safe at any PR boundary: wrappers keep old and new
   worlds interoperable, and no phase leaves a subsystem half-converted across a release.
+
+## Post-migration review findings (2026-07-26)
+
+An adversarial review after the migration landed confirmed all five motivating bug
+fixes as substantive (error propagation, cancellation, shutdown order, recovery sweep,
+payload validation) and Phase 1 as genuinely Effect-native. Two concurrency bugs it
+found in JobRunner — a `wake()`/claim race that could strand freshly claimed jobs, and
+`stop()` failing its finalizer on shutdown-grace expiry — were fixed with regression
+tests the same day.
+
+Remaining backlog, in value order (none regress anything relative to pre-migration):
+
+1. **Typed errors at ports.** Out-adapters are Promise classes lifted through a generic
+   `tryPromise` proxy (`adapters/out/layers.ts`), so every port fails with bare `Error`
+   — ADR-0001's rejected alternative relocated, not the native conversion. Converting
+   adapters natively (tagged error unions per port) is the real remainder of Phase 2.
+2. **Idiomatic Effect Schema.** `src/shared/schemas/schema.ts` reimplements the zod
+   builder API over `Schema` with `any` casts; `.strict()` is silently a no-op.
+   Replace call sites with native `Schema` structs, then delete the shim.
+3. **Value-object branding** (ADR-0001 item 3) — untouched; no `Schema` in
+   `domain/value-objects/`.
+4. **`applicationRuntime.ts` (~1,090 lines)** — the container renamed more than
+   replaced: 25 repetitive `runXxxEffect` blocks and hand-`new`ed adapters in
+   comment-ordered sections. Shrinks naturally as items 1–2 land.
+5. Small items: `retranscribeMeeting` swallows pipeline errors unlike `finalizeRecording`;
+   `MeetingIPC` misses `COMMON_IPC_ERROR_MAP` so schema failures surface as
+   `MEETING_ERROR`; dead `domain/services/mapWithConcurrency.ts` (zero callers);
+   enqueue-side payload validation (claim-side only today); no test for the per-job
+   timeout path; `pollOnce` busy-polls at `minIdleMs` when at capacity.
