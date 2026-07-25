@@ -14,6 +14,7 @@ import {
 } from '@main/infrastructure/workers/EmbeddingWorker';
 import { JobRunner } from '@main/infrastructure/workers/JobRunner';
 import { createMeetingFinalizeJobHandler } from '@main/infrastructure/workers/meetingFinalizeJob';
+import { TopicOrganizerLive } from '@main/infrastructure/workers/TopicOrganizer';
 import { WhisperServer } from '@main/infrastructure/workers/WhisperServer';
 import { getMLStatusTracker } from '@main/infrastructure/workers/MLStatusTracker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
@@ -664,8 +665,10 @@ export function createApplicationRuntime(
   const aiLayer = AIUseCasesLive.pipe(
     Layer.provide(SearchUseCasesLive),
   );
-  const topicLayer = TopicUseCasesLive.pipe(
-    Layer.provide(IndexUseCasesLive),
+  // Topics organize themselves in the background — the organizer fiber lives
+  // as long as the runtime, so nothing user-facing has to trigger a pass.
+  const topicLayer = TopicOrganizerLive().pipe(
+    Layer.provideMerge(TopicUseCasesLive.pipe(Layer.provide(IndexUseCasesLive))),
   );
   const nativeUseCasesLayer = Layer.mergeAll(
     meetingLayer,
