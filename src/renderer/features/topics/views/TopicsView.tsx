@@ -2,8 +2,8 @@
  * Knowledge page — one job: find a note by meaning.
  *
  * The page is a single centered semantic search bar with results inline.
- * Topic suggestions and index health sit below it and only appear when there
- * is something to act on, so an idle page is just the search field.
+ * Topics are maintained by the background organizer in the main process and
+ * have no UI here; index health only surfaces when it needs attention.
  *
  * Route is unchanged (`/topics`) so deep links stay valid.
  */
@@ -17,7 +17,6 @@ import { Input } from '@renderer/components/base/ui/input';
 import { Button } from '@renderer/components/base/ui/button';
 import { cn } from '@renderer/lib/utils';
 import { NoteRow } from '@renderer/features/topics/views/components/NoteRow';
-import { SuggestedTopicsSection } from '@renderer/features/topics/views/components/SuggestedTopicsSection';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
 
 interface IndexStatusCardProps {
@@ -109,7 +108,14 @@ export default function TopicsView() {
 
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto bg-background">
-      <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center gap-6 px-6 py-10">
+      <div
+        className={cn(
+          'mx-auto flex min-h-full w-full max-w-2xl flex-col gap-6 px-6 py-10',
+          // Idle, the field is the page and sits in the middle. Once there are
+          // results it anchors to the top so they read as a list under it.
+          searchQuery ? 'justify-start' : 'justify-center',
+        )}
+      >
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
@@ -171,7 +177,7 @@ export default function TopicsView() {
                       note={{
                         id: r.noteId,
                         title: r.title,
-                        confidence: 1 - r.distance,
+                        confidence: r.similarity,
                       }}
                       onClick={() => navigateToNote(r.noteId)}
                     />
@@ -181,8 +187,6 @@ export default function TopicsView() {
             </div>
           )}
         </section>
-
-        <SuggestedTopicsSection />
 
         <IndexStatusCard stats={indexStats} rebuilding={rebuilding} onReindex={handleReindex} />
       </div>
