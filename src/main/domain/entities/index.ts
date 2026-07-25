@@ -44,5 +44,4 @@ export {
   type JobProps,
   type CreateJobInput,
   type JobStatus,
-  type BackoffPolicy,
 } from './Job';

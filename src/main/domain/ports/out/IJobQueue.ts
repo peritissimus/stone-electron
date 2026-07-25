@@ -7,6 +7,9 @@
  * worker loop so it's picked up promptly.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
+
 export interface EnqueueJobOptions {
   maxAttempts?: number;
   /** Delay before the job first becomes eligible to run. */
@@ -17,3 +20,17 @@ export interface IJobQueue {
   /** Persist a job of `type` with an opaque `payload`; resolves to the job id. */
   enqueue(type: string, payload?: unknown, options?: EnqueueJobOptions): Promise<string>;
 }
+
+/**
+ * Effect-native capability. The Promise port remains temporarily as the
+ * compatibility facade for not-yet-migrated application features.
+ */
+export interface IJobQueueEffect {
+  readonly enqueue: (
+    type: string,
+    payload?: unknown,
+    options?: EnqueueJobOptions,
+  ) => Effect.Effect<string, Error>;
+}
+
+export const JobQueue = Context.GenericTag<IJobQueueEffect>('stone/IJobQueue');

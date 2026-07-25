@@ -2,10 +2,9 @@
  * JobEntity — a unit of durable background work.
  *
  * Owns the lifecycle rules of a queued job: how it transitions between states,
- * how a failure is rescheduled with exponential backoff, and when a job that
- * keeps failing is given up on (`dead`) so it can never loop forever on a
- * user's machine. Pure domain logic — no I/O, no timers, no clock of its own
- * (callers pass `now`).
+ * how failures transition back to `pending`, and when a job that keeps failing
+ * is given up on (`dead`) so it can never loop forever on a user's machine.
+ * Pure domain logic — no I/O, timers, clock, or scheduling policy of its own.
  */
 
 export type JobStatus = 'pending' | 'running' | 'done' | 'dead';
@@ -34,12 +33,6 @@ export interface CreateJobInput {
   /** Earliest run time; defaults to `now` (run ASAP). */
   runAfter?: Date;
   now: Date;
-}
-
-/** Exponential backoff bounds. delay = min(baseMs * 2^(attempt-1), maxMs). */
-export interface BackoffPolicy {
-  baseMs: number;
-  maxMs: number;
 }
 
 const DEFAULT_MAX_ATTEMPTS = 5;
@@ -89,13 +82,6 @@ export class JobEntity {
     return JSON.parse(this.props.payload) as T;
   }
 
-  /** Mark as claimed by a runner and about to execute. */
-  markRunning(now: Date): void {
-    this.props.status = 'running';
-    this.props.claimedAt = now;
-    this.props.updatedAt = now;
-  }
-
   /** Handler completed successfully — terminal. */
   markSucceeded(now: Date): void {
     this.props.status = 'done';
@@ -105,11 +91,11 @@ export class JobEntity {
   }
 
   /**
-   * Handler threw. Counts the attempt, then either reschedules with backoff
-   * (status `pending`) or, once attempts are exhausted, gives up (status
-   * `dead`). Returns the resulting status so callers can log dead-letters.
+   * Handler threw. Counts the attempt, then either accepts the runner's next
+   * scheduled time (status `pending`) or, once attempts are exhausted, gives
+   * up (status `dead`). Returns the resulting status for dead-letter logging.
    */
-  markFailed(error: string, now: Date, backoff: BackoffPolicy): JobStatus {
+  markFailed(error: string, now: Date, retryAt: Date): JobStatus {
     this.props.attempts += 1;
     this.props.lastError = error.slice(0, MAX_ERROR_LEN);
     this.props.claimedAt = null;
@@ -119,8 +105,7 @@ export class JobEntity {
       this.props.status = 'dead';
     } else {
       this.props.status = 'pending';
-      const delay = Math.min(backoff.baseMs * 2 ** (this.props.attempts - 1), backoff.maxMs);
-      this.props.runAfter = new Date(now.getTime() + delay);
+      this.props.runAfter = retryAt;
     }
     return this.props.status;
   }
@@ -130,8 +115,8 @@ export class JobEntity {
    * a job that reliably kills the process still dies eventually instead of
    * relaunching forever.
    */
-  recoverFromStale(now: Date, backoff: BackoffPolicy): JobStatus {
-    return this.markFailed('orphaned in running state (process restart)', now, backoff);
+  recoverFromStale(now: Date, retryAt: Date): JobStatus {
+    return this.markFailed('orphaned in running state (process restart)', now, retryAt);
   }
 
   toPersistence(): JobProps {
