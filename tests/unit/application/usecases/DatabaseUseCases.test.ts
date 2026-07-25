@@ -1,165 +1,145 @@
-/**
- * DatabaseUseCases Application Layer Tests
- *
- * Tests use case orchestration with mocked OUT ports.
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createDatabaseUseCases } from '../../../../src/main/application/usecases/database';
-import type { IDatabaseUseCases } from '../../../../src/main/domain/ports/in/IDatabaseUseCases';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { DatabaseUseCasesLive } from '../../../../src/main/application/usecases/database';
+import {
+  DatabaseManagerPort,
+  DatabaseUseCasesPort,
+  NotebookRepositoryPort,
+  NoteRepositoryPort,
+  TagRepositoryPort,
+  type IDatabaseUseCases,
+} from '../../../../src/main/domain';
+import type { IDatabaseManager } from '../../../../src/main/domain/ports/out/IDatabaseManager';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { INotebookRepository } from '../../../../src/main/domain/ports/out/INotebookRepository';
 import type { ITagRepository } from '../../../../src/main/domain/ports/out/ITagRepository';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 
-function createMockDatabaseManager() {
-  return {
-    getStatus: vi.fn(),
-    vacuum: vi.fn(),
-    checkIntegrity: vi.fn(),
-  };
-}
-
-function createMockNoteRepository(): INoteRepository {
-  return {
-    count: vi.fn().mockResolvedValue(0),
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    findByNotebookId: vi.fn(),
-    findByWorkspaceId: vi.fn(),
-    findByFilePath: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    searchByTitle: vi.fn(),
-    exists: vi.fn(),
-    findRecentlyUpdated: vi.fn(),
-    findFavorites: vi.fn(),
-    findPinned: vi.fn(),
-    findArchived: vi.fn(),
-    findDeleted: vi.fn(),
-    getContentById: vi.fn(),
-    getEmbedding: vi.fn(),
-    updateEmbedding: vi.fn(),
-    findBySimilarity: vi.fn(),
-  } as unknown as INoteRepository;
-}
-
-function createMockNotebookRepository(): INotebookRepository {
-  return {
-    count: vi.fn().mockResolvedValue(0),
-    findById: vi.fn(),
-    findAll: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
-  } as unknown as INotebookRepository;
-}
-
-function createMockTagRepository(): ITagRepository {
-  return {
-    findAll: vi.fn().mockResolvedValue([]),
-    findById: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
-  } as unknown as ITagRepository;
-}
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 describe('DatabaseUseCases', () => {
-  let mockDbManager: ReturnType<typeof createMockDatabaseManager>;
-  let noteRepo: INoteRepository;
-  let notebookRepo: INotebookRepository;
-  let tagRepo: ITagRepository;
-  let useCases: IDatabaseUseCases;
+  let database: IDatabaseManager;
+  let notes: INoteRepository;
+  let notebooks: INotebookRepository;
+  let tags: ITagRepository;
+  let useCases: PromiseFacade<IDatabaseUseCases>;
 
   beforeEach(() => {
-    mockDbManager = createMockDatabaseManager();
-    noteRepo = createMockNoteRepository();
-    notebookRepo = createMockNotebookRepository();
-    tagRepo = createMockTagRepository();
-    useCases = createDatabaseUseCases({
-      getDatabaseManager: () => mockDbManager,
-      noteRepository: noteRepo,
-      notebookRepository: notebookRepo,
-      tagRepository: tagRepo,
+    database = {
+      getStatus: vi.fn(),
+      vacuum: vi.fn(),
+      checkIntegrity: vi.fn(),
+    };
+    notes = { count: vi.fn(async () => 0) } as unknown as INoteRepository;
+    notebooks = {
+      count: vi.fn(async () => 0),
+    } as unknown as INotebookRepository;
+    tags = {
+      findAll: vi.fn(async () => []),
+    } as unknown as ITagRepository;
+    const runtime = ManagedRuntime.make(
+      DatabaseUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(DatabaseManagerPort, database),
+            adapterLayer(NoteRepositoryPort, notes),
+            adapterLayer(NotebookRepositoryPort, notebooks),
+            adapterLayer(TagRepositoryPort, tags),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IDatabaseUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          DatabaseUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      getStatus: {
+        execute: () => run((service) => service.getStatus.execute()),
+      },
+      vacuum: {
+        execute: () => run((service) => service.vacuum.execute()),
+      },
+      checkIntegrity: {
+        execute: () => run((service) => service.checkIntegrity.execute()),
+      },
+    };
+  });
+
+  it('returns database status enriched with entity counts', async () => {
+    vi.mocked(database.getStatus).mockResolvedValue({
+      path: '/path/to/db.sqlite',
+      size: 1_024_000,
+      isOpen: true,
+    });
+    vi.mocked(notes.count).mockResolvedValue(42);
+    vi.mocked(notebooks.count).mockResolvedValue(7);
+    vi.mocked(tags.findAll).mockResolvedValue([
+      { id: 't1' },
+      { id: 't2' },
+      { id: 't3' },
+    ] as never);
+
+    await expect(useCases.getStatus.execute()).resolves.toEqual({
+      path: '/path/to/db.sqlite',
+      databaseSize: 1_024_000,
+      isOpen: true,
+      noteCount: 42,
+      notebookCount: 7,
+      tagCount: 3,
     });
   });
 
-  describe('getStatus', () => {
-    it('returns database status enriched with entity counts', async () => {
-      mockDbManager.getStatus.mockResolvedValue({
-        path: '/path/to/db.sqlite',
-        size: 1024000,
-        isOpen: true,
-      });
-      vi.mocked(noteRepo.count).mockResolvedValue(42);
-      vi.mocked(notebookRepo.count).mockResolvedValue(7);
-      vi.mocked(tagRepo.findAll).mockResolvedValue([
-        { id: 't1' },
-        { id: 't2' },
-        { id: 't3' },
-      ] as never);
-
-      const result = await useCases.getStatus.execute();
-
-      expect(result).toEqual({
-        path: '/path/to/db.sqlite',
-        databaseSize: 1024000,
-        isOpen: true,
-        noteCount: 42,
-        notebookCount: 7,
-        tagCount: 3,
-      });
+  it('reports a closed database', async () => {
+    vi.mocked(database.getStatus).mockResolvedValue({
+      path: '/path/to/db.sqlite',
+      size: 0,
+      isOpen: false,
     });
-
-    it('reports isOpen=false for a closed database', async () => {
-      mockDbManager.getStatus.mockResolvedValue({
-        path: '/path/to/db.sqlite',
-        size: 0,
-        isOpen: false,
-      });
-
-      const result = await useCases.getStatus.execute();
-
-      expect(result.isOpen).toBe(false);
+    await expect(useCases.getStatus.execute()).resolves.toMatchObject({
+      isOpen: false,
     });
   });
 
-  describe('vacuum', () => {
-    it('vacuums the database and reports freed bytes', async () => {
-      mockDbManager.getStatus
-        .mockResolvedValueOnce({ path: '/db', size: 2_048_000, isOpen: true })
-        .mockResolvedValueOnce({ path: '/db', size: 1_024_000, isOpen: true });
-      mockDbManager.vacuum.mockResolvedValue(undefined);
-
-      const result = await useCases.vacuum.execute();
-
-      expect(mockDbManager.vacuum).toHaveBeenCalled();
-      expect(result).toEqual({
-        size_before: 2_048_000,
-        size_after: 1_024_000,
-        freed_bytes: 1_024_000,
-      });
+  it('vacuums the database and reports freed bytes', async () => {
+    vi.mocked(database.getStatus)
+      .mockResolvedValueOnce({ path: '/db', size: 2_048_000, isOpen: true })
+      .mockResolvedValueOnce({ path: '/db', size: 1_024_000, isOpen: true });
+    await expect(useCases.vacuum.execute()).resolves.toEqual({
+      size_before: 2_048_000,
+      size_after: 1_024_000,
+      freed_bytes: 1_024_000,
     });
+    expect(database.vacuum).toHaveBeenCalled();
   });
 
-  describe('checkIntegrity', () => {
-    it('returns ok when database is healthy', async () => {
-      mockDbManager.checkIntegrity.mockResolvedValue({ ok: true, errors: [] });
-
-      const result = await useCases.checkIntegrity.execute();
-
-      expect(result.ok).toBe(true);
-      expect(result.errors).toHaveLength(0);
+  it('returns database integrity failures unchanged', async () => {
+    const errors = [
+      'Table notes has orphaned rows',
+      'Index idx_notes corrupted',
+    ];
+    vi.mocked(database.checkIntegrity).mockResolvedValue({
+      ok: false,
+      errors,
     });
-
-    it('returns errors when database has issues', async () => {
-      const errors = ['Table notes has orphaned rows', 'Index idx_notes corrupted'];
-      mockDbManager.checkIntegrity.mockResolvedValue({ ok: false, errors });
-
-      const result = await useCases.checkIntegrity.execute();
-
-      expect(result.ok).toBe(false);
-      expect(result.errors).toEqual(errors);
+    await expect(useCases.checkIntegrity.execute()).resolves.toEqual({
+      ok: false,
+      errors,
     });
   });
 });

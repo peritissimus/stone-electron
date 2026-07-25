@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStatusReportUseCases } from '../../../../src/main/application/usecases/statusReport';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { StatusReportUseCasesLive } from '../../../../src/main/application/usecases/statusReport';
+import {
+  JournalUseCasesPort,
+  MeetingRecordingRepositoryPort,
+  NoteRepositoryPort,
+  StatusReportUseCasesPort,
+  TaskUseCasesPort,
+  TextGeneratorPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import { MeetingRecordingEntity, type MeetingRecordingProps } from '../../../../src/main/domain/entities/MeetingRecording';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -10,6 +20,16 @@ import type { IMeetingRecordingRepository } from '../../../../src/main/domain/po
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { ITextGenerator } from '../../../../src/main/domain/ports/out/ITextGenerator';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import { effectifyUseCases } from '../../../helpers/effectUseCases';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 const NOW = new Date(2026, 3, 21, 14, 0, 0);
 
@@ -31,14 +51,14 @@ function createMockMeetingRepository(): IMeetingRecordingRepository {
   } as unknown as IMeetingRecordingRepository;
 }
 
-function createMockJournalUseCases(): IJournalUseCases {
+function createMockJournalUseCases() {
   return {
     openOrCreateForDate: vi.fn(),
     listRange: vi.fn(),
   };
 }
 
-function createMockTaskUseCases(): ITaskUseCases {
+function createMockTaskUseCases() {
   return {
     getAllTasks: { execute: vi.fn() },
     getNoteTasks: { execute: vi.fn() },
@@ -125,10 +145,10 @@ describe('StatusReportUseCases', () => {
   let noteRepository: INoteRepository;
   let workspaceRepository: IWorkspaceRepository;
   let meetingRepository: IMeetingRecordingRepository;
-  let journalUseCases: IJournalUseCases;
-  let taskUseCases: ITaskUseCases;
+  let journalUseCases: ReturnType<typeof createMockJournalUseCases>;
+  let taskUseCases: ReturnType<typeof createMockTaskUseCases>;
   let textGenerator: ITextGenerator;
-  let useCases: IStatusReportUseCases;
+  let useCases: PromiseFacade<IStatusReportUseCases>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -139,14 +159,45 @@ describe('StatusReportUseCases', () => {
     journalUseCases = createMockJournalUseCases();
     taskUseCases = createMockTaskUseCases();
     textGenerator = createMockTextGenerator();
-    useCases = createStatusReportUseCases({
-      noteRepository,
-      workspaceRepository,
-      meetingRepository,
-      journalUseCases,
-      taskUseCases,
-      textGenerator,
-    });
+    const runtime = ManagedRuntime.make(
+      StatusReportUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepository),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepository),
+            adapterLayer(MeetingRecordingRepositoryPort, meetingRepository),
+            Layer.succeed(
+              JournalUseCasesPort,
+              effectifyUseCases(journalUseCases) as IJournalUseCases,
+            ),
+            Layer.succeed(
+              TaskUseCasesPort,
+              effectifyUseCases(taskUseCases) as ITaskUseCases,
+            ),
+            adapterLayer(TextGeneratorPort, textGenerator),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IStatusReportUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          StatusReportUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      generate: {
+        execute: (request) =>
+          run((service) => service.generate.execute(request)),
+      },
+    };
   });
 
   afterEach(() => {

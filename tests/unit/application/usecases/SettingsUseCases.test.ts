@@ -5,7 +5,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createSettingsUseCases } from '../../../../src/main/application/usecases/settings';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { SettingsUseCasesLive } from '../../../../src/main/application/usecases/settings';
+import {
+  AIProviderKeyStorePort,
+  AppConfigRepositoryPort,
+  EventPublisherPort,
+  GlobalShortcutRegistrarPort,
+  SettingsRepositoryPort,
+  SettingsUseCasesPort,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import type { ISettingsRepository } from '../../../../src/main/domain/ports/out/ISettingsRepository';
 import type { IAIProviderKeyStore } from '../../../../src/main/domain/ports/out/IAIProviderKeyStore';
@@ -14,6 +24,46 @@ import type { ISettingsUseCases } from '../../../../src/main/domain/ports/in/ISe
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
 import { ShortcutConflictError } from '../../../../src/main/domain/errors';
 import { DEFAULT_APP_CONFIG, type AppConfig } from '../../../../src/shared/types/settings';
+
+type PromiseSettings<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseSettings<T[Key]> }
+    : T;
+
+function makePromiseFacade(
+  runtime: ManagedRuntime.ManagedRuntime<ISettingsUseCases, never>,
+): PromiseSettings<ISettingsUseCases> {
+  const atPath = (path: PropertyKey[]): unknown =>
+    new Proxy(() => undefined, {
+      get: (_target, property) => atPath([...path, property]),
+      apply: (_target, _thisArg, args: unknown[]) =>
+        runtime.runPromiseExit(
+          SettingsUseCasesPort.pipe(
+            Effect.flatMap((service) => {
+              let value: unknown = service;
+              let owner: unknown = service;
+              for (const part of path) {
+                owner = value;
+                value = (value as Record<PropertyKey, unknown>)[part];
+              }
+              return (
+                value as (
+                  this: unknown,
+                  ...methodArgs: unknown[]
+                ) => Effect.Effect<unknown, Error>
+              ).apply(owner, args);
+            }),
+          ),
+        ).then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        }),
+    });
+  return atPath([]) as PromiseSettings<ISettingsUseCases>;
+}
 
 // Mock factories
 function createMockSettingsRepository(): ISettingsRepository {
@@ -76,7 +126,7 @@ describe('SettingsUseCases', () => {
   let aiProviderKeyStore: IAIProviderKeyStore;
   let globalShortcutRegistrar: IGlobalShortcutRegistrar;
   let eventPublisher: IEventPublisher;
-  let useCases: ISettingsUseCases;
+  let useCases: PromiseSettings<ISettingsUseCases>;
 
   beforeEach(() => {
     settingsRepository = createMockSettingsRepository();
@@ -84,13 +134,17 @@ describe('SettingsUseCases', () => {
     aiProviderKeyStore = createMockAIProviderKeyStore();
     globalShortcutRegistrar = createMockGlobalShortcutRegistrar();
     eventPublisher = createMockEventPublisher();
-    useCases = createSettingsUseCases({
-      settingsRepository,
-      appConfigRepository,
-      aiProviderKeyStore,
-      globalShortcutRegistrar,
-      eventPublisher,
-    });
+    const dependencies = Layer.mergeAll(
+      adapterLayer(SettingsRepositoryPort, settingsRepository),
+      adapterLayer(AppConfigRepositoryPort, appConfigRepository),
+      adapterLayer(AIProviderKeyStorePort, aiProviderKeyStore),
+      adapterLayer(GlobalShortcutRegistrarPort, globalShortcutRegistrar),
+      adapterLayer(EventPublisherPort, eventPublisher),
+    );
+    const runtime = ManagedRuntime.make(
+      SettingsUseCasesLive.pipe(Layer.provide(dependencies)),
+    );
+    useCases = makePromiseFacade(runtime);
   });
 
   describe('get', () => {

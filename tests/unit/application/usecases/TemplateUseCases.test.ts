@@ -1,11 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTemplateUseCases } from '../../../../src/main/application/usecases/template';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { TemplateUseCasesLive } from '../../../../src/main/application/usecases/template';
+import {
+  NoteUseCasesPort,
+  TemplateRepositoryPort,
+  TemplateUseCasesPort,
+  WorkspaceRepositoryPort,
+  type INoteUseCases,
+} from '../../../../src/main/domain';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
-import type { ICreateNoteUseCase } from '../../../../src/main/domain/ports/in/INoteUseCases';
 import type { ITemplateUseCases } from '../../../../src/main/domain/ports/in/ITemplateUseCases';
 import type { ITemplateRepository } from '../../../../src/main/domain/ports/out/ITemplateRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import { effectifyUseCases } from '../../../helpers/effectUseCases';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 function createMockTemplateRepository(): ITemplateRepository {
   return {
@@ -21,7 +38,16 @@ function createMockWorkspaceRepository(): IWorkspaceRepository {
   } as unknown as IWorkspaceRepository;
 }
 
-function createMockCreateNote(): ICreateNoteUseCase {
+type CreateNote = {
+  execute: (request: {
+    title?: string;
+    content?: string;
+    folderPath?: string;
+    workspaceId?: string;
+  }) => Promise<{ note: NoteProps }>;
+};
+
+function createMockCreateNote(): CreateNote {
   return {
     execute: vi.fn().mockResolvedValue({ note: note() }),
   };
@@ -60,18 +86,52 @@ function note(overrides: Partial<NoteProps> = {}): NoteProps {
 describe('TemplateUseCases', () => {
   let templateRepository: ITemplateRepository;
   let workspaceRepository: IWorkspaceRepository;
-  let createNote: ICreateNoteUseCase;
-  let useCases: ITemplateUseCases;
+  let createNote: CreateNote;
+  let useCases: PromiseFacade<ITemplateUseCases>;
 
   beforeEach(() => {
     templateRepository = createMockTemplateRepository();
     workspaceRepository = createMockWorkspaceRepository();
     createNote = createMockCreateNote();
-    useCases = createTemplateUseCases({
-      templateRepository,
-      workspaceRepository,
-      createNote,
-    });
+    const runtime = ManagedRuntime.make(
+      TemplateUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(TemplateRepositoryPort, templateRepository),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepository),
+            Layer.succeed(
+              NoteUseCasesPort,
+              effectifyUseCases({ createNote }) as INoteUseCases,
+            ),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: ITemplateUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          TemplateUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      listTemplates: {
+        execute: (request) =>
+          run((service) => service.listTemplates.execute(request)),
+      },
+      createNoteFromTemplate: {
+        execute: (request) =>
+          run((service) =>
+            service.createNoteFromTemplate.execute(request),
+          ),
+      },
+    };
   });
 
   it('lists templates for the active workspace and extracts prompts', async () => {

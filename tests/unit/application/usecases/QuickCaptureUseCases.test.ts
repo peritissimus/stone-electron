@@ -5,7 +5,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createQuickCaptureUseCases } from '../../../../src/main/application/usecases/quickCapture';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { QuickCaptureUseCasesLive } from '../../../../src/main/application/usecases/quickCapture';
+import {
+  AppConfigRepositoryPort,
+  EventPublisherPort,
+  FileStoragePort,
+  IdGeneratorPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  QuickCaptureUseCasesPort,
+  TranscriberPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
@@ -16,6 +28,16 @@ import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -131,7 +153,7 @@ describe('QuickCaptureUseCases', () => {
   let fileStorage: IFileStorage;
   let appConfigRepository: IAppConfigRepository;
   let transcriber: ITranscriber;
-  let useCases: IQuickCaptureUseCases;
+  let useCases: PromiseFacade<IQuickCaptureUseCases>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -141,15 +163,46 @@ describe('QuickCaptureUseCases', () => {
     fileStorage = createMockFileStorage();
     appConfigRepository = createMockAppConfigRepository();
     transcriber = createMockTranscriber();
-    useCases = createQuickCaptureUseCases({
-      noteRepository: noteRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      appConfigRepository,
-      idGenerator: createMockIdGenerator(),
-      pathService: createMockPathService(),
-      transcriber,
-    });
+    const publisher = {
+      publish: vi.fn(),
+    } as unknown as IEventPublisher;
+    const runtime = ManagedRuntime.make(
+      QuickCaptureUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(AppConfigRepositoryPort, appConfigRepository),
+            adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+            adapterLayer(PathServicePort, createMockPathService()),
+            adapterLayer(TranscriberPort, transcriber),
+            adapterLayer(EventPublisherPort, publisher),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IQuickCaptureUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          QuickCaptureUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      appendToJournal: (content, workspaceId) =>
+        run((service) =>
+          service.appendToJournal(content, workspaceId),
+        ),
+      transcribeVoiceCapture: (request) =>
+        run((service) => service.transcribeVoiceCapture(request)),
+    };
   });
 
   afterEach(() => {

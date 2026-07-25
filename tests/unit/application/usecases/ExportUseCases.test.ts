@@ -5,7 +5,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createExportUseCases } from '../../../../src/main/application/usecases/export';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { ExportUseCasesLive } from '../../../../src/main/application/usecases/export';
+import {
+  ExporterPort,
+  ExportUseCasesPort,
+  FileStoragePort,
+  MarkdownProcessorPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
@@ -15,6 +25,15 @@ import type { IExportUseCases } from '../../../../src/main/domain/ports/in/IExpo
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -97,7 +116,7 @@ describe('ExportUseCases', () => {
   let fileStorage: IFileStorage;
   let markdownProcessor: IMarkdownProcessor;
   let exporter: IExporter;
-  let useCases: IExportUseCases;
+  let useCases: PromiseFacade<IExportUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
@@ -105,14 +124,49 @@ describe('ExportUseCases', () => {
     fileStorage = createMockFileStorage();
     markdownProcessor = createMockMarkdownProcessor();
     exporter = createMockExporter();
-    useCases = createExportUseCases({
-      noteRepository: noteRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      markdownProcessor,
-      exporter,
-      pathService: createMockPathService(),
-    });
+    const runtime = ManagedRuntime.make(
+      ExportUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(MarkdownProcessorPort, markdownProcessor),
+            adapterLayer(ExporterPort, exporter),
+            adapterLayer(PathServicePort, createMockPathService()),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IExportUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          ExportUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      exportHtml: {
+        execute: (noteId, options) =>
+          run((service) => service.exportHtml.execute(noteId, options)),
+      },
+      exportPdf: {
+        execute: (noteId, options) =>
+          run((service) => service.exportPdf.execute(noteId, options)),
+      },
+      exportMarkdown: {
+        execute: (noteId, options) =>
+          run((service) =>
+            service.exportMarkdown.execute(noteId, options),
+          ),
+      },
+    };
   });
 
   describe('exportHtml', () => {

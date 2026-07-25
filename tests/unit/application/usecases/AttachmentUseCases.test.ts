@@ -5,7 +5,17 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createAttachmentUseCases } from '../../../../src/main/application/usecases/attachment';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { AttachmentUseCasesLive } from '../../../../src/main/application/usecases/attachment';
+import {
+  AttachmentRepositoryPort,
+  AttachmentUseCasesPort,
+  FileStoragePort,
+  IdGeneratorPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IAttachmentRepository } from '../../../../src/main/domain/ports/out/IAttachmentRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -15,6 +25,15 @@ import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { AttachmentProps } from '../../../../src/main/domain/entities/Attachment';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -105,21 +124,56 @@ describe('AttachmentUseCases', () => {
   let attachmentRepo: IAttachmentRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
-  let useCases: IAttachmentUseCases;
+  let useCases: PromiseFacade<IAttachmentUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     attachmentRepo = createMockAttachmentRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
-    useCases = createAttachmentUseCases({
-      noteRepository: noteRepo,
-      attachmentRepository: attachmentRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      idGenerator: createMockIdGenerator(),
-      pathService: createMockPathService(),
-    });
+    const runtime = ManagedRuntime.make(
+      AttachmentUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(AttachmentRepositoryPort, attachmentRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+            adapterLayer(PathServicePort, createMockPathService()),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IAttachmentUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          AttachmentUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      addAttachment: (noteId, filePath, filename) =>
+        run((service) =>
+          service.addAttachment(noteId, filePath, filename),
+        ),
+      deleteAttachment: (attachmentId, deleteFile) =>
+        run((service) =>
+          service.deleteAttachment(attachmentId, deleteFile),
+        ),
+      getAttachments: (noteId) =>
+        run((service) => service.getAttachments(noteId)),
+      uploadImage: (noteId, imageData, filename, mimeType) =>
+        run((service) =>
+          service.uploadImage(noteId, imageData, filename, mimeType),
+        ),
+    };
   });
 
   describe('addAttachment', () => {

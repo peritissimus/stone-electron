@@ -6,242 +6,83 @@
  */
 
 // Note Use Cases
-export {
-  CreateNoteUseCase,
-  UpdateNoteUseCase,
-  GetNoteUseCase,
-  ListNotesUseCase,
-  DeleteNoteUseCase,
-  RestoreNoteUseCase,
-  MoveNoteUseCase,
-  SearchNotesUseCase,
-  GetNoteContentUseCase,
-  SaveNoteContentUseCase,
-  GetNoteByPathUseCase,
-  ToggleFavoriteUseCase,
-  TogglePinUseCase,
-  ToggleArchiveUseCase,
-  createNoteUseCases,
-  type NoteUseCasesDeps,
-} from './note';
+export { NoteUseCasesLive } from './note';
 
 // Notebook Use Cases
-export {
-  CreateNotebookUseCase,
-  UpdateNotebookUseCase,
-  GetNotebookUseCase,
-  ListNotebooksUseCase,
-  DeleteNotebookUseCase,
-  MoveNotebookUseCase,
-  createNotebookUseCases,
-} from './notebook';
+export { NotebookUseCasesLive } from './notebook';
 
 // Workspace Use Cases
-export {
-  CreateWorkspaceUseCase,
-  GetWorkspaceUseCase,
-  ListWorkspacesUseCase,
-  SetActiveWorkspaceUseCase,
-  GetActiveWorkspaceUseCase,
-  DeleteWorkspaceUseCase,
-  UpdateWorkspaceUseCase,
-  SelectFolderUseCase,
-  ValidatePathUseCase,
-  CreateFolderUseCase,
-  RenameFolderUseCase,
-  DeleteFolderUseCase,
-  MoveFolderUseCase,
-  ScanWorkspaceUseCase,
-  SyncWorkspaceUseCase,
-  createWorkspaceUseCases,
-  type WorkspaceUseCasesDeps,
-} from './workspace';
+export { WorkspaceUseCasesLive } from './workspace';
 
 // Tag Use Cases
-export {
-  CreateTagUseCase,
-  UpdateTagUseCase,
-  GetTagUseCase,
-  ListTagsUseCase,
-  DeleteTagUseCase,
-  AddTagToNoteUseCase,
-  RemoveTagFromNoteUseCase,
-  GetNoteTagsUseCase,
-  createTagUseCases,
-} from './tag';
+export { TagUseCasesLive } from './tag';
 
 // Search Use Cases
-export {
-  FullTextSearchUseCase,
-  SemanticSearchUseCase,
-  FindSimilarNotesUseCase,
-  createSearchUseCases,
-} from './search';
+export { SearchUseCasesLive } from './search';
 
 // AI Use Cases
-export {
-  AskNotesUseCase,
-  SummarizeNoteUseCase,
-  SuggestLinksUseCase,
-  createAIUseCases,
-  type AIUseCasesDeps,
-} from './ai';
+export { AIUseCasesLive } from './ai';
 
 // Index Use Cases (chunk + embed)
-export {
-  IndexNoteUseCase,
-  RebuildAllNotesIndexUseCase,
-  GetIndexStatsUseCase,
-  createIndexUseCases,
-  type IndexUseCasesDeps,
-} from './indexing';
+export { IndexUseCasesLive } from './indexing';
 
 // Task Use Cases
-export { createTaskUseCases, type TaskUseCasesDeps } from './task';
+export { TaskUseCasesLive } from './task';
 
 // Graph Use Cases
-export { createGraphUseCases, type GraphUseCasesDeps } from './graph';
+export { GraphUseCasesLive } from './graph';
 
 // Version Use Cases
-export { createVersionUseCases, type VersionUseCasesDeps } from './version';
+export { VersionUseCasesLive } from './version';
 
 // Topic Use Cases
-export {
-  InitializeTopicsUseCase,
-  GetAllTopicsUseCase,
-  GetTopicByIdUseCase,
-  CreateTopicUseCase,
-  UpdateTopicUseCase,
-  DeleteTopicUseCase,
-  ClassifyNoteUseCase,
-  ClassifyAllNotesUseCase,
-  AssignTopicToNoteUseCase,
-  RemoveTopicFromNoteUseCase,
-  GetTopicSimilarNotesUseCase,
-  TopicSemanticSearchUseCase,
-  RecomputeCentroidsUseCase,
-  GetEmbeddingStatusUseCase,
-  GetNotesForTopicUseCase,
-  GetTopicsForNoteUseCase,
-  createTopicUseCases,
-  type TopicUseCasesDeps,
-} from './topic';
+export { TopicUseCasesLive } from './topic';
 
 // Attachment Use Cases
-export { createAttachmentUseCases, type AttachmentUseCasesDeps } from './attachment';
+export { AttachmentUseCasesLive } from './attachment';
 
 // Git Use Cases
-export {
-  GetGitStatusUseCase,
-  InitGitRepoUseCase,
-  GitCommitUseCase,
-  GitPullUseCase,
-  GitPushUseCase,
-  GitSyncUseCase,
-  SetGitRemoteUseCase,
-  GetGitCommitsUseCase,
-  createGitUseCases,
-  type GitUseCasesDeps,
-} from './git';
+export { GitUseCasesLive, lastSyncSettingKey } from './git';
 
 // Database Use Cases
-export {
-  GetDatabaseStatusUseCase,
-  VacuumDatabaseUseCase,
-  CheckDatabaseIntegrityUseCase,
-  createDatabaseUseCases,
-  type DatabaseUseCasesDeps,
-} from './database';
+export { DatabaseUseCasesLive } from './database';
 
 // Quick Capture Use Cases
-export { createQuickCaptureUseCases, type QuickCaptureUseCasesDeps } from './quickCapture';
+export { QuickCaptureUseCasesLive } from './quickCapture';
 
 // Journal Use Cases
-export {
-  OpenOrCreateJournalForDateUseCase,
-  createJournalUseCases,
-  type JournalUseCasesDeps,
-} from './journal';
+export { JournalUseCasesLive } from './journal';
 
 // Quick Note (slot-based) Use Cases
-export {
-  CreateQuickNoteUseCase,
-  createQuickNoteUseCases,
-  type QuickNoteUseCasesDeps,
-} from './quickNote';
+export { QuickNoteUseCasesLive } from './quickNote';
 
 // Scratch Editor Use Cases
-export {
-  PickScratchFileUseCase,
-  ReadScratchFileUseCase,
-  WriteScratchFileUseCase,
-  createScratchUseCases,
-  type ScratchUseCasesDeps,
-} from './scratch';
+export { ScratchUseCasesLive } from './scratch';
 
 // Export Use Cases
-export { createExportUseCases, type ExportUseCasesDeps } from './export';
+export { ExportUseCasesLive } from './export';
 
 // System Use Cases
-export {
-  GetSystemFontsUseCase,
-  ShowFolderPickerUseCase,
-  ValidateSystemPathUseCase,
-  OpenInFolderUseCase,
-  OpenExternalUseCase,
-  createSystemUseCases,
-  type SystemUseCasesDeps,
-} from './system';
+export { SystemUseCasesLive } from './system';
 
 // Settings Use Cases
-export {
-  GetSettingUseCase,
-  SetSettingUseCase,
-  GetAllSettingsUseCase,
-  GetAppearanceSettingsUseCase,
-  SetThemeUseCase,
-  SetAccentColorUseCase,
-  UpdateFontSettingsUseCase,
-  ResetFontSettingsUseCase,
-  createSettingsUseCases,
-  type SettingsUseCasesDeps,
-} from './settings';
+export { SettingsUseCasesLive } from './settings';
 
 // Meeting Use Cases
 export {
-  ReserveRecordingSlotUseCase,
-  AppendRecordingAudioUseCase,
-  FinalizeRecordingUseCase,
-  RequestFinalizeRecordingUseCase,
   MEETING_FINALIZE_JOB,
-  ListMeetingRecordingsUseCase,
-  GetMeetingRecordingUseCase,
-  DeleteMeetingRecordingUseCase,
-  ResummarizeMeetingUseCase,
-  SendToJournalUseCase,
-  createMeetingUseCases,
-  type MeetingUseCasesDeps,
+  MeetingUseCasesLive,
+  makeMeetingUseCasesLayer,
   RECORDINGS_DIR,
 } from './meeting';
 
 // Template Use Cases
-export {
-  ListTemplatesUseCase,
-  CreateNoteFromTemplateUseCase,
-  createTemplateUseCases,
-  type TemplateUseCasesDeps,
-} from './template';
+export { TemplateUseCasesLive } from './template';
 
 // Daily Review Use Cases
-export {
-  GetDailyReviewUseCase,
-  createDailyReviewUseCases,
-  type DailyReviewUseCasesDeps,
-} from './dailyReview';
+export { DailyReviewUseCasesLive } from './dailyReview';
 
 // Status Report Use Cases
 export {
-  GenerateStatusReportUseCase,
-  createStatusReportUseCases,
-  type StatusReportUseCasesDeps,
+  StatusReportUseCasesLive,
 } from './statusReport';

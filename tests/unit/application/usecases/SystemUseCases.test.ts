@@ -5,9 +5,68 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createSystemUseCases } from '../../../../src/main/application/usecases/system';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { SystemUseCasesLive } from '../../../../src/main/application/usecases/system';
+import {
+  SystemBridgePort,
+  SystemUseCasesPort,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
 import type { ISystemUseCases } from '../../../../src/main/domain/ports/in/ISystemUseCases';
+
+type PromiseSystem<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseSystem<T[Key]> }
+    : T;
+
+function promiseService(
+  runtime: ManagedRuntime.ManagedRuntime<ISystemUseCases, never>,
+): PromiseSystem<ISystemUseCases> {
+  const run = <A, E>(
+    use: (service: ISystemUseCases) => Effect.Effect<A, E>,
+  ) =>
+    runtime.runPromise(
+      SystemUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
+    );
+  return {
+    getFonts: { execute: () => run((service) => service.getFonts.execute()) },
+    selectFolder: {
+      execute: (request) =>
+        run((service) => service.selectFolder.execute(request)),
+    },
+    validatePath: {
+      execute: (request) =>
+        run((service) => service.validatePath.execute(request)),
+    },
+    openInFolder: {
+      execute: (request) =>
+        run((service) => service.openInFolder.execute(request)),
+    },
+    openExternal: {
+      execute: (request) =>
+        run((service) => service.openExternal.execute(request)),
+    },
+    getMicAccessStatus: {
+      execute: () =>
+        run((service) => service.getMicAccessStatus.execute()),
+    },
+    requestMicAccess: {
+      execute: () => run((service) => service.requestMicAccess.execute()),
+    },
+    getSystemAudioAccess: {
+      execute: () =>
+        run((service) => service.getSystemAudioAccess.execute()),
+    },
+    requestSystemAudioAccess: {
+      execute: () =>
+        run((service) => service.requestSystemAudioAccess.execute()),
+    },
+  };
+}
 
 // Mock factories
 function createMockSystemBridge(): ISystemBridge {
@@ -24,11 +83,17 @@ function createMockSystemBridge(): ISystemBridge {
 
 describe('SystemUseCases', () => {
   let systemBridge: ISystemBridge;
-  let useCases: ISystemUseCases;
+  let useCases: PromiseSystem<ISystemUseCases>;
 
   beforeEach(() => {
     systemBridge = createMockSystemBridge();
-    useCases = createSystemUseCases({ systemBridge });
+    useCases = promiseService(
+      ManagedRuntime.make(
+        SystemUseCasesLive.pipe(
+          Layer.provide(adapterLayer(SystemBridgePort, systemBridge)),
+        ),
+      ),
+    );
   });
 
   describe('getFonts', () => {

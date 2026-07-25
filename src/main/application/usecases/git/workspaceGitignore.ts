@@ -1,5 +1,5 @@
-import type { IFileStorage } from '../../../domain/ports/out/IFileStorage';
-import type { IPathService } from '../../../domain/ports/out/IPathService';
+import { Effect } from 'effect';
+import type { EffectPort, IFileStorage, IPathService } from '../../../domain';
 
 /**
  * Default ignore rules for a notes workspace. `.stone/` is critical: it
@@ -12,12 +12,20 @@ export const WORKSPACE_GITIGNORE = `# Stone internal scratch — in-flight recor
 `;
 
 /** Seed .gitignore if the workspace doesn't have one. Never overwrites. */
-export async function ensureWorkspaceGitignore(
-  fileStorage: IFileStorage,
-  pathService: IPathService,
+export function ensureWorkspaceGitignore(
+  fileStorage: EffectPort<IFileStorage>,
+  pathService: EffectPort<IPathService>,
   workspaceFolderPath: string,
-): Promise<void> {
-  const gitignorePath = pathService.join(workspaceFolderPath, '.gitignore');
-  if (await fileStorage.exists(gitignorePath)) return;
-  await fileStorage.write(gitignorePath, WORKSPACE_GITIGNORE);
+): Effect.Effect<void, Error> {
+  return pathService.join(workspaceFolderPath, '.gitignore').pipe(
+    Effect.flatMap((gitignorePath) =>
+      fileStorage.exists(gitignorePath).pipe(
+        Effect.flatMap((exists) =>
+          exists
+            ? Effect.void
+            : fileStorage.write(gitignorePath, WORKSPACE_GITIGNORE),
+        ),
+      ),
+    ),
+  );
 }

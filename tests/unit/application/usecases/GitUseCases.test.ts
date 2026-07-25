@@ -4,8 +4,18 @@
  * Tests use case orchestration with mocked OUT ports.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGitUseCases } from '../../../../src/main/application/usecases/git';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { GitUseCasesLive } from '../../../../src/main/application/usecases/git';
+import {
+  FileStoragePort,
+  GitClientPort,
+  GitUseCasesPort,
+  PathServicePort,
+  SettingsRepositoryPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IGitClient, GitSyncResult } from '../../../../src/main/domain/ports/out/IGitClient';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
@@ -81,20 +91,54 @@ describe('GitUseCases', () => {
   let gitClient: IGitClient;
   let fileStorage: IFileStorage;
   let settingsRepository: ISettingsRepository;
-  let useCases: IGitUseCases;
+  let useCases: any;
+  let runtime: ManagedRuntime.ManagedRuntime<any, never>;
 
   beforeEach(() => {
     workspaceRepo = createMockWorkspaceRepository();
     gitClient = createMockGitClient();
     fileStorage = createMockFileStorage();
     settingsRepository = createMockSettingsRepository();
-    useCases = createGitUseCases({
-      workspaceRepository: workspaceRepo,
-      gitClient,
-      fileStorage,
-      pathService: createMockPathService(),
-      settingsRepository,
-    });
+    const layer = GitUseCasesLive.pipe(
+      Layer.provide(
+        Layer.mergeAll(
+          adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+          adapterLayer(GitClientPort, gitClient),
+          adapterLayer(FileStoragePort, fileStorage),
+          adapterLayer(PathServicePort, createMockPathService()),
+          adapterLayer(SettingsRepositoryPort, settingsRepository),
+        ),
+      ),
+    );
+    runtime = ManagedRuntime.make(layer);
+    const execute = (key: keyof IGitUseCases) => (request: unknown) =>
+      runtime.runPromise(
+        GitUseCasesPort.pipe(
+          Effect.flatMap((service) =>
+            (service[key].execute as (value: unknown) => Effect.Effect<unknown, Error>)(
+              request,
+            ),
+          ),
+        ),
+      );
+    useCases = Object.fromEntries(
+      (
+        [
+          'getStatus',
+          'init',
+          'commit',
+          'pull',
+          'push',
+          'sync',
+          'setRemote',
+          'getCommits',
+        ] as const
+      ).map((key) => [key, { execute: execute(key) }]),
+    );
+  });
+
+  afterEach(async () => {
+    await runtime.dispose();
   });
 
   describe('getStatus', () => {
