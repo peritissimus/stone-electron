@@ -96,7 +96,7 @@ function collectImports(source: string): string[] {
 }
 
 function isAllowedRootSharedExternal(importPath: string): boolean {
-  return importPath === 'zod';
+  return importPath === 'effect';
 }
 
 function violationFor(
@@ -112,9 +112,11 @@ function violationFor(
       if (targetLayer === 'external' && importPath === 'effect') return null;
       return 'domain must only import domain files (plus `effect` per ADR-0001)';
     case 'application':
-      return targetLayer === 'domain' || targetLayer === 'application'
+      return targetLayer === 'domain' ||
+        targetLayer === 'application' ||
+        (targetLayer === 'external' && importPath === 'effect')
         ? null
-        : 'application must only import domain and application files';
+        : 'application must only import domain, application, and Effect';
     case 'adapters':
       return targetLayer === 'infrastructure' || targetLayer === 'renderer' || targetLayer === 'preload'
         ? 'adapters must not import infrastructure, renderer, or preload'

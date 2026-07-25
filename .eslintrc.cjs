@@ -414,7 +414,30 @@ module.exports = {
         'no-restricted-imports': [
           'error',
           {
+            paths: [
+              {
+                name: 'effect',
+                importNames: [
+                  'Layer',
+                  'Schedule',
+                  'Semaphore',
+                  'Queue',
+                  'Ref',
+                  'Fiber',
+                  'Clock',
+                  'Runtime',
+                  'ManagedRuntime',
+                ],
+                message:
+                  'Domain may use only Effect data vocabulary. Execution, concurrency, time, and wiring belong outside domain.',
+              },
+            ],
             patterns: [
+              {
+                group: ['effect/*', '@effect/*'],
+                message:
+                  'Domain imports Effect only from the bare `effect` package; deep and scoped imports are forbidden.',
+              },
               {
                 group: [
                   '../application/*',
