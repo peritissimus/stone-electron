@@ -1,87 +1,45 @@
 /**
- * Topic Store - Zustand state management for topics and semantic search
+ * Topic Store - Zustand state for semantic search and embedder readiness
  *
- * Implements: specs/stores.ts#SingleSelectStore
+ * Topics themselves live in the main process and are organized there; the
+ * renderer only tracks the search surface built on top of the index.
  */
 
 import { create } from 'zustand';
-import type { TopicWithCount, EmbeddingStatus, SimilarNote } from '@shared/types';
+import type { EmbeddingStatus, SimilarNote } from '@shared/types';
 
 interface TopicState {
   // State
-  topics: TopicWithCount[];
-  selectedTopicId: string | null;
   embeddingStatus: EmbeddingStatus | null;
   searchResults: SimilarNote[];
   searchQuery: string;
   loading: boolean;
-  classifying: boolean;
   error: string | null;
   workspaceId: string | null;
   initialized: boolean;
 
   // Actions
-  setTopics: (topics: TopicWithCount[]) => void;
-  addTopic: (topic: TopicWithCount) => void;
-  updateTopic: (id: string, updates: Partial<TopicWithCount>) => void;
-  deleteTopic: (id: string) => void;
-  selectTopic: (id: string | null) => void;
   setEmbeddingStatus: (status: EmbeddingStatus) => void;
   setSearchResults: (results: SimilarNote[]) => void;
   setSearchQuery: (query: string) => void;
   setLoading: (loading: boolean) => void;
-  setClassifying: (classifying: boolean) => void;
   setError: (error: string | null) => void;
   markInitialized: (workspaceId: string | null) => void;
   reset: () => void;
-
-  // Computed
-  getTopicById: (id: string) => TopicWithCount | null;
-  getPredefinedTopics: () => TopicWithCount[];
-  getCustomTopics: () => TopicWithCount[];
-  getTotalNoteCount: () => number;
 }
 
 const initialState = {
-  topics: [],
-  selectedTopicId: null,
   embeddingStatus: null,
   searchResults: [],
   searchQuery: '',
   loading: false,
-  classifying: false,
   error: null,
   workspaceId: null,
   initialized: false,
 };
 
-export const useTopicStore = create<TopicState>((set, get) => ({
+export const useTopicStore = create<TopicState>((set) => ({
   ...initialState,
-
-  setTopics: (topics) => set({ topics }),
-
-  addTopic: (topic) =>
-    set((state) => ({
-      topics: [...state.topics, topic].sort((a, b) => {
-        // Predefined topics first, then alphabetically
-        if (a.isPredefined && !b.isPredefined) return -1;
-        if (!a.isPredefined && b.isPredefined) return 1;
-        return a.name.localeCompare(b.name);
-      }),
-    })),
-
-  updateTopic: (id, updates) =>
-    set((state) => ({
-      topics: state.topics.map((t) => (t.id === id ? { ...t, ...updates } : t)),
-    })),
-
-  deleteTopic: (id) =>
-    set((state) => ({
-      topics: state.topics.filter((t) => t.id !== id),
-      selectedTopicId: state.selectedTopicId === id ? null : state.selectedTopicId,
-    })),
-
-  selectTopic: (id) => set({ selectedTopicId: id }),
 
   setEmbeddingStatus: (status) => set({ embeddingStatus: status }),
 
@@ -91,27 +49,9 @@ export const useTopicStore = create<TopicState>((set, get) => ({
 
   setLoading: (loading) => set({ loading }),
 
-  setClassifying: (classifying) => set({ classifying }),
-
   setError: (error) => set({ error }),
 
   markInitialized: (workspaceId) => set({ workspaceId, initialized: true }),
 
   reset: () => set(initialState),
-
-  getTopicById: (id) => {
-    return get().topics.find((t) => t.id === id) || null;
-  },
-
-  getPredefinedTopics: () => {
-    return get().topics.filter((t) => t.isPredefined);
-  },
-
-  getCustomTopics: () => {
-    return get().topics.filter((t) => !t.isPredefined);
-  },
-
-  getTotalNoteCount: () => {
-    return get().topics.reduce((sum, t) => sum + (t.noteCount || 0), 0);
-  },
 }));
