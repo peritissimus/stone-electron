@@ -6,7 +6,19 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createJournalUseCases } from '../../../../src/main/application/usecases/journal';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { JournalUseCasesLive } from '../../../../src/main/application/usecases/journal';
+import {
+  AppConfigRepositoryPort,
+  EventPublisherPort,
+  FileStoragePort,
+  IdGeneratorPort,
+  JournalReaderPort,
+  JournalUseCasesPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
@@ -17,6 +29,16 @@ import type { WorkspaceProps } from '../../../../src/main/domain/entities/Worksp
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 function createMockNoteRepository(): INoteRepository {
   return {
@@ -121,7 +143,7 @@ describe('JournalUseCases', () => {
   let fileStorage: IFileStorage;
   let appConfigRepository: IAppConfigRepository;
   let journalReader: IJournalReader;
-  let useCases: IJournalUseCases;
+  let useCases: PromiseFacade<IJournalUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
@@ -129,15 +151,44 @@ describe('JournalUseCases', () => {
     fileStorage = createMockFileStorage();
     appConfigRepository = createMockAppConfigRepository();
     journalReader = createMockJournalReader();
-    useCases = createJournalUseCases({
-      noteRepository: noteRepo,
-      journalReader,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      appConfigRepository,
-      idGenerator: createMockIdGenerator(),
-      pathService: createMockPathService(),
-    });
+    const publisher = {
+      publish: vi.fn(),
+    } as unknown as IEventPublisher;
+    const runtime = ManagedRuntime.make(
+      JournalUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(JournalReaderPort, journalReader),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(AppConfigRepositoryPort, appConfigRepository),
+            adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+            adapterLayer(PathServicePort, createMockPathService()),
+            adapterLayer(EventPublisherPort, publisher),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IJournalUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          JournalUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      openOrCreateForDate: (request) =>
+        run((service) => service.openOrCreateForDate(request)),
+      listRange: (request) =>
+        run((service) => service.listRange(request)),
+    };
   });
 
   describe('openOrCreateForDate', () => {

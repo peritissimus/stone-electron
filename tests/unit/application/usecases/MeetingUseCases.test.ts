@@ -1,5 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createMeetingUseCases } from '../../../../src/main/application/usecases/meeting';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { makeMeetingUseCasesLayer } from '../../../../src/main/application/usecases/meeting/meetingUseCases';
+import {
+  AppConfigRepositoryPort,
+  EchoCancellerPort,
+  EventPublisherPort,
+  FileStoragePort,
+  IdGeneratorPort,
+  JobQueue,
+  LiveTranscriber,
+  MeetingRecordingRepositoryPort,
+  MeetingUseCasesPort,
+  PathServicePort,
+  QuickCaptureUseCasesPort,
+  SummarizationStrategyPort,
+  TranscriberPort,
+  WorkspaceRepositoryPort,
+  type IEchoCanceller,
+  type IIdGenerator,
+  type ILiveTranscriber,
+  type IPathService,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import { useCasesLayer } from '../../../helpers/effectUseCases';
 import {
   MeetingRecordingEntity,
   type MeetingRecordingProps,
@@ -135,6 +158,139 @@ function recording(overrides: Partial<MeetingRecordingProps> = {}): MeetingRecor
   });
 }
 
+interface MeetingTestDeps {
+  meetingRepository: IMeetingRecordingRepository;
+  workspaceRepository: IWorkspaceRepository;
+  fileStorage: IFileStorage;
+  idGenerator: IIdGenerator;
+  pathService: IPathService;
+  transcriber: ITranscriber;
+  summarizer: ISummarizationStrategy;
+  appConfigRepository: IAppConfigRepository;
+  eventPublisher: IEventPublisher;
+  jobQueue: IJobQueue;
+  echoCanceller?: IEchoCanceller;
+  liveTranscriber?: ILiveTranscriber;
+  appendToJournal: (
+    content: string,
+    workspaceId?: string,
+  ) => Promise<{ noteId: string; appended: boolean }>;
+  defaultPrompt?: string;
+}
+
+type PromiseMeetingUseCases<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseMeetingUseCases<T[Key]> }
+    : T;
+
+function createMeetingUseCases(
+  deps: MeetingTestDeps,
+): PromiseMeetingUseCases<IMeetingUseCases> {
+  const live = deps.liveTranscriber;
+  const dependencyLayer = Layer.mergeAll(
+    adapterLayer(MeetingRecordingRepositoryPort, deps.meetingRepository),
+    adapterLayer(WorkspaceRepositoryPort, deps.workspaceRepository),
+    adapterLayer(FileStoragePort, deps.fileStorage),
+    adapterLayer(IdGeneratorPort, deps.idGenerator),
+    adapterLayer(PathServicePort, deps.pathService),
+    adapterLayer(TranscriberPort, deps.transcriber),
+    adapterLayer(SummarizationStrategyPort, deps.summarizer),
+    adapterLayer(AppConfigRepositoryPort, deps.appConfigRepository),
+    adapterLayer(EventPublisherPort, deps.eventPublisher),
+    adapterLayer(
+      EchoCancellerPort,
+      deps.echoCanceller ?? {
+        cancel: async () => {
+          throw new Error('echo cancellation unavailable');
+        },
+      },
+    ),
+    Layer.succeed(JobQueue, {
+      enqueue: (type, payload, options) =>
+        Effect.tryPromise(() => deps.jobQueue.enqueue(type, payload, options)),
+    }),
+    Layer.succeed(LiveTranscriber, {
+      isReady: Effect.sync(() => live?.isReady() ?? false),
+      start: Effect.tryPromise(() => live?.start() ?? Promise.resolve()),
+      stop: Effect.tryPromise(() => live?.stop() ?? Promise.resolve()),
+      transcribeChunk: (wav) =>
+        Effect.tryPromise(() =>
+          live?.transcribeChunk(wav) ?? Promise.resolve({ text: '', segments: [] }),
+        ),
+    }),
+    useCasesLayer(QuickCaptureUseCasesPort, {
+      appendToJournal: deps.appendToJournal,
+      transcribeVoiceCapture: async (_request: {
+        wav: Uint8Array;
+        workspaceId?: string;
+      }) => ({ text: '', durationMs: 0 }),
+    }),
+  );
+  const runtime = ManagedRuntime.make(
+    makeMeetingUseCasesLayer({ defaultPrompt: deps.defaultPrompt }).pipe(
+      Layer.provide(dependencyLayer),
+    ),
+  );
+  const run = <A, E>(
+    use: (service: IMeetingUseCases) => Effect.Effect<A, E>,
+  ) =>
+    runtime.runPromise(
+      MeetingUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
+    );
+
+  return {
+    reserveRecordingSlot: {
+      execute: (request) => run((service) => service.reserveRecordingSlot.execute(request)),
+    },
+    appendRecordingAudio: {
+      execute: (request) => run((service) => service.appendRecordingAudio.execute(request)),
+    },
+    requestFinalize: {
+      execute: (request) => run((service) => service.requestFinalize.execute(request)),
+    },
+    finalizeRecording: {
+      execute: (request, options) =>
+        run((service) => service.finalizeRecording.execute(request, options)),
+    },
+    listMeetingRecordings: {
+      execute: (request) => run((service) => service.listMeetingRecordings.execute(request)),
+    },
+    getMeetingRecording: {
+      execute: (request) => run((service) => service.getMeetingRecording.execute(request)),
+    },
+    getMeetingAudio: {
+      execute: (request) => run((service) => service.getMeetingAudio.execute(request)),
+    },
+    deleteMeetingRecording: {
+      execute: (request) => run((service) => service.deleteMeetingRecording.execute(request)),
+    },
+    resummarizeMeeting: {
+      execute: (request) => run((service) => service.resummarizeMeeting.execute(request)),
+    },
+    retranscribeMeeting: {
+      execute: (request) => run((service) => service.retranscribeMeeting.execute(request)),
+    },
+    sendToJournal: {
+      execute: (request) => run((service) => service.sendToJournal.execute(request)),
+    },
+    pruneRecordingAudio: {
+      execute: () => run((service) => service.pruneRecordingAudio.execute()),
+    },
+    warmUpTranscriber: {
+      execute: () => run((service) => service.warmUpTranscriber.execute()),
+    },
+    liveTranscription: {
+      start: () => run((service) => service.liveTranscription.start()),
+      transcribeChunk: (request) =>
+        run((service) => service.liveTranscription.transcribeChunk(request)),
+      stop: () => run((service) => service.liveTranscription.stop()),
+    },
+  };
+}
+
 describe('MeetingUseCases', () => {
   let meetingRepository: IMeetingRecordingRepository;
   let workspaceRepository: IWorkspaceRepository;
@@ -145,7 +301,7 @@ describe('MeetingUseCases', () => {
     content: string,
     workspaceId?: string,
   ) => Promise<{ noteId: string; appended: boolean }>;
-  let useCases: IMeetingUseCases;
+  let useCases: PromiseMeetingUseCases<IMeetingUseCases>;
 
   beforeEach(() => {
     meetingRepository = createMockMeetingRepository();

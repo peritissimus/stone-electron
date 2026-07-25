@@ -1,5 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDailyReviewUseCases } from '../../../../src/main/application/usecases/dailyReview';
+import { Effect, Layer, ManagedRuntime } from 'effect';
+import { DailyReviewUseCasesLive } from '../../../../src/main/application/usecases/dailyReview/dailyReviewUseCases';
+import {
+  AppConfigRepositoryPort,
+  CalendarSourcePort,
+  DailyReviewUseCasesPort,
+  ExternalSourceRegistryPort,
+  JournalUseCasesPort,
+  MeetingRecordingRepositoryPort,
+  NoteRepositoryPort,
+  QuickCaptureUseCasesPort,
+  TaskUseCasesPort,
+  TextGeneratorPort,
+  WorkspaceRepositoryPort,
+  type DailyReviewSnapshot,
+  type IDailyReviewUseCases,
+  type ICalendarSource,
+  type ITextGenerator,
+} from '../../../../src/main/domain';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+import { useCasesLayer } from '../../../helpers/effectUseCases';
 import { MeetingRecordingEntity } from '../../../../src/main/domain/entities/MeetingRecording';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
@@ -32,14 +52,14 @@ function createMockMeetingRepository(): IMeetingRecordingRepository {
   } as unknown as IMeetingRecordingRepository;
 }
 
-function createMockJournalUseCases(): IJournalUseCases {
+function createMockJournalUseCases() {
   return {
     openOrCreateForDate: vi.fn(),
     listRange: vi.fn(),
   };
 }
 
-function createMockTaskUseCases(): ITaskUseCases {
+function createMockTaskUseCases() {
   return {
     getAllTasks: { execute: vi.fn() },
     getNoteTasks: { execute: vi.fn() },
@@ -110,8 +130,8 @@ describe('DailyReviewUseCases', () => {
   let noteRepository: INoteRepository;
   let workspaceRepository: IWorkspaceRepository;
   let meetingRepository: IMeetingRecordingRepository;
-  let journalUseCases: IJournalUseCases;
-  let taskUseCases: ITaskUseCases;
+  let journalUseCases: ReturnType<typeof createMockJournalUseCases>;
+  let taskUseCases: ReturnType<typeof createMockTaskUseCases>;
   let appConfigRepository: IAppConfigRepository;
 
   beforeEach(() => {
@@ -121,24 +141,121 @@ describe('DailyReviewUseCases', () => {
     journalUseCases = createMockJournalUseCases();
     taskUseCases = createMockTaskUseCases();
     appConfigRepository = createMockAppConfigRepository();
+    vi.mocked(journalUseCases.listRange).mockResolvedValue({ entries: [] });
+    vi.mocked(meetingRepository.list).mockResolvedValue({
+      recordings: [],
+      nextCursor: null,
+    });
+    vi.mocked(taskUseCases.getAllTasks.execute).mockResolvedValue([]);
+    vi.mocked(noteRepository.findRecentlyUpdated).mockResolvedValue([]);
+    vi.mocked(noteRepository.findAll).mockResolvedValue([]);
   });
 
-  function useCases() {
-    return createDailyReviewUseCases({
-      noteRepository,
-      workspaceRepository,
-      meetingRepository,
-      journalUseCases,
-      taskUseCases,
-      appConfigRepository,
-      externalSourceRegistry: {
+  type PromiseDailyReview<T> = T extends (
+    ...args: infer Args
+  ) => Effect.Effect<infer Success, unknown, unknown>
+    ? (...args: Args) => Promise<Success>
+    : T extends object
+      ? { [Key in keyof T]: PromiseDailyReview<T[Key]> }
+      : T;
+
+  function makeHarness(options: {
+    registry?: IExternalSourceRegistry;
+    textGenerator?: ITextGenerator;
+    calendarSource?: ICalendarSource;
+    appendToJournal?: (
+      content: string,
+      workspaceId?: string,
+    ) => Promise<{ noteId: string; appended: boolean }>;
+  } = {}) {
+    const registry =
+      options.registry ??
+      ({
         load: vi.fn(),
         loadAll: vi.fn(),
         mergeInto: vi.fn((snapshot) => snapshot),
-      } as IExternalSourceRegistry,
-      textGenerator: { generateMarkdown: vi.fn(async () => ({ text: '- summary' })) } as never,
-      appendToJournal: vi.fn(async () => ({ noteId: 'journal-1', appended: true })),
-    });
+      } as IExternalSourceRegistry);
+    const textGenerator =
+      options.textGenerator ??
+      ({
+        generateMarkdown: vi.fn(async () => ({ text: '- summary' })),
+      } as unknown as ITextGenerator);
+    const appendToJournal =
+      options.appendToJournal ??
+      vi.fn(async () => ({ noteId: 'journal-1', appended: true }));
+    const calendarSource =
+      options.calendarSource ??
+      ({
+        listCalendars: vi.fn(async () => ({
+          status: 'unavailable' as const,
+          data: [],
+        })),
+        getEventsForDate: vi.fn(async () => ({
+          status: 'unavailable' as const,
+          data: [],
+        })),
+      } as ICalendarSource);
+    const dependencyLayer = Layer.mergeAll(
+      adapterLayer(NoteRepositoryPort, noteRepository),
+      adapterLayer(WorkspaceRepositoryPort, workspaceRepository),
+      adapterLayer(MeetingRecordingRepositoryPort, meetingRepository),
+      adapterLayer(AppConfigRepositoryPort, appConfigRepository),
+      adapterLayer(TextGeneratorPort, textGenerator),
+      adapterLayer(CalendarSourcePort, calendarSource),
+      adapterLayer(ExternalSourceRegistryPort, registry),
+      useCasesLayer(JournalUseCasesPort, journalUseCases),
+      useCasesLayer(TaskUseCasesPort, taskUseCases),
+      useCasesLayer(QuickCaptureUseCasesPort, {
+        appendToJournal,
+        transcribeVoiceCapture: async (_request: {
+          wav: Uint8Array;
+          workspaceId?: string;
+        }) => ({ text: '', durationMs: 0 }),
+      }),
+    );
+    const runtime = ManagedRuntime.make(
+      DailyReviewUseCasesLive.pipe(Layer.provide(dependencyLayer)),
+    );
+    const run = <A, E>(
+      use: (service: IDailyReviewUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime.runPromise(
+        DailyReviewUseCasesPort.pipe(
+          Effect.flatMap((service) => use(service)),
+        ),
+      );
+    const useCases: PromiseDailyReview<IDailyReviewUseCases> = {
+      getDailyReview: {
+        execute: (request) =>
+          run((service) => service.getDailyReview.execute(request)),
+      },
+      listCalendars: {
+        execute: () => run((service) => service.listCalendars.execute()),
+      },
+      loadIntegration: {
+        execute: (request) =>
+          run((service) => service.loadIntegration.execute(request)),
+      },
+      loadIntegrations: {
+        execute: (request) =>
+          run((service) => service.loadIntegrations.execute(request)),
+      },
+      summarizeDailyReview: {
+        execute: (request) =>
+          run((service) => service.summarizeDailyReview.execute(request)),
+      },
+    };
+    return {
+      useCases,
+      registry,
+      textGenerator,
+      appendToJournal,
+      calendarSource,
+    };
+  }
+
+  function useCases() {
+    return makeHarness().useCases;
   }
 
   it('returns an empty snapshot when no active workspace exists', async () => {
@@ -296,5 +413,104 @@ describe('DailyReviewUseCases', () => {
     expect(result.openTasks).toEqual([]);
     expect(result.recentNotes).toEqual([]);
     expect(result.onThisDay).toEqual([]);
+  });
+
+  it('delegates one integration load to the registry', async () => {
+    const result = {
+      source: 'calendar' as const,
+      status: 'connected' as const,
+      data: { events: [] },
+    };
+    const registry: IExternalSourceRegistry = {
+      load: vi.fn(async () => result),
+      loadAll: vi.fn(),
+      mergeInto: vi.fn((snapshot) => snapshot),
+    };
+    const harness = makeHarness({ registry });
+
+    await expect(
+      harness.useCases.loadIntegration.execute({
+        source: 'calendar',
+        date: '2026-07-16',
+      }),
+    ).resolves.toEqual(result);
+    expect(registry.load).toHaveBeenCalledWith('calendar', {
+      date: '2026-07-16',
+    });
+  });
+
+  it('returns available calendars with their access status', async () => {
+    const calendarSource: ICalendarSource = {
+      listCalendars: vi.fn(async () => ({
+        status: 'connected' as const,
+        data: [{ id: 'work', title: 'Work', source: 'iCloud' }],
+      })),
+      getEventsForDate: vi.fn(async () => ({
+        status: 'connected' as const,
+        data: [],
+      })),
+    };
+
+    await expect(
+      makeHarness({ calendarSource }).useCases.listCalendars.execute(),
+    ).resolves.toEqual({
+      status: 'connected',
+      calendars: [{ id: 'work', title: 'Work', source: 'iCloud' }],
+    });
+  });
+
+  it('summarizes evidence without writing the journal by default', async () => {
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
+    const generateMarkdown = vi.fn(async (_request: {
+      prompt: string;
+      system?: string;
+    }) => ({ text: '- did things' }));
+    const appendToJournal = vi.fn(async () => ({
+      noteId: 'journal-1',
+      appended: true,
+    }));
+    const harness = makeHarness({
+      textGenerator: { generateMarkdown } as unknown as ITextGenerator,
+      appendToJournal,
+      registry: {
+        load: vi.fn(),
+        loadAll: vi.fn(),
+        mergeInto: vi.fn((snapshot: DailyReviewSnapshot) => ({
+          ...snapshot,
+          mailUnreadCount: 12,
+        })),
+      },
+    });
+
+    const result = await harness.useCases.summarizeDailyReview.execute();
+
+    expect(generateMarkdown.mock.calls[0][0].prompt).toContain(
+      '12 unread messages',
+    );
+    expect(appendToJournal).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      summary: '- did things',
+      journalNoteId: null,
+    });
+  });
+
+  it('appends a generated summary when requested', async () => {
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue(null);
+    const appendToJournal = vi.fn(async () => ({
+      noteId: 'journal-1',
+      appended: true,
+    }));
+    const harness = makeHarness({ appendToJournal });
+
+    const result =
+      await harness.useCases.summarizeDailyReview.execute({
+        saveToJournal: true,
+      });
+
+    expect(appendToJournal).toHaveBeenCalledWith(
+      expect.stringContaining('- summary'),
+      undefined,
+    );
+    expect(result.journalNoteId).toBe('journal-1');
   });
 });
