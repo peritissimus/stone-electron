@@ -3,30 +3,25 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { GIT_CHANNELS } from '@shared/constants/ipcChannels';
-import type {
-  IGetGitStatusUseCase,
-  IInitGitRepoUseCase,
-  IGitCommitUseCase,
-  IGitPullUseCase,
-  IGitPushUseCase,
-  IGitSyncUseCase,
-  ISetGitRemoteUseCase,
-  IGetGitCommitsUseCase,
-} from '../../../domain';
+import {
+  GetGitCommitsRequestSchema,
+  GitMessageRequestSchema,
+  GitWorkspaceIdRequestSchema,
+  SetGitRemoteRequestSchema,
+} from '@shared/schemas';
+import type { IGitUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface GitIPCDeps {
-  getGitStatus: IGetGitStatusUseCase;
-  initGitRepo: IInitGitRepoUseCase;
-  gitCommit: IGitCommitUseCase;
-  gitPull: IGitPullUseCase;
-  gitPush: IGitPushUseCase;
-  gitSync: IGitSyncUseCase;
-  setGitRemote: ISetGitRemoteUseCase;
-  getGitCommits: IGetGitCommitsUseCase;
+  runGitEffect: RunGitEffect;
 }
+
+export type RunGitEffect = <A, E>(
+  use: (service: IGitUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
 
 const mapGitErrorCode = (error: unknown): string | undefined => {
   if (error instanceof Error) {
@@ -37,16 +32,7 @@ const mapGitErrorCode = (error: unknown): string | undefined => {
 };
 
 export function registerGitHandlers(deps: GitIPCDeps): void {
-  const {
-    getGitStatus,
-    initGitRepo,
-    gitCommit,
-    gitPull,
-    gitPush,
-    gitSync,
-    setGitRemote,
-    getGitCommits,
-  } = deps;
+  const run = deps.runGitEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, {
       loggerPrefix: 'GitIPC',
@@ -55,10 +41,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
       context,
     });
 
-  ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, { workspaceId }: { workspaceId: string }) => {
+  ipcMain.handle(GIT_CHANNELS.GET_STATUS, async (_, rawRequest) => {
+    const { workspaceId } = GitWorkspaceIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const status = await getGitStatus.execute({ workspaceId });
+        const status = await run((service) =>
+          service.getStatus.execute({ workspaceId }),
+        );
         // Transform domain response to frontend-expected format
         return {
           isRepo: status.isRepo,
@@ -78,10 +67,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     );
   });
 
-  ipcMain.handle(GIT_CHANNELS.INIT, async (_, { workspaceId }: { workspaceId: string }) => {
+  ipcMain.handle(GIT_CHANNELS.INIT, async (_, rawRequest) => {
+    const { workspaceId } = GitWorkspaceIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const result = await initGitRepo.execute({ workspaceId });
+        const result = await run((service) =>
+          service.init.execute({ workspaceId }),
+        );
         if (!result.success) {
           const error = new Error('Failed to initialize git repository');
           error.name = 'GitOperationError';
@@ -95,10 +87,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     GIT_CHANNELS.COMMIT,
-    async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
+    async (_, rawRequest) => {
+      const { workspaceId, message } = GitMessageRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const result = await gitCommit.execute({ workspaceId, message });
+          const result = await run((service) =>
+            service.commit.execute({ workspaceId, message }),
+          );
           if (!result) {
             const error = new Error('No changes to commit');
             error.name = 'NoChangesError';
@@ -114,10 +109,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     },
   );
 
-  ipcMain.handle(GIT_CHANNELS.PULL, async (_, { workspaceId }: { workspaceId: string }) => {
+  ipcMain.handle(GIT_CHANNELS.PULL, async (_, rawRequest) => {
+    const { workspaceId } = GitWorkspaceIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const result = await gitPull.execute({ workspaceId });
+        const result = await run((service) =>
+          service.pull.execute({ workspaceId }),
+        );
         if (!result.success) {
           const error = new Error(result.error || 'Pull failed');
           error.name = 'GitOperationError';
@@ -129,10 +127,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
     );
   });
 
-  ipcMain.handle(GIT_CHANNELS.PUSH, async (_, { workspaceId }: { workspaceId: string }) => {
+  ipcMain.handle(GIT_CHANNELS.PUSH, async (_, rawRequest) => {
+    const { workspaceId } = GitWorkspaceIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const result = await gitPush.execute({ workspaceId });
+        const result = await run((service) =>
+          service.push.execute({ workspaceId }),
+        );
         if (!result.success) {
           const error = new Error(result.error || 'Push failed');
           error.name = 'GitOperationError';
@@ -146,9 +147,11 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     GIT_CHANNELS.SYNC,
-    async (_, { workspaceId, message }: { workspaceId: string; message?: string }) => {
+    async (_, rawRequest) => {
+      const { workspaceId, message } = GitMessageRequestSchema.parse(rawRequest);
       return handleRequest(
-        async () => gitSync.execute({ workspaceId, message }),
+        async () =>
+          run((service) => service.sync.execute({ workspaceId, message })),
         { channel: GIT_CHANNELS.SYNC, workspaceId },
       );
     },
@@ -156,10 +159,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     GIT_CHANNELS.SET_REMOTE,
-    async (_, { workspaceId, url }: { workspaceId: string; url: string }) => {
+    async (_, rawRequest) => {
+      const { workspaceId, url } = SetGitRemoteRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const result = await setGitRemote.execute({ workspaceId, url });
+          const result = await run((service) =>
+            service.setRemote.execute({ workspaceId, url }),
+          );
           if (!result.success) {
             const error = new Error('Failed to set remote');
             error.name = 'GitOperationError';
@@ -174,10 +180,13 @@ export function registerGitHandlers(deps: GitIPCDeps): void {
 
   ipcMain.handle(
     GIT_CHANNELS.GET_COMMITS,
-    async (_, { workspaceId, limit }: { workspaceId: string; limit?: number }) => {
+    async (_, rawRequest) => {
+      const { workspaceId, limit } = GetGitCommitsRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const result = await getGitCommits.execute({ workspaceId, limit });
+          const result = await run((service) =>
+            service.getCommits.execute({ workspaceId, limit }),
+          );
           return {
             commits: result.commits.map((c) => ({
               ...c,

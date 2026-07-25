@@ -16,11 +16,11 @@ export interface IPCResponse<T = unknown> {
  * spread this into their own `errorMap` to add slice-specific entries
  * (e.g. NoteNotFoundError → NOTE_NOT_FOUND).
  *
- * Currently just surfaces Zod parse failures — request-payload validation
+ * Currently just surfaces Effect Schema parse failures — request-payload validation
  * is uniform across adapters, so its error code should be too.
  */
 export const COMMON_IPC_ERROR_MAP: Readonly<Record<string, string>> = Object.freeze({
-  ZodError: 'VALIDATION_ERROR',
+  SchemaParseError: 'VALIDATION_ERROR',
 });
 
 export interface HandleIpcRequestOptions {

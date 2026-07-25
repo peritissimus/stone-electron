@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { NOTEBOOK_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   CreateNotebookRequestSchema,
@@ -23,11 +24,15 @@ import { logger } from '../../../shared';
 import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 
 export interface NotebookIPCDeps {
-  notebookUseCases: INotebookUseCases;
+  runNotebookEffect: RunNotebookEffect;
 }
 
+export type RunNotebookEffect = <A, E>(
+  use: (service: INotebookUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
-  const { notebookUseCases } = deps;
+  const run = deps.runNotebookEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'NotebookIPC',
@@ -44,12 +49,14 @@ export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
     const request = CreateNotebookRequestSchema.parse(rawRequest);
     return handleRequest<NotebookResponse>(
       async () => {
-        const result = await notebookUseCases.createNotebook.execute({
-          name: request.name,
-          parentId: request.parent_id,
-          icon: request.icon,
-          color: request.color,
-        });
+        const result = await run((service) =>
+          service.createNotebook.execute({
+            name: request.name,
+            parentId: request.parent_id,
+            icon: request.icon,
+            color: request.color,
+          }),
+        );
         return result.notebook;
       },
       {
@@ -64,7 +71,9 @@ export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
     const request = UpdateNotebookRequestSchema.parse(rawRequest);
     return handleRequest<NotebookResponse>(
       async () => {
-        const result = await notebookUseCases.updateNotebook.execute(request);
+        const result = await run((service) =>
+          service.updateNotebook.execute(request),
+        );
         return result.notebook;
       },
       { channel: NOTEBOOK_CHANNELS.UPDATE, notebookId: request.id },
@@ -75,10 +84,12 @@ export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
     const { id, delete_notes } = DeleteNotebookRequestSchema.parse(rawRequest);
     return handleRequest<void>(
       async () => {
-        await notebookUseCases.deleteNotebook.execute({
-          id,
-          deleteNotes: delete_notes,
-        });
+        await run((service) =>
+          service.deleteNotebook.execute({
+            id,
+            deleteNotes: delete_notes,
+          }),
+        );
       },
       {
         channel: NOTEBOOK_CHANNELS.DELETE,
@@ -92,9 +103,11 @@ export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
     const request = ListNotebooksRequestSchema.parse(rawRequest ?? {});
     return handleRequest<ListNotebooksResponse>(
       async () => {
-        const result = await notebookUseCases.listNotebooks.execute({
-          includeNoteCount: request.include_counts ?? false,
-        });
+        const result = await run((service) =>
+          service.listNotebooks.execute({
+            includeNoteCount: request.include_counts ?? false,
+          }),
+        );
         return { notebooks: result.notebooks };
       },
       { channel: NOTEBOOK_CHANNELS.GET_ALL },
@@ -106,10 +119,12 @@ export function registerNotebookHandlers(deps: NotebookIPCDeps): void {
     return handleRequest<void>(
       async () => {
         // Note: position is not currently supported by the use case
-        await notebookUseCases.moveNotebook.execute({
-          id,
-          targetParentId: parent_id ?? null,
-        });
+        await run((service) =>
+          service.moveNotebook.execute({
+            id,
+            targetParentId: parent_id ?? null,
+          }),
+        );
       },
       {
         channel: NOTEBOOK_CHANNELS.MOVE,

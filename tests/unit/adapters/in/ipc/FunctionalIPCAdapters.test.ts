@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect } from 'effect';
+import { effectifyUseCases } from '../../../../helpers/effectUseCases';
 import {
   AI_CHANNELS,
   ATTACHMENT_CHANNELS,
@@ -166,7 +168,12 @@ describe('function-style IPC adapters', () => {
       suggestLinks: execute({ suggestions: [] }),
     };
 
-    registerAIHandlers({ aiUseCases } as any);
+    const aiService = effectifyUseCases(aiUseCases);
+    registerAIHandlers({
+      runAIEffect: (
+        use: (service: typeof aiService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(aiService)),
+    } as any);
 
     expectRegistered(Object.values(AI_CHANNELS));
     await expect(
@@ -201,7 +208,14 @@ describe('function-style IPC adapters', () => {
       uploadImage: vi.fn().mockResolvedValue({ markdownLink: '![x](image.png)', attachment }),
     };
 
-    registerAttachmentHandlers({ attachmentUseCases } as any);
+    const attachmentService = effectifyUseCases(attachmentUseCases);
+    registerAttachmentHandlers({
+      runAttachmentEffect: (
+        use: (
+          service: typeof attachmentService,
+        ) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(attachmentService)),
+    } as any);
 
     expectRegistered(Object.values(ATTACHMENT_CHANNELS));
     await expect(
@@ -246,13 +260,18 @@ describe('function-style IPC adapters', () => {
   });
 
   it('delegates database maintenance channels', async () => {
-    const deps = {
-      getDatabaseStatus: execute({ ok: true }),
-      vacuumDatabase: execute({ reclaimedBytes: 100 }),
-      checkDatabaseIntegrity: execute({ ok: true }),
+    const databaseUseCases = {
+      getStatus: execute({ ok: true }),
+      vacuum: execute({ reclaimedBytes: 100 }),
+      checkIntegrity: execute({ ok: true }),
     };
 
-    registerDatabaseHandlers(deps as any);
+    const databaseService = effectifyUseCases(databaseUseCases);
+    registerDatabaseHandlers({
+      runDatabaseEffect: (
+        use: (service: typeof databaseService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(databaseService)),
+    } as any);
 
     await expect(invoke(DATABASE_CHANNELS.GET_STATUS)).resolves.toEqual({
       success: true,
@@ -261,7 +280,7 @@ describe('function-style IPC adapters', () => {
     await invoke(DATABASE_CHANNELS.VACUUM);
     await invoke(DATABASE_CHANNELS.CHECK_INTEGRITY);
 
-    expect(deps.getDatabaseStatus.execute).toHaveBeenCalledWith();
+    expect(databaseUseCases.getStatus.execute).toHaveBeenCalledWith();
     unregisterDatabaseHandlers();
     expectUnregistered([
       DATABASE_CHANNELS.GET_STATUS,
@@ -288,9 +307,25 @@ describe('function-style IPC adapters', () => {
       createNoteFromTemplate: execute({ noteId: 'note-1' }),
     };
 
-    registerDailyReviewHandlers({ dailyReviewUseCases } as any);
-    registerStatusReportHandlers({ statusReportUseCases } as any);
-    registerTemplateHandlers({ templateUseCases } as any);
+    const dailyReviewService = effectifyUseCases(dailyReviewUseCases as any);
+    registerDailyReviewHandlers({
+      runDailyReviewEffect: (use) =>
+        Effect.runPromise(use(dailyReviewService as any)),
+    });
+    const statusReportService = effectifyUseCases(statusReportUseCases);
+    registerStatusReportHandlers({
+      runStatusReportEffect: (
+        use: (
+          service: typeof statusReportService,
+        ) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(statusReportService)),
+    } as any);
+    const templateService = effectifyUseCases(templateUseCases);
+    registerTemplateHandlers({
+      runTemplateEffect: (
+        use: (service: typeof templateService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(templateService)),
+    } as any);
 
     await invoke(DAILY_REVIEW_CHANNELS.GET, { workspaceId: 'ws-1', date: '2026-04-21' });
     await invoke(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, {
@@ -350,8 +385,16 @@ describe('function-style IPC adapters', () => {
       rebuildAll: execute({ indexed: 3 }),
     };
 
-    registerGraphHandlers({ graphUseCases } as any);
-    registerIndexHandlers({ indexUseCases } as any);
+    const graphService = effectifyUseCases(graphUseCases);
+    registerGraphHandlers({
+      runGraphEffect: (
+        use: (service: typeof graphService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(graphService)),
+    } as any);
+    const indexService = effectifyUseCases(indexUseCases);
+    registerIndexHandlers({
+      runIndexEffect: (use) => Effect.runPromise(use(indexService)),
+    });
 
     await expect(invoke(NOTE_CHANNELS.GET_BACKLINKS, { id: 'note-1' })).resolves.toEqual({
       success: true,
@@ -396,10 +439,35 @@ describe('function-style IPC adapters', () => {
       writeScratchFile: execute({ path: '/tmp/a.md' }),
     };
 
-    registerJournalHandlers({ journalUseCases } as any);
-    registerQuickCaptureHandlers({ appendToJournal, transcribeVoiceCapture });
-    registerQuickNoteHandlers({ quickNoteUseCases } as any);
-    registerScratchHandlers({ scratchUseCases } as any);
+    const journalService = effectifyUseCases(journalUseCases);
+    registerJournalHandlers({
+      runJournalEffect: (
+        use: (service: typeof journalService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(journalService)),
+    } as any);
+    const quickCaptureService = effectifyUseCases({
+      appendToJournal,
+      transcribeVoiceCapture,
+    });
+    registerQuickCaptureHandlers({
+      runQuickCaptureEffect: (
+        use: (
+          service: typeof quickCaptureService,
+        ) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(quickCaptureService)),
+    } as any);
+    const quickNoteService = effectifyUseCases(quickNoteUseCases);
+    registerQuickNoteHandlers({
+      runQuickNoteEffect: (
+        use: (service: typeof quickNoteService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(quickNoteService)),
+    } as any);
+    const scratchService = effectifyUseCases(scratchUseCases);
+    registerScratchHandlers({
+      runScratchEffect: (
+        use: (service: typeof scratchService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(scratchService)),
+    } as any);
 
     await invoke(JOURNAL_CHANNELS.OPEN_OR_CREATE_FOR_DATE, {
       date: '2026-04-21',
@@ -469,7 +537,10 @@ describe('function-style IPC adapters', () => {
       getRendererMetrics: vi.fn().mockResolvedValue({ paints: 1 }),
     };
 
-    registerMeetingHandlers({ meetingUseCases } as any);
+    const meetingService = effectifyUseCases(meetingUseCases as any);
+    registerMeetingHandlers({
+      runMeetingEffect: (use) => Effect.runPromise(use(meetingService as any)),
+    });
     setMainWindow(windowRef);
     registerPerformanceHandlers(performanceDeps as any);
 
@@ -552,9 +623,33 @@ describe('function-style IPC adapters', () => {
     };
     const noteUseCases = { getNote: execute({ note: { id: 'note-1', title: 'Title' } }) };
 
-    registerSystemHandlers(systemDeps as any);
-    registerTaskHandlers({ taskUseCases } as any);
-    registerVersionHandlers({ versionUseCases, noteUseCases } as any);
+    const systemService = effectifyUseCases({
+      getFonts: systemDeps.getSystemFonts,
+      getMicAccessStatus: systemDeps.getMicAccessStatus,
+      requestMicAccess: systemDeps.requestMicAccess,
+      getSystemAudioAccess: systemDeps.getSystemAudioAccess,
+      requestSystemAudioAccess: systemDeps.requestSystemAudioAccess,
+      openExternal: systemDeps.openExternal,
+    });
+    registerSystemHandlers({
+      runSystemEffect: (use) =>
+        Effect.runPromise(use(systemService as any)),
+    });
+    const taskService = effectifyUseCases(taskUseCases);
+    registerTaskHandlers({
+      runTaskEffect: (
+        use: (service: typeof taskService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(taskService)),
+    } as any);
+    const noteService = effectifyUseCases(noteUseCases);
+    const versionService = effectifyUseCases(versionUseCases);
+    registerVersionHandlers({
+      runVersionEffect: (
+        use: (service: typeof versionService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(versionService)),
+      runNoteEffect: (use: (service: any) => Effect.Effect<any, any>) =>
+        Effect.runPromise(use(noteService as any)),
+    } as any);
 
     await invoke(SYSTEM_CHANNELS.GET_FONTS);
     await invoke(SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS);
@@ -626,7 +721,33 @@ describe('function-style IPC adapters', () => {
       deleteAIProviderKey: execute(undefined),
     };
 
-    registerSettingsHandlers(deps as any);
+    const settingsService = effectifyUseCases({
+      get: deps.getSetting,
+      set: deps.setSetting,
+      getAll: deps.getAllSettings,
+      getAppearance: deps.getAppearanceSettings,
+      setTheme: deps.setTheme,
+      setAccentColor: deps.setAccentColor,
+      updateFontSettings: deps.updateFontSettings,
+      resetFontSettings: deps.resetFontSettings,
+      getEditor: deps.getEditorSettings,
+      updateEditor: deps.updateEditorSettings,
+      resetEditor: deps.resetEditorSettings,
+      getShortcuts: deps.getShortcuts,
+      setShortcut: deps.setShortcut,
+      resetShortcut: deps.resetShortcut,
+      resetAllShortcuts: deps.resetAllShortcuts,
+      getAI: deps.getAI,
+      updateAI: deps.updateAI,
+      resetAI: deps.resetAI,
+      getAIProviderKeys: deps.getAIProviderKeys,
+      setAIProviderKey: deps.setAIProviderKey,
+      deleteAIProviderKey: deps.deleteAIProviderKey,
+    });
+    registerSettingsHandlers({
+      runSettingsEffect: (use) =>
+        Effect.runPromise(use(settingsService as any)),
+    });
 
     expectRegistered(Object.values(SETTINGS_CHANNELS));
     await invoke(SETTINGS_CHANNELS.GET, { key: 'legacy' });
@@ -635,24 +756,36 @@ describe('function-style IPC adapters', () => {
     await invoke(SETTINGS_CHANNELS.GET_APPEARANCE);
     await invoke(SETTINGS_CHANNELS.SET_THEME, { theme: 'dark' });
     await invoke(SETTINGS_CHANNELS.SET_ACCENT_COLOR, { accentColor: 'blue' });
-    await invoke(SETTINGS_CHANNELS.UPDATE_FONT_SETTINGS, { fontSettings: { bodyFont: 'Inter' } });
+    await invoke(SETTINGS_CHANNELS.UPDATE_FONT_SETTINGS, {
+      fontSettings: { editorBodyFont: 'Inter' },
+    });
     await invoke(SETTINGS_CHANNELS.RESET_FONT_SETTINGS);
     await invoke(SETTINGS_CHANNELS.GET_EDITOR);
-    await invoke(SETTINGS_CHANNELS.UPDATE_EDITOR, { editor: { vimMode: true } });
+    await invoke(SETTINGS_CHANNELS.UPDATE_EDITOR, {
+      editor: { behavior: { placeholder: 'Write…', defaultMode: 'rich' } },
+    });
     await invoke(SETTINGS_CHANNELS.RESET_EDITOR);
     await invoke(SETTINGS_CHANNELS.GET_SHORTCUTS);
     await invoke(SETTINGS_CHANNELS.SET_SHORTCUT, {
-      scope: 'global',
+      scope: 'app',
       action: 'commandCenter.open',
-      binding: { key: 'K', modifiers: ['Meta'] },
+      binding: 'Mod+K',
     });
     await invoke(SETTINGS_CHANNELS.RESET_SHORTCUT, {
-      scope: 'global',
+      scope: 'app',
       action: 'commandCenter.open',
     });
     await invoke(SETTINGS_CHANNELS.RESET_ALL_SHORTCUTS);
     await invoke(SETTINGS_CHANNELS.GET_AI);
-    await invoke(SETTINGS_CHANNELS.UPDATE_AI, { ai: { provider: 'groq' } });
+    await invoke(SETTINGS_CHANNELS.UPDATE_AI, {
+      ai: {
+        models: {
+          textModel: 'groq/model',
+          embeddingModel: 'local/model',
+          openaiBaseUrl: '',
+        },
+      },
+    });
     await invoke(SETTINGS_CHANNELS.RESET_AI);
     await invoke(SETTINGS_CHANNELS.GET_AI_PROVIDER_KEYS);
     await invoke(SETTINGS_CHANNELS.SET_AI_PROVIDER_KEY, { provider: 'openai', apiKey: 'sk-test' });
@@ -660,12 +793,12 @@ describe('function-style IPC adapters', () => {
 
     expect(deps.setTheme.execute).toHaveBeenCalledWith({ theme: 'dark' });
     expect(deps.updateFontSettings.execute).toHaveBeenCalledWith({
-      fontSettings: { bodyFont: 'Inter' },
+      fontSettings: { editorBodyFont: 'Inter' },
     });
     expect(deps.setShortcut.execute).toHaveBeenCalledWith({
-      scope: 'global',
+      scope: 'app',
       action: 'commandCenter.open',
-      binding: { key: 'K', modifiers: ['Meta'] },
+      binding: 'Mod+K',
     });
     expect(deps.setAIProviderKey.execute).toHaveBeenCalledWith({
       provider: 'openai',
@@ -683,7 +816,12 @@ describe('function-style IPC adapters', () => {
       exportMarkdown: execute({ content: '# Hello', filename: 'hello.md' }),
     };
 
-    registerExportHandlers({ exportUseCases } as any);
+    const exportService = effectifyUseCases(exportUseCases);
+    registerExportHandlers({
+      runExportEffect: (
+        use: (service: typeof exportService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(exportService)),
+    } as any);
 
     await expect(
       invoke(NOTE_CHANNELS.EXPORT_HTML, {
@@ -716,8 +854,8 @@ describe('function-style IPC adapters', () => {
   });
 
   it('delegates git channels and maps git response shapes', async () => {
-    const deps = {
-      getGitStatus: execute({
+    const gitUseCases = {
+      getStatus: execute({
         isRepo: true,
         branch: 'main',
         remote: 'git@example.com:repo.git',
@@ -729,16 +867,19 @@ describe('function-style IPC adapters', () => {
         lastSyncAt: 'soon',
         hasChanges: true,
       }),
-      initGitRepo: execute({ success: true }),
-      gitCommit: execute({ hash: 'abc', message: 'commit', date }),
-      gitPull: execute({ success: true }),
-      gitPush: execute({ success: true }),
-      gitSync: execute({ pushed: true }),
-      setGitRemote: execute({ success: true }),
-      getGitCommits: execute({ commits: [{ hash: 'abc', message: 'commit', date }] }),
+      init: execute({ success: true }),
+      commit: execute({ hash: 'abc', message: 'commit', date }),
+      pull: execute({ success: true }),
+      push: execute({ success: true }),
+      sync: execute({ pushed: true }),
+      setRemote: execute({ success: true }),
+      getCommits: execute({ commits: [{ hash: 'abc', message: 'commit', date }] }),
     };
-
-    registerGitHandlers(deps as any);
+    const gitService = effectifyUseCases(gitUseCases);
+    registerGitHandlers({
+      runGitEffect: (use: (service: typeof gitService) => Effect.Effect<unknown, unknown>) =>
+        Effect.runPromise(use(gitService)),
+    } as any);
 
     await expect(invoke(GIT_CHANNELS.GET_STATUS, { workspaceId: 'ws-1' })).resolves.toMatchObject({
       success: true,
@@ -762,7 +903,10 @@ describe('function-style IPC adapters', () => {
       data: { commits: [{ hash: 'abc', date: date.toISOString() }] },
     });
 
-    expect(deps.gitSync.execute).toHaveBeenCalledWith({ workspaceId: 'ws-1', message: 'sync' });
+    expect(gitUseCases.sync.execute).toHaveBeenCalledWith({
+      workspaceId: 'ws-1',
+      message: 'sync',
+    });
     unregisterGitHandlers();
     expectUnregistered(Object.values(GIT_CHANNELS));
   });
@@ -789,7 +933,12 @@ describe('function-style IPC adapters', () => {
       getTopicsForNote: execute([{ id: 'topic-1', createdAt: date }]),
     };
 
-    registerTopicHandlers({ topicUseCases } as any);
+    const topicService = effectifyUseCases(topicUseCases);
+    registerTopicHandlers({
+      runTopicEffect: (
+        use: (service: typeof topicService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(topicService)),
+    } as any);
 
     await invoke(TOPIC_CHANNELS.INITIALIZE);
     await expect(invoke(TOPIC_CHANNELS.GET_ALL)).resolves.toEqual({

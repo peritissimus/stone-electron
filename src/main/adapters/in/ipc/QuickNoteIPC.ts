@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { QUICK_NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   CreateQuickNoteRequestSchema,
@@ -13,16 +14,20 @@ import type { IQuickNoteUseCases } from '@domain';
 import { logger } from '../../../shared';
 
 export interface QuickNoteIPCDeps {
-  quickNoteUseCases: IQuickNoteUseCases;
+  runQuickNoteEffect: RunQuickNoteEffect;
 }
 
+export type RunQuickNoteEffect = <A, E>(
+  use: (service: IQuickNoteUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerQuickNoteHandlers(deps: QuickNoteIPCDeps): void {
-  const { quickNoteUseCases } = deps;
+  const run = deps.runQuickNoteEffect;
 
   ipcMain.handle(QUICK_NOTE_CHANNELS.CREATE_IN_SLOT, async (_event, rawRequest) => {
     const request = CreateQuickNoteRequestSchema.parse(rawRequest);
     return handleIpcRequest<CreateQuickNoteResponse>(
-      () => quickNoteUseCases.createInSlot(request),
+      () => run((service) => service.createInSlot(request)),
       {
         loggerPrefix: 'QuickNoteIPC',
         defaultCode: 'QUICK_NOTE_ERROR',

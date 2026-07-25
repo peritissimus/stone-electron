@@ -5,6 +5,7 @@
 import { ipcMain, dialog, app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
+import type { Effect } from 'effect';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   ExportHtmlRequestSchema,
@@ -19,11 +20,15 @@ import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface ExportIPCDeps {
-  exportUseCases: IExportUseCases;
+  runExportEffect: RunExportEffect;
 }
 
+export type RunExportEffect = <A, E>(
+  use: (service: IExportUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerExportHandlers(deps: ExportIPCDeps): void {
-  const { exportUseCases } = deps;
+  const run = deps.runExportEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'ExportIPC',
@@ -36,11 +41,13 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
     const { id, renderedHtml, title, options } = ExportHtmlRequestSchema.parse(rawRequest);
     return handleRequest<ExportHtmlResponse>(
       async () => {
-        const result = await exportUseCases.exportHtml.execute(id, {
-          ...(options as ExportOptions | undefined),
-          renderedHtml,
-          title,
-        });
+        const result = await run((service) =>
+          service.exportHtml.execute(id, {
+            ...(options as ExportOptions | undefined),
+            renderedHtml,
+            title,
+          }),
+        );
         const htmlContent = result.content.toString();
 
         const { filePath, canceled } = await dialog.showSaveDialog({
@@ -66,11 +73,13 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
     const { id, renderedHtml, title, options } = ExportPdfRequestSchema.parse(rawRequest);
     return handleRequest<ExportPdfResponse>(
       async () => {
-        const result = await exportUseCases.exportPdf.execute(id, {
-          ...(options as ExportOptions | undefined),
-          renderedHtml,
-          title,
-        });
+        const result = await run((service) =>
+          service.exportPdf.execute(id, {
+            ...(options as ExportOptions | undefined),
+            renderedHtml,
+            title,
+          }),
+        );
         const pdfBuffer = Buffer.isBuffer(result.content)
           ? result.content
           : Buffer.from(result.content);
@@ -98,9 +107,11 @@ export function registerExportHandlers(deps: ExportIPCDeps): void {
     const { id, options } = ExportMarkdownRequestSchema.parse(rawRequest);
     return handleRequest<ExportMarkdownResponse>(
       async () => {
-        const result = await exportUseCases.exportMarkdown.execute(
-          id,
-          options as ExportOptions | undefined,
+        const result = await run((service) =>
+          service.exportMarkdown.execute(
+            id,
+            options as ExportOptions | undefined,
+          ),
         );
         const markdownContent = result.content.toString();
 

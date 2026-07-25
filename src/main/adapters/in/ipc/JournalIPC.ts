@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { JOURNAL_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   ListJournalRangeRequestSchema,
@@ -15,16 +16,20 @@ import type { IJournalUseCases } from '@domain';
 import { logger } from '../../../shared';
 
 export interface JournalIPCDeps {
-  journalUseCases: IJournalUseCases;
+  runJournalEffect: RunJournalEffect;
 }
 
+export type RunJournalEffect = <A, E>(
+  use: (service: IJournalUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerJournalHandlers(deps: JournalIPCDeps): void {
-  const { journalUseCases } = deps;
+  const run = deps.runJournalEffect;
 
   ipcMain.handle(JOURNAL_CHANNELS.OPEN_OR_CREATE_FOR_DATE, async (_event, rawRequest) => {
     const request = OpenOrCreateJournalRequestSchema.parse(rawRequest);
     return handleIpcRequest<OpenOrCreateJournalResponse>(
-      () => journalUseCases.openOrCreateForDate(request),
+      () => run((service) => service.openOrCreateForDate(request)),
       {
         loggerPrefix: 'JournalIPC',
         defaultCode: 'JOURNAL_ERROR',
@@ -36,7 +41,8 @@ export function registerJournalHandlers(deps: JournalIPCDeps): void {
 
   ipcMain.handle(JOURNAL_CHANNELS.LIST_RANGE, async (_event, rawRequest) => {
     const request = ListJournalRangeRequestSchema.parse(rawRequest);
-    return handleIpcRequest<ListJournalRangeResponse>(() => journalUseCases.listRange(request), {
+    return handleIpcRequest<ListJournalRangeResponse>(() =>
+      run((service) => service.listRange(request)), {
       loggerPrefix: 'JournalIPC',
       defaultCode: 'JOURNAL_ERROR',
       errorMap: { ...COMMON_IPC_ERROR_MAP },

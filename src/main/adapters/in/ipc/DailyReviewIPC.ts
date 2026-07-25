@@ -3,17 +3,25 @@
  */
 
 import { ipcMain } from 'electron';
-import { z } from 'zod';
+import type { Effect } from 'effect';
 import { DAILY_REVIEW_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  LoadDailyReviewIntegrationRequestSchema,
+  LoadDailyReviewIntegrationsRequestSchema,
+} from '@shared/schemas';
 import { handleIpcRequest } from '@main/shared/utils';
 import type { IDailyReviewUseCases } from '../../../domain';
 
 export interface DailyReviewIPCDeps {
-  dailyReviewUseCases: IDailyReviewUseCases;
+  runDailyReviewEffect: RunDailyReviewEffect;
 }
 
+export type RunDailyReviewEffect = <A, E>(
+  use: (service: IDailyReviewUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
-  const { dailyReviewUseCases } = deps;
+  const { runDailyReviewEffect } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, {
       loggerPrefix: 'DailyReviewIPC',
@@ -24,40 +32,40 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
   ipcMain.handle(DAILY_REVIEW_CHANNELS.GET, async (_event, request) =>
     handleRequest(
       async () =>
-        dailyReviewUseCases.getDailyReview.execute({
-          workspaceId: request?.workspaceId,
-          date: request?.date,
-        }),
+        runDailyReviewEffect((service) =>
+          service.getDailyReview.execute({
+            workspaceId: request?.workspaceId,
+            date: request?.date,
+          }),
+        ),
       { channel: DAILY_REVIEW_CHANNELS.GET, date: request?.date },
     ),
   );
 
-  const LoadIntegrationRequestSchema = z.object({
-    source: z.enum(['calendar', 'mail', 'linear']),
-    date: z.string().optional(),
-  });
-  const LoadIntegrationsRequestSchema = z.object({
-    date: z.string().optional(),
-  });
-
   ipcMain.handle(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, async (_event, rawRequest) => {
-    const request = LoadIntegrationRequestSchema.parse(rawRequest);
-    return handleRequest(async () => dailyReviewUseCases.loadIntegration.execute(request), {
+    const request = LoadDailyReviewIntegrationRequestSchema.parse(rawRequest);
+    return handleRequest(async () => runDailyReviewEffect((service) =>
+      service.loadIntegration.execute(request),
+    ), {
       channel: DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION,
       source: request.source,
     });
   });
 
   ipcMain.handle(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, async (_event, rawRequest) => {
-    const request = LoadIntegrationsRequestSchema.parse(rawRequest ?? {});
-    return handleRequest(async () => dailyReviewUseCases.loadIntegrations.execute(request), {
+    const request = LoadDailyReviewIntegrationsRequestSchema.parse(rawRequest ?? {});
+    return handleRequest(async () => runDailyReviewEffect((service) =>
+      service.loadIntegrations.execute(request),
+    ), {
       channel: DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS,
       date: request.date,
     });
   });
 
   ipcMain.handle(DAILY_REVIEW_CHANNELS.LIST_CALENDARS, async () =>
-    handleRequest(async () => dailyReviewUseCases.listCalendars.execute(), {
+    handleRequest(async () => runDailyReviewEffect((service) =>
+      service.listCalendars.execute(),
+    ), {
       channel: DAILY_REVIEW_CHANNELS.LIST_CALENDARS,
     }),
   );
@@ -65,11 +73,13 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
   ipcMain.handle(DAILY_REVIEW_CHANNELS.SUMMARIZE, async (_event, request) =>
     handleRequest(
       async () =>
-        dailyReviewUseCases.summarizeDailyReview.execute({
-          workspaceId: request?.workspaceId,
-          date: request?.date,
-          saveToJournal: request?.saveToJournal,
-        }),
+        runDailyReviewEffect((service) =>
+          service.summarizeDailyReview.execute({
+            workspaceId: request?.workspaceId,
+            date: request?.date,
+            saveToJournal: request?.saveToJournal,
+          }),
+        ),
       { channel: DAILY_REVIEW_CHANNELS.SUMMARIZE, date: request?.date },
     ),
   );

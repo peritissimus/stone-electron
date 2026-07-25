@@ -7,43 +7,29 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { SYSTEM_CHANNELS } from '@shared/constants/ipcChannels';
 import type { SystemGetFontsResponse } from '@shared/schemas';
-import { z } from 'zod';
-import type {
-  IGetSystemFontsUseCase,
-  IGetMicAccessStatusUseCase,
-  IRequestMicAccessUseCase,
-  IGetSystemAudioAccessUseCase,
-  IRequestSystemAudioAccessUseCase,
-  IOpenExternalUseCase,
-} from '../../../domain';
+import { z } from '@shared/schemas/schema';
+import type { ISystemUseCases } from '../../../domain';
 import { logger } from '../../../shared';
 import { handleIpcRequest } from '@main/shared/utils';
 
 export interface SystemIPCDeps {
-  getSystemFonts: IGetSystemFontsUseCase;
-  getMicAccessStatus: IGetMicAccessStatusUseCase;
-  requestMicAccess: IRequestMicAccessUseCase;
-  getSystemAudioAccess: IGetSystemAudioAccessUseCase;
-  requestSystemAudioAccess: IRequestSystemAudioAccessUseCase;
-  openExternal: IOpenExternalUseCase;
+  runSystemEffect: RunSystemEffect;
 }
 
+export type RunSystemEffect = <A, E>(
+  use: (service: ISystemUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerSystemHandlers(deps: SystemIPCDeps): void {
-  const {
-    getSystemFonts,
-    getMicAccessStatus,
-    requestMicAccess,
-    getSystemAudioAccess,
-    requestSystemAudioAccess,
-    openExternal,
-  } = deps;
+  const run = deps.runSystemEffect;
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_FONTS, async () => {
     return handleIpcRequest<SystemGetFontsResponse>(
       async () => {
-        return await getSystemFonts.execute();
+        return await run((service) => service.getFonts.execute());
       },
       {
         loggerPrefix: 'SystemIPC',
@@ -55,7 +41,7 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_MIC_ACCESS_STATUS, async () => {
     return handleIpcRequest(
-      async () => getMicAccessStatus.execute(),
+      async () => run((service) => service.getMicAccessStatus.execute()),
       {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
@@ -66,7 +52,7 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
 
   ipcMain.handle(SYSTEM_CHANNELS.REQUEST_MIC_ACCESS, async () => {
     return handleIpcRequest(
-      async () => requestMicAccess.execute(),
+      async () => run((service) => service.requestMicAccess.execute()),
       {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
@@ -77,7 +63,7 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
 
   ipcMain.handle(SYSTEM_CHANNELS.GET_SYSTEM_AUDIO_ACCESS, async () => {
     return handleIpcRequest(
-      async () => getSystemAudioAccess.execute(),
+      async () => run((service) => service.getSystemAudioAccess.execute()),
       {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
@@ -88,7 +74,8 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
 
   ipcMain.handle(SYSTEM_CHANNELS.REQUEST_SYSTEM_AUDIO_ACCESS, async () => {
     return handleIpcRequest(
-      async () => requestSystemAudioAccess.execute(),
+      async () =>
+        run((service) => service.requestSystemAudioAccess.execute()),
       {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',
@@ -111,7 +98,8 @@ export function registerSystemHandlers(deps: SystemIPCDeps): void {
   ipcMain.handle(SYSTEM_CHANNELS.OPEN_EXTERNAL, async (_event, rawRequest) => {
     const request = OpenExternalRequestSchema.parse(rawRequest);
     return handleIpcRequest(
-      async () => openExternal.execute({ url: request.url }),
+      async () =>
+        run((service) => service.openExternal.execute({ url: request.url })),
       {
         loggerPrefix: 'SystemIPC',
         defaultCode: 'INTERNAL_ERROR',

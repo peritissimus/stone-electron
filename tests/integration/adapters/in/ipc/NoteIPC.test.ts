@@ -6,10 +6,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { Cause, Effect, Exit } from 'effect';
 import {
-  registerNoteHandlers,
+  registerNoteHandlers as registerNativeNoteHandlers,
   unregisterNoteHandlers,
 } from '../../../../../src/main/adapters/in/ipc/NoteIPC';
+import { effectifyUseCases } from '../../../../helpers/effectUseCases';
 import type { INoteUseCases } from '../../../../../src/main/domain/ports/in/INoteUseCases';
 import type { NoteProps } from '../../../../../src/main/domain/entities/Note';
 
@@ -34,7 +36,15 @@ vi.mock('../../../../../src/main/shared', () => ({
   },
 }));
 
-function createMockNoteUseCases(): INoteUseCases {
+type PromiseNoteUseCases<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseNoteUseCases<T[Key]> }
+    : T;
+
+function createMockNoteUseCases(): PromiseNoteUseCases<INoteUseCases> {
   return {
     createNote: { execute: vi.fn() },
     getNote: { execute: vi.fn() },
@@ -50,7 +60,20 @@ function createMockNoteUseCases(): INoteUseCases {
     saveNoteContent: { execute: vi.fn() },
     restoreNote: { execute: vi.fn() },
     duplicateNote: { execute: vi.fn() },
-  } as unknown as INoteUseCases;
+  } as unknown as PromiseNoteUseCases<INoteUseCases>;
+}
+
+function registerNoteHandlers(deps: {
+  noteUseCases: PromiseNoteUseCases<INoteUseCases>;
+}): void {
+  const service = effectifyUseCases(deps.noteUseCases);
+  registerNativeNoteHandlers({
+    runNoteEffect: async (use) => {
+      const exit = await Effect.runPromiseExit(use(service));
+      if (Exit.isSuccess(exit)) return exit.value;
+      throw Cause.squash(exit.cause);
+    },
+  });
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -72,7 +95,7 @@ function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
 }
 
 describe('NoteIPC', () => {
-  let noteUseCases: INoteUseCases;
+  let noteUseCases: PromiseNoteUseCases<INoteUseCases>;
   let handlers: Map<string, Function>;
 
   beforeEach(() => {
@@ -418,8 +441,8 @@ describe('NoteIPC', () => {
       const handler = handlers.get('notes:create')!;
       const result = await handler({}, {});
 
-      expect(result.error.code).toBe('UNKNOWN_ERROR');
-      expect(result.error.message).toBe('Unknown error');
+      expect(result.error.code).toBe('INTERNAL_ERROR');
+      expect(result.error.message).toBe('string error');
     });
   });
 });

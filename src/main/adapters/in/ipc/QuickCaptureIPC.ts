@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { QUICK_CAPTURE_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   AppendToJournalRequestSchema,
@@ -11,27 +12,28 @@ import {
 } from '@shared/schemas';
 import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
+import type { IQuickCaptureUseCases } from '../../../domain';
 
 export interface QuickCaptureIPCDeps {
-  appendToJournal: (
-    content: string,
-    workspaceId?: string,
-  ) => Promise<{ noteId: string; appended: boolean }>;
-  transcribeVoiceCapture: (request: {
-    wav: Uint8Array;
-    workspaceId?: string;
-  }) => Promise<{ text: string; durationMs: number }>;
+  runQuickCaptureEffect: RunQuickCaptureEffect;
 }
 
+export type RunQuickCaptureEffect = <A, E>(
+  use: (service: IQuickCaptureUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
-  const { appendToJournal, transcribeVoiceCapture } = deps;
+  const run = deps.runQuickCaptureEffect;
 
   ipcMain.handle(QUICK_CAPTURE_CHANNELS.APPEND_TO_JOURNAL, async (_event, rawRequest) => {
     const request = AppendToJournalRequestSchema.parse(rawRequest);
     // Accept both 'text' and 'content' for flexibility.
     const text = request.text ?? request.content ?? '';
     return handleIpcRequest<AppendToJournalResponse>(
-      async () => appendToJournal(text, request.workspaceId),
+      async () =>
+        run((service) =>
+          service.appendToJournal(text, request.workspaceId),
+        ),
       {
         loggerPrefix: 'QuickCaptureIPC',
         defaultCode: 'QUICK_CAPTURE_ERROR',
@@ -60,7 +62,9 @@ export function registerQuickCaptureHandlers(deps: QuickCaptureIPCDeps): void {
           wav instanceof ArrayBuffer
             ? new Uint8Array(wav)
             : new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength);
-        return transcribeVoiceCapture({ wav: bytes, workspaceId });
+        return run((service) =>
+          service.transcribeVoiceCapture({ wav: bytes, workspaceId }),
+        );
       },
       {
         loggerPrefix: 'QuickCaptureIPC',

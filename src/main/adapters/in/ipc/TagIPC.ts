@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   AddTagToNoteRequestSchema,
@@ -23,11 +24,15 @@ import { logger } from '../../../shared';
 import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 
 export interface TagIPCDeps {
-  tagUseCases: ITagUseCases;
+  runTagEffect: RunTagEffect;
 }
 
+export type RunTagEffect = <A, E>(
+  use: (service: ITagUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerTagHandlers(deps: TagIPCDeps): void {
-  const { tagUseCases } = deps;
+  const run = deps.runTagEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'TagIPC',
@@ -44,7 +49,9 @@ export function registerTagHandlers(deps: TagIPCDeps): void {
     const request = CreateTagRequestSchema.parse(rawRequest);
     return handleRequest<TagResponse>(
       async () => {
-        const result = await tagUseCases.createTag.execute(request);
+        const result = await run((service) =>
+          service.createTag.execute(request),
+        );
         return result.tag;
       },
       { channel: TAG_CHANNELS.CREATE, name: request.name },
@@ -55,7 +62,7 @@ export function registerTagHandlers(deps: TagIPCDeps): void {
     const { id } = DeleteTagRequestSchema.parse(rawRequest);
     return handleRequest<void>(
       async () => {
-        await tagUseCases.deleteTag.execute({ id });
+        await run((service) => service.deleteTag.execute({ id }));
       },
       { channel: TAG_CHANNELS.DELETE, tagId: id },
     );
@@ -67,8 +74,20 @@ export function registerTagHandlers(deps: TagIPCDeps): void {
     ListTagsRequestSchema.parse(rawRequest ?? {});
     return handleRequest<ListTagsResponse>(
       async () => {
-        const result = await tagUseCases.listTags.execute();
-        return { tags: result.tags as ListTagsResponse['tags'] };
+        const result = await run((service) =>
+          service.listTags.execute({ includeNoteCount: true }),
+        );
+        return {
+          tags: result.tags.map((tag) => ({
+            ...tag,
+            note_count:
+              'noteCount' in tag
+                ? tag.noteCount
+                : 'note_count' in tag && typeof tag.note_count === 'number'
+                  ? tag.note_count
+                  : 0,
+          })),
+        };
       },
       { channel: TAG_CHANNELS.GET_ALL },
     );
@@ -81,10 +100,27 @@ export function registerTagHandlers(deps: TagIPCDeps): void {
     return handleRequest<ListTagsResponse>(
       async () => {
         for (const tagId of tagIds) {
-          await tagUseCases.addTagToNote.execute({ noteId: request.noteId, tagId });
+          await run((service) =>
+            service.addTagToNote.execute({
+              noteId: request.noteId,
+              tagId,
+            }),
+          );
         }
-        const result = await tagUseCases.listTags.execute();
-        return { tags: result.tags as ListTagsResponse['tags'] };
+        const result = await run((service) =>
+          service.listTags.execute({ includeNoteCount: true }),
+        );
+        return {
+          tags: result.tags.map((tag) => ({
+            ...tag,
+            note_count:
+              'noteCount' in tag
+                ? tag.noteCount
+                : 'note_count' in tag && typeof tag.note_count === 'number'
+                  ? tag.note_count
+                  : 0,
+          })),
+        };
       },
       { channel: TAG_CHANNELS.ADD_TO_NOTE, noteId: request.noteId, tagIds },
     );
@@ -94,7 +130,9 @@ export function registerTagHandlers(deps: TagIPCDeps): void {
     const { noteId, tagId } = RemoveTagFromNoteRequestSchema.parse(rawRequest);
     return handleRequest<void>(
       async () => {
-        await tagUseCases.removeTagFromNote.execute({ noteId, tagId });
+        await run((service) =>
+          service.removeTagFromNote.execute({ noteId, tagId }),
+        );
       },
       { channel: TAG_CHANNELS.REMOVE_FROM_NOTE, noteId, tagId },
     );

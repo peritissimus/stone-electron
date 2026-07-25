@@ -7,139 +7,191 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { MEETING_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  AppendRecordingAudioRequestSchema,
+  FinalizeRecordingRequestSchema,
+  ListMeetingsRequestSchema,
+  LiveChunkRequestSchema,
+  RecordingIdRequestSchema,
+  ReserveRecordingRequestSchema,
+  ResummarizeMeetingRequestSchema,
+  SendMeetingToJournalRequestSchema,
+} from '@shared/schemas';
 import { handleIpcRequest } from '@main/shared/utils';
 import type { IMeetingUseCases } from '../../../domain';
 
 export interface MeetingIPCDeps {
-  meetingUseCases: IMeetingUseCases;
+  runMeetingEffect: RunMeetingEffect;
 }
 
+export type RunMeetingEffect = <A, E>(
+  use: (service: IMeetingUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
-  const { meetingUseCases } = deps;
+  const { runMeetingEffect } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'MeetingIPC', defaultCode: 'MEETING_ERROR', context });
 
-  ipcMain.handle(MEETING_CHANNELS.RESERVE_SLOT, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.RESERVE_SLOT, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.reserveRecordingSlot.execute({
-          workspaceId: request?.workspaceId,
-          title: request?.title,
-        }),
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.reserveRecordingSlot.execute(
+            ReserveRecordingRequestSchema.parse(rawRequest ?? {}),
+          ),
+        ),
       { channel: MEETING_CHANNELS.RESERVE_SLOT },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.APPEND_AUDIO, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.APPEND_AUDIO, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.appendRecordingAudio.execute({
-          recordingId: request.recordingId,
-          chunk: request.chunk,
-          channel: request.channel,
-        }),
-      { channel: MEETING_CHANNELS.APPEND_AUDIO, recordingId: request?.recordingId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.appendRecordingAudio.execute(
+            AppendRecordingAudioRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.APPEND_AUDIO },
     ),
   );
 
   // Enqueues the durable finalize job and returns immediately; the pipeline
   // runs in the background and pushes progress via meetings:statusChanged.
-  ipcMain.handle(MEETING_CHANNELS.FINALIZE, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.FINALIZE, async (_event, rawRequest) =>
+    handleRequest(
+      async () => {
+        const request = FinalizeRecordingRequestSchema.parse(rawRequest);
+        return runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.requestFinalize.execute({
+            ...request,
+            durationMs: request.durationMs ?? 0,
+          }),
+        );
+      },
+      { channel: MEETING_CHANNELS.FINALIZE },
+    ),
+  );
+
+  ipcMain.handle(MEETING_CHANNELS.LIST, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.requestFinalize.execute({
-          recordingId: request.recordingId,
-          durationMs: request.durationMs ?? 0,
-        }),
-      { channel: MEETING_CHANNELS.FINALIZE, recordingId: request?.recordingId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.listMeetingRecordings.execute(
+            ListMeetingsRequestSchema.parse(rawRequest ?? {}),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.LIST },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.LIST, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.GET, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.listMeetingRecordings.execute({
-          workspaceId: request?.workspaceId,
-          limit: request?.limit,
-          cursor: request?.cursor,
-        }),
-      { channel: MEETING_CHANNELS.LIST, workspaceId: request?.workspaceId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.getMeetingRecording.execute(
+            RecordingIdRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.GET },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.GET, async (_event, request) =>
-    handleRequest(
-      async () => meetingUseCases.getMeetingRecording.execute({ recordingId: request.recordingId }),
-      { channel: MEETING_CHANNELS.GET, recordingId: request?.recordingId },
-    ),
-  );
-
-  ipcMain.handle(MEETING_CHANNELS.GET_AUDIO, async (_event, request) =>
-    handleRequest(
-      async () => meetingUseCases.getMeetingAudio.execute({ recordingId: request.recordingId }),
-      { channel: MEETING_CHANNELS.GET_AUDIO, recordingId: request?.recordingId },
-    ),
-  );
-
-  ipcMain.handle(MEETING_CHANNELS.DELETE, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.GET_AUDIO, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.deleteMeetingRecording.execute({ recordingId: request.recordingId }),
-      { channel: MEETING_CHANNELS.DELETE, recordingId: request?.recordingId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.getMeetingAudio.execute(
+            RecordingIdRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.GET_AUDIO },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.RESUMMARIZE, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.DELETE, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.resummarizeMeeting.execute({
-          recordingId: request.recordingId,
-          promptTemplate: request?.promptTemplate,
-        }),
-      { channel: MEETING_CHANNELS.RESUMMARIZE, recordingId: request?.recordingId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.deleteMeetingRecording.execute(
+            RecordingIdRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.DELETE },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.RETRANSCRIBE, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.RESUMMARIZE, async (_event, rawRequest) =>
     handleRequest(
-      async () => meetingUseCases.retranscribeMeeting.execute({ recordingId: request.recordingId }),
-      { channel: MEETING_CHANNELS.RETRANSCRIBE, recordingId: request?.recordingId },
+      async () =>
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.resummarizeMeeting.execute(
+            ResummarizeMeetingRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.RESUMMARIZE },
+    ),
+  );
+
+  ipcMain.handle(MEETING_CHANNELS.RETRANSCRIBE, async (_event, rawRequest) =>
+    handleRequest(
+      async () =>
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.retranscribeMeeting.execute(
+            RecordingIdRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.RETRANSCRIBE },
     ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_START, async () =>
-    handleRequest(async () => meetingUseCases.liveTranscription.start(), {
+    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
+      meetingUseCases.liveTranscription.start(),
+    ), {
       channel: MEETING_CHANNELS.LIVE_START,
     }),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.LIVE_CHUNK, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.LIVE_CHUNK, async (_event, rawRequest) =>
     handleRequest(
-      async () => meetingUseCases.liveTranscription.transcribeChunk({ wav: request.wav }),
+      async () =>
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.liveTranscription.transcribeChunk(
+            LiveChunkRequestSchema.parse(rawRequest),
+          ),
+        ),
       { channel: MEETING_CHANNELS.LIVE_CHUNK },
     ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_STOP, async () =>
-    handleRequest(async () => meetingUseCases.liveTranscription.stop(), {
+    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
+      meetingUseCases.liveTranscription.stop(),
+    ), {
       channel: MEETING_CHANNELS.LIVE_STOP,
     }),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.SEND_TO_JOURNAL, async (_event, request) =>
+  ipcMain.handle(MEETING_CHANNELS.SEND_TO_JOURNAL, async (_event, rawRequest) =>
     handleRequest(
       async () =>
-        meetingUseCases.sendToJournal.execute({
-          recordingId: request.recordingId,
-          journalDate: request?.journalDate,
-        }),
-      { channel: MEETING_CHANNELS.SEND_TO_JOURNAL, recordingId: request?.recordingId },
+        runMeetingEffect((meetingUseCases) =>
+          meetingUseCases.sendToJournal.execute(
+            SendMeetingToJournalRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: MEETING_CHANNELS.SEND_TO_JOURNAL },
     ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.WARM_TRANSCRIBER, async () =>
-    handleRequest(async () => meetingUseCases.warmUpTranscriber.execute(), {
+    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
+      meetingUseCases.warmUpTranscriber.execute(),
+    ), {
       channel: MEETING_CHANNELS.WARM_TRANSCRIBER,
     }),
   );

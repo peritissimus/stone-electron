@@ -9,6 +9,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { SCRATCH_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   ScratchReadRequestSchema,
@@ -22,15 +23,19 @@ import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface ScratchIPCDeps {
-  scratchUseCases: IScratchUseCases;
+  runScratchEffect: RunScratchEffect;
 }
 
+export type RunScratchEffect = <A, E>(
+  use: (service: IScratchUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerScratchHandlers(deps: ScratchIPCDeps): void {
-  const { scratchUseCases } = deps;
+  const run = deps.runScratchEffect;
 
   ipcMain.handle(SCRATCH_CHANNELS.PICK, async () =>
     handleIpcRequest<ScratchPickResponse>(
-      async () => scratchUseCases.pickScratchFile.execute(),
+      async () => run((service) => service.pickScratchFile.execute()),
       {
         loggerPrefix: 'ScratchIPC',
         defaultCode: 'SCRATCH_PICK_ERROR',
@@ -43,7 +48,10 @@ export function registerScratchHandlers(deps: ScratchIPCDeps): void {
   ipcMain.handle(SCRATCH_CHANNELS.READ, async (_event, rawRequest) => {
     const request = ScratchReadRequestSchema.parse(rawRequest);
     return handleIpcRequest<ScratchReadResponse>(
-      async () => scratchUseCases.readScratchFile.execute({ path: request.path }),
+      async () =>
+        run((service) =>
+          service.readScratchFile.execute({ path: request.path }),
+        ),
       {
         loggerPrefix: 'ScratchIPC',
         defaultCode: 'SCRATCH_READ_ERROR',
@@ -57,7 +65,12 @@ export function registerScratchHandlers(deps: ScratchIPCDeps): void {
     const request = ScratchWriteRequestSchema.parse(rawRequest);
     return handleIpcRequest<ScratchWriteResponse>(
       async () =>
-        scratchUseCases.writeScratchFile.execute({ path: request.path, content: request.content }),
+        run((service) =>
+          service.writeScratchFile.execute({
+            path: request.path,
+            content: request.content,
+          }),
+        ),
       {
         loggerPrefix: 'ScratchIPC',
         defaultCode: 'SCRATCH_WRITE_ERROR',

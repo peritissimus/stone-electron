@@ -8,45 +8,68 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { INDEX_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  IndexNoteRequestSchema,
+  IndexStatsRequestSchema,
+  RebuildIndexRequestSchema,
+} from '@shared/schemas';
 import type { IIndexUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 
 export interface IndexIPCDeps {
-  indexUseCases: IIndexUseCases;
+  runIndexEffect: RunIndexEffect;
 }
 
+export type RunIndexEffect = <A, E>(
+  use: (service: IIndexUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerIndexHandlers(deps: IndexIPCDeps): void {
-  const { indexUseCases } = deps;
+  const { runIndexEffect } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'IndexIPC', defaultCode: 'INDEX_ERROR', context });
 
-  ipcMain.handle(INDEX_CHANNELS.GET_STATS, async (_event, request) =>
+  ipcMain.handle(INDEX_CHANNELS.GET_STATS, async (_event, rawRequest) =>
     handleRequest(
-      async () => indexUseCases.getStats.execute({ workspaceId: request?.workspaceId }),
-      { channel: INDEX_CHANNELS.GET_STATS, workspaceId: request?.workspaceId },
+      async () =>
+        runIndexEffect((service) =>
+          service.getStats.execute(
+            IndexStatsRequestSchema.parse(rawRequest ?? {}),
+          ),
+        ),
+      { channel: INDEX_CHANNELS.GET_STATS },
     ),
   );
 
-  ipcMain.handle(INDEX_CHANNELS.INDEX_NOTE, async (_event, request) =>
+  ipcMain.handle(INDEX_CHANNELS.INDEX_NOTE, async (_event, rawRequest) =>
     handleRequest(
-      async () =>
-        indexUseCases.indexNote.execute({
-          noteId: request.noteId,
-          force: request.force ?? false,
-        }),
-      { channel: INDEX_CHANNELS.INDEX_NOTE, noteId: request?.noteId },
+      async () => {
+        const request = IndexNoteRequestSchema.parse(rawRequest);
+        return runIndexEffect((service) =>
+          service.indexNote.execute({
+            ...request,
+            force: request.force ?? false,
+          }),
+        );
+      },
+      { channel: INDEX_CHANNELS.INDEX_NOTE },
     ),
   );
 
-  ipcMain.handle(INDEX_CHANNELS.REBUILD_ALL, async (_event, request) =>
+  ipcMain.handle(INDEX_CHANNELS.REBUILD_ALL, async (_event, rawRequest) =>
     handleRequest(
-      async () =>
-        indexUseCases.rebuildAll.execute({
-          workspaceId: request?.workspaceId,
-          force: request?.force ?? false,
-        }),
-      { channel: INDEX_CHANNELS.REBUILD_ALL, workspaceId: request?.workspaceId },
+      async () => {
+        const request = RebuildIndexRequestSchema.parse(rawRequest ?? {});
+        return runIndexEffect((service) =>
+          service.rebuildAll.execute({
+            ...request,
+            force: request.force ?? false,
+          }),
+        );
+      },
+      { channel: INDEX_CHANNELS.REBUILD_ALL },
     ),
   );
 }

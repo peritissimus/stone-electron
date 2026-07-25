@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect } from 'effect';
+import { effectifyUseCases } from '../../../../helpers/effectUseCases';
 import {
   NOTEBOOK_CHANNELS,
   SEARCH_CHANNELS,
@@ -40,6 +42,12 @@ vi.mock('electron', () => ({
 const execute = (value: unknown = {}) => ({ execute: vi.fn().mockResolvedValue(value) });
 const date = new Date('2026-04-21T10:00:00Z');
 
+function effectRunner<T extends object>(useCases: T) {
+  const service = effectifyUseCases(useCases);
+  return <A, E>(use: (current: typeof service) => Effect.Effect<A, E>) =>
+    Effect.runPromise(use(service) as Effect.Effect<A, E>);
+}
+
 async function invoke(channel: string, request?: unknown) {
   const handler = electronMock.handlers.get(channel);
   expect(handler, `handler for ${channel}`).toBeDefined();
@@ -73,7 +81,12 @@ describe('note/notebook/workspace/tag/search IPC adapters', () => {
       searchByDateRange: execute({ results: [{ id: 'dated' }] }),
       getRelatedNotes: execute({ notes: [{ id: 'related' }] }),
     };
-    registerSearchHandlers({ searchUseCases } as any);
+    const searchService = effectifyUseCases(searchUseCases);
+    registerSearchHandlers({
+      runSearchEffect: (
+        use: (service: typeof searchService) => Effect.Effect<unknown, unknown>,
+      ) => Effect.runPromise(use(searchService)),
+    } as any);
 
     expectRegistered(Object.values(SEARCH_CHANNELS));
     await expect(invoke(SEARCH_CHANNELS.FULL_TEXT, { query: 'stone', workspaceId: 'ws-1' })).resolves.toEqual({
@@ -119,7 +132,7 @@ describe('note/notebook/workspace/tag/search IPC adapters', () => {
       listNotebooks: execute({ notebooks: [{ ...notebook, note_count: 1 }] }),
       moveNotebook: execute(undefined),
     };
-    registerNotebookHandlers({ notebookUseCases } as any);
+    registerNotebookHandlers({ runNotebookEffect: effectRunner(notebookUseCases) } as any);
 
     await expect(
       invoke(NOTEBOOK_CHANNELS.CREATE, {
@@ -172,7 +185,7 @@ describe('note/notebook/workspace/tag/search IPC adapters', () => {
       addTagToNote: execute(undefined),
       removeTagFromNote: execute(undefined),
     };
-    registerTagHandlers({ tagUseCases } as any);
+    registerTagHandlers({ runTagEffect: effectRunner(tagUseCases) } as any);
 
     await expect(invoke(TAG_CHANNELS.CREATE, { name: 'AI', color: '#ffffff' })).resolves.toEqual({
       success: true,
@@ -231,7 +244,7 @@ describe('note/notebook/workspace/tag/search IPC adapters', () => {
       scanWorkspace: execute({ files: [], structure: [], total: 0 }),
       syncWorkspace: execute(syncResponse),
     };
-    registerWorkspaceHandlers({ workspaceUseCases } as any);
+    registerWorkspaceHandlers({ runWorkspaceEffect: effectRunner(workspaceUseCases) } as any);
 
     expectRegistered(Object.values(WORKSPACE_CHANNELS));
     await expect(invoke(WORKSPACE_CHANNELS.CREATE, { name: 'Stone', path: '/tmp/stone' })).resolves.toEqual({

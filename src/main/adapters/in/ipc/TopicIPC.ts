@@ -3,22 +3,42 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { TOPIC_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  AdoptSuggestedTopicRequestSchema,
+  ClassifyAllRequestSchema,
+  ClassifyNoteRequestSchema,
+  CreateTopicRequestSchema,
+  NoteIdRequestSchema,
+  NoteIdWithLimitRequestSchema,
+  NotesByTopicRequestSchema,
+  ReclassifyAllRequestSchema,
+  SuggestTopicsRequestSchema,
+  TopicIdRequestSchema,
+  TopicNotePairRequestSchema,
+  TopicSemanticSearchRequestSchema,
+  UpdateTopicRequestSchema,
+} from '@shared/schemas';
 import type { ITopicUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface TopicIPCDeps {
-  topicUseCases: ITopicUseCases;
+  runTopicEffect: RunTopicEffect;
 }
 
+export type RunTopicEffect = <A, E>(
+  use: (service: ITopicUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerTopicHandlers(deps: TopicIPCDeps): void {
-  const { topicUseCases } = deps;
+  const run = deps.runTopicEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'TopicIPC', defaultCode: 'INTERNAL_ERROR', context });
 
   ipcMain.handle(TOPIC_CHANNELS.INITIALIZE, async () => {
-    return handleRequest(async () => topicUseCases.initialize.execute(), {
+    return handleRequest(async () => run((service) => service.initialize.execute()), {
       channel: TOPIC_CHANNELS.INITIALIZE,
     });
   });
@@ -26,15 +46,16 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(TOPIC_CHANNELS.GET_ALL, async () => {
     return handleRequest(
       async () => {
-        const topics = await topicUseCases.getAllTopics.execute();
+        const topics = await run((service) => service.getAllTopics.execute());
         return { topics };
       },
       { channel: TOPIC_CHANNELS.GET_ALL },
     );
   });
 
-  ipcMain.handle(TOPIC_CHANNELS.GET_BY_ID, async (_event, { id }: { id: string }) => {
-    return handleRequest(async () => topicUseCases.getTopicById.execute(id), {
+  ipcMain.handle(TOPIC_CHANNELS.GET_BY_ID, async (_event, rawRequest) => {
+    const { id } = TopicIdRequestSchema.parse(rawRequest);
+    return handleRequest(async () => run((service) => service.getTopicById.execute(id)), {
       channel: TOPIC_CHANNELS.GET_BY_ID,
       topicId: id,
     });
@@ -42,8 +63,9 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.CREATE,
-    async (_event, data: { name: string; description?: string; color?: string }) => {
-      return handleRequest(async () => topicUseCases.createTopic.execute(data), {
+    async (_event, rawRequest) => {
+      const data = CreateTopicRequestSchema.parse(rawRequest);
+      return handleRequest(async () => run((service) => service.createTopic.execute(data)), {
         channel: TOPIC_CHANNELS.CREATE,
         name: data.name,
       });
@@ -52,21 +74,20 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.UPDATE,
-    async (
-      _event,
-      { id, ...data }: { id: string; name?: string; description?: string; color?: string },
-    ) => {
-      return handleRequest(async () => topicUseCases.updateTopic.execute(id, data), {
+    async (_event, rawRequest) => {
+      const { id, ...data } = UpdateTopicRequestSchema.parse(rawRequest);
+      return handleRequest(async () => run((service) => service.updateTopic.execute(id, data)), {
         channel: TOPIC_CHANNELS.UPDATE,
         topicId: id,
       });
     },
   );
 
-  ipcMain.handle(TOPIC_CHANNELS.DELETE, async (_event, { id }: { id: string }) => {
+  ipcMain.handle(TOPIC_CHANNELS.DELETE, async (_event, rawRequest) => {
+    const { id } = TopicIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        await topicUseCases.deleteTopic.execute(id);
+        await run((service) => service.deleteTopic.execute(id));
         return { success: true };
       },
       { channel: TOPIC_CHANNELS.DELETE, topicId: id },
@@ -75,10 +96,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.ASSIGN_TO_NOTE,
-    async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
+    async (_event, rawRequest) => {
+      const { noteId, topicId } = TopicNotePairRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          await topicUseCases.assignTopicToNote.execute(noteId, topicId);
+          await run((service) =>
+            service.assignTopicToNote.execute(noteId, topicId),
+          );
           return { success: true };
         },
         { channel: TOPIC_CHANNELS.ASSIGN_TO_NOTE, noteId, topicId },
@@ -88,10 +112,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.REMOVE_FROM_NOTE,
-    async (_event, { noteId, topicId }: { noteId: string; topicId: string }) => {
+    async (_event, rawRequest) => {
+      const { noteId, topicId } = TopicNotePairRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          await topicUseCases.removeTopicFromNote.execute(noteId, topicId);
+          await run((service) =>
+            service.removeTopicFromNote.execute(noteId, topicId),
+          );
           return { success: true };
         },
         { channel: TOPIC_CHANNELS.REMOVE_FROM_NOTE, noteId, topicId },
@@ -101,8 +128,9 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.CLASSIFY_NOTE,
-    async (_event, { noteId, force }: { noteId: string; force?: boolean }) => {
-      return handleRequest(async () => topicUseCases.classifyNote.execute(noteId, force), {
+    async (_event, rawRequest) => {
+      const { noteId, force } = ClassifyNoteRequestSchema.parse(rawRequest);
+      return handleRequest(async () => run((service) => service.classifyNote.execute(noteId, force)), {
         channel: TOPIC_CHANNELS.CLASSIFY_NOTE,
         noteId,
         force,
@@ -112,8 +140,9 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.CLASSIFY_ALL,
-    async (_event, options?: { force?: boolean; excludeJournal?: boolean }) => {
-      return handleRequest(async () => topicUseCases.classifyAllNotes.execute(options), {
+    async (_event, rawRequest) => {
+      const options = ClassifyAllRequestSchema.parse(rawRequest ?? {});
+      return handleRequest(async () => run((service) => service.classifyAllNotes.execute(options)), {
         channel: TOPIC_CHANNELS.CLASSIFY_ALL,
         force: options?.force,
         excludeJournal: options?.excludeJournal,
@@ -123,13 +152,16 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.RECLASSIFY_ALL,
-    async (_event, options?: { excludeJournal?: boolean }) => {
+    async (_event, rawRequest) => {
+      const options = ReclassifyAllRequestSchema.parse(rawRequest ?? {});
       return handleRequest(
         async () =>
-          topicUseCases.classifyAllNotes.execute({
-            force: true,
-            excludeJournal: options?.excludeJournal,
-          }),
+          run((service) =>
+            service.classifyAllNotes.execute({
+              force: true,
+              excludeJournal: options?.excludeJournal,
+            }),
+          ),
         {
           channel: TOPIC_CHANNELS.RECLASSIFY_ALL,
           force: true,
@@ -141,10 +173,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.SEMANTIC_SEARCH,
-    async (_event, { query, limit }: { query: string; limit?: number }) => {
+    async (_event, rawRequest) => {
+      const { query, limit } = TopicSemanticSearchRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const results = await topicUseCases.semanticSearch.execute(query, limit);
+          const results = await run((service) =>
+            service.semanticSearch.execute(query, limit),
+          );
           return { results };
         },
         { channel: TOPIC_CHANNELS.SEMANTIC_SEARCH, limit },
@@ -154,10 +189,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_SIMILAR_NOTES,
-    async (_event, { noteId, limit }: { noteId: string; limit?: number }) => {
+    async (_event, rawRequest) => {
+      const { noteId, limit } = NoteIdWithLimitRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const similar = await topicUseCases.getSimilarNotes.execute(noteId, limit);
+          const similar = await run((service) =>
+            service.getSimilarNotes.execute(noteId, limit),
+          );
           return { similar };
         },
         { channel: TOPIC_CHANNELS.GET_SIMILAR_NOTES, noteId, limit },
@@ -168,7 +206,7 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   ipcMain.handle(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS, async () => {
     return handleRequest(
       async () => {
-        await topicUseCases.recomputeCentroids.execute();
+        await run((service) => service.recomputeCentroids.execute());
         return { success: true };
       },
       { channel: TOPIC_CHANNELS.RECOMPUTE_CENTROIDS },
@@ -176,23 +214,27 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
   });
 
   ipcMain.handle(TOPIC_CHANNELS.GET_EMBEDDING_STATUS, async () => {
-    return handleRequest(async () => topicUseCases.getEmbeddingStatus.execute(), {
+    return handleRequest(async () => run((service) => service.getEmbeddingStatus.execute()), {
       channel: TOPIC_CHANNELS.GET_EMBEDDING_STATUS,
     });
   });
 
-  ipcMain.handle(TOPIC_CHANNELS.GET_SUGGESTIONS, async (_event, request) => {
+  ipcMain.handle(TOPIC_CHANNELS.GET_SUGGESTIONS, async (_event, rawRequest) => {
+    const request = SuggestTopicsRequestSchema.parse(rawRequest ?? {});
     return handleRequest(
       async () => {
-        const suggestions = await topicUseCases.suggestTopics.execute(request ?? undefined);
+        const suggestions = await run((service) =>
+          service.suggestTopics.execute(request ?? undefined),
+        );
         return { suggestions };
       },
       { channel: TOPIC_CHANNELS.GET_SUGGESTIONS, workspaceId: request?.workspaceId },
     );
   });
 
-  ipcMain.handle(TOPIC_CHANNELS.ADOPT_SUGGESTION, async (_event, request) => {
-    return handleRequest(async () => topicUseCases.adoptSuggestedTopic.execute(request), {
+  ipcMain.handle(TOPIC_CHANNELS.ADOPT_SUGGESTION, async (_event, rawRequest) => {
+    const request = AdoptSuggestedTopicRequestSchema.parse(rawRequest);
+    return handleRequest(async () => run((service) => service.adoptSuggestedTopic.execute(request)), {
       channel: TOPIC_CHANNELS.ADOPT_SUGGESTION,
       noteCount: request?.noteIds?.length ?? 0,
     });
@@ -200,16 +242,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_NOTES_BY_TOPIC,
-    async (
-      _event,
-      {
-        topicId,
-        ...options
-      }: { topicId: string; limit?: number; offset?: number; excludeJournal?: boolean },
-    ) => {
+    async (_event, rawRequest) => {
+      const { topicId, ...options } = NotesByTopicRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const notes = await topicUseCases.getNotesForTopic.execute(topicId, options);
+          const notes = await run((service) =>
+            service.getNotesForTopic.execute(topicId, options),
+          );
           return { notes };
         },
         { channel: TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, topicId, ...options },
@@ -219,10 +258,13 @@ export function registerTopicHandlers(deps: TopicIPCDeps): void {
 
   ipcMain.handle(
     TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE,
-    async (_event, { noteId }: { noteId: string }) => {
+    async (_event, rawRequest) => {
+      const { noteId } = NoteIdRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          const topics = await topicUseCases.getTopicsForNote.execute(noteId);
+          const topics = await run((service) =>
+            service.getTopicsForNote.execute(noteId),
+          );
           return {
             topics: topics.map((t) => ({
               ...t,

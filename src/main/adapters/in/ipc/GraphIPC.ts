@@ -1,43 +1,56 @@
 /**
  * Graph IPC Adapter - Handles note links and graph visualization IPC channels
  *
- * NOTE: not yet migrated to the shared-schema pattern. Backend produces
+ * NOTE: Backend produces
  * NoteLink[] (sourceId/targetId/linkText) for getBacklinks/getForwardLinks,
  * but the renderer UI in BacklinksPanel iterates these as Note objects
  * (`note.id`), so aligning the wire schema to backend reality breaks the
  * renderer and aligning it to the renderer's expectation breaks runtime
- * validation. Needs a real backend/renderer reconciliation before migration.
+ * validation. Requests are validated here; resolving that response-contract
+ * mismatch remains separate from request decoding.
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
+import { GetGraphDataRequestSchema, GetLinksRequestSchema } from '@shared/schemas';
 import type { IGraphUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface GraphIPCDeps {
-  graphUseCases: IGraphUseCases;
+  runGraphEffect: RunGraphEffect;
 }
 
+export type RunGraphEffect = <A, E>(
+  use: (service: IGraphUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerGraphHandlers(deps: GraphIPCDeps): void {
-  const { graphUseCases } = deps;
+  const run = deps.runGraphEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'GraphIPC', defaultCode: 'GRAPH_ERROR', context });
 
-  ipcMain.handle(NOTE_CHANNELS.GET_BACKLINKS, async (_, { id }: { id: string }) => {
+  ipcMain.handle(NOTE_CHANNELS.GET_BACKLINKS, async (_, rawRequest) => {
+    const { id } = GetLinksRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const notes = await graphUseCases.getBacklinks.execute(id);
+        const notes = await run((service) =>
+          service.getBacklinks.execute(id),
+        );
         return { notes };
       },
       { channel: NOTE_CHANNELS.GET_BACKLINKS, noteId: id },
     );
   });
 
-  ipcMain.handle(NOTE_CHANNELS.GET_FORWARD_LINKS, async (_, { id }: { id: string }) => {
+  ipcMain.handle(NOTE_CHANNELS.GET_FORWARD_LINKS, async (_, rawRequest) => {
+    const { id } = GetLinksRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const notes = await graphUseCases.getForwardLinks.execute(id);
+        const notes = await run((service) =>
+          service.getForwardLinks.execute(id),
+        );
         return { notes };
       },
       { channel: NOTE_CHANNELS.GET_FORWARD_LINKS, noteId: id },
@@ -46,10 +59,13 @@ export function registerGraphHandlers(deps: GraphIPCDeps): void {
 
   ipcMain.handle(
     NOTE_CHANNELS.GET_GRAPH_DATA,
-    async (_, options?: { centerNoteId?: string; depth?: number; includeOrphans?: boolean }) => {
+    async (_, rawRequest) => {
+      const options = GetGraphDataRequestSchema.parse(rawRequest ?? {});
       return handleRequest(
         async () => {
-          const graphData = await graphUseCases.getGraphData.execute(options);
+          const graphData = await run((service) =>
+            service.getGraphData.execute(options),
+          );
           return graphData;
         },
         {

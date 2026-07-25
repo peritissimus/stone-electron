@@ -3,6 +3,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   GetVersionsRequestSchema,
@@ -16,9 +17,17 @@ import { logger } from '../../../shared';
 import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 
 export interface VersionIPCDeps {
-  versionUseCases: IVersionUseCases;
-  noteUseCases: INoteUseCases;
+  runVersionEffect: RunVersionEffect;
+  runNoteEffect: RunNoteEffect;
 }
+
+export type RunVersionEffect = <A, E>(
+  use: (service: IVersionUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
+type RunNoteEffect = <A, E>(
+  use: (service: INoteUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
 
 const VERSION_CHANNELS = [
   NOTE_CHANNELS.GET_VERSIONS,
@@ -28,7 +37,7 @@ const VERSION_CHANNELS = [
 ] as const;
 
 export function registerVersionHandlers(deps: VersionIPCDeps): void {
-  const { versionUseCases, noteUseCases } = deps;
+  const { runVersionEffect: run, runNoteEffect } = deps;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'VersionIPC',
@@ -45,7 +54,9 @@ export function registerVersionHandlers(deps: VersionIPCDeps): void {
     const resolvedNoteId = noteId ?? id!;
     return handleRequest<GetVersionsResponse>(
       async () => {
-        const versions = await versionUseCases.getVersions.execute(resolvedNoteId);
+        const versions = await run((service) =>
+          service.getVersions.execute(resolvedNoteId),
+        );
         return {
           versions: versions.map((v) => ({
             id: v.id,
@@ -69,7 +80,9 @@ export function registerVersionHandlers(deps: VersionIPCDeps): void {
   ipcMain.handle(NOTE_CHANNELS.GET_VERSION, async (_event, versionId: string) => {
     return handleRequest<VersionDetailResponse>(
       async () => {
-        const version = await versionUseCases.getVersion.execute(versionId);
+        const version = await run((service) =>
+          service.getVersion.execute(versionId),
+        );
         if (!version) {
           const error = new Error('Version not found');
           error.name = 'VersionNotFoundError';
@@ -87,7 +100,9 @@ export function registerVersionHandlers(deps: VersionIPCDeps): void {
   ipcMain.handle(NOTE_CHANNELS.CREATE_VERSION, async (_event, noteId: string) => {
     return handleRequest<VersionDetailResponse>(
       async () => {
-        const version = await versionUseCases.createVersion.execute(noteId);
+        const version = await run((service) =>
+          service.createVersion.execute(noteId),
+        );
         return {
           ...version,
           createdAt: version.createdAt.toISOString(),
@@ -101,8 +116,12 @@ export function registerVersionHandlers(deps: VersionIPCDeps): void {
     const { id, versionId } = RestoreVersionRequestSchema.parse(rawRequest);
     return handleRequest<NoteResponse>(
       async () => {
-        await versionUseCases.restoreVersion.execute(id, versionId);
-        const result = await noteUseCases.getNote.execute({ id, includeContent: false });
+        await run((service) =>
+          service.restoreVersion.execute(id, versionId),
+        );
+        const result = await runNoteEffect((service) =>
+          service.getNote.execute({ id, includeContent: false }),
+        );
         return result.note;
       },
       { channel: NOTE_CHANNELS.RESTORE_VERSION, noteId: id, versionId },

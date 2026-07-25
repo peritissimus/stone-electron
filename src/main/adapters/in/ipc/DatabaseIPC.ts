@@ -8,12 +8,9 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { DATABASE_CHANNELS } from '@shared/constants/ipcChannels';
-import type {
-  IGetDatabaseStatusUseCase,
-  IVacuumDatabaseUseCase,
-  ICheckDatabaseIntegrityUseCase,
-} from '../../../domain';
+import type { IDatabaseUseCases } from '../../../domain';
 import type {
   CheckDatabaseIntegrityResponse,
   DatabaseStatusResponse,
@@ -23,13 +20,15 @@ import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface DatabaseIPCDeps {
-  getDatabaseStatus: IGetDatabaseStatusUseCase;
-  vacuumDatabase: IVacuumDatabaseUseCase;
-  checkDatabaseIntegrity: ICheckDatabaseIntegrityUseCase;
+  runDatabaseEffect: RunDatabaseEffect;
 }
 
+export type RunDatabaseEffect = <A, E>(
+  use: (service: IDatabaseUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
-  const { getDatabaseStatus, vacuumDatabase, checkDatabaseIntegrity } = deps;
+  const run = deps.runDatabaseEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'DatabaseIPC',
@@ -40,21 +39,21 @@ export function registerDatabaseHandlers(deps: DatabaseIPCDeps): void {
 
   ipcMain.handle(DATABASE_CHANNELS.GET_STATUS, async () => {
     return handleRequest<DatabaseStatusResponse>(
-      async () => getDatabaseStatus.execute(),
+      async () => run((service) => service.getStatus.execute()),
       { channel: DATABASE_CHANNELS.GET_STATUS },
     );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.VACUUM, async () => {
     return handleRequest<VacuumDatabaseResponse>(
-      async () => vacuumDatabase.execute(),
+      async () => run((service) => service.vacuum.execute()),
       { channel: DATABASE_CHANNELS.VACUUM },
     );
   });
 
   ipcMain.handle(DATABASE_CHANNELS.CHECK_INTEGRITY, async () => {
     return handleRequest<CheckDatabaseIntegrityResponse>(
-      async () => checkDatabaseIntegrity.execute(),
+      async () => run((service) => service.checkIntegrity.execute()),
       { channel: DATABASE_CHANNELS.CHECK_INTEGRITY },
     );
   });

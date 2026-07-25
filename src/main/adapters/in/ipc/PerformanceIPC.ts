@@ -4,6 +4,7 @@
 
 import { ipcMain, BrowserWindow } from 'electron';
 import { PERFORMANCE_CHANNELS } from '@shared/constants/ipcChannels';
+import { z } from '@shared/schemas/schema';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 import type {
@@ -46,9 +47,11 @@ export function registerPerformanceHandlers(deps: PerformanceIPCDeps): void {
 
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'PerformanceIPC', defaultCode: 'INTERNAL_ERROR', context });
+  const sinceMsSchema = z.number().nonnegative().optional();
 
   // Get full performance snapshot
   ipcMain.handle(PERFORMANCE_CHANNELS.GET_SNAPSHOT, async (_event, sinceMs?: number) => {
+    sinceMs = sinceMsSchema.parse(sinceMs);
     return handleRequest(
       async () => {
         const mainProcessMetrics = getSnapshot(sinceMs);
@@ -80,6 +83,7 @@ export function registerPerformanceHandlers(deps: PerformanceIPCDeps): void {
 
   // Get IPC statistics
   ipcMain.handle(PERFORMANCE_CHANNELS.GET_IPC_STATS, async (_event, sinceMs?: number) => {
+    sinceMs = sinceMsSchema.parse(sinceMs);
     return handleRequest(
       async () => getIPCMetrics(sinceMs),
       { channel: PERFORMANCE_CHANNELS.GET_IPC_STATS },
@@ -88,6 +92,7 @@ export function registerPerformanceHandlers(deps: PerformanceIPCDeps): void {
 
   // Get database statistics
   ipcMain.handle(PERFORMANCE_CHANNELS.GET_DB_STATS, async (_event, sinceMs?: number) => {
+    sinceMs = sinceMsSchema.parse(sinceMs);
     return handleRequest(
       async () => getDatabaseMetrics(sinceMs),
       { channel: PERFORMANCE_CHANNELS.GET_DB_STATS },

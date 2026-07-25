@@ -3,17 +3,27 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { NOTE_CHANNELS } from '@shared/constants/ipcChannels';
-import type { ITaskUseCases, TaskState } from '../../../domain';
+import {
+  NoteIdRequestSchema,
+  ToggleTaskRequestSchema,
+  UpdateTaskStateRequestSchema,
+} from '@shared/schemas';
+import type { ITaskUseCases } from '../../../domain';
 import { handleIpcRequest } from '@main/shared/utils';
 import { logger } from '../../../shared';
 
 export interface TaskIPCDeps {
-  taskUseCases: ITaskUseCases;
+  runTaskEffect: RunTaskEffect;
 }
 
+export type RunTaskEffect = <A, E>(
+  use: (service: ITaskUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerTaskHandlers(deps: TaskIPCDeps): void {
-  const { taskUseCases } = deps;
+  const run = deps.runTaskEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, { loggerPrefix: 'TaskIPC', defaultCode: 'TASK_ERROR', context });
 
@@ -21,7 +31,9 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
   ipcMain.handle(NOTE_CHANNELS.GET_ALL_TODOS, async () => {
     return handleRequest(
       async () => {
-        const tasks = await taskUseCases.getAllTasks.execute();
+        const tasks = await run((service) =>
+          service.getAllTasks.execute(),
+        );
         return tasks.map((t) => ({
           ...t,
           createdAt: t.createdAt.toISOString(),
@@ -33,10 +45,13 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
   });
 
   // Get tasks for a specific note
-  ipcMain.handle(NOTE_CHANNELS.GET_NOTE_TODOS, async (_, { noteId }: { noteId: string }) => {
+  ipcMain.handle(NOTE_CHANNELS.GET_NOTE_TODOS, async (_, rawRequest) => {
+    const { noteId } = NoteIdRequestSchema.parse(rawRequest);
     return handleRequest(
       async () => {
-        const tasks = await taskUseCases.getNoteTasks.execute(noteId);
+        const tasks = await run((service) =>
+          service.getNoteTasks.execute(noteId),
+        );
         return tasks.map((t) => ({
           ...t,
           createdAt: t.createdAt.toISOString(),
@@ -50,13 +65,13 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
   // Update task state
   ipcMain.handle(
     NOTE_CHANNELS.UPDATE_TASK_STATE,
-    async (
-      _,
-      { noteId, taskIndex, newState }: { noteId: string; taskIndex: number; newState: TaskState },
-    ) => {
+    async (_, rawRequest) => {
+      const { noteId, taskIndex, newState } = UpdateTaskStateRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          await taskUseCases.updateTaskState.execute(noteId, taskIndex, newState);
+          await run((service) =>
+            service.updateTaskState.execute(noteId, taskIndex, newState),
+          );
           return { success: true };
         },
         { channel: NOTE_CHANNELS.UPDATE_TASK_STATE, noteId, taskIndex, newState },
@@ -67,10 +82,13 @@ export function registerTaskHandlers(deps: TaskIPCDeps): void {
   // Toggle task
   ipcMain.handle(
     NOTE_CHANNELS.TOGGLE_TASK,
-    async (_, { noteId, taskIndex }: { noteId: string; taskIndex: number }) => {
+    async (_, rawRequest) => {
+      const { noteId, taskIndex } = ToggleTaskRequestSchema.parse(rawRequest);
       return handleRequest(
         async () => {
-          await taskUseCases.toggleTask.execute(noteId, taskIndex);
+          await run((service) =>
+            service.toggleTask.execute(noteId, taskIndex),
+          );
           return { success: true };
         },
         { channel: NOTE_CHANNELS.TOGGLE_TASK, noteId, taskIndex },

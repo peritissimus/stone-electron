@@ -8,6 +8,7 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { WORKSPACE_CHANNELS } from '@shared/constants/ipcChannels';
 import {
   CreateFolderRequestSchema,
@@ -36,11 +37,87 @@ import { logger } from '../../../shared';
 import { COMMON_IPC_ERROR_MAP, handleIpcRequest } from '@main/shared/utils';
 
 export interface WorkspaceIPCDeps {
-  workspaceUseCases: IWorkspaceUseCases;
+  runWorkspaceEffect: RunWorkspaceEffect;
 }
 
+export type RunWorkspaceEffect = <A, E>(
+  use: (service: IWorkspaceUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
+type PromiseWorkspace<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseWorkspace<T[Key]> }
+    : T;
+
 export function registerWorkspaceHandlers(deps: WorkspaceIPCDeps): void {
-  const { workspaceUseCases } = deps;
+  const run = deps.runWorkspaceEffect;
+  const workspaceUseCases: PromiseWorkspace<IWorkspaceUseCases> = {
+    createWorkspace: {
+      execute: (request) =>
+        run((service) => service.createWorkspace.execute(request)),
+    },
+    getWorkspace: {
+      execute: (request) =>
+        run((service) => service.getWorkspace.execute(request)),
+    },
+    listWorkspaces: {
+      execute: () => run((service) => service.listWorkspaces.execute()),
+    },
+    setActiveWorkspace: {
+      execute: (request) =>
+        run((service) => service.setActiveWorkspace.execute(request)),
+    },
+    getActiveWorkspace: {
+      execute: () => run((service) => service.getActiveWorkspace.execute()),
+    },
+    deleteWorkspace: {
+      execute: (request) =>
+        run((service) => service.deleteWorkspace.execute(request)),
+    },
+    updateWorkspace: {
+      execute: (request) =>
+        run((service) => service.updateWorkspace.execute(request)),
+    },
+    getDefaultWorkspacePath: {
+      execute: () =>
+        run((service) => service.getDefaultWorkspacePath.execute()),
+    },
+    selectFolder: {
+      execute: (request) =>
+        run((service) => service.selectFolder.execute(request)),
+    },
+    validatePath: {
+      execute: (request) =>
+        run((service) => service.validatePath.execute(request)),
+    },
+    createFolder: {
+      execute: (request) =>
+        run((service) => service.createFolder.execute(request)),
+    },
+    renameFolder: {
+      execute: (request) =>
+        run((service) => service.renameFolder.execute(request)),
+    },
+    deleteFolder: {
+      execute: (request) =>
+        run((service) => service.deleteFolder.execute(request)),
+    },
+    moveFolder: {
+      execute: (request) =>
+        run((service) => service.moveFolder.execute(request)),
+    },
+    scanWorkspace: {
+      execute: (request) =>
+        run((service) => service.scanWorkspace.execute(request)),
+    },
+    syncWorkspace: {
+      execute: (request) =>
+        run((service) => service.syncWorkspace.execute(request)),
+    },
+  };
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest<T>(fn, {
       loggerPrefix: 'WorkspaceIPC',

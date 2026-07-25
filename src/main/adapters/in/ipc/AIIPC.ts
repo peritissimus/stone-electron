@@ -6,16 +6,26 @@
  */
 
 import { ipcMain } from 'electron';
+import type { Effect } from 'effect';
 import { AI_CHANNELS } from '@shared/constants/ipcChannels';
+import {
+  AskNotesRequestSchema,
+  NoteIdRequestSchema,
+  NoteIdWithLimitRequestSchema,
+} from '@shared/schemas';
 import type { IAIUseCases } from '../../../domain';
 import { handleIpcRequest, logger } from '@main/shared/utils';
 
 export interface AIIPCDeps {
-  aiUseCases: IAIUseCases;
+  runAIEffect: RunAIEffect;
 }
 
+export type RunAIEffect = <A, E>(
+  use: (service: IAIUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
+
 export function registerAIHandlers(deps: AIIPCDeps): void {
-  const { aiUseCases } = deps;
+  const run = deps.runAIEffect;
   const handleRequest = <T>(fn: () => Promise<T>, context?: Record<string, unknown>) =>
     handleIpcRequest(fn, {
       loggerPrefix: 'AIIPC',
@@ -23,10 +33,13 @@ export function registerAIHandlers(deps: AIIPCDeps): void {
       context,
     });
 
-  ipcMain.handle(AI_CHANNELS.ASK_NOTES, async (_event, request) =>
+  ipcMain.handle(AI_CHANNELS.ASK_NOTES, async (_event, rawRequest) =>
     handleRequest(
       async () => {
-        const result = await aiUseCases.askNotes.execute(request);
+        const request = AskNotesRequestSchema.parse(rawRequest);
+        const result = await run((service) =>
+          service.askNotes.execute(request),
+        );
         logger.info('[AIIPC.askNotes] done', {
           query: request?.query,
           workspaceId: request?.workspaceId,
@@ -35,21 +48,31 @@ export function registerAIHandlers(deps: AIIPCDeps): void {
         });
         return result;
       },
-      { channel: AI_CHANNELS.ASK_NOTES, query: request?.query, workspaceId: request?.workspaceId },
+      { channel: AI_CHANNELS.ASK_NOTES },
     ),
   );
 
-  ipcMain.handle(AI_CHANNELS.SUMMARIZE_NOTE, async (_event, request) =>
+  ipcMain.handle(AI_CHANNELS.SUMMARIZE_NOTE, async (_event, rawRequest) =>
     handleRequest(
-      async () => aiUseCases.summarizeNote.execute(request),
-      { channel: AI_CHANNELS.SUMMARIZE_NOTE, noteId: request?.noteId },
+      async () =>
+        run((service) =>
+          service.summarizeNote.execute(
+            NoteIdRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: AI_CHANNELS.SUMMARIZE_NOTE },
     ),
   );
 
-  ipcMain.handle(AI_CHANNELS.SUGGEST_LINKS, async (_event, request) =>
+  ipcMain.handle(AI_CHANNELS.SUGGEST_LINKS, async (_event, rawRequest) =>
     handleRequest(
-      async () => aiUseCases.suggestLinks.execute(request),
-      { channel: AI_CHANNELS.SUGGEST_LINKS, noteId: request?.noteId },
+      async () =>
+        run((service) =>
+          service.suggestLinks.execute(
+            NoteIdWithLimitRequestSchema.parse(rawRequest),
+          ),
+        ),
+      { channel: AI_CHANNELS.SUGGEST_LINKS },
     ),
   );
 }
