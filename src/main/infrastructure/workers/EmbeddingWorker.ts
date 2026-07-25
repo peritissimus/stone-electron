@@ -14,16 +14,15 @@
 import { Worker } from 'worker_threads';
 import path from 'node:path';
 import { app } from 'electron';
-import { logger, withTimeout } from '../../shared/utils';
+import { Context, Effect, Layer } from 'effect';
+import { logger } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 
 interface PendingRequest {
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-  timer?: ReturnType<typeof setTimeout>;
+  resume: (effect: Effect.Effect<unknown, Error>) => void;
 }
 
 // Per-request timeouts for the FAST inference paths. If the worker stops
@@ -43,6 +42,24 @@ interface WorkerResponse {
 }
 
 export class EmbeddingWorker {
+  static readonly Service = Context.GenericTag<EmbeddingWorker>('stone/EmbeddingWorker');
+
+  static layer(worker: EmbeddingWorker): Layer.Layer<EmbeddingWorker> {
+    return Layer.scoped(
+      EmbeddingWorker.Service,
+      Effect.acquireRelease(Effect.succeed(worker), () =>
+        Effect.tryPromise({
+          try: () => worker.shutdown(),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+        }).pipe(
+          Effect.catchAll((error) =>
+            Effect.sync(() => logger.error('[Embedder] finalizer failed:', error)),
+          ),
+        ),
+      ),
+    );
+  }
+
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -106,19 +123,22 @@ export class EmbeddingWorker {
       this.worker = new Worker(workerPath, { workerData: { cacheDir } });
 
       // Wait for worker to be ready
-      await withTimeout(
-        new Promise<void>((resolve, reject) => {
+      await Effect.runPromise(
+        Effect.async<void, Error>((resume) => {
           this.worker!.on('message', (msg: WorkerResponse) => {
             if (msg.type === 'ready') {
               this.workerReady = true;
-              resolve();
+              resume(Effect.void);
             }
           });
 
-          this.worker!.on('error', reject);
-        }),
-        30_000,
-        'Worker initialization timeout',
+          this.worker!.on('error', (error) => resume(Effect.fail(error)));
+        }).pipe(
+          Effect.timeoutFail({
+            duration: 30_000,
+            onTimeout: () => new Error('Worker initialization timeout'),
+          }),
+        ),
       );
 
       // Set up message handler for responses
@@ -139,12 +159,11 @@ export class EmbeddingWorker {
 
         const pending = this.pendingRequests.get(id);
         if (pending) {
-          if (pending.timer) clearTimeout(pending.timer);
           this.pendingRequests.delete(id);
           if (success) {
-            pending.resolve(data);
+            pending.resume(Effect.succeed(data));
           } else {
-            pending.reject(new Error(error || 'Unknown worker error'));
+            pending.resume(Effect.fail(new Error(error || 'Unknown worker error')));
           }
         }
       });
@@ -153,8 +172,7 @@ export class EmbeddingWorker {
         logger.error('[Embedder] Worker error:', err);
         // Reject all pending requests
         for (const [id, pending] of this.pendingRequests) {
-          if (pending.timer) clearTimeout(pending.timer);
-          pending.reject(err);
+          pending.resume(Effect.fail(err));
           this.pendingRequests.delete(id);
         }
       });
@@ -197,31 +215,38 @@ export class EmbeddingWorker {
     payload: Record<string, unknown>,
     timeoutMs?: number,
   ): Promise<T> {
-    return new Promise((resolve, reject) => {
+    return Effect.runPromise(this.sendMessageEffect<T>(type, payload, timeoutMs));
+  }
+
+  private sendMessageEffect<T>(
+    type: string,
+    payload: Record<string, unknown>,
+    timeoutMs?: number,
+  ): Effect.Effect<T, Error> {
+    const request = Effect.async<T, Error>((resume) => {
       if (!this.worker || !this.workerReady) {
-        reject(new Error('Worker not ready'));
-        return;
+        resume(Effect.fail(new Error('Worker not ready')));
+        return Effect.void;
       }
 
       const id = String(++this.requestId);
-      const pending: PendingRequest = {
-        resolve: resolve as (value: unknown) => void,
-        reject,
-      };
-      // Guard the fast paths against a wedged worker: if no response arrives in
-      // time, reject and drop the orphaned request instead of hanging forever.
-      if (timeoutMs && timeoutMs > 0) {
-        pending.timer = setTimeout(() => {
-          if (this.pendingRequests.get(id) === pending) {
-            this.pendingRequests.delete(id);
-            reject(new Error(`Worker request '${type}' timed out after ${timeoutMs}ms`));
-          }
-        }, timeoutMs);
-      }
+      const pending: PendingRequest = { resume: resume as PendingRequest['resume'] };
       this.pendingRequests.set(id, pending);
 
       this.worker.postMessage({ type, id, ...payload });
+      return Effect.sync(() => {
+        if (this.pendingRequests.get(id) === pending) this.pendingRequests.delete(id);
+      });
     });
+    return timeoutMs && timeoutMs > 0
+      ? request.pipe(
+          Effect.timeoutFail({
+            duration: timeoutMs,
+            onTimeout: () =>
+              new Error(`Worker request '${type}' timed out after ${timeoutMs}ms`),
+          }),
+        )
+      : request;
   }
 
   /**

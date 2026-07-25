@@ -64,6 +64,8 @@ async function loadWorkerModule() {
 async function initializeService(service: { initialize(): Promise<void> }) {
   const initializing = service.initialize();
   const worker = workerMock.instances[0];
+  // Effect.runPromise schedules the async registration on its runtime.
+  await Promise.resolve();
   worker.emit('message', { type: 'ready' });
   const initMessage = await waitForPostedMessage(worker, 'init');
   worker.emit('message', {
@@ -119,13 +121,13 @@ describe('EmbeddingWorker', () => {
     );
 
     const embedding = service.getEmbedding('hello');
-    const embedMessage = worker.postMessage.mock.calls.at(-1)?.[0];
+    const embedMessage = await waitForPostedMessage(worker, 'embed');
     expect(embedMessage).toMatchObject({ type: 'embed', text: 'hello' });
     worker.emit('message', { id: embedMessage.id, success: true, data: [1, 2, 3] });
     await expect(embedding).resolves.toEqual([1, 2, 3]);
 
     const batch = service.batchEmbed(['a', 'b']);
-    const batchMessage = worker.postMessage.mock.calls.at(-1)?.[0];
+    const batchMessage = await waitForPostedMessage(worker, 'batchEmbed');
     worker.emit('message', {
       id: batchMessage.id,
       success: true,
@@ -174,11 +176,12 @@ describe('EmbeddingWorker', () => {
     const worker = await initializeService(service);
 
     const request = service.ping();
+    await waitForPostedMessage(worker, 'ping');
     worker.emit('error', new Error('worker failed'));
     await expect(request).rejects.toThrow('worker failed');
 
     const shutdown = service.shutdown();
-    const shutdownMessage = worker.postMessage.mock.calls.at(-1)?.[0];
+    const shutdownMessage = await waitForPostedMessage(worker, 'shutdown');
     worker.emit('message', { id: shutdownMessage.id, success: true });
     await shutdown;
 
