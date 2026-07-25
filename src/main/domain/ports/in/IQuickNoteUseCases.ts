@@ -6,6 +6,8 @@
  * over a slot id; the implementation owns the folder mapping and seed
  * content, keeping folder names out of the renderer.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export type QuickNoteSlot = 'personal' | 'work';
 
@@ -22,5 +24,10 @@ export interface CreateQuickNoteResponse {
 }
 
 export interface IQuickNoteUseCases {
-  createInSlot(request: CreateQuickNoteRequest): Promise<CreateQuickNoteResponse>;
+  createInSlot(
+    request: CreateQuickNoteRequest,
+  ): Effect.Effect<CreateQuickNoteResponse, Error>;
 }
+
+export const QuickNoteUseCasesPort =
+  Context.GenericTag<IQuickNoteUseCases>('stone/IQuickNoteUseCases');

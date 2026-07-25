@@ -1,6 +1,8 @@
 /**
  * Graph Use Case Ports - Inbound interfaces for link/graph operations
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 /**
  * Link between two notes
@@ -71,14 +73,14 @@ export interface GraphData {
  * Get backlinks (notes that link TO this note)
  */
 export interface IGetBacklinksUseCase {
-  execute(noteId: string): Promise<NoteLink[]>;
+  execute(noteId: string): Effect.Effect<NoteLink[], Error>;
 }
 
 /**
  * Get forward links (notes that this note links TO)
  */
 export interface IGetForwardLinksUseCase {
-  execute(noteId: string): Promise<NoteLink[]>;
+  execute(noteId: string): Effect.Effect<NoteLink[], Error>;
 }
 
 /**
@@ -89,14 +91,14 @@ export interface IGetGraphDataUseCase {
     centerNoteId?: string;
     depth?: number;
     includeOrphans?: boolean;
-  }): Promise<GraphData>;
+  }): Effect.Effect<GraphData, Error>;
 }
 
 /**
  * Update links for a note (called after save)
  */
 export interface IUpdateNoteLinksUseCase {
-  execute(noteId: string, content: string): Promise<void>;
+  execute(noteId: string, content: string): Effect.Effect<void, Error>;
 }
 
 /**
@@ -108,3 +110,6 @@ export interface IGraphUseCases {
   getGraphData: IGetGraphDataUseCase;
   updateNoteLinks: IUpdateNoteLinksUseCase;
 }
+
+export const GraphUseCasesPort =
+  Context.GenericTag<IGraphUseCases>('stone/IGraphUseCases');

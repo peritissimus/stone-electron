@@ -1,3 +1,5 @@
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { CitationSource } from '../out/ITextGenerator';
 
 export interface AskNotesRequest {
@@ -37,15 +39,19 @@ export interface SuggestLinksResponse {
 }
 
 export interface IAskNotesUseCase {
-  execute(request: AskNotesRequest): Promise<AskNotesResponse>;
+  execute(request: AskNotesRequest): Effect.Effect<AskNotesResponse, Error>;
 }
 
 export interface ISummarizeNoteUseCase {
-  execute(request: SummarizeNoteRequest): Promise<SummarizeNoteResponse>;
+  execute(
+    request: SummarizeNoteRequest,
+  ): Effect.Effect<SummarizeNoteResponse, Error>;
 }
 
 export interface ISuggestLinksUseCase {
-  execute(request: SuggestLinksRequest): Promise<SuggestLinksResponse>;
+  execute(
+    request: SuggestLinksRequest,
+  ): Effect.Effect<SuggestLinksResponse, Error>;
 }
 
 export interface IAIUseCases {
@@ -53,3 +59,6 @@ export interface IAIUseCases {
   summarizeNote: ISummarizeNoteUseCase;
   suggestLinks: ISuggestLinksUseCase;
 }
+
+export const AIUseCasesPort =
+  Context.GenericTag<IAIUseCases>('stone/IAIUseCases');

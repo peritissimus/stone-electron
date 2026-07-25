@@ -7,6 +7,8 @@
  * persistence.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { NoteProps } from '../../entities';
 import type { TaskItem } from './ITaskUseCases';
 import type { CalendarDescriptor, CalendarEvent } from '../out/ICalendarSource';
@@ -64,10 +66,6 @@ export interface GetDailyReviewRequest {
   date?: string;
 }
 
-export interface IGetDailyReviewUseCase {
-  execute(request?: GetDailyReviewRequest): Promise<DailyReviewSnapshot>;
-}
-
 export type DailyReviewIntegrationSource = ExternalSourceId;
 
 export interface LoadDailyReviewIntegrationRequest {
@@ -78,22 +76,10 @@ export interface LoadDailyReviewIntegrationRequest {
 
 export type DailyReviewIntegrationResult = DailyReviewExternalResult;
 
-export interface ILoadDailyReviewIntegrationUseCase {
-  execute(request: LoadDailyReviewIntegrationRequest): Promise<DailyReviewIntegrationResult>;
-}
-
-export interface ILoadDailyReviewIntegrationsUseCase {
-  execute(request?: { date?: string }): Promise<DailyReviewIntegrationResult[]>;
-}
-
 export interface ListDailyReviewCalendarsResult {
   status: ExternalSourceStatus;
   calendars: CalendarDescriptor[];
   message?: string;
-}
-
-export interface IListDailyReviewCalendarsUseCase {
-  execute(): Promise<ListDailyReviewCalendarsResult>;
 }
 
 export interface SummarizeDailyReviewRequest {
@@ -110,14 +96,31 @@ export interface SummarizeDailyReviewResponse {
   journalNoteId: string | null;
 }
 
-export interface ISummarizeDailyReviewUseCase {
-  execute(request?: SummarizeDailyReviewRequest): Promise<SummarizeDailyReviewResponse>;
+export interface IDailyReviewUseCases {
+  getDailyReview: {
+    execute: (
+      request?: GetDailyReviewRequest,
+    ) => Effect.Effect<DailyReviewSnapshot, Error>;
+  };
+  listCalendars: {
+    execute: () => Effect.Effect<ListDailyReviewCalendarsResult, never>;
+  };
+  loadIntegration: {
+    execute: (
+      request: LoadDailyReviewIntegrationRequest,
+    ) => Effect.Effect<DailyReviewIntegrationResult, Error>;
+  };
+  loadIntegrations: {
+    execute: (
+      request?: { date?: string },
+    ) => Effect.Effect<DailyReviewIntegrationResult[], Error>;
+  };
+  summarizeDailyReview: {
+    execute: (
+      request?: SummarizeDailyReviewRequest,
+    ) => Effect.Effect<SummarizeDailyReviewResponse, Error>;
+  };
 }
 
-export interface IDailyReviewUseCases {
-  getDailyReview: IGetDailyReviewUseCase;
-  listCalendars: IListDailyReviewCalendarsUseCase;
-  loadIntegration: ILoadDailyReviewIntegrationUseCase;
-  loadIntegrations: ILoadDailyReviewIntegrationsUseCase;
-  summarizeDailyReview: ISummarizeDailyReviewUseCase;
-}
+export const DailyReviewUseCasesPort =
+  Context.GenericTag<IDailyReviewUseCases>('stone/IDailyReviewUseCases');

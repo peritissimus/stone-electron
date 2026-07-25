@@ -10,6 +10,8 @@
  * at finalize (Option B — fast raw live preview, clean final).
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { TranscriptSegment } from '../../entities';
 
 export interface LiveChunkResult {
@@ -28,3 +30,16 @@ export interface ILiveTranscriber {
   /** Transcribe one 16 kHz mono WAV chunk. */
   transcribeChunk(wav: Uint8Array): Promise<LiveChunkResult>;
 }
+
+/** Effect-native capability used by migrated workers and use cases. */
+export interface ILiveTranscriberEffect {
+  readonly isReady: Effect.Effect<boolean>;
+  readonly start: Effect.Effect<void, Error>;
+  readonly stop: Effect.Effect<void, Error>;
+  readonly transcribeChunk: (
+    wav: Uint8Array,
+  ) => Effect.Effect<LiveChunkResult, Error>;
+}
+
+export const LiveTranscriber =
+  Context.GenericTag<ILiveTranscriberEffect>('stone/ILiveTranscriber');

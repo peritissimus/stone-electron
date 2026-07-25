@@ -1,6 +1,8 @@
 /**
  * Version Use Case Ports - Inbound interfaces for version history operations
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 /**
  * Version snapshot
@@ -19,28 +21,28 @@ export interface VersionSnapshot {
  * Get version history for a note
  */
 export interface IGetVersionsUseCase {
-  execute(noteId: string): Promise<VersionSnapshot[]>;
+  execute(noteId: string): Effect.Effect<VersionSnapshot[], Error>;
 }
 
 /**
  * Create a new version snapshot
  */
 export interface ICreateVersionUseCase {
-  execute(noteId: string): Promise<VersionSnapshot>;
+  execute(noteId: string): Effect.Effect<VersionSnapshot, Error>;
 }
 
 /**
  * Restore a note to a specific version
  */
 export interface IRestoreVersionUseCase {
-  execute(noteId: string, versionId: string): Promise<void>;
+  execute(noteId: string, versionId: string): Effect.Effect<void, Error>;
 }
 
 /**
  * Get a specific version
  */
 export interface IGetVersionUseCase {
-  execute(versionId: string): Promise<VersionSnapshot | null>;
+  execute(versionId: string): Effect.Effect<VersionSnapshot | null, Error>;
 }
 
 /**
@@ -52,3 +54,6 @@ export interface IVersionUseCases {
   restoreVersion: IRestoreVersionUseCase;
   getVersion: IGetVersionUseCase;
 }
+
+export const VersionUseCasesPort =
+  Context.GenericTag<IVersionUseCases>('stone/IVersionUseCases');

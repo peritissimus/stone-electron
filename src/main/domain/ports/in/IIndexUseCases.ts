@@ -2,6 +2,8 @@
  * Index Use Cases — chunk + embed the markdown body of one or more notes so
  * they become searchable. Replaces the previous note-level embedding flow.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export interface IndexNoteRequest {
   noteId: string;
@@ -31,11 +33,13 @@ export interface RebuildAllNotesIndexResponse {
 }
 
 export interface IIndexNoteUseCase {
-  execute(request: IndexNoteRequest): Promise<IndexNoteResponse>;
+  execute(request: IndexNoteRequest): Effect.Effect<IndexNoteResponse, Error>;
 }
 
 export interface IRebuildAllNotesIndexUseCase {
-  execute(request?: RebuildAllNotesIndexRequest): Promise<RebuildAllNotesIndexResponse>;
+  execute(
+    request?: RebuildAllNotesIndexRequest,
+  ): Effect.Effect<RebuildAllNotesIndexResponse, Error>;
 }
 
 export interface IndexStatsRequest {
@@ -53,7 +57,7 @@ export interface IndexStatsResponse {
 }
 
 export interface IGetIndexStatsUseCase {
-  execute(request?: IndexStatsRequest): Promise<IndexStatsResponse>;
+  execute(request?: IndexStatsRequest): Effect.Effect<IndexStatsResponse, Error>;
 }
 
 export interface IIndexUseCases {
@@ -61,3 +65,6 @@ export interface IIndexUseCases {
   rebuildAll: IRebuildAllNotesIndexUseCase;
   getStats: IGetIndexStatsUseCase;
 }
+
+export const IndexUseCasesPort =
+  Context.GenericTag<IIndexUseCases>('stone/IIndexUseCases');

@@ -8,6 +8,8 @@
  * domain may not import from shared. The two stay structurally
  * identical because both describe the same wire payload.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export interface TemplateSummary {
   id: string;
@@ -43,14 +45,21 @@ export interface CreateNoteFromTemplateResponse {
 }
 
 export interface IListTemplatesUseCase {
-  execute(request?: ListTemplatesRequest): Promise<ListTemplatesResponse>;
+  execute(
+    request?: ListTemplatesRequest,
+  ): Effect.Effect<ListTemplatesResponse, Error>;
 }
 
 export interface ICreateNoteFromTemplateUseCase {
-  execute(request: CreateNoteFromTemplateRequest): Promise<CreateNoteFromTemplateResponse>;
+  execute(
+    request: CreateNoteFromTemplateRequest,
+  ): Effect.Effect<CreateNoteFromTemplateResponse, Error>;
 }
 
 export interface ITemplateUseCases {
   listTemplates: IListTemplatesUseCase;
   createNoteFromTemplate: ICreateNoteFromTemplateUseCase;
 }
+
+export const TemplateUseCasesPort =
+  Context.GenericTag<ITemplateUseCases>('stone/ITemplateUseCases');

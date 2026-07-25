@@ -5,6 +5,8 @@
  * Implementations live in the application layer.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { NoteProps } from '../../entities';
 import type { SearchResult } from '../out/ISearchEngine';
 
@@ -148,31 +150,31 @@ export interface GetRelatedNotesResponse {
 // =============================================================================
 
 export interface IFullTextSearchUseCase {
-  execute(request: FullTextSearchRequest): Promise<FullTextSearchResponse>;
+  execute(request: FullTextSearchRequest): Effect.Effect<FullTextSearchResponse, Error>;
 }
 
 export interface ISemanticSearchUseCase {
-  execute(request: SemanticSearchRequest): Promise<SemanticSearchResponse>;
+  execute(request: SemanticSearchRequest): Effect.Effect<SemanticSearchResponse, Error>;
 }
 
 export interface IFindSimilarNotesUseCase {
-  execute(request: FindSimilarNotesRequest): Promise<FindSimilarNotesResponse>;
+  execute(request: FindSimilarNotesRequest): Effect.Effect<FindSimilarNotesResponse, Error>;
 }
 
 export interface IHybridSearchUseCase {
-  execute(request: HybridSearchRequest): Promise<HybridSearchResponse>;
+  execute(request: HybridSearchRequest): Effect.Effect<HybridSearchResponse, Error>;
 }
 
 export interface ISearchByTagsUseCase {
-  execute(request: SearchByTagsRequest): Promise<SearchByTagsResponse>;
+  execute(request: SearchByTagsRequest): Effect.Effect<SearchByTagsResponse, Error>;
 }
 
 export interface ISearchByDateRangeUseCase {
-  execute(request: SearchByDateRangeRequest): Promise<SearchByDateRangeResponse>;
+  execute(request: SearchByDateRangeRequest): Effect.Effect<SearchByDateRangeResponse, Error>;
 }
 
 export interface IGetRelatedNotesUseCase {
-  execute(request: GetRelatedNotesRequest): Promise<GetRelatedNotesResponse>;
+  execute(request: GetRelatedNotesRequest): Effect.Effect<GetRelatedNotesResponse, Error>;
 }
 
 /**
@@ -188,3 +190,5 @@ export interface ISearchUseCases {
   getRelatedNotes: IGetRelatedNotesUseCase;
 }
 
+export const SearchUseCasesPort =
+  Context.GenericTag<ISearchUseCases>('stone/ISearchUseCases');

@@ -4,6 +4,8 @@
  * Defines the contract for settings operations.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type {
   AIConfig,
   AppearanceSettings,
@@ -28,51 +30,51 @@ export interface SettingDTO {
 }
 
 export interface IGetSettingUseCase {
-  execute(request: { key: string }): Promise<{ value: string | null }>;
+  execute(request: { key: string }): Effect.Effect<{ value: string | null }, Error>;
 }
 
 export interface ISetSettingUseCase {
-  execute(request: { key: string; value: string }): Promise<void>;
+  execute(request: { key: string; value: string }): Effect.Effect<void, Error>;
 }
 
 export interface IGetAllSettingsUseCase {
-  execute(): Promise<{ settings: SettingDTO[] }>;
+  execute(): Effect.Effect<{ settings: SettingDTO[] }, Error>;
 }
 
 export interface IGetAppearanceSettingsUseCase {
-  execute(): Promise<AppearanceSettings>;
+  execute(): Effect.Effect<AppearanceSettings, Error>;
 }
 
 export interface ISetThemeUseCase {
-  execute(request: { theme: AppTheme }): Promise<void>;
+  execute(request: { theme: AppTheme }): Effect.Effect<void, Error>;
 }
 
 export interface ISetAccentColorUseCase {
-  execute(request: { accentColor: AppAccentColor }): Promise<void>;
+  execute(request: { accentColor: AppAccentColor }): Effect.Effect<void, Error>;
 }
 
 export interface IUpdateFontSettingsUseCase {
-  execute(request: { fontSettings: Partial<FontSettings> }): Promise<void>;
+  execute(request: { fontSettings: Partial<FontSettings> }): Effect.Effect<void, Error>;
 }
 
 export interface IResetFontSettingsUseCase {
-  execute(): Promise<void>;
+  execute(): Effect.Effect<void, Error>;
 }
 
 // ----- editor settings -----
 
 export interface IGetEditorSettingsUseCase {
-  execute(): Promise<EditorSettings>;
+  execute(): Effect.Effect<EditorSettings, Error>;
 }
 
 export interface IUpdateEditorSettingsUseCase {
   execute(request: {
     editor: Partial<EditorSettings>;
-  }): Promise<EditorSettings>;
+  }): Effect.Effect<EditorSettings, Error>;
 }
 
 export interface IResetEditorSettingsUseCase {
-  execute(): Promise<EditorSettings>;
+  execute(): Effect.Effect<EditorSettings, Error>;
 }
 
 // ----- shortcuts -----
@@ -80,7 +82,7 @@ export interface IResetEditorSettingsUseCase {
 export type ShortcutsScope = 'app' | 'editor';
 
 export interface IGetShortcutsUseCase {
-  execute(): Promise<ShortcutsConfig>;
+  execute(): Effect.Effect<ShortcutsConfig, Error>;
 }
 
 export interface ISetShortcutUseCase {
@@ -88,99 +90,99 @@ export interface ISetShortcutUseCase {
     scope: ShortcutsScope;
     action: string;
     binding: ChordBinding | ChordBinding[];
-  }): Promise<ShortcutsConfig>;
+  }): Effect.Effect<ShortcutsConfig, Error>;
 }
 
 export interface IResetShortcutUseCase {
   execute(request: {
     scope: ShortcutsScope;
     action: string;
-  }): Promise<ShortcutsConfig>;
+  }): Effect.Effect<ShortcutsConfig, Error>;
 }
 
 export interface IResetAllShortcutsUseCase {
-  execute(): Promise<ShortcutsConfig>;
+  execute(): Effect.Effect<ShortcutsConfig, Error>;
 }
 
 // ----- AI -----
 
 export interface IGetAISettingsUseCase {
-  execute(): Promise<AIConfig>;
+  execute(): Effect.Effect<AIConfig, Error>;
 }
 
 export interface IUpdateAISettingsUseCase {
   execute(request: {
     ai: Partial<AIConfig>;
-  }): Promise<AIConfig>;
+  }): Effect.Effect<AIConfig, Error>;
 }
 
 export interface IResetAISettingsUseCase {
-  execute(): Promise<AIConfig>;
+  execute(): Effect.Effect<AIConfig, Error>;
 }
 
 export interface IGetAIProviderKeysUseCase {
-  execute(): Promise<AIProviderKeyStatus[]>;
+  execute(): Effect.Effect<AIProviderKeyStatus[], Error>;
 }
 
 export interface ISetAIProviderKeyUseCase {
   execute(request: {
     provider: AIProviderId;
     apiKey: string;
-  }): Promise<AIProviderKeyStatus[]>;
+  }): Effect.Effect<AIProviderKeyStatus[], Error>;
 }
 
 export interface IDeleteAIProviderKeyUseCase {
   execute(request: {
     provider: AIProviderId;
-  }): Promise<AIProviderKeyStatus[]>;
+  }): Effect.Effect<AIProviderKeyStatus[], Error>;
 }
 
 // ----- meetings -----
 
 export interface IGetMeetingsSettingsUseCase {
-  execute(): Promise<MeetingsConfig>;
+  execute(): Effect.Effect<MeetingsConfig, Error>;
 }
 
 export interface IUpdateMeetingsSettingsUseCase {
-  execute(request: { meetings: Partial<MeetingsConfig> }): Promise<MeetingsConfig>;
+  execute(request: { meetings: Partial<MeetingsConfig> }): Effect.Effect<MeetingsConfig, Error>;
 }
 
 export interface IResetMeetingsSettingsUseCase {
-  execute(): Promise<MeetingsConfig>;
+  execute(): Effect.Effect<MeetingsConfig, Error>;
 }
 
 export interface IGetIntegrationsSettingsUseCase {
-  execute(): Promise<IntegrationsConfig>;
+  execute(): Effect.Effect<IntegrationsConfig, Error>;
 }
 
 export interface IUpdateIntegrationsSettingsUseCase {
-  execute(request: { integrations: Partial<IntegrationsConfig> }): Promise<IntegrationsConfig>;
+  execute(request: { integrations: Partial<IntegrationsConfig> }): Effect.Effect<IntegrationsConfig, Error>;
 }
 
 // ----- onboarding -----
 
 export interface IGetOnboardingUseCase {
-  execute(): Promise<OnboardingConfig>;
+  execute(): Effect.Effect<OnboardingConfig, Error>;
 }
 
 export interface IUpdateOnboardingUseCase {
   execute(request: {
     onboarding: { completed?: boolean; steps?: Partial<OnboardingStepState> };
-  }): Promise<OnboardingConfig>;
+  }): Effect.Effect<OnboardingConfig, Error>;
 }
 
 export interface IResetOnboardingUseCase {
-  execute(): Promise<OnboardingConfig>;
+  execute(): Effect.Effect<OnboardingConfig, Error>;
 }
 
 // ----- quick capture (global hotkey) -----
 
 export interface IGetQuickCaptureShortcutUseCase {
-  execute(): Promise<QuickCaptureShortcutStatus>;
+  execute(): Effect.Effect<QuickCaptureShortcutStatus, Error>;
 }
 
 export interface ISetQuickCaptureShortcutUseCase {
-  execute(request: { shortcut: string }): Promise<QuickCaptureShortcutStatus>;
+  execute(request: { shortcut: string }): Effect.Effect<QuickCaptureShortcutStatus, Error>;
 }
 
 /**
@@ -219,3 +221,6 @@ export interface ISettingsUseCases {
   getQuickCaptureShortcut: IGetQuickCaptureShortcutUseCase;
   setQuickCaptureShortcut: ISetQuickCaptureShortcutUseCase;
 }
+
+export const SettingsUseCasesPort =
+  Context.GenericTag<ISettingsUseCases>('stone/ISettingsUseCases');

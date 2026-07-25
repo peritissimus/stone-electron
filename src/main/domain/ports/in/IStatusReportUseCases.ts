@@ -6,6 +6,8 @@
  * tasks, and recently-modified notes, then sending the evidence to
  * the configured text model.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export interface GenerateStatusReportRequest {
   workspaceId?: string;
@@ -34,9 +36,14 @@ export interface GenerateStatusReportResponse {
 }
 
 export interface IGenerateStatusReportUseCase {
-  execute(request?: GenerateStatusReportRequest): Promise<GenerateStatusReportResponse>;
+  execute(
+    request?: GenerateStatusReportRequest,
+  ): Effect.Effect<GenerateStatusReportResponse, Error>;
 }
 
 export interface IStatusReportUseCases {
   generate: IGenerateStatusReportUseCase;
 }
+
+export const StatusReportUseCasesPort =
+  Context.GenericTag<IStatusReportUseCases>('stone/IStatusReportUseCases');

@@ -2,6 +2,8 @@
  * Tag Use Cases Port (Inbound)
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { TagProps } from '../../entities';
 import type { TagWithCount } from '../out/ITagRepository';
 
@@ -67,35 +69,35 @@ export interface GetNoteTagsResponse {
 
 // Use Case Interfaces
 export interface ICreateTagUseCase {
-  execute(request: CreateTagRequest): Promise<CreateTagResponse>;
+  execute(request: CreateTagRequest): Effect.Effect<CreateTagResponse, Error>;
 }
 
 export interface IUpdateTagUseCase {
-  execute(request: UpdateTagRequest): Promise<UpdateTagResponse>;
+  execute(request: UpdateTagRequest): Effect.Effect<UpdateTagResponse, Error>;
 }
 
 export interface IGetTagUseCase {
-  execute(request: GetTagRequest): Promise<GetTagResponse>;
+  execute(request: GetTagRequest): Effect.Effect<GetTagResponse, Error>;
 }
 
 export interface IListTagsUseCase {
-  execute(request?: ListTagsRequest): Promise<ListTagsResponse>;
+  execute(request?: ListTagsRequest): Effect.Effect<ListTagsResponse, Error>;
 }
 
 export interface IDeleteTagUseCase {
-  execute(request: DeleteTagRequest): Promise<void>;
+  execute(request: DeleteTagRequest): Effect.Effect<void, Error>;
 }
 
 export interface IAddTagToNoteUseCase {
-  execute(request: AddTagToNoteRequest): Promise<void>;
+  execute(request: AddTagToNoteRequest): Effect.Effect<void, Error>;
 }
 
 export interface IRemoveTagFromNoteUseCase {
-  execute(request: RemoveTagFromNoteRequest): Promise<void>;
+  execute(request: RemoveTagFromNoteRequest): Effect.Effect<void, Error>;
 }
 
 export interface IGetNoteTagsUseCase {
-  execute(request: GetNoteTagsRequest): Promise<GetNoteTagsResponse>;
+  execute(request: GetNoteTagsRequest): Effect.Effect<GetNoteTagsResponse, Error>;
 }
 
 /**
@@ -111,3 +113,6 @@ export interface ITagUseCases {
   removeTagFromNote: IRemoveTagFromNoteUseCase;
   getNoteTags: IGetNoteTagsUseCase;
 }
+
+export const TagUseCasesPort =
+  Context.GenericTag<ITagUseCases>('stone/ITagUseCases');

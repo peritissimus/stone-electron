@@ -4,6 +4,8 @@
  * Defines the contract for attachment operations.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { AttachmentProps } from '../../entities';
 
 // Request/Response types
@@ -44,19 +46,25 @@ export interface DeleteAttachmentRequest {
 
 // Use case interfaces
 export interface IAddAttachmentUseCase {
-  execute(request: AddAttachmentRequest): Promise<AddAttachmentResponse>;
+  execute(
+    request: AddAttachmentRequest,
+  ): Effect.Effect<AddAttachmentResponse, Error>;
 }
 
 export interface IUploadImageUseCase {
-  execute(request: UploadImageRequest): Promise<UploadImageResponse>;
+  execute(
+    request: UploadImageRequest,
+  ): Effect.Effect<UploadImageResponse, Error>;
 }
 
 export interface IGetAttachmentsUseCase {
-  execute(request: GetAttachmentsRequest): Promise<GetAttachmentsResponse>;
+  execute(
+    request: GetAttachmentsRequest,
+  ): Effect.Effect<GetAttachmentsResponse, Error>;
 }
 
 export interface IDeleteAttachmentUseCase {
-  execute(request: DeleteAttachmentRequest): Promise<void>;
+  execute(request: DeleteAttachmentRequest): Effect.Effect<void, Error>;
 }
 
 /**
@@ -67,7 +75,7 @@ export interface IAttachmentUseCases {
     noteId: string,
     filePath: string,
     filename?: string,
-  ): Promise<{
+  ): Effect.Effect<{
     id: string;
     noteId: string;
     filename: string;
@@ -78,9 +86,12 @@ export interface IAttachmentUseCases {
     isImage: boolean;
     isPdf: boolean;
     createdAt: Date;
-  }>;
-  deleteAttachment(attachmentId: string, deleteFile?: boolean): Promise<void>;
-  getAttachments(noteId: string): Promise<
+  }, Error>;
+  deleteAttachment(
+    attachmentId: string,
+    deleteFile?: boolean,
+  ): Effect.Effect<void, Error>;
+  getAttachments(noteId: string): Effect.Effect<
     Array<{
       id: string;
       noteId: string;
@@ -93,13 +104,13 @@ export interface IAttachmentUseCases {
       isPdf: boolean;
       createdAt: Date;
     }>
-  >;
+  , Error>;
   uploadImage(
     noteId: string,
     imageData: Buffer | string,
     filename: string,
     mimeType?: string,
-  ): Promise<{
+  ): Effect.Effect<{
     attachment: {
       id: string;
       noteId: string;
@@ -113,5 +124,8 @@ export interface IAttachmentUseCases {
       createdAt: Date;
     };
     markdownLink: string;
-  }>;
+  }, Error>;
 }
+
+export const AttachmentUseCasesPort =
+  Context.GenericTag<IAttachmentUseCases>('stone/IAttachmentUseCases');

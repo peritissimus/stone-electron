@@ -3,6 +3,8 @@
  *
  * Defines the contract for quick capture operations.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 // Request/Response types
 export interface AppendToJournalRequest {
@@ -29,11 +31,15 @@ export interface TranscribeVoiceCaptureResponse {
 
 // Use case interfaces
 export interface IAppendToJournalUseCase {
-  execute(request: AppendToJournalRequest): Promise<AppendToJournalResponse>;
+  execute(
+    request: AppendToJournalRequest,
+  ): Effect.Effect<AppendToJournalResponse, Error>;
 }
 
 export interface ITranscribeVoiceCaptureUseCase {
-  execute(request: TranscribeVoiceCaptureRequest): Promise<TranscribeVoiceCaptureResponse>;
+  execute(
+    request: TranscribeVoiceCaptureRequest,
+  ): Effect.Effect<TranscribeVoiceCaptureResponse, Error>;
 }
 
 /**
@@ -43,8 +49,11 @@ export interface IQuickCaptureUseCases {
   appendToJournal(
     content: string,
     workspaceId?: string,
-  ): Promise<AppendToJournalResponse>;
+  ): Effect.Effect<AppendToJournalResponse, Error>;
   transcribeVoiceCapture(
     request: TranscribeVoiceCaptureRequest,
-  ): Promise<TranscribeVoiceCaptureResponse>;
+  ): Effect.Effect<TranscribeVoiceCaptureResponse, Error>;
 }
+
+export const QuickCaptureUseCasesPort =
+  Context.GenericTag<IQuickCaptureUseCases>('stone/IQuickCaptureUseCases');

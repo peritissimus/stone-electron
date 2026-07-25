@@ -4,6 +4,8 @@
  * Defines the contract for system-level operations.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { MicrophoneAccessStatus } from '../out/ISystemBridge';
 
 /**
@@ -13,39 +15,42 @@ import type { MicrophoneAccessStatus } from '../out/ISystemBridge';
 export type SystemAudioPermission = 'granted' | 'denied' | 'unsupported';
 
 export interface IGetSystemFontsUseCase {
-  execute(): Promise<{ fonts: string[] }>;
+  execute(): Effect.Effect<{ fonts: string[] }, Error>;
 }
 
 export interface IShowFolderPickerUseCase {
-  execute(request?: { title?: string; defaultPath?: string }): Promise<{ folderPath: string | null }>;
+  execute(request?: {
+    title?: string;
+    defaultPath?: string;
+  }): Effect.Effect<{ folderPath: string | null }, Error>;
 }
 
 export interface IValidateSystemPathUseCase {
-  execute(request: { path: string }): Promise<{ isValid: boolean }>;
+  execute(request: { path: string }): Effect.Effect<{ isValid: boolean }, Error>;
 }
 
 export interface IOpenInFolderUseCase {
-  execute(request: { path: string }): Promise<void>;
+  execute(request: { path: string }): Effect.Effect<void, Error>;
 }
 
 export interface IOpenExternalUseCase {
-  execute(request: { url: string }): Promise<void>;
+  execute(request: { url: string }): Effect.Effect<void, Error>;
 }
 
 export interface IGetMicAccessStatusUseCase {
-  execute(): Promise<{ status: MicrophoneAccessStatus }>;
+  execute(): Effect.Effect<{ status: MicrophoneAccessStatus }, Error>;
 }
 
 export interface IRequestMicAccessUseCase {
-  execute(): Promise<{ granted: boolean; status: MicrophoneAccessStatus }>;
+  execute(): Effect.Effect<{ granted: boolean; status: MicrophoneAccessStatus }, Error>;
 }
 
 export interface IGetSystemAudioAccessUseCase {
-  execute(): Promise<{ status: SystemAudioPermission }>;
+  execute(): Effect.Effect<{ status: SystemAudioPermission }, Error>;
 }
 
 export interface IRequestSystemAudioAccessUseCase {
-  execute(): Promise<{ status: SystemAudioPermission }>;
+  execute(): Effect.Effect<{ status: SystemAudioPermission }, Error>;
 }
 
 /**
@@ -62,3 +67,6 @@ export interface ISystemUseCases {
   getSystemAudioAccess: IGetSystemAudioAccessUseCase;
   requestSystemAudioAccess: IRequestSystemAudioAccessUseCase;
 }
+
+export const SystemUseCasesPort =
+  Context.GenericTag<ISystemUseCases>('stone/ISystemUseCases');

@@ -3,6 +3,8 @@
  *
  * Defines the contract for database maintenance operations.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export interface DatabaseStatusResponse {
   /** Absolute path to the SQLite file. */
@@ -32,15 +34,15 @@ export interface DatabaseIntegrityResponse {
 }
 
 export interface IGetDatabaseStatusUseCase {
-  execute(): Promise<DatabaseStatusResponse>;
+  execute(): Effect.Effect<DatabaseStatusResponse, Error>;
 }
 
 export interface IVacuumDatabaseUseCase {
-  execute(): Promise<VacuumDatabaseResponse>;
+  execute(): Effect.Effect<VacuumDatabaseResponse, Error>;
 }
 
 export interface ICheckDatabaseIntegrityUseCase {
-  execute(): Promise<DatabaseIntegrityResponse>;
+  execute(): Effect.Effect<DatabaseIntegrityResponse, Error>;
 }
 
 /**
@@ -51,3 +53,6 @@ export interface IDatabaseUseCases {
   vacuum: IVacuumDatabaseUseCase;
   checkIntegrity: ICheckDatabaseIntegrityUseCase;
 }
+
+export const DatabaseUseCasesPort =
+  Context.GenericTag<IDatabaseUseCases>('stone/IDatabaseUseCases');

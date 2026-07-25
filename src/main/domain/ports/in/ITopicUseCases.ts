@@ -4,6 +4,9 @@
  * Defines the contract for ML topic operations.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
+
 // DTOs
 export interface TopicDTO {
   id: string;
@@ -12,6 +15,8 @@ export interface TopicDTO {
   color: string;
   isPredefined: boolean;
   noteCount: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ClassifyResult {
@@ -61,73 +66,73 @@ export interface TopicForNote {
 
 // Per-action ports
 export interface IInitializeTopicsUseCase {
-  execute(): Promise<{ success: boolean; ready: boolean }>;
+  execute(): Effect.Effect<{ success: boolean; ready: boolean }, Error>;
 }
 
 export interface IGetAllTopicsUseCase {
-  execute(): Promise<TopicDTO[]>;
+  execute(): Effect.Effect<TopicDTO[], Error>;
 }
 
 export interface IGetTopicByIdUseCase {
-  execute(id: string): Promise<TopicDTO | null>;
+  execute(id: string): Effect.Effect<TopicDTO | null, Error>;
 }
 
 export interface ICreateTopicUseCase {
-  execute(data: { name: string; description?: string; color?: string }): Promise<TopicDTO>;
+  execute(data: { name: string; description?: string; color?: string }): Effect.Effect<TopicDTO, Error>;
 }
 
 export interface IUpdateTopicUseCase {
   execute(
     id: string,
     data: { name?: string; description?: string; color?: string },
-  ): Promise<TopicDTO>;
+  ): Effect.Effect<TopicDTO, Error>;
 }
 
 export interface IDeleteTopicUseCase {
-  execute(id: string): Promise<void>;
+  execute(id: string): Effect.Effect<void, Error>;
 }
 
 export interface IClassifyNoteUseCase {
-  execute(noteId: string, force?: boolean): Promise<ClassifyResult>;
+  execute(noteId: string, force?: boolean): Effect.Effect<ClassifyResult, Error>;
 }
 
 export interface IClassifyAllNotesUseCase {
-  execute(options?: { force?: boolean; excludeJournal?: boolean }): Promise<ClassifyAllResult>;
+  execute(options?: { force?: boolean; excludeJournal?: boolean }): Effect.Effect<ClassifyAllResult, Error>;
 }
 
 export interface IAssignTopicToNoteUseCase {
-  execute(noteId: string, topicId: string): Promise<void>;
+  execute(noteId: string, topicId: string): Effect.Effect<void, Error>;
 }
 
 export interface IRemoveTopicFromNoteUseCase {
-  execute(noteId: string, topicId: string): Promise<void>;
+  execute(noteId: string, topicId: string): Effect.Effect<void, Error>;
 }
 
 export interface IGetTopicSimilarNotesUseCase {
-  execute(noteId: string, limit?: number): Promise<TopicSimilarNote[]>;
+  execute(noteId: string, limit?: number): Effect.Effect<TopicSimilarNote[], Error>;
 }
 
 export interface ITopicSemanticSearchUseCase {
-  execute(query: string, limit?: number): Promise<TopicSimilarNote[]>;
+  execute(query: string, limit?: number): Effect.Effect<TopicSimilarNote[], Error>;
 }
 
 export interface IRecomputeCentroidsUseCase {
-  execute(): Promise<void>;
+  execute(): Effect.Effect<void, Error>;
 }
 
 export interface IGetEmbeddingStatusUseCase {
-  execute(): Promise<EmbeddingStatus>;
+  execute(): Effect.Effect<EmbeddingStatus, Error>;
 }
 
 export interface IGetNotesForTopicUseCase {
   execute(
     topicId: string,
     options?: { limit?: number; offset?: number; excludeJournal?: boolean },
-  ): Promise<NoteForTopic[]>;
+  ): Effect.Effect<NoteForTopic[], Error>;
 }
 
 export interface IGetTopicsForNoteUseCase {
-  execute(noteId: string): Promise<TopicForNote[]>;
+  execute(noteId: string): Effect.Effect<TopicForNote[], Error>;
 }
 
 // --- Suggestion use cases ---
@@ -157,7 +162,7 @@ export interface SuggestTopicsRequest {
 }
 
 export interface ISuggestTopicsUseCase {
-  execute(request?: SuggestTopicsRequest): Promise<SuggestedTopic[]>;
+  execute(request?: SuggestTopicsRequest): Effect.Effect<SuggestedTopic[], Error>;
 }
 
 export interface AdoptSuggestedTopicRequest {
@@ -172,7 +177,7 @@ export interface AdoptSuggestedTopicResponse {
 }
 
 export interface IAdoptSuggestedTopicUseCase {
-  execute(request: AdoptSuggestedTopicRequest): Promise<AdoptSuggestedTopicResponse>;
+  execute(request: AdoptSuggestedTopicRequest): Effect.Effect<AdoptSuggestedTopicResponse, Error>;
 }
 
 /**
@@ -198,3 +203,6 @@ export interface ITopicUseCases {
   suggestTopics: ISuggestTopicsUseCase;
   adoptSuggestedTopic: IAdoptSuggestedTopicUseCase;
 }
+
+export const TopicUseCasesPort =
+  Context.GenericTag<ITopicUseCases>('stone/ITopicUseCases');

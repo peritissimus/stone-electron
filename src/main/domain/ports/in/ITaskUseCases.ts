@@ -2,6 +2,8 @@
  * Task Use Case Ports - Inbound interfaces for task operations
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { TaskState } from '../../services/TaskExtractor';
 
 /**
@@ -24,28 +26,32 @@ export interface TaskItem {
  * Get all tasks from all notes
  */
 export interface IGetAllTasksUseCase {
-  execute(): Promise<TaskItem[]>;
+  execute(): Effect.Effect<TaskItem[], Error>;
 }
 
 /**
  * Get tasks for a specific note
  */
 export interface IGetNoteTasksUseCase {
-  execute(noteId: string): Promise<TaskItem[]>;
+  execute(noteId: string): Effect.Effect<TaskItem[], Error>;
 }
 
 /**
  * Update a task's state
  */
 export interface IUpdateTaskStateUseCase {
-  execute(noteId: string, taskIndex: number, newState: TaskState): Promise<void>;
+  execute(
+    noteId: string,
+    taskIndex: number,
+    newState: TaskState,
+  ): Effect.Effect<void, Error>;
 }
 
 /**
  * Toggle a task between TODO and DONE
  */
 export interface IToggleTaskUseCase {
-  execute(noteId: string, taskIndex: number): Promise<void>;
+  execute(noteId: string, taskIndex: number): Effect.Effect<void, Error>;
 }
 
 /**
@@ -57,3 +63,6 @@ export interface ITaskUseCases {
   updateTaskState: IUpdateTaskStateUseCase;
   toggleTask: IToggleTaskUseCase;
 }
+
+export const TaskUseCasesPort =
+  Context.GenericTag<ITaskUseCases>('stone/ITaskUseCases');

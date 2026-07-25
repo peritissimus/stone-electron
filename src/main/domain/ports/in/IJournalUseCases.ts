@@ -5,6 +5,8 @@
  * pattern, and seed content are encapsulated by the implementation — callers
  * only hand over a date and receive a note id.
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 export interface OpenOrCreateJournalForDateRequest {
   /** ISO date string (YYYY-MM-DD) or full ISO timestamp */
@@ -40,7 +42,12 @@ export interface ListJournalRangeResponse {
 export interface IJournalUseCases {
   openOrCreateForDate(
     request: OpenOrCreateJournalForDateRequest,
-  ): Promise<OpenOrCreateJournalForDateResponse>;
+  ): Effect.Effect<OpenOrCreateJournalForDateResponse, Error>;
 
-  listRange(request: ListJournalRangeRequest): Promise<ListJournalRangeResponse>;
+  listRange(
+    request: ListJournalRangeRequest,
+  ): Effect.Effect<ListJournalRangeResponse, Error>;
 }
+
+export const JournalUseCasesPort =
+  Context.GenericTag<IJournalUseCases>('stone/IJournalUseCases');

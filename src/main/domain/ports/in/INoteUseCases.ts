@@ -5,6 +5,8 @@
  * Implementations live in the application layer.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { NoteProps } from '../../entities';
 
 /**
@@ -18,7 +20,7 @@ export interface ICreateNoteUseCase {
     folderPath?: string;
     notebookId?: string;
     workspaceId?: string;
-  }): Promise<{ note: NoteProps }>;
+  }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
@@ -33,17 +35,17 @@ export interface IUpdateNoteUseCase {
     isFavorite?: boolean;
     isPinned?: boolean;
     isArchived?: boolean;
-  }): Promise<{ note: NoteProps }>;
+  }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
  * Get a note by ID
  */
 export interface IGetNoteUseCase {
-  execute(request: { id: string; includeContent?: boolean }): Promise<{
+  execute(request: { id: string; includeContent?: boolean }): Effect.Effect<{
     note: NoteProps;
     content?: string;
-  }>;
+  }, Error>;
 }
 
 /**
@@ -58,28 +60,31 @@ export interface IListNotesUseCase {
     offset?: number;
     orderBy?: 'createdAt' | 'updatedAt' | 'title';
     orderDirection?: 'asc' | 'desc';
-  }): Promise<{ notes: NoteProps[]; total: number }>;
+  }): Effect.Effect<{ notes: NoteProps[]; total: number }, Error>;
 }
 
 /**
  * Delete a note (soft or permanent)
  */
 export interface IDeleteNoteUseCase {
-  execute(request: { id: string; permanent?: boolean }): Promise<void>;
+  execute(request: { id: string; permanent?: boolean }): Effect.Effect<void, Error>;
 }
 
 /**
  * Restore a deleted note
  */
 export interface IRestoreNoteUseCase {
-  execute(request: { id: string }): Promise<void>;
+  execute(request: { id: string }): Effect.Effect<void, Error>;
 }
 
 /**
  * Move a note to a different notebook
  */
 export interface IMoveNoteUseCase {
-  execute(request: { id: string; targetNotebookId: string | null }): Promise<void>;
+  execute(request: {
+    id: string;
+    targetNotebookId: string | null;
+  }): Effect.Effect<void, Error>;
 }
 
 /**
@@ -90,49 +95,52 @@ export interface ISearchNotesUseCase {
     query: string;
     workspaceId?: string;
     limit?: number;
-  }): Promise<{ notes: NoteProps[]; total: number }>;
+  }): Effect.Effect<{ notes: NoteProps[]; total: number }, Error>;
 }
 
 /**
  * Get note content from file
  */
 export interface IGetNoteContentUseCase {
-  execute(request: { id: string }): Promise<{ content: string }>;
+  execute(request: { id: string }): Effect.Effect<{ content: string }, Error>;
 }
 
 /**
  * Save note content to file
  */
 export interface ISaveNoteContentUseCase {
-  execute(request: { id: string; content: string }): Promise<void>;
+  execute(request: { id: string; content: string }): Effect.Effect<void, Error>;
 }
 
 /**
  * Get note by file path
  */
 export interface IGetNoteByPathUseCase {
-  execute(request: { filePath: string }): Promise<{ note: NoteProps }>;
+  execute(request: {
+    filePath: string;
+    workspaceId?: string;
+  }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
  * Toggle favorite status
  */
 export interface IToggleFavoriteUseCase {
-  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+  execute(request: { id: string }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
  * Toggle pin status
  */
 export interface ITogglePinUseCase {
-  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+  execute(request: { id: string }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
  * Toggle archive status
  */
 export interface IToggleArchiveUseCase {
-  execute(request: { id: string }): Promise<{ note: NoteProps }>;
+  execute(request: { id: string }): Effect.Effect<{ note: NoteProps }, Error>;
 }
 
 /**
@@ -154,3 +162,6 @@ export interface INoteUseCases {
   togglePin: ITogglePinUseCase;
   toggleArchive: IToggleArchiveUseCase;
 }
+
+export const NoteUseCasesPort =
+  Context.GenericTag<INoteUseCases>('stone/INoteUseCases');

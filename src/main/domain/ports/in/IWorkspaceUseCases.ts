@@ -2,6 +2,8 @@
  * Workspace Use Cases Port (Inbound)
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { WorkspaceProps } from '../../entities';
 
 // =============================================================================
@@ -167,67 +169,67 @@ export interface SyncWorkspaceResponse {
 // =============================================================================
 
 export interface ICreateWorkspaceUseCase {
-  execute(request: CreateWorkspaceRequest): Promise<CreateWorkspaceResponse>;
+  execute(request: CreateWorkspaceRequest): Effect.Effect<CreateWorkspaceResponse, Error>;
 }
 
 export interface IGetWorkspaceUseCase {
-  execute(request: GetWorkspaceRequest): Promise<GetWorkspaceResponse>;
+  execute(request: GetWorkspaceRequest): Effect.Effect<GetWorkspaceResponse, Error>;
 }
 
 export interface IListWorkspacesUseCase {
-  execute(): Promise<ListWorkspacesResponse>;
+  execute(): Effect.Effect<ListWorkspacesResponse, Error>;
 }
 
 export interface IGetActiveWorkspaceUseCase {
-  execute(): Promise<GetActiveWorkspaceResponse>;
+  execute(): Effect.Effect<GetActiveWorkspaceResponse, Error>;
 }
 
 export interface ISetActiveWorkspaceUseCase {
-  execute(request: SetActiveWorkspaceRequest): Promise<SetActiveWorkspaceResponse>;
+  execute(request: SetActiveWorkspaceRequest): Effect.Effect<SetActiveWorkspaceResponse, Error>;
 }
 
 export interface IDeleteWorkspaceUseCase {
-  execute(request: DeleteWorkspaceRequest): Promise<void>;
+  execute(request: DeleteWorkspaceRequest): Effect.Effect<void, Error>;
 }
 
 export interface IUpdateWorkspaceUseCase {
-  execute(request: UpdateWorkspaceRequest): Promise<UpdateWorkspaceResponse>;
+  execute(request: UpdateWorkspaceRequest): Effect.Effect<UpdateWorkspaceResponse, Error>;
 }
 
 export interface IGetDefaultWorkspacePathUseCase {
-  execute(): Promise<GetDefaultWorkspacePathResponse>;
+  execute(): Effect.Effect<GetDefaultWorkspacePathResponse, Error>;
 }
 
 export interface ISelectFolderUseCase {
-  execute(request?: SelectFolderRequest): Promise<SelectFolderResponse>;
+  execute(request?: SelectFolderRequest): Effect.Effect<SelectFolderResponse, Error>;
 }
 
 export interface IValidatePathUseCase {
-  execute(request: ValidatePathRequest): Promise<ValidatePathResponse>;
+  execute(request: ValidatePathRequest): Effect.Effect<ValidatePathResponse, Error>;
 }
 
 export interface ICreateFolderUseCase {
-  execute(request: CreateFolderRequest): Promise<CreateFolderResponse>;
+  execute(request: CreateFolderRequest): Effect.Effect<CreateFolderResponse, Error>;
 }
 
 export interface IRenameFolderUseCase {
-  execute(request: RenameFolderRequest): Promise<RenameFolderResponse>;
+  execute(request: RenameFolderRequest): Effect.Effect<RenameFolderResponse, Error>;
 }
 
 export interface IDeleteFolderUseCase {
-  execute(request: DeleteFolderRequest): Promise<void>;
+  execute(request: DeleteFolderRequest): Effect.Effect<void, Error>;
 }
 
 export interface IMoveFolderUseCase {
-  execute(request: MoveFolderRequest): Promise<MoveFolderResponse>;
+  execute(request: MoveFolderRequest): Effect.Effect<MoveFolderResponse, Error>;
 }
 
 export interface IScanWorkspaceUseCase {
-  execute(request: ScanWorkspaceRequest): Promise<ScanWorkspaceResponse>;
+  execute(request: ScanWorkspaceRequest): Effect.Effect<ScanWorkspaceResponse, Error>;
 }
 
 export interface ISyncWorkspaceUseCase {
-  execute(request?: SyncWorkspaceRequest): Promise<SyncWorkspaceResponse>;
+  execute(request?: SyncWorkspaceRequest): Effect.Effect<SyncWorkspaceResponse, Error>;
 }
 
 /**
@@ -251,3 +253,6 @@ export interface IWorkspaceUseCases {
   scanWorkspace: IScanWorkspaceUseCase;
   syncWorkspace: ISyncWorkspaceUseCase;
 }
+
+export const WorkspaceUseCasesPort =
+  Context.GenericTag<IWorkspaceUseCases>('stone/IWorkspaceUseCases');

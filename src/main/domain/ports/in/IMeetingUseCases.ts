@@ -12,6 +12,8 @@
  * stays in control.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { MeetingRecordingProps } from '../../entities';
 import type { LiveChunkResult } from '../out/ILiveTranscriber';
 
@@ -134,35 +136,6 @@ export interface SendToJournalResponse {
   journalNoteId: string;
 }
 
-// ---------- Use case interfaces ----------
-
-export interface IReserveRecordingSlotUseCase {
-  execute(request: ReserveRecordingSlotRequest): Promise<ReserveRecordingSlotResponse>;
-}
-
-export interface IAppendRecordingAudioUseCase {
-  execute(request: AppendRecordingAudioRequest): Promise<void>;
-}
-
-export interface IFinalizeRecordingUseCase {
-  execute(
-    request: FinalizeRecordingRequest,
-    options?: FinalizeRecordingOptions,
-  ): Promise<FinalizeRecordingResponse>;
-}
-
-export interface IRequestFinalizeRecordingUseCase {
-  execute(request: FinalizeRecordingRequest): Promise<RequestFinalizeRecordingResponse>;
-}
-
-export interface IListMeetingRecordingsUseCase {
-  execute(request: ListMeetingRecordingsRequest): Promise<ListMeetingRecordingsResponse>;
-}
-
-export interface IGetMeetingRecordingUseCase {
-  execute(request: GetMeetingRecordingRequest): Promise<GetMeetingRecordingResponse>;
-}
-
 export interface GetMeetingAudioResponse {
   /** Mic-track WAV bytes, or null if the recording has no/deleted audio. */
   mic: Uint8Array | null;
@@ -170,35 +143,11 @@ export interface GetMeetingAudioResponse {
   system: Uint8Array | null;
 }
 
-export interface IGetMeetingAudioUseCase {
-  execute(request: { recordingId: string }): Promise<GetMeetingAudioResponse>;
-}
-
-export interface IDeleteMeetingRecordingUseCase {
-  execute(request: DeleteMeetingRecordingRequest): Promise<void>;
-}
-
-export interface IResummarizeMeetingUseCase {
-  execute(request: ResummarizeMeetingRequest): Promise<ResummarizeMeetingResponse>;
-}
-
-export interface IRetranscribeMeetingUseCase {
-  execute(request: RetranscribeMeetingRequest): Promise<RetranscribeMeetingResponse>;
-}
-
-export interface ISendToJournalUseCase {
-  execute(request: SendToJournalRequest): Promise<SendToJournalResponse>;
-}
-
 /**
  * Deletes audio for recordings older than the configured retention window.
  * Transcript + summary are preserved; only the audio files are removed.
  * Internal maintenance task run at startup — not exposed over IPC.
  */
-export interface IPruneRecordingAudioUseCase {
-  execute(): Promise<PruneRecordingAudioResponse>;
-}
-
 // ---------- Warm up the transcriber (preload the Whisper model) ----------
 
 export interface WarmUpTranscriberResponse {
@@ -206,36 +155,81 @@ export interface WarmUpTranscriberResponse {
   ready: boolean;
 }
 
-export interface IWarmUpTranscriberUseCase {
-  execute(): Promise<WarmUpTranscriberResponse>;
-}
-
-// ---------- Live transcription (fast raw draft while recording) ----------
-
-export interface ILiveTranscriptionUseCases {
-  /** Spawn/warm the resident model so chunks transcribe without a reload. */
-  start(): Promise<void>;
-  /** Transcribe one 16 kHz mono WAV chunk for the live draft. */
-  transcribeChunk(request: { wav: ArrayBuffer }): Promise<LiveChunkResult>;
-  /** Tear down the resident model (frees memory after recording). */
-  stop(): Promise<void>;
-}
+// ---------- Native Effect use-case service ----------
 
 export interface IMeetingUseCases {
-  reserveRecordingSlot: IReserveRecordingSlotUseCase;
-  appendRecordingAudio: IAppendRecordingAudioUseCase;
+  reserveRecordingSlot: {
+    execute: (
+      request: ReserveRecordingSlotRequest,
+    ) => Effect.Effect<ReserveRecordingSlotResponse, Error>;
+  };
+  appendRecordingAudio: {
+    execute: (
+      request: AppendRecordingAudioRequest,
+    ) => Effect.Effect<void, Error>;
+  };
   /** Producer: enqueues the finalize job and returns immediately (IPC-facing). */
-  requestFinalize: IRequestFinalizeRecordingUseCase;
+  requestFinalize: {
+    execute: (
+      request: FinalizeRecordingRequest,
+    ) => Effect.Effect<RequestFinalizeRecordingResponse, Error>;
+  };
   /** The actual pipeline; invoked by the background job handler, not over IPC. */
-  finalizeRecording: IFinalizeRecordingUseCase;
-  listMeetingRecordings: IListMeetingRecordingsUseCase;
-  getMeetingRecording: IGetMeetingRecordingUseCase;
-  getMeetingAudio: IGetMeetingAudioUseCase;
-  deleteMeetingRecording: IDeleteMeetingRecordingUseCase;
-  resummarizeMeeting: IResummarizeMeetingUseCase;
-  retranscribeMeeting: IRetranscribeMeetingUseCase;
-  sendToJournal: ISendToJournalUseCase;
-  pruneRecordingAudio: IPruneRecordingAudioUseCase;
-  warmUpTranscriber: IWarmUpTranscriberUseCase;
-  liveTranscription: ILiveTranscriptionUseCases;
+  finalizeRecording: {
+    execute: (
+      request: FinalizeRecordingRequest,
+      options?: FinalizeRecordingOptions,
+    ) => Effect.Effect<FinalizeRecordingResponse, Error>;
+  };
+  listMeetingRecordings: {
+    execute: (
+      request: ListMeetingRecordingsRequest,
+    ) => Effect.Effect<ListMeetingRecordingsResponse, Error>;
+  };
+  getMeetingRecording: {
+    execute: (
+      request: GetMeetingRecordingRequest,
+    ) => Effect.Effect<GetMeetingRecordingResponse, Error>;
+  };
+  getMeetingAudio: {
+    execute: (
+      request: { recordingId: string },
+    ) => Effect.Effect<GetMeetingAudioResponse, Error>;
+  };
+  deleteMeetingRecording: {
+    execute: (
+      request: DeleteMeetingRecordingRequest,
+    ) => Effect.Effect<void, Error>;
+  };
+  resummarizeMeeting: {
+    execute: (
+      request: ResummarizeMeetingRequest,
+    ) => Effect.Effect<ResummarizeMeetingResponse, Error>;
+  };
+  retranscribeMeeting: {
+    execute: (
+      request: RetranscribeMeetingRequest,
+    ) => Effect.Effect<RetranscribeMeetingResponse, Error>;
+  };
+  sendToJournal: {
+    execute: (
+      request: SendToJournalRequest,
+    ) => Effect.Effect<SendToJournalResponse, Error>;
+  };
+  pruneRecordingAudio: {
+    execute: () => Effect.Effect<PruneRecordingAudioResponse, Error>;
+  };
+  warmUpTranscriber: {
+    execute: () => Effect.Effect<WarmUpTranscriberResponse, never>;
+  };
+  liveTranscription: {
+    start: () => Effect.Effect<void, Error>;
+    transcribeChunk: (
+      request: { wav: ArrayBuffer },
+    ) => Effect.Effect<LiveChunkResult, Error>;
+    stop: () => Effect.Effect<void, Error>;
+  };
 }
+
+export const MeetingUseCasesPort =
+  Context.GenericTag<IMeetingUseCases>('stone/IMeetingUseCases');

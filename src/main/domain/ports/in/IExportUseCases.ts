@@ -1,6 +1,8 @@
 /**
  * Export Use Case Ports - Inbound interfaces for note export operations
  */
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 
 /**
  * Export options
@@ -28,21 +30,30 @@ export interface ExportResult {
  * Export note as HTML
  */
 export interface IExportHtmlUseCase {
-  execute(noteId: string, options?: ExportOptions): Promise<ExportResult>;
+  execute(
+    noteId: string,
+    options?: ExportOptions,
+  ): Effect.Effect<ExportResult, Error>;
 }
 
 /**
  * Export note as PDF
  */
 export interface IExportPdfUseCase {
-  execute(noteId: string, options?: ExportOptions): Promise<ExportResult>;
+  execute(
+    noteId: string,
+    options?: ExportOptions,
+  ): Effect.Effect<ExportResult, Error>;
 }
 
 /**
  * Export note as Markdown
  */
 export interface IExportMarkdownUseCase {
-  execute(noteId: string, options?: ExportOptions): Promise<ExportResult>;
+  execute(
+    noteId: string,
+    options?: ExportOptions,
+  ): Effect.Effect<ExportResult, Error>;
 }
 
 /**
@@ -53,3 +64,6 @@ export interface IExportUseCases {
   exportPdf: IExportPdfUseCase;
   exportMarkdown: IExportMarkdownUseCase;
 }
+
+export const ExportUseCasesPort =
+  Context.GenericTag<IExportUseCases>('stone/IExportUseCases');

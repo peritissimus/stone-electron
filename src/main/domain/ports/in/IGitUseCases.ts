@@ -4,6 +4,9 @@
  * Defines the contract for git operations.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
+
 // Request/Response types
 export interface GitStatusRequest {
   workspaceId: string;
@@ -106,35 +109,35 @@ export interface GitGetCommitsResponse {
 
 // Use case interfaces
 export interface IGetGitStatusUseCase {
-  execute(request: GitStatusRequest): Promise<GitStatusResponse>;
+  execute(request: GitStatusRequest): Effect.Effect<GitStatusResponse, Error>;
 }
 
 export interface IInitGitRepoUseCase {
-  execute(request: GitInitRequest): Promise<GitInitResponse>;
+  execute(request: GitInitRequest): Effect.Effect<GitInitResponse, Error>;
 }
 
 export interface IGitCommitUseCase {
-  execute(request: GitCommitRequest): Promise<GitCommitResponse | null>;
+  execute(request: GitCommitRequest): Effect.Effect<GitCommitResponse | null, Error>;
 }
 
 export interface IGitPullUseCase {
-  execute(request: GitPullRequest): Promise<GitPullResponse>;
+  execute(request: GitPullRequest): Effect.Effect<GitPullResponse, Error>;
 }
 
 export interface IGitPushUseCase {
-  execute(request: GitPushRequest): Promise<GitPushResponse>;
+  execute(request: GitPushRequest): Effect.Effect<GitPushResponse, Error>;
 }
 
 export interface IGitSyncUseCase {
-  execute(request: GitSyncRequest): Promise<GitSyncResponse>;
+  execute(request: GitSyncRequest): Effect.Effect<GitSyncResponse, Error>;
 }
 
 export interface ISetGitRemoteUseCase {
-  execute(request: GitSetRemoteRequest): Promise<GitSetRemoteResponse>;
+  execute(request: GitSetRemoteRequest): Effect.Effect<GitSetRemoteResponse, Error>;
 }
 
 export interface IGetGitCommitsUseCase {
-  execute(request: GitGetCommitsRequest): Promise<GitGetCommitsResponse>;
+  execute(request: GitGetCommitsRequest): Effect.Effect<GitGetCommitsResponse, Error>;
 }
 
 /**
@@ -150,3 +153,6 @@ export interface IGitUseCases {
   setRemote: ISetGitRemoteUseCase;
   getCommits: IGetGitCommitsUseCase;
 }
+
+export const GitUseCasesPort =
+  Context.GenericTag<IGitUseCases>('stone/IGitUseCases');

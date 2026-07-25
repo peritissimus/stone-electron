@@ -4,6 +4,8 @@
  * Defines the contract for notebook-related use cases.
  */
 
+import { Context } from 'effect';
+import type { Effect } from 'effect';
 import type { NotebookProps } from '../../entities';
 import type { NotebookWithCount } from '../out/INotebookRepository';
 
@@ -67,27 +69,27 @@ export interface MoveNotebookRequest {
 
 // Use Case Interfaces
 export interface ICreateNotebookUseCase {
-  execute(request: CreateNotebookRequest): Promise<CreateNotebookResponse>;
+  execute(request: CreateNotebookRequest): Effect.Effect<CreateNotebookResponse, Error>;
 }
 
 export interface IUpdateNotebookUseCase {
-  execute(request: UpdateNotebookRequest): Promise<UpdateNotebookResponse>;
+  execute(request: UpdateNotebookRequest): Effect.Effect<UpdateNotebookResponse, Error>;
 }
 
 export interface IGetNotebookUseCase {
-  execute(request: GetNotebookRequest): Promise<GetNotebookResponse>;
+  execute(request: GetNotebookRequest): Effect.Effect<GetNotebookResponse, Error>;
 }
 
 export interface IListNotebooksUseCase {
-  execute(request: ListNotebooksRequest): Promise<ListNotebooksResponse>;
+  execute(request: ListNotebooksRequest): Effect.Effect<ListNotebooksResponse, Error>;
 }
 
 export interface IDeleteNotebookUseCase {
-  execute(request: DeleteNotebookRequest): Promise<void>;
+  execute(request: DeleteNotebookRequest): Effect.Effect<void, Error>;
 }
 
 export interface IMoveNotebookUseCase {
-  execute(request: MoveNotebookRequest): Promise<void>;
+  execute(request: MoveNotebookRequest): Effect.Effect<void, Error>;
 }
 
 /**
@@ -101,3 +103,6 @@ export interface INotebookUseCases {
   deleteNotebook: IDeleteNotebookUseCase;
   moveNotebook: IMoveNotebookUseCase;
 }
+
+export const NotebookUseCasesPort =
+  Context.GenericTag<INotebookUseCases>('stone/INotebookUseCases');
