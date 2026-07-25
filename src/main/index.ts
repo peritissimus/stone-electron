@@ -6,21 +6,21 @@
 
 import 'dotenv/config';
 import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron';
+import { Effect } from 'effect';
 import path from 'node:path';
 import net from 'node:net';
 import { lookup as dnsLookup } from 'node:dns';
 
 // Import from main architecture
 import { logger } from '@main/shared/utils/logger';
-import { withTimeout } from '@main/shared/utils/async';
 import { isDev } from '@main/infrastructure/utils/environment';
 import { getDatabaseManager } from '@main/infrastructure/database';
 import {
-  initializeContainer,
+  createApplicationRuntime,
   registerIPCHandlers,
   unregisterIPCHandlers,
-  getContainer,
-} from '@main/infrastructure/di/container';
+  type ApplicationRuntime,
+} from '@main/infrastructure/di/applicationRuntime';
 import { PerformanceMonitor } from '@main/adapters/out/integrations/PerformanceMonitor';
 import { EVENTS, MEETING_CHANNELS } from '@shared/constants/ipcChannels';
 import {
@@ -33,7 +33,7 @@ import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecu
 import { relocateUserData } from '@main/infrastructure/electron/appPaths';
 
 // Pin the app-data dir to ~/.config/stone (config, DB, keys, logs) on every
-// platform, migrating any existing data once. MUST run before the DI container,
+// platform, migrating any existing data once. MUST run before the application runtime,
 // database manager, repositories, or first file-log write read userData — so it
 // is the very first thing the main process does.
 relocateUserData();
@@ -47,8 +47,8 @@ if (process.env.E2E_TEST) {
 
 // Create at module load so the constructor's performance.now() reading
 // captures the earliest possible app start time. Passed into the DI
-// container as a regular dep — no singleton accessor.
-const perfMonitor = new PerformanceMonitor();
+// application runtime as a regular dep — no singleton accessor.
+const perfMonitor = new PerformanceMonitor({ runFork: Effect.runFork });
 
 // Log startup
 logger.info('='.repeat(60));
@@ -65,6 +65,7 @@ let mainWindow: BrowserWindow | null = null;
 let quickCaptureWindow: BrowserWindow | null = null;
 let shutdownStarted = false;
 let shutdownComplete = false;
+let applicationRuntime: ApplicationRuntime | null = null;
 
 async function isPortOpen(port: number, host = 'localhost'): Promise<boolean> {
   // Probe each address family Node resolves for the host. Node's `net.connect`
@@ -362,31 +363,32 @@ app.on('ready', async () => {
     perfMonitor.markStartupPhase('dbInitTime');
     logger.info('✓ Database initialized');
 
-    // Initialize hex DI container
-    logger.info('🔄 Initializing hex DI container...');
-    const container = initializeContainer({
+    // Initialize the composed application runtime.
+    logger.info('🔄 Initializing application runtime...');
+    const runtime = createApplicationRuntime({
       db: dbManager.getDrizzle(),
       dbManager: dbManager,
       perfMonitor,
     });
+    applicationRuntime = runtime;
     perfMonitor.markStartupPhase('containerInitTime');
-    logger.info('✓ Hex DI container initialized');
+    logger.info('✓ Application runtime initialized');
 
     // Start the durable background-job runner. Self-paced (adaptive idle
     // backoff) and self-cleaning, so it's safe to run for the whole session.
-    void container.jobRunner
+    void runtime.effectRuntime
       .start()
       .catch((e: unknown) => logger.error('Failed to start job runner:', e));
     // Pre-warm acoustic echo cancellation after composition is complete.
-    // Container creation remains side-effect free; the app lifecycle owns
+    // Runtime creation remains side-effect free; the app lifecycle owns
     // long-running initialization.
-    void container.echoCanceller
+    void runtime.echoCanceller
       .initialize()
       .catch((e: unknown) => logger.warn('Failed to pre-warm echo canceller:', e));
 
     // Register hex IPC handlers
     logger.info('🔄 Registering hex IPC handlers...');
-    registerIPCHandlers();
+    registerIPCHandlers(runtime);
     perfMonitor.markStartupPhase('ipcRegistrationTime');
     logger.info('✓ Hex IPC handlers registered');
 
@@ -447,10 +449,10 @@ app.on('ready', async () => {
     // and bind whatever the user has configured (default: Option+Space). If the
     // combo is already taken by another app it stays unregistered until the user
     // picks a different one in onboarding / Settings.
-    container.globalShortcutRegistrar.setHandler(() => createQuickCaptureWindow());
+    runtime.globalShortcutRegistrar.setHandler(() => createQuickCaptureWindow());
     try {
-      const appConfig = await container.appConfigRepository.get();
-      container.globalShortcutRegistrar.bindQuickCapture(appConfig.quickCapture.shortcut);
+      const appConfig = await runtime.appConfigRepository.get();
+      runtime.globalShortcutRegistrar.bindQuickCapture(appConfig.quickCapture.shortcut);
     } catch (error) {
       logger.error('[QuickCapture] Failed to bind global shortcut on startup:', error);
     }
@@ -461,15 +463,16 @@ app.on('ready', async () => {
 
     // Start file watcher for all workspaces
     try {
-      await container.fileWatcher.start();
+      await runtime.fileWatcher.start();
     } catch (e) {
       logger.error('Failed to start file watcher:', e);
     }
 
     // Audio retention sweep — delete recording audio past the configured
     // window (transcript + summary are kept). Best-effort, off the hot path.
-    void container.meetingUseCases.pruneRecordingAudio
-      .execute()
+    void runtime.runMeetingEffect((service) =>
+      service.pruneRecordingAudio.execute(),
+    )
       .then(({ deletedCount }) => {
         if (deletedCount > 0) {
           logger.info(`[Retention] Pruned audio for ${deletedCount} recording(s)`);
@@ -514,31 +517,42 @@ async function shutdownApp(): Promise<void> {
   try {
     unregisterIPCHandlers();
   } catch {
-    // Container may not be initialized yet
+    // Application runtime may not be initialized yet
   }
 
   // Stop producers and resident engines before closing the database. In
   // particular, JobRunner persists its final retry state during stop().
   try {
-    const container = getContainer();
+    const runtime = applicationRuntime;
+    if (!runtime) throw new Error('Application runtime is not initialized');
     const shutdowns = [
-      ['file watcher', container.fileWatcher.stopAll()],
-      ['job runner', container.jobRunner.stop()],
-      ['live transcriber', container.liveTranscriber.shutdown()],
-      ['embedding worker', container.embeddingWorker.shutdown()],
+      ['file watcher', runtime.fileWatcher.stopAll()],
+      ['Effect runtime', runtime.effectRuntime.dispose()],
     ] as const;
-    const results = await Promise.allSettled(
-      shutdowns.map(([name, operation]) =>
-        withTimeout(operation, 5_000, `${name} shutdown timed out`),
+    const results = await Effect.runPromise(
+      Effect.forEach(
+        shutdowns,
+        ([name, operation]) =>
+          Effect.tryPromise({
+            try: () => operation,
+            catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+          }).pipe(
+            Effect.timeoutFail({
+              duration: 5_000,
+              onTimeout: () => new Error(`${name} shutdown timed out`),
+            }),
+            Effect.exit,
+          ),
+        { concurrency: 'unbounded' },
       ),
     );
     results.forEach((result, index) => {
-      if (result.status === 'rejected') {
-        logger.warn(`Shutdown failed for ${shutdowns[index][0]}:`, result.reason);
+      if (result._tag === 'Failure') {
+        logger.warn(`Shutdown failed for ${shutdowns[index][0]}:`, result.cause);
       }
     });
   } catch {
-    // Container may not be initialized yet
+    // Application runtime may not be initialized yet
   }
 
   try {

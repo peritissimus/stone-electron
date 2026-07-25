@@ -52,12 +52,12 @@ function perfMonitor() {
   };
 }
 
-async function loadContainerModule() {
+async function loadRuntimeModule() {
   vi.resetModules();
-  return import('../../../../src/main/infrastructure/di/container');
+  return import('../../../../src/main/infrastructure/di/applicationRuntime');
 }
 
-describe('DI container', () => {
+describe('application runtime composition', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     electronMock.ipcMain.handle = electronMock.handleSpy;
@@ -66,43 +66,45 @@ describe('DI container', () => {
 
   it('creates all public container slots and exposes workspace path helpers', async () => {
     const {
-      createContainer,
+      createApplicationRuntime,
       getActiveWorkspacePath,
       setActiveWorkspacePath,
-      resetContainer,
-    } = await loadContainerModule();
+    } = await loadRuntimeModule();
     const monitor = perfMonitor();
 
-    resetContainer();
     setActiveWorkspacePath('/workspace');
-    const container = createContainer({ db: {} as any, perfMonitor: monitor as any });
+    const runtime = createApplicationRuntime({
+      db: {} as any,
+      perfMonitor: monitor as any,
+    });
 
     expect(getActiveWorkspacePath()).toBe('/workspace');
-    expect(container.getWorkspacePath()).toBe('/workspace');
-    expect(container.perfMonitor).toBe(monitor);
-    expect(container.noteRepository).toBeTruthy();
-    expect(container.notebookRepository).toBeTruthy();
-    expect(container.workspaceRepository).toBeTruthy();
-    expect(container.indexRepository).toBeTruthy();
-    expect(container.fileWatcher).toBeTruthy();
-    expect(container.noteUseCases).toBeTruthy();
-    expect(container.searchUseCases).toBeTruthy();
-    expect(container.meetingUseCases).toBeTruthy();
+    expect(runtime.getWorkspacePath()).toBe('/workspace');
+    expect(runtime.perfMonitor).toBe(monitor);
+    expect(runtime.noteRepository).toBeTruthy();
+    expect(runtime.notebookRepository).toBeTruthy();
+    expect(runtime.workspaceRepository).toBeTruthy();
+    expect(runtime.indexRepository).toBeTruthy();
+    expect(runtime.fileWatcher).toBeTruthy();
+    expect(runtime.runNoteEffect).toBeTypeOf('function');
+    expect(runtime.runSearchEffect).toBeTypeOf('function');
+    expect(runtime.runMeetingEffect).toBeTypeOf('function');
 
-    await expect(container.getDatabaseManager().getStatus()).resolves.toEqual({
+    await expect(runtime.getDatabaseManager().getStatus()).resolves.toEqual({
       path: '',
       size: 0,
       isOpen: true,
     });
-    await expect(container.getDatabaseManager().checkIntegrity()).resolves.toEqual({
+    await expect(runtime.getDatabaseManager().checkIntegrity()).resolves.toEqual({
       ok: true,
       errors: [],
     });
-    await expect(container.getDatabaseManager().vacuum()).resolves.toBeUndefined();
+    await expect(runtime.getDatabaseManager().vacuum()).resolves.toBeUndefined();
+    setActiveWorkspacePath(null);
   }, 15_000);
 
   it('delegates database manager calls when a manager is supplied', async () => {
-    const { createContainer } = await loadContainerModule();
+    const { createApplicationRuntime } = await loadRuntimeModule();
     const dbManager = {
       getStatus: vi.fn().mockResolvedValue({ path: '/db.sqlite', size: 10, isOpen: true }),
       checkIntegrity: vi.fn().mockResolvedValue({ ok: false, errors: ['bad'] }),
@@ -110,51 +112,42 @@ describe('DI container', () => {
       getDbPath: vi.fn(() => '/db.sqlite'),
     };
 
-    const container = createContainer({
+    const runtime = createApplicationRuntime({
       db: {} as any,
       dbManager,
       perfMonitor: perfMonitor() as any,
     });
 
-    await expect(container.getDatabaseManager().getStatus()).resolves.toEqual({
+    await expect(runtime.getDatabaseManager().getStatus()).resolves.toEqual({
       path: '/db.sqlite',
       size: 10,
       isOpen: true,
     });
-    await expect(container.getDatabaseManager().checkIntegrity()).resolves.toEqual({
+    await expect(runtime.getDatabaseManager().checkIntegrity()).resolves.toEqual({
       ok: false,
       errors: ['bad'],
     });
-    await container.getDatabaseManager().vacuum();
+    await runtime.getDatabaseManager().vacuum();
     expect(dbManager.optimize).toHaveBeenCalledWith();
   });
 
-  it('guards singleton lifecycle and registers/unregisters IPC handlers', async () => {
+  it('registers and unregisters IPC handlers for an explicit runtime', async () => {
     const {
-      getContainer,
-      initializeContainer,
+      createApplicationRuntime,
       registerIPCHandlers,
-      resetContainer,
       unregisterIPCHandlers,
-    } = await loadContainerModule();
+    } = await loadRuntimeModule();
     const monitor = perfMonitor();
 
-    resetContainer();
-    expect(() => getContainer()).toThrow('Container not initialized');
-
-    const container = initializeContainer({ db: {} as any, perfMonitor: monitor as any });
-    expect(getContainer()).toBe(container);
-    expect(() => initializeContainer({ db: {} as any, perfMonitor: monitor as any })).toThrow(
-      'Container already initialized',
-    );
-
-    registerIPCHandlers();
+    const runtime = createApplicationRuntime({
+      db: {} as any,
+      perfMonitor: monitor as any,
+    });
+    registerIPCHandlers(runtime);
     expect(electronMock.handleSpy).toHaveBeenCalled();
 
     unregisterIPCHandlers();
     expect(electronMock.removeHandlerSpy).toHaveBeenCalled();
 
-    resetContainer();
-    expect(() => getContainer()).toThrow('Container not initialized');
   });
 });

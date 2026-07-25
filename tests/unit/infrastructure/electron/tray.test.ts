@@ -109,11 +109,19 @@ describe('tray', () => {
       focus: vi.fn(),
       webContents: { send: vi.fn() },
     };
+    let tick = () => {};
 
-    createTray({ getMainWindow: () => window as any });
+    createTray({
+      getMainWindow: () => window as any,
+      startTicker: (nextTick) => {
+        tick = nextTick;
+        return () => {};
+      },
+    });
     updateTrayState({ phase: 'recording' });
     vi.setSystemTime(new Date('2026-04-21T10:00:42Z'));
     vi.advanceTimersByTime(1000);
+    tick();
 
     const tray = electronMock.trayInstances[0];
     const latestMenu = electronMock.Menu.buildFromTemplate.mock.results.at(-1)?.value as {

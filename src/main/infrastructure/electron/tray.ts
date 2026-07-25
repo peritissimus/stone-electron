@@ -21,6 +21,7 @@
 
 import { Tray, Menu, nativeImage, app, type NativeImage } from 'electron';
 import type { BrowserWindow } from 'electron';
+import { Effect, Fiber, Schedule } from 'effect';
 import path from 'node:path';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { logger } from '../../shared/utils/logger';
@@ -44,11 +45,13 @@ interface TrayState {
 }
 
 let state: TrayState = { phase: 'idle', recordingStartedAt: null };
-let tickInterval: NodeJS.Timeout | null = null;
+let stopTicker: (() => void) | null = null;
 
 interface TrayDeps {
   /** Live accessor — main window may not exist yet at tray creation. */
   getMainWindow: () => BrowserWindow | null;
+  /** Injectable clock driver for deterministic tray tests. */
+  startTicker?: (tick: () => void) => () => void;
 }
 
 let deps: TrayDeps | null = null;
@@ -239,21 +242,31 @@ function pad(n: number): string {
 }
 
 function startTimerTick(): void {
-  if (tickInterval) return;
-  tickInterval = setInterval(() => {
+  if (stopTicker) return;
+  const tick = () => {
     if (state.phase !== 'recording' || !tray) {
       stopTimerTick();
       return;
     }
     tray.setTitle(formatTitle(state));
-  }, 1000);
+  };
+  stopTicker = (deps?.startTicker ?? startEffectTicker)(tick);
 }
 
 function stopTimerTick(): void {
-  if (tickInterval) {
-    clearInterval(tickInterval);
-    tickInterval = null;
-  }
+  if (!stopTicker) return;
+  const stop = stopTicker;
+  stopTicker = null;
+  stop();
+}
+
+function startEffectTicker(tick: () => void): () => void {
+  const fiber = Effect.runFork(
+    Effect.sync(tick).pipe(Effect.repeat(Schedule.spaced('1 second')), Effect.asVoid),
+  );
+  return () => {
+    Effect.runFork(Fiber.interrupt(fiber));
+  };
 }
 
 /**
