@@ -68,15 +68,24 @@ export interface ListDailyReviewCalendarsResult {
   message?: string;
 }
 
-export interface DailyReviewIntegrationResult {
-  source: DailyReviewIntegrationSource;
+interface DailyReviewIntegrationResultBase {
   status: DailyReviewIntegrationStatus;
   message?: string;
-  calendarEvents?: CalendarEvent[];
-  mailUnreadCount?: number;
-  mailMessages?: MailMessage[];
-  linearIssues?: LinearIssue[];
 }
+
+export type DailyReviewIntegrationResult =
+  | (DailyReviewIntegrationResultBase & {
+      source: 'calendar';
+      data: { events: CalendarEvent[] };
+    })
+  | (DailyReviewIntegrationResultBase & {
+      source: 'mail';
+      data: { unreadCount: number; messages: MailMessage[] };
+    })
+  | (DailyReviewIntegrationResultBase & {
+      source: 'linear';
+      data: { issues: LinearIssue[] };
+    });
 
 export interface DailyReviewSnapshot {
   date: string;

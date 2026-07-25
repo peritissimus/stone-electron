@@ -36,12 +36,23 @@ export function registerDailyReviewHandlers(deps: DailyReviewIPCDeps): void {
     source: z.enum(['calendar', 'mail', 'linear']),
     date: z.string().optional(),
   });
+  const LoadIntegrationsRequestSchema = z.object({
+    date: z.string().optional(),
+  });
 
   ipcMain.handle(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, async (_event, rawRequest) => {
     const request = LoadIntegrationRequestSchema.parse(rawRequest);
     return handleRequest(async () => dailyReviewUseCases.loadIntegration.execute(request), {
       channel: DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION,
       source: request.source,
+    });
+  });
+
+  ipcMain.handle(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, async (_event, rawRequest) => {
+    const request = LoadIntegrationsRequestSchema.parse(rawRequest ?? {});
+    return handleRequest(async () => dailyReviewUseCases.loadIntegrations.execute(request), {
+      channel: DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS,
+      date: request.date,
     });
   });
 

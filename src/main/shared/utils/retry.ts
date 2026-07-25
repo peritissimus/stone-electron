@@ -6,10 +6,12 @@
  * jitter). It supports caller-controlled retry predicates, per-retry
  * notifications, and cooperative cancellation via an AbortSignal.
  *
- * This module is pure: it imports nothing and performs no I/O beyond the
- * timer used to wait between attempts. It is intended to be reused across
+ * This module is pure and performs no I/O beyond the shared timer primitive
+ * used to wait between attempts. It is intended to be reused across
  * adapters and use cases that talk to flaky external systems.
  */
+
+import { delay } from './async';
 
 export interface RetryOptions {
   /** Number of retries after the initial attempt. Total attempts = retries + 1. */
@@ -37,27 +39,6 @@ export interface RetryOptions {
 
 function abortError(signal: AbortSignal): unknown {
   return signal.reason ?? new DOMException('The operation was aborted.', 'AbortError');
-}
-
-function delay(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(abortError(signal));
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', onAbort);
-      resolve();
-    }, ms);
-
-    const onAbort = (): void => {
-      clearTimeout(timer);
-      reject(abortError(signal as AbortSignal));
-    };
-
-    signal?.addEventListener('abort', onAbort, { once: true });
-  });
 }
 
 /**
@@ -105,7 +86,7 @@ export async function withRetry<T>(
 
       onRetry?.(error, attempt, delayMs);
 
-      await delay(delayMs, signal);
+      await delay(delayMs, { signal });
     }
   }
 

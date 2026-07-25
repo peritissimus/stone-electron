@@ -6,7 +6,7 @@
  * terminal rows on a retention sweep.
  */
 
-import type { JobEntity, JobStatus } from '../../entities/Job';
+import type { JobEntity } from '../../entities/Job';
 
 export interface IJobRepository {
   /** Insert or update a job (upsert by id). */
@@ -19,20 +19,14 @@ export interface IJobRepository {
    */
   claimDue(now: Date, limit: number): Promise<JobEntity[]>;
 
-  /**
-   * Jobs still marked `running` that were claimed before `staleBefore` — i.e.
-   * orphaned by a crash. The runner re-queues these on startup.
-   */
-  findStaleRunning(staleBefore: Date): Promise<JobEntity[]>;
+  /** All jobs left `running`; on startup they belong to the previous process. */
+  findRunning(): Promise<JobEntity[]>;
 
   /**
    * Delete terminal jobs (`done` / `dead`) last updated before `cutoff`.
    * Returns the number of rows removed. Keeps the table from growing forever.
    */
   pruneTerminal(cutoff: Date): Promise<number>;
-
-  /** Count of jobs per status — for metrics / observability. */
-  countByStatus(): Promise<Record<JobStatus, number>>;
 
   findById(id: string): Promise<JobEntity | null>;
 }

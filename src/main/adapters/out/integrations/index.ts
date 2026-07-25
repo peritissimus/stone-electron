@@ -13,20 +13,14 @@ export { FileWatcher } from './FileWatcher';
 export { PerformanceMonitor } from './PerformanceMonitor';
 export { CryptoIdGenerator } from './CryptoIdGenerator';
 export { NodePathService } from './NodePathService';
-export {
-  AISDKTextGenerator,
-  type AISDKTextGeneratorDeps,
-} from './AISDKTextGenerator';
+export { AISDKTextGenerator, type AISDKTextGeneratorDeps } from './AISDKTextGenerator';
 export { LocalReranker, type LocalRerankerDeps, type RerankerWorkerClient } from './LocalReranker';
 export {
   WhisperTranscriber,
   type WhisperTranscriberDeps,
   type TranscriberWorkerClient,
 } from './WhisperTranscriber';
-export {
-  WhisperCppTranscriber,
-  type WhisperCppTranscriberDeps,
-} from './WhisperCppTranscriber';
+export { WhisperCppTranscriber, type WhisperCppTranscriberDeps } from './WhisperCppTranscriber';
 export { OnnxEchoCanceller, type OnnxEchoCancellerDeps } from './OnnxEchoCanceller';
 export {
   SingleShotSummarizer,
@@ -36,5 +30,6 @@ export {
 export { LinearSource, type LinearSourceDeps } from './LinearSource';
 export { AppleCalendarSource } from './AppleCalendarSource';
 export { AppleMailSource } from './AppleMailSource';
+export { ExternalSourceRegistry } from './ExternalSourceRegistry';
 export { LoggerJobTracer } from './LoggerJobTracer';
 export { OtelJobTracer } from './OtelJobTracer';

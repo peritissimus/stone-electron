@@ -10,7 +10,6 @@
 import type {
   DailyReviewSnapshot,
   IGetDailyReviewUseCase,
-  ILoadDailyReviewIntegrationUseCase,
   ISummarizeDailyReviewUseCase,
   ITextGenerator,
   SummarizeDailyReviewRequest,
@@ -22,7 +21,6 @@ const SYSTEM_PROMPT =
 
 export interface SummarizeDailyReviewUseCaseDeps {
   getDailyReview: IGetDailyReviewUseCase;
-  loadIntegration: ILoadDailyReviewIntegrationUseCase;
   textGenerator: ITextGenerator;
   appendToJournal: (
     content: string,
@@ -34,22 +32,10 @@ export class SummarizeDailyReviewUseCase implements ISummarizeDailyReviewUseCase
   constructor(private readonly deps: SummarizeDailyReviewUseCaseDeps) {}
 
   async execute(request: SummarizeDailyReviewRequest = {}): Promise<SummarizeDailyReviewResponse> {
-    const [snapshot, calendar, mail, linear] = await Promise.all([
-      this.deps.getDailyReview.execute({
-        workspaceId: request.workspaceId,
-        date: request.date,
-      }),
-      this.deps.loadIntegration.execute({ source: 'calendar', date: request.date }),
-      this.deps.loadIntegration.execute({ source: 'mail', date: request.date }),
-      this.deps.loadIntegration.execute({ source: 'linear', date: request.date }),
-    ]);
-
-    if (calendar.status === 'connected') snapshot.calendarEvents = calendar.calendarEvents;
-    if (mail.status === 'connected') {
-      snapshot.mailUnreadCount = mail.mailUnreadCount;
-      snapshot.mailMessages = mail.mailMessages;
-    }
-    if (linear.status === 'connected') snapshot.linearIssues = linear.linearIssues;
+    const snapshot = await this.deps.getDailyReview.execute({
+      workspaceId: request.workspaceId,
+      date: request.date,
+    });
 
     const prompt = buildPrompt(snapshot);
     const result = await this.deps.textGenerator.generateMarkdown({

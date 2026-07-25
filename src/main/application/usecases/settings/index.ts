@@ -35,10 +35,8 @@ import { UpdateOnboardingUseCase } from './UpdateOnboardingUseCase';
 import { ResetOnboardingUseCase } from './ResetOnboardingUseCase';
 import { GetQuickCaptureShortcutUseCase } from './GetQuickCaptureShortcutUseCase';
 import { SetQuickCaptureShortcutUseCase } from './SetQuickCaptureShortcutUseCase';
-import {
-  GetIntegrationsSettingsUseCase,
-  UpdateIntegrationsSettingsUseCase,
-} from './integrations';
+import { GetIntegrationsSettingsUseCase } from './GetIntegrationsSettingsUseCase';
+import { UpdateIntegrationsSettingsUseCase } from './UpdateIntegrationsSettingsUseCase';
 
 export { GetSettingUseCase } from './GetSettingUseCase';
 export { SetSettingUseCase } from './SetSettingUseCase';
@@ -73,7 +71,7 @@ export { SetQuickCaptureShortcutUseCase } from './SetQuickCaptureShortcutUseCase
 export {
   GetIntegrationsSettingsUseCase,
   UpdateIntegrationsSettingsUseCase,
-} from './integrations';
+};
 
 export interface SettingsUseCasesDeps {
   settingsRepository: ISettingsRepository;

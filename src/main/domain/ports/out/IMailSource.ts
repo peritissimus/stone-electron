@@ -20,5 +20,8 @@ export interface MailSnapshot {
 
 export interface IMailSource {
   /** Unread summary plus any previews supplied by the active provider. */
-  getUnreadMessages(limit: number): Promise<ExternalSourceResult<MailSnapshot>>;
+  getUnreadMessages(
+    limit: number,
+    signal?: AbortSignal,
+  ): Promise<ExternalSourceResult<MailSnapshot>>;
 }

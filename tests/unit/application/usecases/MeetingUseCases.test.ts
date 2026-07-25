@@ -1,12 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMeetingUseCases } from '../../../../src/main/application/usecases/meeting';
-import { MeetingRecordingEntity, type MeetingRecordingProps } from '../../../../src/main/domain/entities/MeetingRecording';
+import {
+  MeetingRecordingEntity,
+  type MeetingRecordingProps,
+} from '../../../../src/main/domain/entities/MeetingRecording';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { IMeetingUseCases } from '../../../../src/main/domain/ports/in/IMeetingUseCases';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMeetingRecordingRepository } from '../../../../src/main/domain/ports/out/IMeetingRecordingRepository';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
-import { DEFAULT_APP_CONFIG, type AppConfig } from '../../../../src/main/domain/value-objects/AppConfig';
+import {
+  DEFAULT_APP_CONFIG,
+  type AppConfig,
+} from '../../../../src/main/domain/value-objects/AppConfig';
 import type { ISummarizationStrategy } from '../../../../src/main/domain/ports/out/ISummarizationStrategy';
 import type { ITranscriber } from '../../../../src/main/domain/ports/out/ITranscriber';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -96,7 +102,6 @@ function createMockSummarizer(): ISummarizationStrategy {
     }),
   };
 }
-
 
 function workspace(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
@@ -206,6 +211,16 @@ describe('MeetingUseCases', () => {
     );
   });
 
+  it('enqueues finalize without duplicating downstream recording validation', async () => {
+    const result = await useCases.requestFinalize.execute({
+      recordingId: 'rec-1',
+      durationMs: 2_000,
+    });
+
+    expect(result).toEqual({ jobId: 'job-1' });
+    expect(meetingRepository.findById).not.toHaveBeenCalled();
+  });
+
   it('lists recordings from the active workspace with a Date cursor', async () => {
     const rec = recording({ id: 'rec-list', status: 'ready' });
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
@@ -235,9 +250,9 @@ describe('MeetingUseCases', () => {
     await expect(
       useCases.getMeetingRecording.execute({ recordingId: 'rec-found' }),
     ).resolves.toMatchObject({ recording: { id: 'rec-found' } });
-    await expect(
-      useCases.getMeetingRecording.execute({ recordingId: 'missing' }),
-    ).resolves.toEqual({ recording: null });
+    await expect(useCases.getMeetingRecording.execute({ recordingId: 'missing' })).resolves.toEqual(
+      { recording: null },
+    );
   });
 
   it('deletes database rows and best-effort audio files', async () => {
@@ -395,7 +410,9 @@ describe('MeetingUseCases', () => {
       audioPath: '/workspace/.stone/recordings/rec-1.system.wav',
     });
     // The temp cleaned file is removed after transcription.
-    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav.aec.wav');
+    expect(fileStorage.delete).toHaveBeenCalledWith(
+      '/workspace/.stone/recordings/rec-1.wav.aec.wav',
+    );
   });
 
   it('falls back to the raw mic when echo cancellation fails', async () => {
@@ -439,20 +456,40 @@ describe('MeetingUseCases', () => {
     });
   });
 
-  it('marks the recording failed and keeps audio when the finalize pipeline fails', async () => {
-    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+  it('marks the recording failed, keeps audio, and propagates finalize failures', async () => {
+    const failedRecording = recording();
+    vi.mocked(meetingRepository.findById).mockResolvedValue(failedRecording);
     vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
     vi.mocked(transcriber.transcribe).mockRejectedValue(new Error('whisper crashed'));
 
-    const result = await useCases.finalizeRecording.execute({
-      recordingId: 'rec-1',
-      durationMs: 2_000,
-    });
+    await expect(
+      useCases.finalizeRecording.execute({
+        recordingId: 'rec-1',
+        durationMs: 2_000,
+      }),
+    ).rejects.toThrow('whisper crashed');
 
-    expect(result.recording.status).toBe('failed');
-    expect(result.recording.error).toBe('whisper crashed');
-    expect(result.recording.audioPath).toBe('.stone/recordings/rec-1.wav');
+    expect(failedRecording.status).toBe('failed');
+    expect(failedRecording.error).toBe('whisper crashed');
+    expect(failedRecording.audioPath).toBe('.stone/recordings/rec-1.wav');
     expect(fileStorage.delete).not.toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
+  });
+
+  it('threads durable-job cancellation into transcription', async () => {
+    vi.mocked(meetingRepository.findById).mockResolvedValue(recording());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(false);
+    const controller = new AbortController();
+
+    await useCases.finalizeRecording.execute(
+      { recordingId: 'rec-1', durationMs: 2_000 },
+      { signal: controller.signal },
+    );
+
+    expect(transcriber.transcribe).toHaveBeenCalledWith({
+      audioPath: '/workspace/.stone/recordings/rec-1.wav',
+      signal: controller.signal,
+    });
   });
 
   it('re-transcribes a recording from its kept audio', async () => {
@@ -512,7 +549,9 @@ describe('MeetingUseCases', () => {
 
     // Both tracks removed; transcript + summary survive, audioPath cleared.
     expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
-    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.system.wav');
+    expect(fileStorage.delete).toHaveBeenCalledWith(
+      '/workspace/.stone/recordings/rec-1.system.wav',
+    );
     expect(result.recording.audioPath).toBeNull();
     expect(result.recording.transcriptText).toBeTruthy();
   });
@@ -557,7 +596,9 @@ describe('MeetingUseCases', () => {
 
     expect(result.deletedCount).toBe(1);
     expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.wav');
-    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/.stone/recordings/rec-1.system.wav');
+    expect(fileStorage.delete).toHaveBeenCalledWith(
+      '/workspace/.stone/recordings/rec-1.system.wav',
+    );
     // Persisted with audioPath cleared.
     const saved = vi.mocked(meetingRepository.save).mock.calls.at(-1)?.[0];
     expect(saved?.audioPath).toBeNull();

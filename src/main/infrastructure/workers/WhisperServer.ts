@@ -16,7 +16,7 @@ import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import type { ILiveTranscriber, LiveChunkResult, TranscriptSegment } from '../../domain';
 import { collapseRepeatedSegments } from '../../domain';
-import { SupervisedProcess, logger } from '../../shared/utils';
+import { delay, SupervisedProcess, logger } from '../../shared/utils';
 import {
   vadModelPath,
   whisperBinaryPath,
@@ -24,7 +24,6 @@ import {
   LIVE_WHISPER_MODEL,
 } from '../../shared/whisper/whisperPaths';
 import { ensureVadModel, ensureWhisperModel } from '../../shared/whisper/whisperModelDownload';
-import type { ManagedWorker, WorkerStatus } from './WorkerManager';
 
 /** Per-chunk transcription timeout. A live chunk is only a few seconds of
  *  audio; if the resident server hasn't responded within this, it's wedged and
@@ -52,10 +51,18 @@ export interface WhisperServerDeps {
   host?: string;
   /** CPU threads for inference; defaults to LIVE_THREADS. */
   threads?: number;
+  /** Injectable process supervisor for deterministic session/race tests. */
+  supervisor?: WhisperSupervisor;
 }
 
-export class WhisperServer implements ILiveTranscriber, ManagedWorker {
-  readonly name = 'live-transcription';
+export interface WhisperSupervisor {
+  isReady(): boolean;
+  ensureReady(): Promise<void>;
+  markUnhealthy(reason: string): Promise<void>;
+  stop(): Promise<void>;
+}
+
+export class WhisperServer implements ILiveTranscriber {
   private readonly model: string;
   private readonly host: string;
   private readonly threads: number;
@@ -64,53 +71,76 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
    *  per-chunk re-detection pass. Reset per recording in stop(). */
   private pinnedLanguage: string | null = null;
   private sessionActive = false;
+  private sessionGeneration = 0;
   private sessionFailures = 0;
   private readonly inFlight = new Set<AbortController>();
+  private chunkQueue: Promise<void> = Promise.resolve();
   /** Owns spawn/health-check/restart/backoff/circuit-breaker for the binary. */
-  private readonly supervisor: SupervisedProcess;
+  private readonly supervisor: WhisperSupervisor;
 
   constructor(private readonly deps: WhisperServerDeps = {}) {
     this.model = deps.model ?? process.env.STONE_WHISPER_MODEL ?? LIVE_WHISPER_MODEL;
     this.host = deps.host ?? '127.0.0.1';
     this.threads = deps.threads ?? LIVE_THREADS;
-    this.supervisor = new SupervisedProcess({
-      name: 'whisper-server',
-      spawn: () => this.spawnServer(),
-      healthCheck: () => waitForReady(`http://${this.host}:${this.port}/`, 30_000),
-    });
+    this.supervisor =
+      deps.supervisor ??
+      new SupervisedProcess({
+        name: 'whisper-server',
+        spawn: () => this.spawnServer(),
+        healthCheck: () => waitForReady(`http://${this.host}:${this.port}/`, 30_000),
+      });
   }
 
   isReady(): boolean {
     return this.supervisor.isReady();
   }
 
-  status(): WorkerStatus {
-    return {
-      name: this.name,
-      state: this.supervisor.isReady() ? 'ready' : 'idle',
-      detail: this.pinnedLanguage ? `language=${this.pinnedLanguage}` : undefined,
-    };
-  }
-
   async start(): Promise<void> {
+    if (this.sessionActive) await this.stop();
+    this.sessionGeneration += 1;
     this.sessionActive = true;
-    this.sessionFailures = 0;
-    await this.supervisor.ensureReady();
+    try {
+      await this.supervisor.ensureReady();
+    } catch (error) {
+      this.sessionActive = false;
+      throw error;
+    }
   }
 
   async stop(): Promise<void> {
     this.sessionActive = false;
-    for (const controller of this.inFlight) controller.abort();
+    this.sessionGeneration += 1;
+    for (const controller of this.inFlight) {
+      controller.abort(new Error('live transcription session stopped'));
+    }
+    await this.chunkQueue.catch(() => {});
+    this.pinnedLanguage = null;
+  }
+
+  /** App-lifecycle shutdown. Session stop deliberately keeps the resident
+   * model alive; only shutdown frees it and resets supervisor breaker memory. */
+  async shutdown(): Promise<void> {
+    await this.stop();
     await this.supervisor.stop();
     this.port = 0;
-    this.pinnedLanguage = null;
     this.sessionFailures = 0;
   }
 
   async transcribeChunk(wav: Uint8Array): Promise<LiveChunkResult> {
     if (!this.sessionActive) throw new Error('live transcription session is not active');
+    const generation = this.sessionGeneration;
+    const queued = this.chunkQueue.then(() => this.transcribeChunkNow(wav, generation));
+    this.chunkQueue = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }
+
+  private async transcribeChunkNow(wav: Uint8Array, generation: number): Promise<LiveChunkResult> {
+    this.assertActive(generation);
     await this.supervisor.ensureReady();
-    if (!this.sessionActive) throw new Error('live transcription session stopped');
+    this.assertActive(generation);
 
     const form = new FormData();
     form.append('file', new Blob([wav as BlobPart], { type: 'audio/wav' }), 'chunk.wav');
@@ -121,7 +151,10 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
     form.append('temperature', '0');
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error('live chunk timed out')), CHUNK_TIMEOUT_MS);
+    const timeout = setTimeout(
+      () => controller.abort(new Error('live chunk timed out')),
+      CHUNK_TIMEOUT_MS,
+    );
     this.inFlight.add(controller);
     let res: Response;
     try {
@@ -131,7 +164,7 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
         signal: controller.signal,
       });
     } catch (err) {
-      if (!this.sessionActive) throw err;
+      if (!this.sessionActive || generation !== this.sessionGeneration) throw err;
       // The server hung or died: tell the supervisor so the next chunk respawns
       // a fresh process instead of piling onto a wedged one (each stuck fetch
       // would otherwise block for undici's 5-minute default). The circuit
@@ -142,6 +175,7 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
       await this.supervisor.markUnhealthy('chunk inference fetch failed');
       if (this.sessionFailures >= MAX_SESSION_FAILURES) {
         this.sessionActive = false;
+        this.sessionGeneration += 1;
         logger.error(
           `[WhisperServer] disabling live transcription after ${this.sessionFailures} session failures`,
         );
@@ -151,7 +185,13 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
       clearTimeout(timeout);
       this.inFlight.delete(controller);
     }
-    if (!res.ok) throw new Error(`whisper-server inference failed (${res.status})`);
+    if (!res.ok) {
+      this.sessionFailures += 1;
+      await this.supervisor.markUnhealthy(`chunk inference returned ${res.status}`);
+      throw new Error(`whisper-server inference failed (${res.status})`);
+    }
+    this.assertActive(generation);
+    this.sessionFailures = 0;
     const json = (await res.json()) as ServerResponse;
     this.maybePinLanguage(json);
 
@@ -163,7 +203,11 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
     const segments = collapseRepeatedSegments(raw);
     const text =
       segments.length > 0
-        ? segments.map((s) => s.text).join(' ').replace(/\s+/g, ' ').trim()
+        ? segments
+            .map((s) => s.text)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim()
         : (json.text ?? '').trim();
     return { text, segments };
   }
@@ -192,6 +236,12 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
     }
   }
 
+  private assertActive(generation: number): void {
+    if (!this.sessionActive || generation !== this.sessionGeneration) {
+      throw new Error('live transcription session stopped');
+    }
+  }
+
   /** Spawn the binary and return the handle; the supervisor owns readiness,
    *  restart, and lifecycle. Throws if the binary/model isn't available. */
   private async spawnServer(): Promise<ChildProcess> {
@@ -208,11 +258,16 @@ export class WhisperServer implements ILiveTranscriber, ManagedWorker {
     this.port = await freePort();
 
     const args = [
-      '-m', model,
-      '-t', String(this.threads),
-      '-l', 'auto',
-      '--host', this.host,
-      '--port', String(this.port),
+      '-m',
+      model,
+      '-t',
+      String(this.threads),
+      '-l',
+      'auto',
+      '--host',
+      this.host,
+      '--port',
+      String(this.port),
     ];
     if (await exists(vad)) args.push('--vad', '-vm', vad);
 
@@ -267,7 +322,7 @@ async function waitForReady(url: string, timeoutMs: number): Promise<void> {
       return;
     } catch {
       if (Date.now() > deadline) throw new Error('whisper-server did not become ready');
-      await new Promise((r) => setTimeout(r, 300));
+      await delay(300);
     }
   }
 }

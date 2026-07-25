@@ -25,6 +25,7 @@
  * real OS process.
  */
 
+import { delay, withTimeout } from './async';
 import { logger } from './logger';
 
 /** Minimal surface the supervisor needs — satisfied by Node's ChildProcess. */
@@ -172,11 +173,11 @@ export class SupervisedProcess {
 
     // Back off proportionally to how many times we've spawned recently.
     if (this.spawnTimes.length > 0) {
-      const delay = Math.min(
+      const backoffMs = Math.min(
         this.opts.backoffBaseMs * 2 ** (this.spawnTimes.length - 1),
         this.opts.backoffMaxMs,
       );
-      await sleep(delay);
+      await delay(backoffMs);
     }
     if (generation !== this.generation) throw new Error(`[${this.name}] start cancelled`);
     this.spawnTimes.push(now);
@@ -233,16 +234,4 @@ function signalAndWait(
       finish(true);
     }
   });
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout>;
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(message)), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
 }

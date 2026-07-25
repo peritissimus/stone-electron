@@ -9,9 +9,10 @@
 import type { Database } from '@main/shared';
 import { isDev } from '@main/infrastructure/utils/environment';
 import { createEmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
+import type { EmbeddingWorker } from '@main/infrastructure/workers/EmbeddingWorker';
 import { JobRunner } from '@main/infrastructure/workers/JobRunner';
+import { createMeetingFinalizeJobHandler } from '@main/infrastructure/workers/meetingFinalizeJob';
 import { WhisperServer } from '@main/infrastructure/workers/WhisperServer';
-import { WorkerManager } from '@main/infrastructure/workers/WorkerManager';
 import { getMLStatusTracker } from '@main/infrastructure/workers/MLStatusTracker';
 import { TEMPLATE_STARTER_PACK } from '@main/infrastructure/seed/templateStarterPack';
 import { instrumentIpcHandlers } from '@main/infrastructure/electron/ipcInstrumentation';
@@ -52,6 +53,7 @@ import type {
   ITextGenerator,
   IJobRepository,
   IJobTracer,
+  IEchoCanceller,
   // Inbound Ports (Use Cases)
   INoteUseCases,
   INotebookUseCases,
@@ -75,7 +77,6 @@ import type {
   IAIUseCases,
   IIndexUseCases,
   IMeetingUseCases,
-  FinalizeRecordingRequest,
   ITemplateUseCases,
   IDailyReviewUseCases,
   IStatusReportUseCases,
@@ -203,6 +204,7 @@ import {
   LinearSource,
   AppleCalendarSource,
   AppleMailSource,
+  ExternalSourceRegistry,
   JobRepository,
   LoggerJobTracer,
   OtelJobTracer,
@@ -251,7 +253,9 @@ export interface Container {
 
   // Workers
   jobRunner: JobRunner;
-  workerManager: WorkerManager;
+  embeddingWorker: EmbeddingWorker;
+  liveTranscriber: WhisperServer;
+  echoCanceller: IEchoCanceller;
 
   // Ports - Services
   perfMonitor: IPerformanceMonitor;
@@ -432,9 +436,6 @@ export function createContainer(deps: ContainerDeps): Container {
   // track before transcription so the "You" transcript isn't polluted on
   // speakers. Best-effort; finalize falls back to the raw mic if it fails.
   const echoCanceller = new OnnxEchoCanceller();
-  // Pre-warm in the background so the first meeting finalizes without a cold
-  // model load stalling the pipeline (loads onnxruntime + the DTLN models).
-  void echoCanceller.initialize().catch(() => {});
 
   // Resident whisper-server for the live (raw) draft while recording. Started
   // on demand when a recording begins; the clean transcript is still the batch
@@ -455,15 +456,6 @@ export function createContainer(deps: ContainerDeps): Container {
     tracer: jobTracer,
     idGenerator,
   });
-
-  // Unified management of the resident background engines — one place to
-  // observe their status and stop them on shutdown (start triggers stay
-  // per-engine). EmbeddingWorker self-loads lazily; WhisperServer starts when
-  // a recording begins; JobRunner starts at boot.
-  const workerManager = new WorkerManager();
-  workerManager.register(jobRunner);
-  workerManager.register(embeddingWorker);
-  workerManager.register(liveTranscriber);
 
   const searchEngine: ISearchEngine = new SearchEngine({
     db,
@@ -718,9 +710,10 @@ export function createContainer(deps: ContainerDeps): Container {
   // The meeting finalize pipeline runs as a durable background job: the IPC
   // producer (requestFinalize) enqueues; this handler executes the actual
   // (idempotent) pipeline so it survives restarts and retries on failure.
-  jobRunner.register(MEETING_FINALIZE_JOB, async (payload) => {
-    await meetingUseCases.finalizeRecording.execute(payload as FinalizeRecordingRequest);
-  });
+  jobRunner.register(
+    MEETING_FINALIZE_JOB,
+    createMeetingFinalizeJobHandler(meetingUseCases.finalizeRecording),
+  );
 
   // Template use cases — composes the existing CreateNote use case
   // for the actual note creation, so templated notes go through the
@@ -739,6 +732,10 @@ export function createContainer(deps: ContainerDeps): Container {
   const calendarSource = new AppleCalendarSource(calendarBridgePath());
   const mailSource = new AppleMailSource();
   const linearSource = new LinearSource({ appConfigRepository });
+  const externalSourceRegistry = new ExternalSourceRegistry({
+    sources: [linearSource, mailSource, calendarSource],
+    appConfigRepository,
+  });
 
   const dailyReviewUseCases = createDailyReviewUseCases({
     noteRepository,
@@ -753,6 +750,7 @@ export function createContainer(deps: ContainerDeps): Container {
     calendarSource,
     mailSource,
     linearSource,
+    externalSourceRegistry,
   });
 
   // Status Report use cases — aggregate the past week's evidence and
@@ -792,7 +790,9 @@ export function createContainer(deps: ContainerDeps): Container {
 
     // Workers
     jobRunner,
-    workerManager,
+    embeddingWorker,
+    liveTranscriber,
+    echoCanceller,
 
     // Ports - Services
     perfMonitor,

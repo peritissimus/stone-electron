@@ -43,6 +43,15 @@ export interface FinalizeRecordingResponse {
   recording: MeetingRecordingProps;
 }
 
+export interface RequestFinalizeRecordingResponse {
+  jobId: string;
+}
+
+export interface FinalizeRecordingOptions {
+  /** Internal cancellation propagated by the durable job runner. */
+  signal?: AbortSignal;
+}
+
 // ---------- Append captured audio bytes from the renderer ----------
 
 export interface AppendRecordingAudioRequest {
@@ -136,7 +145,14 @@ export interface IAppendRecordingAudioUseCase {
 }
 
 export interface IFinalizeRecordingUseCase {
-  execute(request: FinalizeRecordingRequest): Promise<FinalizeRecordingResponse>;
+  execute(
+    request: FinalizeRecordingRequest,
+    options?: FinalizeRecordingOptions,
+  ): Promise<FinalizeRecordingResponse>;
+}
+
+export interface IRequestFinalizeRecordingUseCase {
+  execute(request: FinalizeRecordingRequest): Promise<RequestFinalizeRecordingResponse>;
 }
 
 export interface IListMeetingRecordingsUseCase {
@@ -198,18 +214,18 @@ export interface IWarmUpTranscriberUseCase {
 
 export interface ILiveTranscriptionUseCases {
   /** Spawn/warm the resident model so chunks transcribe without a reload. */
-  start(request: { sessionId: string }): Promise<void>;
+  start(): Promise<void>;
   /** Transcribe one 16 kHz mono WAV chunk for the live draft. */
-  transcribeChunk(request: { sessionId: string; wav: ArrayBuffer }): Promise<LiveChunkResult>;
+  transcribeChunk(request: { wav: ArrayBuffer }): Promise<LiveChunkResult>;
   /** Tear down the resident model (frees memory after recording). */
-  stop(request: { sessionId: string }): Promise<void>;
+  stop(): Promise<void>;
 }
 
 export interface IMeetingUseCases {
   reserveRecordingSlot: IReserveRecordingSlotUseCase;
   appendRecordingAudio: IAppendRecordingAudioUseCase;
   /** Producer: enqueues the finalize job and returns immediately (IPC-facing). */
-  requestFinalize: IFinalizeRecordingUseCase;
+  requestFinalize: IRequestFinalizeRecordingUseCase;
   /** The actual pipeline; invoked by the background job handler, not over IPC. */
   finalizeRecording: IFinalizeRecordingUseCase;
   listMeetingRecordings: IListMeetingRecordingsUseCase;

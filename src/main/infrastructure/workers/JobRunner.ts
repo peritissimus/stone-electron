@@ -32,8 +32,7 @@ import type {
   IIdGenerator,
 } from '../../domain';
 import { JobEntity } from '../../domain';
-import { logger } from '../../shared/utils';
-import type { ManagedWorker, WorkerStatus } from './WorkerManager';
+import { delay, logger } from '../../shared/utils';
 
 export interface JobContext {
   /** Aborts when the per-job timeout fires or the runner is stopping. */
@@ -52,8 +51,6 @@ export interface JobRunnerConfig {
   jobTimeoutMs?: number;
   backoffBaseMs?: number;
   backoffMaxMs?: number;
-  /** A `running` job older than this is considered crash-orphaned. */
-  staleAfterMs?: number;
   /** Terminal rows older than this are pruned. */
   retentionMs?: number;
   pruneIntervalMs?: number;
@@ -75,14 +72,12 @@ const DEFAULTS = {
   jobTimeoutMs: 60_000,
   backoffBaseMs: 1_000,
   backoffMaxMs: 5 * 60_000,
-  staleAfterMs: 5 * 60_000,
   retentionMs: 7 * 24 * 60 * 60_000,
   pruneIntervalMs: 6 * 60 * 60_000,
   shutdownGraceMs: 5_000,
 } as const;
 
-export class JobRunner implements IJobQueue, ManagedWorker {
-  readonly name = 'jobs';
+export class JobRunner implements IJobQueue {
   private readonly repo: IJobRepository;
   private readonly tracer: IJobTracer;
   private readonly ids: IIdGenerator;
@@ -91,6 +86,7 @@ export class JobRunner implements IJobQueue, ManagedWorker {
 
   private readonly handlers = new Map<string, JobHandler>();
   private readonly inFlight = new Set<string>();
+  private readonly controllers = new Map<string, AbortController>();
 
   private running = false;
   private idleMs: number;
@@ -135,7 +131,7 @@ export class JobRunner implements IJobQueue, ManagedWorker {
     this.running = true;
     this.idleMs = this.cfg.minIdleMs;
 
-    await this.recoverStale();
+    await this.recoverOrphaned();
 
     this.pruneTimer = setInterval(() => void this.prune(), this.cfg.pruneIntervalMs);
     void this.prune();
@@ -152,27 +148,17 @@ export class JobRunner implements IJobQueue, ManagedWorker {
     this.tickTimer = null;
     this.pruneTimer = null;
 
-    // Best-effort: let in-flight handlers finish. Anything still running stays
-    // `running` in the DB and is recovered on the next launch.
+    for (const controller of this.controllers.values()) {
+      controller.abort(new Error('job runner is stopping'));
+    }
+
+    // Best-effort: let aborted handlers persist their retry state. Anything
+    // still running after the grace period is recovered on the next launch.
     const deadline = Date.now() + this.cfg.shutdownGraceMs;
     while (this.inFlight.size > 0 && Date.now() < deadline) {
       await delay(100);
     }
     logger.info('[JobRunner] stopped');
-  }
-
-  async status(): Promise<WorkerStatus> {
-    let counts: Record<string, number> = {};
-    try {
-      counts = await this.repo.countByStatus();
-    } catch {
-      // status is best-effort — a failed count shouldn't break the panel
-    }
-    return {
-      name: this.name,
-      state: this.running ? 'ready' : 'stopped',
-      metrics: { inFlight: this.inFlight.size, ...counts },
-    };
   }
 
   // ===========================================================================
@@ -233,6 +219,7 @@ export class JobRunner implements IJobQueue, ManagedWorker {
     });
 
     const controller = new AbortController();
+    this.controllers.set(job.id, controller);
     const timeout = setTimeout(
       () => controller.abort(new Error(`job timed out after ${this.cfg.jobTimeoutMs}ms`)),
       this.cfg.jobTimeoutMs,
@@ -269,20 +256,23 @@ export class JobRunner implements IJobQueue, ManagedWorker {
         logger.error(`[JobRunner] failed to persist result for job ${job.id}:`, err);
       }
       this.inFlight.delete(job.id);
+      this.controllers.delete(job.id);
       this.wake();
     }
   }
 
-  private async recoverStale(): Promise<void> {
+  private async recoverOrphaned(): Promise<void> {
     try {
-      const staleBefore = new Date(Date.now() - this.cfg.staleAfterMs);
-      const stale = await this.repo.findStaleRunning(staleBefore);
-      for (const job of stale) {
+      // This is a single-instance desktop process. At startup every persisted
+      // `running` row belongs to a previous process, even if it was claimed a
+      // millisecond before the crash.
+      const orphaned = await this.repo.findRunning();
+      for (const job of orphaned) {
         job.recoverFromStale(new Date(), this.backoff);
         await this.repo.save(job);
       }
-      if (stale.length > 0) {
-        logger.info(`[JobRunner] recovered ${stale.length} orphaned job(s) from a previous run`);
+      if (orphaned.length > 0) {
+        logger.info(`[JobRunner] recovered ${orphaned.length} orphaned job(s) from a previous run`);
       }
     } catch (err) {
       logger.error('[JobRunner] stale-job recovery failed:', err);
@@ -298,8 +288,4 @@ export class JobRunner implements IJobQueue, ManagedWorker {
       logger.error('[JobRunner] retention prune failed:', err);
     }
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

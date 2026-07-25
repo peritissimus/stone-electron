@@ -69,29 +69,30 @@ export class WhisperCppTranscriber implements ITranscriber {
     if (!this.ready) await this.initialize();
 
     const binary = whisperBinaryPath('whisper-cli', this.deps.binary);
-    const outBase = path.join(
-      os.tmpdir(),
-      `stone-whisper-${path.basename(request.audioPath)}`,
-    );
+    const outBase = path.join(os.tmpdir(), `stone-whisper-${path.basename(request.audioPath)}`);
     const jsonPath = `${outBase}.json`;
 
     try {
       // Use VAD only when the model is present — graceful for offline/tests.
       const vadPath = vadModelPath(this.deps.modelDir);
       const vadArgs = (await fileExists(vadPath)) ? ['--vad', '-vm', vadPath] : [];
-      await execFileAsync(binary, [
-        '-m',
-        whisperModelPath(this.model, this.deps.modelDir),
-        '-f',
-        request.audioPath,
-        '-l',
-        'auto', // multilingual auto-detect
-        ...vadArgs, // skip silence — prevents decoder repetition loops
-        '-ojf', // full JSON: includes per-token probabilities for confidence
-        '-of',
-        outBase,
-        '--no-prints',
-      ]);
+      await execFileAsync(
+        binary,
+        [
+          '-m',
+          whisperModelPath(this.model, this.deps.modelDir),
+          '-f',
+          request.audioPath,
+          '-l',
+          'auto', // multilingual auto-detect
+          ...vadArgs, // skip silence — prevents decoder repetition loops
+          '-ojf', // full JSON: includes per-token probabilities for confidence
+          '-of',
+          outBase,
+          '--no-prints',
+        ],
+        request.signal,
+      );
 
       const parsed = JSON.parse(await fs.readFile(jsonPath, 'utf8')) as WhisperJson;
       const rawSegments: TranscriptSegment[] = (parsed.transcription ?? []).map((s) => {
@@ -172,9 +173,9 @@ async function fileExists(p: string): Promise<boolean> {
   }
 }
 
-function execFileAsync(file: string, args: string[]): Promise<void> {
+function execFileAsync(file: string, args: string[], signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    execFile(file, args, { maxBuffer: 64 * 1024 * 1024 }, (error, _stdout, stderr) => {
+    execFile(file, args, { maxBuffer: 64 * 1024 * 1024, signal }, (error, _stdout, stderr) => {
       if (error) {
         reject(new Error(`whisper-cli failed: ${error.message}${stderr ? ` — ${stderr}` : ''}`));
         return;

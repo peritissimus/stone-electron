@@ -5,6 +5,7 @@ import type {
   INoteRepository,
   ITaskUseCases,
   ITextGenerator,
+  IExternalSourceRegistry,
   IWorkspaceRepository,
 } from '../../../domain';
 import type { IAppConfigRepository } from '../../../domain/ports/out/IAppConfigRepository';
@@ -13,11 +14,13 @@ import type { IMailSource } from '../../../domain/ports/out/IMailSource';
 import type { ILinearSource } from '../../../domain/ports/out/ILinearSource';
 import { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
 import { LoadDailyReviewIntegrationUseCase } from './LoadDailyReviewIntegrationUseCase';
+import { LoadDailyReviewIntegrationsUseCase } from './LoadDailyReviewIntegrationsUseCase';
 import { ListDailyReviewCalendarsUseCase } from './ListDailyReviewCalendarsUseCase';
 import { SummarizeDailyReviewUseCase } from './SummarizeDailyReviewUseCase';
 
 export { GetDailyReviewUseCase } from './GetDailyReviewUseCase';
 export { LoadDailyReviewIntegrationUseCase } from './LoadDailyReviewIntegrationUseCase';
+export { LoadDailyReviewIntegrationsUseCase } from './LoadDailyReviewIntegrationsUseCase';
 export { ListDailyReviewCalendarsUseCase } from './ListDailyReviewCalendarsUseCase';
 export { SummarizeDailyReviewUseCase } from './SummarizeDailyReviewUseCase';
 
@@ -36,6 +39,7 @@ export interface DailyReviewUseCasesDeps {
   calendarSource?: ICalendarSource;
   mailSource?: IMailSource;
   linearSource?: ILinearSource;
+  externalSourceRegistry: IExternalSourceRegistry;
 }
 
 export function createDailyReviewUseCases(deps: DailyReviewUseCasesDeps): IDailyReviewUseCases {
@@ -45,9 +49,9 @@ export function createDailyReviewUseCases(deps: DailyReviewUseCasesDeps): IDaily
     getDailyReview,
     listCalendars: new ListDailyReviewCalendarsUseCase(deps.calendarSource),
     loadIntegration,
+    loadIntegrations: new LoadDailyReviewIntegrationsUseCase(deps.externalSourceRegistry),
     summarizeDailyReview: new SummarizeDailyReviewUseCase({
       getDailyReview,
-      loadIntegration,
       textGenerator: deps.textGenerator,
       appendToJournal: deps.appendToJournal,
     }),

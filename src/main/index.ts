@@ -12,6 +12,7 @@ import { lookup as dnsLookup } from 'node:dns';
 
 // Import from main architecture
 import { logger } from '@main/shared/utils/logger';
+import { withTimeout } from '@main/shared/utils/async';
 import { isDev } from '@main/infrastructure/utils/environment';
 import { getDatabaseManager } from '@main/infrastructure/database';
 import {
@@ -62,6 +63,8 @@ logger.info('='.repeat(60));
 
 let mainWindow: BrowserWindow | null = null;
 let quickCaptureWindow: BrowserWindow | null = null;
+let shutdownStarted = false;
+let shutdownComplete = false;
 
 async function isPortOpen(port: number, host = 'localhost'): Promise<boolean> {
   // Probe each address family Node resolves for the host. Node's `net.connect`
@@ -171,8 +174,7 @@ function pickFilePathFromArgv(argv: string[]): string | null {
 // Automated desktop tests run against an isolated user-data directory and may
 // coexist with a developer's live Stone window. Do not let that production
 // instance lock make the test process quit before Playwright can attach.
-const gotSingleInstanceLock =
-  process.env.E2E_TEST === 'true' || app.requestSingleInstanceLock();
+const gotSingleInstanceLock = process.env.E2E_TEST === 'true' || app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   // Another Stone already owns the lock — our argv has been forwarded to
   // that instance via second-instance; quit quietly.
@@ -375,6 +377,12 @@ app.on('ready', async () => {
     void container.jobRunner
       .start()
       .catch((e: unknown) => logger.error('Failed to start job runner:', e));
+    // Pre-warm acoustic echo cancellation after composition is complete.
+    // Container creation remains side-effect free; the app lifecycle owns
+    // long-running initialization.
+    void container.echoCanceller
+      .initialize()
+      .catch((e: unknown) => logger.warn('Failed to pre-warm echo canceller:', e));
 
     // Register hex IPC handlers
     logger.info('🔄 Registering hex IPC handlers...');
@@ -490,7 +498,7 @@ app.on('window-all-closed', () => {
 /**
  * Clean up before quitting
  */
-app.on('before-quit', () => {
+async function shutdownApp(): Promise<void> {
   logger.info('App quitting, cleaning up...');
 
   // Stop performance monitoring
@@ -509,30 +517,53 @@ app.on('before-quit', () => {
     // Container may not be initialized yet
   }
 
-  // Close database
-  try {
-    const dbManager = getDatabaseManager();
-    dbManager.close();
-  } catch {
-    // May not be initialized
-  }
-
-  // Stop watchers + all resident background engines (job queue, embedding
-  // worker, live whisper server) via the unified manager.
+  // Stop producers and resident engines before closing the database. In
+  // particular, JobRunner persists its final retry state during stop().
   try {
     const container = getContainer();
-    container.fileWatcher.stopAll().catch(() => {});
-    container.workerManager.stopAll().catch(() => {});
+    const shutdowns = [
+      ['file watcher', container.fileWatcher.stopAll()],
+      ['job runner', container.jobRunner.stop()],
+      ['live transcriber', container.liveTranscriber.shutdown()],
+      ['embedding worker', container.embeddingWorker.shutdown()],
+    ] as const;
+    const results = await Promise.allSettled(
+      shutdowns.map(([name, operation]) =>
+        withTimeout(operation, 5_000, `${name} shutdown timed out`),
+      ),
+    );
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        logger.warn(`Shutdown failed for ${shutdowns[index][0]}:`, result.reason);
+      }
+    });
   } catch {
     // Container may not be initialized yet
   }
 
-  // Flush + stop OpenTelemetry (dev only). Best-effort, not awaited.
+  try {
+    getDatabaseManager().close();
+  } catch {
+    // May not be initialized
+  }
+
+  // Flush + stop OpenTelemetry after application work has settled.
   if (isDev) {
-    import('@main/infrastructure/telemetry/otel')
+    await import('@main/infrastructure/telemetry/otel')
       .then((m) => m.shutdownTelemetry())
       .catch(() => {});
   }
+}
+
+app.on('before-quit', (event) => {
+  if (shutdownComplete) return;
+  event.preventDefault();
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+  void shutdownApp().finally(() => {
+    shutdownComplete = true;
+    app.quit();
+  });
 });
 
 /**

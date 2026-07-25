@@ -80,7 +80,6 @@ export function createMeetingUseCases(deps: MeetingUseCasesDeps): IMeetingUseCas
       deps.pathService,
     ),
     requestFinalize: new RequestFinalizeRecordingUseCase({
-      meetingRepository: deps.meetingRepository,
       jobQueue: deps.jobQueue,
     }),
     finalizeRecording: new FinalizeRecordingUseCase({

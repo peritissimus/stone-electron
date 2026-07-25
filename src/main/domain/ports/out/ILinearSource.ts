@@ -20,5 +20,5 @@ export interface LinearIssue {
 export interface ILinearSource {
   /** Open issues assigned to the API key's owner. Returns [] when no key is
    *  configured or the call fails. */
-  getAssignedIssues(): Promise<LinearIssue[]>;
+  getAssignedIssues(signal?: AbortSignal): Promise<LinearIssue[]>;
 }

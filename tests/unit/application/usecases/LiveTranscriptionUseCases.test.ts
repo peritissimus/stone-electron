@@ -12,29 +12,28 @@ function createLiveTranscriber(): ILiveTranscriber {
 }
 
 describe('createLiveTranscriptionUseCases', () => {
-  it('rejects chunks from a stopped session', async () => {
+  it('forwards lifecycle and chunks without owning session identity', async () => {
     const live = createLiveTranscriber();
     const useCases = createLiveTranscriptionUseCases(live);
+    const wav = new ArrayBuffer(1);
 
-    await useCases.start({ sessionId: 'session-a' });
-    await useCases.stop({ sessionId: 'session-a' });
+    await useCases.start();
+    await useCases.transcribeChunk({ wav });
+    await useCases.stop();
 
-    await expect(
-      useCases.transcribeChunk({ sessionId: 'session-a', wav: new ArrayBuffer(1) }),
-    ).rejects.toThrow('stale live transcription session');
-    expect(live.transcribeChunk).not.toHaveBeenCalled();
+    expect(live.start).toHaveBeenCalledOnce();
+    expect(live.transcribeChunk).toHaveBeenCalledWith(new Uint8Array(wav));
+    expect(live.stop).toHaveBeenCalledOnce();
   });
 
-  it('ignores a stale stop without terminating the active session', async () => {
-    const live = createLiveTranscriber();
-    const useCases = createLiveTranscriptionUseCases(live);
+  it('stays a harmless facade when live transcription is unavailable', async () => {
+    const useCases = createLiveTranscriptionUseCases();
 
-    await useCases.start({ sessionId: 'session-a' });
-    await useCases.start({ sessionId: 'session-b' });
-    await useCases.stop({ sessionId: 'session-a' });
-    await useCases.transcribeChunk({ sessionId: 'session-b', wav: new ArrayBuffer(1) });
-
-    expect(live.stop).toHaveBeenCalledTimes(1);
-    expect(live.transcribeChunk).toHaveBeenCalledTimes(1);
+    await expect(useCases.start()).resolves.toBeUndefined();
+    await expect(useCases.transcribeChunk({ wav: new ArrayBuffer(1) })).resolves.toEqual({
+      text: '',
+      segments: [],
+    });
+    await expect(useCases.stop()).resolves.toBeUndefined();
   });
 });

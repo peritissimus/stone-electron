@@ -53,6 +53,7 @@ export async function reprocessRecordingAudio(
   systemAbsolutePath: string,
   promptTemplate: string,
   requestDurationMs: number,
+  signal?: AbortSignal,
 ): Promise<void> {
   recording.markTranscribing();
   await deps.meetingRepository.save(recording);
@@ -67,7 +68,9 @@ export async function reprocessRecordingAudio(
     ? await cancelEcho(deps, audioAbsolutePath, systemAbsolutePath)
     : audioAbsolutePath;
 
-  const micResult = await deps.transcriber.transcribe({ audioPath: micForTranscription });
+  const micResult = await deps.transcriber.transcribe(
+    signal ? { audioPath: micForTranscription, signal } : { audioPath: micForTranscription },
+  );
   const segments: TranscriptSegment[] = micResult.segments.map((s) => ({
     ...s,
     source: 'mic' as const,
@@ -79,7 +82,9 @@ export async function reprocessRecordingAudio(
   }
 
   if (hasSystemTrack) {
-    const sysResult = await deps.transcriber.transcribe({ audioPath: systemAbsolutePath });
+    const sysResult = await deps.transcriber.transcribe(
+      signal ? { audioPath: systemAbsolutePath, signal } : { audioPath: systemAbsolutePath },
+    );
     for (const s of sysResult.segments) segments.push({ ...s, source: 'system' as const });
     maxDurationMs = Math.max(maxDurationMs, sysResult.durationMs);
   }

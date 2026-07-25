@@ -70,8 +70,7 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
 
   ipcMain.handle(MEETING_CHANNELS.GET, async (_event, request) =>
     handleRequest(
-      async () =>
-        meetingUseCases.getMeetingRecording.execute({ recordingId: request.recordingId }),
+      async () => meetingUseCases.getMeetingRecording.execute({ recordingId: request.recordingId }),
       { channel: MEETING_CHANNELS.GET, recordingId: request?.recordingId },
     ),
   );
@@ -104,30 +103,27 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
 
   ipcMain.handle(MEETING_CHANNELS.RETRANSCRIBE, async (_event, request) =>
     handleRequest(
-      async () =>
-        meetingUseCases.retranscribeMeeting.execute({ recordingId: request.recordingId }),
+      async () => meetingUseCases.retranscribeMeeting.execute({ recordingId: request.recordingId }),
       { channel: MEETING_CHANNELS.RETRANSCRIBE, recordingId: request?.recordingId },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.LIVE_START, async (_event, request) =>
-    handleRequest(async () => meetingUseCases.liveTranscription.start(request), {
+  ipcMain.handle(MEETING_CHANNELS.LIVE_START, async () =>
+    handleRequest(async () => meetingUseCases.liveTranscription.start(), {
       channel: MEETING_CHANNELS.LIVE_START,
-      sessionId: request?.sessionId,
     }),
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_CHUNK, async (_event, request) =>
     handleRequest(
-      async () => meetingUseCases.liveTranscription.transcribeChunk(request),
-      { channel: MEETING_CHANNELS.LIVE_CHUNK, sessionId: request?.sessionId },
+      async () => meetingUseCases.liveTranscription.transcribeChunk({ wav: request.wav }),
+      { channel: MEETING_CHANNELS.LIVE_CHUNK },
     ),
   );
 
-  ipcMain.handle(MEETING_CHANNELS.LIVE_STOP, async (_event, request) =>
-    handleRequest(async () => meetingUseCases.liveTranscription.stop(request), {
+  ipcMain.handle(MEETING_CHANNELS.LIVE_STOP, async () =>
+    handleRequest(async () => meetingUseCases.liveTranscription.stop(), {
       channel: MEETING_CHANNELS.LIVE_STOP,
-      sessionId: request?.sessionId,
     }),
   );
 

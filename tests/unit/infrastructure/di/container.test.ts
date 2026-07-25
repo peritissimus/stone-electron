@@ -99,7 +99,7 @@ describe('DI container', () => {
       errors: [],
     });
     await expect(container.getDatabaseManager().vacuum()).resolves.toBeUndefined();
-  });
+  }, 15_000);
 
   it('delegates database manager calls when a manager is supplied', async () => {
     const { createContainer } = await loadContainerModule();

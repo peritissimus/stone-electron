@@ -15,6 +15,7 @@ export type JxaResult<T> =
 interface JxaRequestOptions {
   target: 'Calendar' | 'Mail';
   timeoutMs: number;
+  signal?: AbortSignal;
 }
 
 function classifyFailure(message: string, killed: boolean): JxaFailureReason {
@@ -31,10 +32,8 @@ function classifyFailure(message: string, killed: boolean): JxaFailureReason {
   return 'error';
 }
 
-export async function runJxa<T>(
-  script: string,
-  { target, timeoutMs }: JxaRequestOptions,
-): Promise<JxaResult<T>> {
+export async function runJxa<T>(script: string, options: JxaRequestOptions): Promise<JxaResult<T>> {
+  const { target, timeoutMs } = options;
   if (process.platform !== 'darwin') {
     return { ok: false, reason: 'unavailable', message: 'Available on macOS only.' };
   }
@@ -42,7 +41,7 @@ export async function runJxa<T>(
     execFile(
       'osascript',
       ['-l', 'JavaScript', '-e', script],
-      { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024 },
+      { timeout: timeoutMs, maxBuffer: 4 * 1024 * 1024, signal: options.signal },
       (error, stdout) => {
         if (error) {
           const reason = classifyFailure(error.message, Boolean(error.killed));

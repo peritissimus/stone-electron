@@ -65,8 +65,7 @@ async function initializeService(service: { initialize(): Promise<void> }) {
   const initializing = service.initialize();
   const worker = workerMock.instances[0];
   worker.emit('message', { type: 'ready' });
-  await Promise.resolve();
-  const initMessage = worker.postMessage.mock.calls.at(-1)?.[0];
+  const initMessage = await waitForPostedMessage(worker, 'init');
   worker.emit('message', {
     id: initMessage.id,
     success: true,
@@ -78,7 +77,9 @@ async function initializeService(service: { initialize(): Promise<void> }) {
 
 async function waitForPostedMessage(worker: { postMessage: any }, type: string) {
   for (let i = 0; i < 10; i += 1) {
-    const message = worker.postMessage.mock.calls.map((call: unknown[]) => call[0]).find((item: any) => item.type === type);
+    const message = worker.postMessage.mock.calls
+      .map((call: unknown[]) => call[0])
+      .find((item: any) => item.type === type);
     if (message) return message;
     await Promise.resolve();
   }

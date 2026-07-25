@@ -6,6 +6,7 @@ import type { WorkspaceProps } from '../../../../src/main/domain/entities/Worksp
 import type { IJournalUseCases } from '../../../../src/main/domain/ports/in/IJournalUseCases';
 import type { ITaskUseCases, TaskItem } from '../../../../src/main/domain/ports/in/ITaskUseCases';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
+import type { IExternalSourceRegistry } from '../../../../src/main/domain/ports/out/IExternalSource';
 import type { IMeetingRecordingRepository } from '../../../../src/main/domain/ports/out/IMeetingRecordingRepository';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -130,6 +131,11 @@ describe('DailyReviewUseCases', () => {
       journalUseCases,
       taskUseCases,
       appConfigRepository,
+      externalSourceRegistry: {
+        load: vi.fn(),
+        loadAll: vi.fn(),
+        mergeInto: vi.fn((snapshot) => snapshot),
+      } as IExternalSourceRegistry,
       textGenerator: { generateMarkdown: vi.fn(async () => ({ text: '- summary' })) } as never,
       appendToJournal: vi.fn(async () => ({ noteId: 'journal-1', appended: true })),
     });

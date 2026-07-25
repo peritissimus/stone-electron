@@ -6,7 +6,7 @@
  * column owned by the producer/handler, not queried structurally.
  */
 
-import { and, asc, eq, inArray, lt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, lt, lte } from 'drizzle-orm';
 import { jobs, type Database } from '../../../shared';
 import { JobEntity, type JobProps, type JobStatus } from '../../../domain';
 import type { IJobRepository } from '../../../domain/ports/out/IJobRepository';
@@ -91,12 +91,9 @@ export class JobRepository implements IJobRepository {
     );
   }
 
-  async findStaleRunning(staleBefore: Date): Promise<JobEntity[]> {
-    return this.handle('findStaleRunning', async () => {
-      const rows = await this.deps.db
-        .select()
-        .from(jobs)
-        .where(and(eq(jobs.status, 'running'), lt(jobs.claimedAt, staleBefore)));
+  async findRunning(): Promise<JobEntity[]> {
+    return this.handle('findRunning', async () => {
+      const rows = await this.deps.db.select().from(jobs).where(eq(jobs.status, 'running'));
       return rows.map((r) => JobEntity.fromPersistence(toProps(r)));
     });
   }
@@ -112,20 +109,6 @@ export class JobRepository implements IJobRepository {
       },
       { cutoff: cutoff.toISOString() },
     );
-  }
-
-  async countByStatus(): Promise<Record<JobStatus, number>> {
-    return this.handle('countByStatus', async () => {
-      const rows = await this.deps.db
-        .select({ status: jobs.status, count: sql<number>`count(*)` })
-        .from(jobs)
-        .groupBy(jobs.status);
-      const counts: Record<JobStatus, number> = { pending: 0, running: 0, done: 0, dead: 0 };
-      for (const r of rows) {
-        if (r.status in counts) counts[r.status as JobStatus] = Number(r.count);
-      }
-      return counts;
-    });
   }
 
   async findById(id: string): Promise<JobEntity | null> {

@@ -32,5 +32,6 @@ export interface ICalendarSource {
   getEventsForDate(
     date: string,
     calendarIds: readonly string[] | null,
+    signal?: AbortSignal,
   ): Promise<ExternalSourceResult<CalendarEvent[]>>;
 }

@@ -26,6 +26,7 @@ import {
 import {
   systemTrackPath,
   type IFinalizeRecordingUseCase,
+  type FinalizeRecordingOptions,
   type FinalizeRecordingRequest,
   type FinalizeRecordingResponse,
 } from '../../../domain/ports/in/IMeetingUseCases';
@@ -52,7 +53,10 @@ export interface FinalizeRecordingUseCaseDeps {
 export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
   constructor(private readonly deps: FinalizeRecordingUseCaseDeps) {}
 
-  async execute(request: FinalizeRecordingRequest): Promise<FinalizeRecordingResponse> {
+  async execute(
+    request: FinalizeRecordingRequest,
+    options: FinalizeRecordingOptions = {},
+  ): Promise<FinalizeRecordingResponse> {
     const recording = await this.deps.meetingRepository.findById(request.recordingId);
     if (!recording) throw new MeetingRecordingNotFoundError(request.recordingId);
 
@@ -70,10 +74,7 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
 
     const workspace = await this.deps.workspaceRepository.findById(recording.workspaceId);
     if (!workspace) throw new Error(`Workspace ${recording.workspaceId} no longer exists`);
-    const audioAbsolutePath = this.deps.pathService.join(
-      workspace.folderPath,
-      recording.audioPath,
-    );
+    const audioAbsolutePath = this.deps.pathService.join(workspace.folderPath, recording.audioPath);
 
     const prompt = this.deps.defaultPrompt ?? DEFAULT_MEETING_SUMMARY_PROMPT;
     const systemAbsolutePath = this.deps.pathService.join(
@@ -89,13 +90,14 @@ export class FinalizeRecordingUseCase implements IFinalizeRecordingUseCase {
         systemAbsolutePath,
         prompt,
         request.durationMs,
+        options.signal,
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       recording.markFailed(message);
       await this.deps.meetingRepository.save(recording);
       publishMeetingStatus(this.deps.eventPublisher, recording);
-      return { recording: recording.toPersistence() };
+      throw error;
     }
 
     // Retention: when the user picks "delete after transcribing" (-1), drop

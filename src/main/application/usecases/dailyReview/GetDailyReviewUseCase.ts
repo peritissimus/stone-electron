@@ -24,6 +24,7 @@ import type {
   DailyReviewTodayJournal,
   GetDailyReviewRequest,
   IGetDailyReviewUseCase,
+  IExternalSourceRegistry,
   IJournalUseCases,
   IMeetingRecordingRepository,
   INoteRepository,
@@ -46,6 +47,7 @@ export interface GetDailyReviewUseCaseDeps {
   journalUseCases: IJournalUseCases;
   taskUseCases: ITaskUseCases;
   appConfigRepository: IAppConfigRepository;
+  externalSourceRegistry: IExternalSourceRegistry;
 }
 
 export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
@@ -72,14 +74,14 @@ export class GetDailyReviewUseCase implements IGetDailyReviewUseCase {
       this.loadOnThisDay(workspaceId, target),
     ]);
 
-    return {
+    return this.deps.externalSourceRegistry.mergeInto({
       date,
       todayJournal,
       todayMeetings,
       openTasks,
       recentNotes,
       onThisDay,
-    };
+    });
   }
 
   private async loadTodayJournal(

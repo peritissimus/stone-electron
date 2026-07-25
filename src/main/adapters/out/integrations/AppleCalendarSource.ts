@@ -7,6 +7,10 @@ import type {
   CalendarEvent,
   ICalendarSource,
 } from '../../../domain/ports/out/ICalendarSource';
+import type {
+  ExternalSourceLoadContext,
+  IExternalSource,
+} from '../../../domain/ports/out/IExternalSource';
 import type { ExternalSourceResult } from '../../../domain/ports/out/externalSourceResult';
 import { logger } from '../../../shared/utils';
 
@@ -16,7 +20,9 @@ interface BridgeResponse<T> {
   message?: string;
 }
 
-export class AppleCalendarSource implements ICalendarSource {
+export class AppleCalendarSource implements ICalendarSource, IExternalSource {
+  readonly source = 'calendar' as const;
+
   constructor(private readonly bridgePath: string) {}
 
   async listCalendars(): Promise<ExternalSourceResult<CalendarDescriptor[]>> {
@@ -27,6 +33,7 @@ export class AppleCalendarSource implements ICalendarSource {
   async getEventsForDate(
     date: string,
     calendarIds: readonly string[] | null,
+    signal?: AbortSignal,
   ): Promise<ExternalSourceResult<CalendarEvent[]>> {
     if (calendarIds !== null && calendarIds.length === 0) {
       return { status: 'connected', data: [] };
@@ -34,12 +41,24 @@ export class AppleCalendarSource implements ICalendarSource {
     return this.runBridge<CalendarEvent>(
       ['events', date, ...(calendarIds === null ? ['--all'] : calendarIds)],
       mapEvent,
+      signal,
     );
+  }
+
+  async load(context: ExternalSourceLoadContext) {
+    const result = await this.getEventsForDate(context.date, context.calendarIds, context.signal);
+    return {
+      source: this.source,
+      status: result.status,
+      data: { events: result.data },
+      ...(result.message ? { message: result.message } : {}),
+    };
   }
 
   private runBridge<T>(
     args: string[],
     mapItem: (value: unknown) => T,
+    signal?: AbortSignal,
   ): Promise<ExternalSourceResult<T[]>> {
     if (process.platform !== 'darwin') {
       return Promise.resolve({
@@ -53,7 +72,7 @@ export class AppleCalendarSource implements ICalendarSource {
       execFile(
         this.bridgePath,
         args,
-        { timeout: 30_000, maxBuffer: 1024 * 1024 },
+        { timeout: 30_000, maxBuffer: 1024 * 1024, signal },
         (error, stdout) => {
           if (error) {
             logger.warn('[CalendarBridge] request failed', {

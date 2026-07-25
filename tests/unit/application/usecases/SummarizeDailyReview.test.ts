@@ -26,24 +26,9 @@ function make(over: Partial<DailyReviewSnapshot> = {}) {
     text: '- did things',
   }));
   const textGenerator = { generateMarkdown } as unknown as ITextGenerator;
-  const loadIntegration = {
-    execute: vi.fn(async ({ source }: { source: 'calendar' | 'mail' | 'linear' }) => ({
-      source,
-      status: 'connected' as const,
-      ...(source === 'calendar' ? { calendarEvents: over.calendarEvents ?? [] } : {}),
-      ...(source === 'mail'
-        ? {
-            mailUnreadCount: over.mailUnreadCount ?? 0,
-            mailMessages: over.mailMessages ?? [],
-          }
-        : {}),
-      ...(source === 'linear' ? { linearIssues: over.linearIssues ?? [] } : {}),
-    })),
-  };
   const appendToJournal = vi.fn(async () => ({ noteId: 'journal-1', appended: true }));
   const useCase = new SummarizeDailyReviewUseCase({
     getDailyReview,
-    loadIntegration,
     textGenerator,
     appendToJournal,
   });

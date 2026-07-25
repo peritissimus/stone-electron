@@ -273,7 +273,13 @@ describe('function-style IPC adapters', () => {
   it('delegates daily review, status report, and template channels', async () => {
     const dailyReviewUseCases = {
       getDailyReview: execute({ today: true }),
-      loadIntegration: execute({ source: 'calendar', status: 'connected', calendarEvents: [] }),
+      listCalendars: execute({ status: 'connected', calendars: [] }),
+      loadIntegration: execute({
+        source: 'calendar',
+        status: 'connected',
+        data: { events: [] },
+      }),
+      loadIntegrations: execute([]),
       summarizeDailyReview: execute({ summary: 'Today', journalNoteId: null }),
     };
     const statusReportUseCases = { generate: execute({ markdown: '# Weekly' }) };
@@ -291,6 +297,7 @@ describe('function-style IPC adapters', () => {
       source: 'calendar',
       date: '2026-04-21',
     });
+    await invoke(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, { date: '2026-04-21' });
     await invoke(STATUS_REPORT_CHANNELS.GENERATE, { workspaceId: 'ws-1', windowDays: 7 });
     await invoke(TEMPLATE_CHANNELS.LIST, { workspaceId: 'ws-1' });
     await invoke(TEMPLATE_CHANNELS.CREATE_NOTE_FROM_TEMPLATE, {
@@ -306,6 +313,9 @@ describe('function-style IPC adapters', () => {
     });
     expect(dailyReviewUseCases.loadIntegration.execute).toHaveBeenCalledWith({
       source: 'calendar',
+      date: '2026-04-21',
+    });
+    expect(dailyReviewUseCases.loadIntegrations.execute).toHaveBeenCalledWith({
       date: '2026-04-21',
     });
     expect(statusReportUseCases.generate.execute).toHaveBeenCalledWith({
@@ -438,7 +448,7 @@ describe('function-style IPC adapters', () => {
     const meetingUseCases = {
       reserveRecordingSlot: execute({ recordingId: 'rec-1' }),
       appendRecordingAudio: execute({ appended: true }),
-      requestFinalize: execute({ recordingId: 'rec-1', transcript: 'done' }),
+      requestFinalize: execute({ jobId: 'job-1' }),
       finalizeRecording: execute({ recordingId: 'rec-1', transcript: 'done' }),
       listMeetingRecordings: execute({ recordings: [] }),
       getMeetingRecording: execute({ recordingId: 'rec-1' }),

@@ -23,7 +23,7 @@ let server: WhisperServer | null = null;
 
 describe.skipIf(!ready)('WhisperServer (real binary)', () => {
   afterAll(async () => {
-    await server?.stop();
+    await server?.shutdown();
   });
 
   it('keeps the model resident and transcribes chunks over HTTP', async () => {

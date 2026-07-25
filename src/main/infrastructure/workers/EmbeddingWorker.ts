@@ -14,9 +14,8 @@
 import { Worker } from 'worker_threads';
 import path from 'node:path';
 import { app } from 'electron';
-import { logger } from '../../shared/utils';
+import { logger, withTimeout } from '../../shared/utils';
 import { getMLStatusTracker } from './MLStatusTracker';
-import type { ManagedWorker, WorkerStatus } from './WorkerManager';
 import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
@@ -43,8 +42,7 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class EmbeddingWorker implements ManagedWorker {
-  readonly name = 'embeddings';
+export class EmbeddingWorker {
   private worker: Worker | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private requestId = 0;
@@ -108,24 +106,20 @@ export class EmbeddingWorker implements ManagedWorker {
       this.worker = new Worker(workerPath, { workerData: { cacheDir } });
 
       // Wait for worker to be ready
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Worker initialization timeout'));
-        }, 30000);
+      await withTimeout(
+        new Promise<void>((resolve, reject) => {
+          this.worker!.on('message', (msg: WorkerResponse) => {
+            if (msg.type === 'ready') {
+              this.workerReady = true;
+              resolve();
+            }
+          });
 
-        this.worker!.on('message', (msg: WorkerResponse) => {
-          if (msg.type === 'ready') {
-            clearTimeout(timeout);
-            this.workerReady = true;
-            resolve();
-          }
-        });
-
-        this.worker!.on('error', (err) => {
-          clearTimeout(timeout);
-          reject(err);
-        });
-      });
+          this.worker!.on('error', reject);
+        }),
+        30_000,
+        'Worker initialization timeout',
+      );
 
       // Set up message handler for responses
       this.worker.on('message', (msg: WorkerResponse) => {
@@ -385,26 +379,6 @@ export class EmbeddingWorker implements ManagedWorker {
    */
   isReady(): boolean {
     return this.initialized && this.workerReady && this.worker !== null;
-  }
-
-  // --- ManagedWorker ---
-
-  /** ManagedWorker alias for shutdown() so the WorkerManager can stop it. */
-  stop(): Promise<void> {
-    return this.shutdown();
-  }
-
-  status(): WorkerStatus {
-    const state = this.isReady() ? 'ready' : this.initializing ? 'starting' : 'idle';
-    return {
-      name: this.name,
-      state,
-      metrics: {
-        pendingRequests: this.pendingRequests.size,
-        rerankerReady: this.rerankerReady ? 1 : 0,
-        transcriberReady: this.transcriberReady ? 1 : 0,
-      },
-    };
   }
 
   /**

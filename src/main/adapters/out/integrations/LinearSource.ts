@@ -6,6 +6,10 @@
 
 import type { IAppConfigRepository } from '../../../domain';
 import type { ILinearSource, LinearIssue } from '../../../domain/ports/out/ILinearSource';
+import type {
+  ExternalSourceLoadContext,
+  IExternalSource,
+} from '../../../domain/ports/out/IExternalSource';
 import { logger } from '../../../shared/utils';
 
 const LINEAR_API = 'https://api.linear.app/graphql';
@@ -39,10 +43,12 @@ export interface LinearSourceDeps {
   fetchFn?: FetchFn;
 }
 
-export class LinearSource implements ILinearSource {
+export class LinearSource implements ILinearSource, IExternalSource {
+  readonly source = 'linear' as const;
+
   constructor(private readonly deps: LinearSourceDeps) {}
 
-  async getAssignedIssues(): Promise<LinearIssue[]> {
+  async getAssignedIssues(signal?: AbortSignal): Promise<LinearIssue[]> {
     const config = await this.deps.appConfigRepository.get();
     const apiKey = config.integrations.linearApiKey.trim();
     if (!apiKey) return [];
@@ -57,6 +63,7 @@ export class LinearSource implements ILinearSource {
           Authorization: apiKey,
         },
         body: JSON.stringify({ query: ASSIGNED_ISSUES_QUERY }),
+        signal,
       });
       if (!res.ok) {
         logger.warn(`[LinearSource] request failed (${res.status})`);
@@ -75,8 +82,18 @@ export class LinearSource implements ILinearSource {
         dueDate: n.dueDate ? String(n.dueDate) : null,
       }));
     } catch (err) {
-      logger.warn(`[LinearSource] unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      logger.warn(
+        `[LinearSource] unavailable: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return [];
     }
+  }
+
+  async load(context: ExternalSourceLoadContext) {
+    return {
+      source: this.source,
+      status: 'connected' as const,
+      data: { issues: await this.getAssignedIssues(context.signal) },
+    };
   }
 }

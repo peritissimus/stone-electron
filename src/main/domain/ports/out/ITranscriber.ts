@@ -11,6 +11,8 @@ import type { TranscriptSegment } from '../../entities';
 export interface TranscribeRequest {
   /** Absolute path to an audio file (webm/wav/mp3 — Whisper handles them). */
   audioPath: string;
+  /** Cancels the underlying transcription work when the caller gives up. */
+  signal?: AbortSignal;
   /** Optional progress callback fired by the implementation per chunk. */
   onProgress?: (info: TranscribeProgress) => void;
 }

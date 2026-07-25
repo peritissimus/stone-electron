@@ -153,6 +153,7 @@ export const DAILY_REVIEW_CHANNELS = {
   GET: 'dailyReview:get',
   LIST_CALENDARS: 'dailyReview:listCalendars',
   LOAD_INTEGRATION: 'dailyReview:loadIntegration',
+  LOAD_INTEGRATIONS: 'dailyReview:loadIntegrations',
   SUMMARIZE: 'dailyReview:summarize',
 } as const;
 
