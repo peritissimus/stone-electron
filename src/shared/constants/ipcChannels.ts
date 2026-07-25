@@ -68,27 +68,11 @@ export const TAG_CHANNELS = {
   REMOVE_FROM_NOTE: 'tags:removeFromNote',
 } as const;
 
-// Topic Operations (Semantic Classification)
+// Topic Operations (semantic search; topics are organized in the background)
 export const TOPIC_CHANNELS = {
-  GET_ALL: 'topics:getAll',
-  GET_BY_ID: 'topics:getById',
-  CREATE: 'topics:create',
-  UPDATE: 'topics:update',
-  DELETE: 'topics:delete',
-  GET_NOTES_BY_TOPIC: 'topics:getNotesByTopic',
-  GET_TOPICS_FOR_NOTE: 'topics:getTopicsForNote',
-  ASSIGN_TO_NOTE: 'topics:assignToNote',
-  REMOVE_FROM_NOTE: 'topics:removeFromNote',
-  CLASSIFY_NOTE: 'topics:classifyNote',
-  CLASSIFY_ALL: 'topics:classifyAll',
-  RECLASSIFY_ALL: 'topics:reclassifyAll',
   SEMANTIC_SEARCH: 'topics:semanticSearch',
-  GET_SIMILAR_NOTES: 'topics:getSimilarNotes',
-  RECOMPUTE_CENTROIDS: 'topics:recomputeCentroids',
   GET_EMBEDDING_STATUS: 'topics:getEmbeddingStatus',
   INITIALIZE: 'topics:initialize',
-  GET_SUGGESTIONS: 'topics:getSuggestions',
-  ADOPT_SUGGESTION: 'topics:adoptSuggestion',
 } as const;
 
 // Search Operations
