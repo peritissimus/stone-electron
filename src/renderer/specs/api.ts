@@ -19,8 +19,6 @@ import type {
   NotebookWithCount,
   Tag,
   TagWithCount,
-  Topic,
-  TopicWithCount,
   Workspace,
   Attachment,
   NoteVersion,
@@ -141,23 +139,24 @@ export interface TagAPI {
 // TOPIC API
 // =============================================================================
 
+/**
+ * Topics are created and assigned by the main process on its own schedule, so
+ * the renderer's contract covers only the semantic index behind them.
+ */
 export interface TopicAPI {
-  getAll(): Promise<Result<TopicWithCount[]>>;
-  getById(id: UUID): Promise<Result<Topic>>;
-  create(data: { name: string; color?: string; description?: string }): Promise<Result<Topic>>;
-  update(
-    id: UUID,
-    data: { name?: string; color?: string; description?: string },
-  ): Promise<Result<Topic>>;
-  delete(id: UUID): Promise<Result<void>>;
-
-  // Note associations
-  addToNote(topicId: UUID, noteId: UUID, confidence?: number): Promise<Result<void>>;
-  removeFromNote(topicId: UUID, noteId: UUID): Promise<Result<void>>;
-  getNoteTopics(noteId: UUID): Promise<Result<Array<Topic & { confidence: number }>>>;
-
-  // Classification
-  classifyNote(noteId: UUID): Promise<Result<Array<{ topicId: UUID; confidence: number }>>>;
+  initialize(): Promise<Result<{ success: boolean; ready: boolean }>>;
+  semanticSearch(
+    query: string,
+    limit?: number,
+  ): Promise<Result<{ results: Array<{ noteId: UUID; title: string; similarity: number }> }>>;
+  getEmbeddingStatus(): Promise<
+    Result<{
+      ready: boolean;
+      totalNotes: number;
+      embeddedNotes: number;
+      pendingNotes: number;
+    }>
+  >;
 }
 
 // =============================================================================
