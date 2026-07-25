@@ -495,7 +495,7 @@ describe('TopicUseCases', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].noteId).toBe('note-2');
-      expect(result[0].distance).toBe(0.82);
+      expect(result[0].similarity).toBe(0.82);
     });
 
     it('returns empty array when note not found', async () => {
@@ -531,7 +531,7 @@ describe('TopicUseCases', () => {
       const result = await useCases.semanticSearch.execute('search query');
 
       expect(result).toHaveLength(1);
-      expect(result[0].distance).toBe(0.91);
+      expect(result[0].similarity).toBe(0.91);
       expect(embedder.generateEmbedding).toHaveBeenCalledWith('search query');
     });
 
