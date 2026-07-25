@@ -106,29 +106,6 @@ export const CreateFromTemplateResponseSchema = z.object({
   cursorOffset: z.number().nullable(),
 });
 
-export const SuggestedTopicRepresentativeSchema = z.object({
-  chunkId: z.string(),
-  noteId: z.string(),
-  noteTitle: z.string(),
-  headingPath: z.array(z.string()),
-  excerpt: z.string(),
-});
-export const SuggestedTopicSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  altLabels: z.array(z.string()),
-  noteIds: z.array(z.string()),
-  chunkIds: z.array(z.string()),
-  noteCount: z.number(),
-  chunkCount: z.number(),
-  cohesion: z.number(),
-  representatives: z.array(SuggestedTopicRepresentativeSchema),
-});
-export const AdoptSuggestedTopicResponseSchema = z.object({
-  topicId: z.string(),
-  assignedNoteCount: z.number(),
-});
-
 export const IndexStatsSchema = z.object({
   workspaceId: z.string(),
   totalNotes: z.number(),
