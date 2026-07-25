@@ -7,7 +7,7 @@
  *   - renderer `api/tagAPI.ts` (response validation)
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 const IsoOrDate = z.union([z.string(), z.date(), z.number()]);
 
@@ -54,7 +54,7 @@ export const DeleteTagRequestSchema = z
 
 export const ListTagsRequestSchema = z
   .object({
-    sort: z.enum(['name', 'count', 'recent']).optional(),
+    sort: z.literalEnum(['name', 'count', 'recent']).optional(),
   })
   .passthrough();
 

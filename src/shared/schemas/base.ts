@@ -6,7 +6,7 @@
  * they must stay side-effect-free and contain no business logic.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const IpcErrorPayloadSchema = z.object({
   code: z.string(),

@@ -6,7 +6,7 @@
  *   - renderer `api/noteAPI.ts` (exportHtml / exportPdf / exportMarkdown)
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 // ExportOptions is a flexible bag the backend accepts; we don't constrain
 // it tightly at the wire to avoid drifting from the use case's own type.

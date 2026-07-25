@@ -6,9 +6,9 @@
  *   - renderer `api/quickNoteAPI.ts`
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
-export const QuickNoteSlotSchema = z.enum(['personal', 'work']);
+export const QuickNoteSlotSchema = z.literalEnum(['personal', 'work']);
 export type QuickNoteSlot = z.infer<typeof QuickNoteSlotSchema>;
 
 export const CreateQuickNoteRequestSchema = z

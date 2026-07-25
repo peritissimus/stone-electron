@@ -8,7 +8,7 @@
  *   - renderer `api/scratchAPI.ts`
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const ScratchPickResponseSchema = z.object({
   path: z.string().nullable(),

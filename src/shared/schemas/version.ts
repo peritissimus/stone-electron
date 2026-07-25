@@ -10,7 +10,7 @@
  * from the UI today.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 // ============================================================================
 // Request payloads

@@ -6,7 +6,7 @@
  *   - renderer `api/journalAPI.ts`
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const OpenOrCreateJournalRequestSchema = z
   .object({

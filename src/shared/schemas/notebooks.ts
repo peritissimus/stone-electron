@@ -11,7 +11,7 @@
  * to the camelCase names the use case expects.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 const IsoOrDate = z.union([z.string(), z.date(), z.number()]);
 

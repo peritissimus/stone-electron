@@ -12,7 +12,7 @@
  * aspirational and should not be called until implemented.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const DatabaseStatusResponseSchema = z.object({
   path: z.string(),

@@ -7,7 +7,7 @@
  *   - renderer `api/workspaceAPI.ts` (response validation)
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 const IsoOrDate = z.union([z.string(), z.date(), z.number()]);
 
@@ -74,7 +74,7 @@ const ScanFolderNodeSchema: z.ZodType<any> = z.lazy(() =>
     name: z.string(),
     path: z.string(),
     relativePath: z.string(),
-    type: z.enum(['file', 'folder']),
+    type: z.literalEnum(['file', 'folder']),
     children: z.array(ScanFolderNodeSchema).optional(),
   }),
 );

@@ -11,10 +11,24 @@
  * separately.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const SystemGetFontsResponseSchema = z.object({
   fonts: z.array(z.string()),
 });
+export const MicAccessStatusSchema = z.literalEnum([
+  'granted',
+  'denied',
+  'not-determined',
+  'restricted',
+  'unknown',
+]);
+export const SystemAudioAccessSchema = z.literalEnum(['granted', 'denied', 'unsupported']);
+export const MicAccessStatusResponseSchema = z.object({ status: MicAccessStatusSchema });
+export const RequestMicAccessResponseSchema = z.object({
+  granted: z.boolean(),
+  status: MicAccessStatusSchema,
+});
+export const SystemAudioAccessResponseSchema = z.object({ status: SystemAudioAccessSchema });
 
 export type SystemGetFontsResponse = z.infer<typeof SystemGetFontsResponseSchema>;

@@ -16,7 +16,7 @@
  *   - renderer `api/noteAPI.ts` (response validation)
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 import { NoteSchema } from './notes';
 
 // ============================================================================
@@ -50,14 +50,14 @@ export type GetLinksResponse = z.infer<typeof GetLinksResponseSchema>;
 export const GraphNodeSchema = z.object({
   id: z.string(),
   label: z.string(),
-  type: z.enum(['note', 'notebook', 'tag', 'topic']),
+  type: z.literalEnum(['note', 'notebook', 'tag', 'topic']),
   metadata: z.record(z.unknown()).optional(),
 });
 
 export const GraphLinkSchema = z.object({
   source: z.string(),
   target: z.string(),
-  type: z.enum(['link', 'reference', 'tag', 'topic', 'parent']),
+  type: z.literalEnum(['link', 'reference', 'tag', 'topic', 'parent']),
   weight: z.number().optional(),
 });
 

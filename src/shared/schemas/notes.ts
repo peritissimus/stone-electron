@@ -12,7 +12,7 @@
  * also aligning serialization.
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 const IsoOrDate = z.union([z.string(), z.date(), z.number()]);
 
@@ -116,7 +116,7 @@ export const GetAllNotesRequestSchema = z
     limit: z.number().optional(),
     offset: z.number().optional(),
     sortBy: z.string().optional(),
-    sortOrder: z.enum(['asc', 'desc']).optional(),
+    sortOrder: z.literalEnum(['asc', 'desc']).optional(),
   })
   .passthrough();
 
@@ -158,6 +158,18 @@ export const GetAllNotesResponseSchema = z.object({
 
 export const GetNoteContentResponseSchema = z.object({
   content: z.string(),
+});
+
+export const TodoItemSchema = z.object({
+  id: z.string(),
+  noteId: z.string(),
+  noteTitle: z.string().nullable(),
+  notePath: z.string().nullable(),
+  text: z.string(),
+  state: z.literalEnum(['todo', 'doing', 'waiting', 'hold', 'done', 'canceled', 'idea']),
+  checked: z.boolean(),
+  createdAt: IsoOrDate.optional(),
+  updatedAt: IsoOrDate.optional(),
 });
 
 export type GetAllNotesResponse = z.infer<typeof GetAllNotesResponseSchema>;

@@ -6,7 +6,7 @@
  *   - renderer `api/quickCaptureAPI.ts`
  */
 
-import { z } from 'zod';
+import { z } from './schema';
 
 export const AppendToJournalRequestSchema = z
   .object({
