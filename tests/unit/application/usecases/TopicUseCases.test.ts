@@ -201,6 +201,7 @@ describe('TopicUseCases', () => {
       searchVector: vi.fn().mockResolvedValue([]),
       getNoteVector: vi.fn().mockResolvedValue(null),
       findSimilarNotesByVector: vi.fn().mockResolvedValue([]),
+      getChunksForWorkspace: vi.fn().mockResolvedValue([]),
     };
   }
 
@@ -280,8 +281,7 @@ describe('TopicUseCases', () => {
           'getEmbeddingStatus',
           'getNotesForTopic',
           'getTopicsForNote',
-          'suggestTopics',
-          'adoptSuggestedTopic',
+          'organizeTopics',
         ] as const
       ).map((key) => [key, { execute: execute(key) }]),
     );
@@ -659,6 +659,113 @@ describe('TopicUseCases', () => {
       expect(result[0].id).toBe('note-1');
       expect(result[0].title).toBe('Test Note');
       expect(result[0].confidence).toBe(0.9);
+    });
+  });
+
+  describe('organizeTopics', () => {
+    function createChunk(id: string, noteId: string, text: string) {
+      return {
+        id,
+        noteId,
+        workspaceId: 'ws-1',
+        chunkIndex: 0,
+        headingPath: ['Release Planning'],
+        text,
+        contentHash: 'hash',
+        tokenCount: 10,
+        embedding: [1, 0.02, 0],
+        createdAt: new Date('2024-01-01'),
+        updatedAt: new Date('2024-01-01'),
+      };
+    }
+
+    it('does nothing when there is no active workspace', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
+
+      const result = await useCases.organizeTopics.execute();
+
+      expect(result).toEqual({
+        ran: false,
+        topicsCreated: 0,
+        notesAssigned: 0,
+        notesClassified: 0,
+      });
+      expect(indexRepository.getChunksForWorkspace).not.toHaveBeenCalled();
+    });
+
+    it('promotes a tight cluster to a topic and assigns its notes', async () => {
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(createWorkspaceProps());
+      indexRepository.getChunksForWorkspace.mockResolvedValue([
+        createChunk('chunk-1', 'note-1', 'release planning ship dates'),
+        createChunk('chunk-2', 'note-2', 'release planning ship dates'),
+        createChunk('chunk-3', 'note-3', 'release planning ship dates'),
+        createChunk('chunk-4', 'note-1', 'release planning ship dates'),
+      ]);
+      vi.mocked(noteRepo.findById).mockImplementation(async (id: string) =>
+        createNoteProps({ id, title: 'Release Planning' }),
+      );
+      vi.mocked(topicRepo.findAll).mockResolvedValue([]);
+      vi.mocked(topicRepo.save).mockResolvedValue(undefined);
+      vi.mocked(topicRepo.assignToNote).mockResolvedValue(undefined);
+
+      const result = await useCases.organizeTopics.execute();
+
+      expect(result.ran).toBe(true);
+      expect(result.topicsCreated).toBe(1);
+      expect(result.notesAssigned).toBe(3);
+      expect(topicRepo.save).toHaveBeenCalledTimes(1);
+      expect(topicRepo.assignToNote).toHaveBeenCalledTimes(3);
+      expect(vi.mocked(topicRepo.assignToNote).mock.calls[0][2]).toMatchObject({
+        confidence: expect.any(Number),
+      });
+    });
+
+    it('files notes that belong to no topic against existing centroids', async () => {
+      const centroid = new Uint8Array(new Float32Array([1, 0, 0]).buffer);
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(createWorkspaceProps());
+      indexRepository.getChunksForWorkspace.mockResolvedValue([]);
+      vi.mocked(topicRepo.findAll).mockResolvedValue([
+        createTopicProps({ id: 'topic-1', name: 'Existing', centroid }),
+      ]);
+      vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue([]);
+      vi.mocked(noteRepo.findAll).mockResolvedValue([
+        createNoteProps({ id: 'note-1' }),
+        createNoteProps({ id: 'note-2' }),
+      ]);
+      vi.mocked(noteRepo.findById).mockImplementation(async (id: string) =>
+        createNoteProps({ id }),
+      );
+      indexRepository.getNoteVector.mockResolvedValue([1, 0, 0]);
+      vi.mocked(topicRepo.assignToNote).mockResolvedValue(undefined);
+      vi.mocked(topicRepo.clearAutoTopicsForNote).mockResolvedValue(undefined);
+
+      const result = await useCases.organizeTopics.execute();
+
+      expect(result.topicsCreated).toBe(0);
+      expect(result.notesClassified).toBe(2);
+      expect(topicRepo.assignToNote).toHaveBeenCalledWith(
+        'note-1',
+        'topic-1',
+        expect.objectContaining({ confidence: expect.any(Number) }),
+      );
+    });
+
+    it('skips notes that are already assigned to a topic', async () => {
+      const centroid = new Uint8Array(new Float32Array([1, 0, 0]).buffer);
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(createWorkspaceProps());
+      indexRepository.getChunksForWorkspace.mockResolvedValue([]);
+      vi.mocked(topicRepo.findAll).mockResolvedValue([
+        createTopicProps({ id: 'topic-1', name: 'Existing', centroid }),
+      ]);
+      vi.mocked(topicRepo.getNotesForTopic).mockResolvedValue([
+        { noteId: 'note-1', confidence: 0.9, isManual: false },
+      ]);
+      vi.mocked(noteRepo.findAll).mockResolvedValue([createNoteProps({ id: 'note-1' })]);
+
+      const result = await useCases.organizeTopics.execute();
+
+      expect(result.notesClassified).toBe(0);
+      expect(topicRepo.assignToNote).not.toHaveBeenCalled();
     });
   });
 
