@@ -5,7 +5,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createVersionUseCases } from '../../../../src/main/application/usecases/version';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { VersionUseCasesLive } from '../../../../src/main/application/usecases/version';
+import {
+  FileStoragePort,
+  NoteRepositoryPort,
+  PathServicePort,
+  VersionRepositoryPort,
+  VersionUseCasesPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IVersionRepository } from '../../../../src/main/domain/ports/out/IVersionRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
@@ -15,6 +24,15 @@ import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import type { VersionProps } from '../../../../src/main/domain/entities/Version';
 import { createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -102,20 +120,59 @@ describe('VersionUseCases', () => {
   let versionRepo: IVersionRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
-  let useCases: IVersionUseCases;
+  let useCases: PromiseFacade<IVersionUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     versionRepo = createMockVersionRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
-    useCases = createVersionUseCases({
-      noteRepository: noteRepo,
-      versionRepository: versionRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      pathService: createMockPathService(),
-    });
+    const runtime = ManagedRuntime.make(
+      VersionUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(VersionRepositoryPort, versionRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(PathServicePort, createMockPathService()),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: IVersionUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          VersionUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      getVersions: {
+        execute: (noteId) =>
+          run((service) => service.getVersions.execute(noteId)),
+      },
+      createVersion: {
+        execute: (noteId) =>
+          run((service) => service.createVersion.execute(noteId)),
+      },
+      restoreVersion: {
+        execute: (noteId, versionId) =>
+          run((service) =>
+            service.restoreVersion.execute(noteId, versionId),
+          ),
+      },
+      getVersion: {
+        execute: (versionId) =>
+          run((service) => service.getVersion.execute(versionId)),
+      },
+    };
   });
 
   describe('getVersions', () => {

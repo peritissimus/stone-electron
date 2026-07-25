@@ -1,53 +1,29 @@
-/**
- * TagUseCases Application Layer Tests
- *
- * Tests use case orchestration with mocked OUT ports.
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { TagUseCasesLive } from '../../../../src/main/application/usecases/tag';
 import {
-  CreateTagUseCase,
-  UpdateTagUseCase,
-  GetTagUseCase,
-  ListTagsUseCase,
-  DeleteTagUseCase,
-  AddTagToNoteUseCase,
-  RemoveTagFromNoteUseCase,
-  GetNoteTagsUseCase,
-} from '../../../../src/main/application/usecases/tag';
-import type { ITagRepository } from '../../../../src/main/domain/ports/out/ITagRepository';
+  EventPublisherPort,
+  IdGeneratorPort,
+  TagNotFoundError,
+  TagRepositoryPort,
+  TagUseCasesPort,
+  type ITagUseCases,
+  type TagProps,
+} from '../../../../src/main/domain';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
-import { TagNotFoundError } from '../../../../src/main/domain/errors';
-import type { TagProps } from '../../../../src/main/domain/entities/Tag';
+import type { ITagRepository } from '../../../../src/main/domain/ports/out/ITagRepository';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import { createMockIdGenerator } from './testDoubles';
 
-// Mock factories
-function createMockTagRepository(): ITagRepository {
-  return {
-    findById: vi.fn(),
-    findByName: vi.fn(),
-    findByNoteId: vi.fn(),
-    findAll: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
-    addTagToNote: vi.fn(),
-    removeTagFromNote: vi.fn(),
-    getNotesForTag: vi.fn(),
-  } as unknown as ITagRepository;
-}
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
-function createMockEventPublisher(): IEventPublisher {
-  return {
-    publish: vi.fn(),
-    publishAll: vi.fn(),
-    emit: vi.fn(),
-    subscribe: vi.fn(),
-    subscribeAll: vi.fn(),
-  } as unknown as IEventPublisher;
-}
-
-function createTagProps(overrides: Partial<TagProps> = {}): TagProps {
+function tag(overrides: Partial<TagProps> = {}): TagProps {
   return {
     id: 'tag-1',
     name: 'test-tag',
@@ -59,249 +35,185 @@ function createTagProps(overrides: Partial<TagProps> = {}): TagProps {
 }
 
 describe('TagUseCases', () => {
-  describe('CreateTagUseCase', () => {
-    let tagRepo: ITagRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: CreateTagUseCase;
+  let repository: ITagRepository;
+  let publisher: IEventPublisher;
+  let useCases: PromiseFacade<ITagUseCases>;
 
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new CreateTagUseCase(tagRepo, createMockIdGenerator(), eventPublisher);
-    });
-
-    it('creates tag with name', async () => {
-      vi.mocked(tagRepo.findAll).mockResolvedValue([]);
-      vi.mocked(tagRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ name: 'new-tag' });
-
-      expect(result.tag.name).toBe('new-tag');
-      expect(tagRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.publish).toHaveBeenCalled();
-    });
-
-    it('creates tag with custom color', async () => {
-      vi.mocked(tagRepo.findAll).mockResolvedValue([]);
-      vi.mocked(tagRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ name: 'my-tag', color: '#ff5500' });
-
-      expect(result.tag.name).toBe('my-tag');
-      expect(result.tag.color).toBe('#ff5500');
-    });
-
-    it('returns existing tag if name already exists', async () => {
-      const existingTag = createTagProps({ name: 'existing-tag' });
-      vi.mocked(tagRepo.findAll).mockResolvedValue([existingTag]);
-
-      const result = await useCase.execute({ name: 'Existing Tag' });
-
-      expect(result.tag).toEqual(existingTag);
-      expect(tagRepo.save).not.toHaveBeenCalled();
-    });
-
-    it('normalizes tag name', async () => {
-      vi.mocked(tagRepo.findAll).mockResolvedValue([]);
-      vi.mocked(tagRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ name: 'My New Tag' });
-
-      expect(result.tag.name).toBe('my-new-tag');
-    });
+  beforeEach(() => {
+    repository = {
+      findById: vi.fn(),
+      findByName: vi.fn(),
+      findAll: vi.fn(async () => []),
+      findAllWithCounts: vi.fn(async () => []),
+      findByNoteId: vi.fn(async () => []),
+      save: vi.fn(),
+      delete: vi.fn(),
+      exists: vi.fn(),
+      addTagToNote: vi.fn(),
+      removeTagFromNote: vi.fn(),
+      getNoteTags: vi.fn(),
+      setNoteTags: vi.fn(),
+      getTagsForNotes: vi.fn(),
+    } as unknown as ITagRepository;
+    publisher = { publish: vi.fn() } as unknown as IEventPublisher;
+    const runtime = ManagedRuntime.make(
+      TagUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(TagRepositoryPort, repository),
+            adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+            adapterLayer(EventPublisherPort, publisher),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: ITagUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          TagUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      createTag: {
+        execute: (request) =>
+          run((service) => service.createTag.execute(request)),
+      },
+      updateTag: {
+        execute: (request) =>
+          run((service) => service.updateTag.execute(request)),
+      },
+      getTag: {
+        execute: (request) =>
+          run((service) => service.getTag.execute(request)),
+      },
+      listTags: {
+        execute: (request) =>
+          run((service) => service.listTags.execute(request)),
+      },
+      deleteTag: {
+        execute: (request) =>
+          run((service) => service.deleteTag.execute(request)),
+      },
+      addTagToNote: {
+        execute: (request) =>
+          run((service) => service.addTagToNote.execute(request)),
+      },
+      removeTagFromNote: {
+        execute: (request) =>
+          run((service) => service.removeTagFromNote.execute(request)),
+      },
+      getNoteTags: {
+        execute: (request) =>
+          run((service) => service.getNoteTags.execute(request)),
+      },
+    };
   });
 
-  describe('UpdateTagUseCase', () => {
-    let tagRepo: ITagRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: UpdateTagUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new UpdateTagUseCase(tagRepo, eventPublisher);
+  it('creates normalized tags and publishes the persisted value', async () => {
+    const result = await useCases.createTag.execute({
+      name: 'My New Tag',
+      color: '#ff5500',
     });
-
-    it('updates tag name', async () => {
-      const tagProps = createTagProps();
-      vi.mocked(tagRepo.findById).mockResolvedValue(tagProps);
-      vi.mocked(tagRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ id: 'tag-1', name: 'new-name' });
-
-      expect(result.tag.name).toBe('new-name');
-      expect(tagRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.publish).toHaveBeenCalled();
+    expect(result.tag).toMatchObject({
+      id: 'generated-id',
+      name: 'my-new-tag',
+      color: '#ff5500',
     });
-
-    it('updates tag color', async () => {
-      const tagProps = createTagProps();
-      vi.mocked(tagRepo.findById).mockResolvedValue(tagProps);
-      vi.mocked(tagRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ id: 'tag-1', color: '#00ff00' });
-
-      expect(result.tag.color).toBe('#00ff00');
-    });
-
-    it('throws TagNotFoundError when tag not found', async () => {
-      vi.mocked(tagRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute({ id: 'nonexistent', name: 'new' })).rejects.toThrow(
-        TagNotFoundError
-      );
-    });
+    expect(repository.save).toHaveBeenCalled();
+    expect(publisher.publish).toHaveBeenCalled();
   });
 
-  describe('GetTagUseCase', () => {
-    let tagRepo: ITagRepository;
-    let useCase: GetTagUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      useCase = new GetTagUseCase(tagRepo);
-    });
-
-    it('returns tag when found', async () => {
-      const tagProps = createTagProps();
-      vi.mocked(tagRepo.findById).mockResolvedValue(tagProps);
-
-      const result = await useCase.execute({ id: 'tag-1' });
-
-      expect(result.tag).toEqual(tagProps);
-      expect(tagRepo.findById).toHaveBeenCalledWith('tag-1');
-    });
-
-    it('throws TagNotFoundError when not found', async () => {
-      vi.mocked(tagRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute({ id: 'nonexistent' })).rejects.toThrow(TagNotFoundError);
-    });
+  it('returns an existing normalized tag without saving it again', async () => {
+    const existing = tag({ name: 'existing-tag' });
+    vi.mocked(repository.findAll).mockResolvedValue([existing]);
+    await expect(
+      useCases.createTag.execute({ name: 'Existing Tag' }),
+    ).resolves.toEqual({ tag: existing });
+    expect(repository.save).not.toHaveBeenCalled();
   });
 
-  describe('ListTagsUseCase', () => {
-    let tagRepo: ITagRepository;
-    let useCase: ListTagsUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      useCase = new ListTagsUseCase(tagRepo);
+  it('updates tag properties and preserves typed missing failures', async () => {
+    vi.mocked(repository.findById)
+      .mockResolvedValueOnce(tag())
+      .mockResolvedValueOnce(null);
+    const result = await useCases.updateTag.execute({
+      id: 'tag-1',
+      name: 'Renamed Tag',
+      color: '#00ff00',
     });
-
-    it('returns all tags', async () => {
-      const tags = [
-        createTagProps({ id: 'tag-1', name: 'tag-one' }),
-        createTagProps({ id: 'tag-2', name: 'tag-two' }),
-      ];
-      vi.mocked(tagRepo.findAll).mockResolvedValue(tags);
-
-      const result = await useCase.execute();
-
-      expect(result.tags).toHaveLength(2);
-      expect(tagRepo.findAll).toHaveBeenCalled();
+    expect(result.tag).toMatchObject({
+      name: 'renamed-tag',
+      color: '#00ff00',
     });
-
-    it('returns empty array when no tags', async () => {
-      vi.mocked(tagRepo.findAll).mockResolvedValue([]);
-
-      const result = await useCase.execute();
-
-      expect(result.tags).toHaveLength(0);
-    });
+    expect(repository.save).toHaveBeenCalled();
+    await expect(
+      useCases.updateTag.execute({ id: 'missing', name: 'new' }),
+    ).rejects.toBeInstanceOf(TagNotFoundError);
   });
 
-  describe('DeleteTagUseCase', () => {
-    let tagRepo: ITagRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: DeleteTagUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new DeleteTagUseCase(tagRepo, eventPublisher);
+  it('gets tags and rejects a missing tag with its domain error', async () => {
+    vi.mocked(repository.findById)
+      .mockResolvedValueOnce(tag())
+      .mockResolvedValueOnce(null);
+    await expect(useCases.getTag.execute({ id: 'tag-1' })).resolves.toEqual({
+      tag: tag(),
     });
-
-    it('deletes tag', async () => {
-      vi.mocked(tagRepo.exists).mockResolvedValue(true);
-      vi.mocked(tagRepo.delete).mockResolvedValue(undefined);
-
-      await useCase.execute({ id: 'tag-1' });
-
-      expect(tagRepo.delete).toHaveBeenCalledWith('tag-1');
-      expect(eventPublisher.publish).toHaveBeenCalled();
-    });
-
-    it('throws TagNotFoundError when tag not found', async () => {
-      vi.mocked(tagRepo.exists).mockResolvedValue(false);
-
-      await expect(useCase.execute({ id: 'nonexistent' })).rejects.toThrow(TagNotFoundError);
-    });
+    await expect(
+      useCases.getTag.execute({ id: 'missing' }),
+    ).rejects.toBeInstanceOf(TagNotFoundError);
   });
 
-  describe('AddTagToNoteUseCase', () => {
-    let tagRepo: ITagRepository;
-    let useCase: AddTagToNoteUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      useCase = new AddTagToNoteUseCase(tagRepo);
+  it('selects counted and uncounted tag lists', async () => {
+    vi.mocked(repository.findAll).mockResolvedValue([tag()]);
+    vi.mocked(repository.findAllWithCounts).mockResolvedValue([
+      { ...tag(), noteCount: 2 },
+    ]);
+    await expect(useCases.listTags.execute()).resolves.toEqual({
+      tags: [tag()],
     });
-
-    it('adds tag to note', async () => {
-      vi.mocked(tagRepo.addTagToNote).mockResolvedValue(undefined);
-
-      await useCase.execute({ noteId: 'note-1', tagId: 'tag-1' });
-
-      expect(tagRepo.addTagToNote).toHaveBeenCalledWith('note-1', 'tag-1');
-    });
+    await expect(
+      useCases.listTags.execute({ includeNoteCount: true }),
+    ).resolves.toEqual({ tags: [{ ...tag(), noteCount: 2 }] });
+    expect(repository.findAllWithCounts).toHaveBeenCalled();
   });
 
-  describe('RemoveTagFromNoteUseCase', () => {
-    let tagRepo: ITagRepository;
-    let useCase: RemoveTagFromNoteUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      useCase = new RemoveTagFromNoteUseCase(tagRepo);
-    });
-
-    it('removes tag from note', async () => {
-      vi.mocked(tagRepo.removeTagFromNote).mockResolvedValue(undefined);
-
-      await useCase.execute({ noteId: 'note-1', tagId: 'tag-1' });
-
-      expect(tagRepo.removeTagFromNote).toHaveBeenCalledWith('note-1', 'tag-1');
-    });
+  it('deletes existing tags and rejects missing ones', async () => {
+    vi.mocked(repository.exists)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    await useCases.deleteTag.execute({ id: 'tag-1' });
+    expect(repository.delete).toHaveBeenCalledWith('tag-1');
+    expect(publisher.publish).toHaveBeenCalled();
+    await expect(
+      useCases.deleteTag.execute({ id: 'missing' }),
+    ).rejects.toBeInstanceOf(TagNotFoundError);
   });
 
-  describe('GetNoteTagsUseCase', () => {
-    let tagRepo: ITagRepository;
-    let useCase: GetNoteTagsUseCase;
-
-    beforeEach(() => {
-      tagRepo = createMockTagRepository();
-      useCase = new GetNoteTagsUseCase(tagRepo);
+  it('orchestrates note-tag relationships', async () => {
+    const tags = [tag()];
+    vi.mocked(repository.findByNoteId).mockResolvedValue(tags);
+    await useCases.addTagToNote.execute({
+      noteId: 'note-1',
+      tagId: 'tag-1',
     });
-
-    it('returns tags for note', async () => {
-      const tags = [
-        createTagProps({ id: 'tag-1', name: 'work' }),
-        createTagProps({ id: 'tag-2', name: 'personal' }),
-      ];
-      vi.mocked(tagRepo.findByNoteId).mockResolvedValue(tags);
-
-      const result = await useCase.execute({ noteId: 'note-1' });
-
-      expect(result.tags).toHaveLength(2);
-      expect(tagRepo.findByNoteId).toHaveBeenCalledWith('note-1');
+    await useCases.removeTagFromNote.execute({
+      noteId: 'note-1',
+      tagId: 'tag-1',
     });
-
-    it('returns empty array when note has no tags', async () => {
-      vi.mocked(tagRepo.findByNoteId).mockResolvedValue([]);
-
-      const result = await useCase.execute({ noteId: 'note-1' });
-
-      expect(result.tags).toHaveLength(0);
-    });
+    await expect(
+      useCases.getNoteTags.execute({ noteId: 'note-1' }),
+    ).resolves.toEqual({ tags });
+    expect(repository.addTagToNote).toHaveBeenCalledWith('note-1', 'tag-1');
+    expect(repository.removeTagFromNote).toHaveBeenCalledWith(
+      'note-1',
+      'tag-1',
+    );
   });
 });

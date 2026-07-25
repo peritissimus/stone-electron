@@ -5,15 +5,31 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTaskUseCases } from '../../../../src/main/application/usecases/task';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { TaskUseCasesLive } from '../../../../src/main/application/usecases/task';
+import {
+  FileStoragePort,
+  NoteRepositoryPort,
+  PathServicePort,
+  TaskUseCasesPort,
+  WorkspaceRepositoryPort,
+} from '../../../../src/main/domain';
 import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
 import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
-import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
 import type { ITaskUseCases } from '../../../../src/main/domain/ports/in/ITaskUseCases';
 import type { NoteProps } from '../../../../src/main/domain/entities/Note';
 import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
 import { createMockPathService } from './testDoubles';
+import { adapterLayer } from '../../../helpers/adapterLayer';
+
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
 // Mock factories
 function createMockNoteRepository(): INoteRepository {
@@ -42,13 +58,6 @@ function createMockFileStorage(): IFileStorage {
     delete: vi.fn(),
     exists: vi.fn(),
   } as unknown as IFileStorage;
-}
-
-function createMockMarkdownProcessor(): IMarkdownProcessor {
-  return {
-    htmlToMarkdown: vi.fn(),
-    markdownToHtml: vi.fn(),
-  } as unknown as IMarkdownProcessor;
 }
 
 function createNoteProps(overrides: Partial<NoteProps> = {}): NoteProps {
@@ -85,21 +94,58 @@ describe('TaskUseCases', () => {
   let noteRepo: INoteRepository;
   let workspaceRepo: IWorkspaceRepository;
   let fileStorage: IFileStorage;
-  let markdownProcessor: IMarkdownProcessor;
-  let useCases: ITaskUseCases;
+  let useCases: PromiseFacade<ITaskUseCases>;
 
   beforeEach(() => {
     noteRepo = createMockNoteRepository();
     workspaceRepo = createMockWorkspaceRepository();
     fileStorage = createMockFileStorage();
-    markdownProcessor = createMockMarkdownProcessor();
-    useCases = createTaskUseCases({
-      noteRepository: noteRepo,
-      workspaceRepository: workspaceRepo,
-      fileStorage,
-      markdownProcessor,
-      pathService: createMockPathService(),
-    });
+    const runtime = ManagedRuntime.make(
+      TaskUseCasesLive.pipe(
+        Layer.provide(
+          Layer.mergeAll(
+            adapterLayer(NoteRepositoryPort, noteRepo),
+            adapterLayer(WorkspaceRepositoryPort, workspaceRepo),
+            adapterLayer(FileStoragePort, fileStorage),
+            adapterLayer(PathServicePort, createMockPathService()),
+          ),
+        ),
+      ),
+    );
+    const run = <A, E>(
+      use: (service: ITaskUseCases) => Effect.Effect<A, E>,
+    ) =>
+      runtime
+        .runPromiseExit(
+          TaskUseCasesPort.pipe(
+            Effect.flatMap((service) => use(service)),
+          ),
+        )
+        .then((exit) => {
+          if (Exit.isSuccess(exit)) return exit.value;
+          throw Cause.squash(exit.cause);
+        });
+    useCases = {
+      getAllTasks: {
+        execute: () => run((service) => service.getAllTasks.execute()),
+      },
+      getNoteTasks: {
+        execute: (noteId) =>
+          run((service) => service.getNoteTasks.execute(noteId)),
+      },
+      updateTaskState: {
+        execute: (noteId, taskIndex, state) =>
+          run((service) =>
+            service.updateTaskState.execute(noteId, taskIndex, state),
+          ),
+      },
+      toggleTask: {
+        execute: (noteId, taskIndex) =>
+          run((service) =>
+            service.toggleTask.execute(noteId, taskIndex),
+          ),
+      },
+    };
   });
 
   describe('getAllTasks', () => {

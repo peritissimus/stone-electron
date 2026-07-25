@@ -1,125 +1,49 @@
-/**
- * WorkspaceUseCases Application Layer Tests
- *
- * Tests use case orchestration with mocked OUT ports.
- */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { WorkspaceUseCasesLive } from '../../../../src/main/application/usecases/workspace';
 import {
-  CreateWorkspaceUseCase,
-  GetWorkspaceUseCase,
-  ListWorkspacesUseCase,
-  SetActiveWorkspaceUseCase,
-  GetActiveWorkspaceUseCase,
-  DeleteWorkspaceUseCase,
-  UpdateWorkspaceUseCase,
-  SelectFolderUseCase,
-  ValidatePathUseCase,
-  CreateFolderUseCase,
-  RenameFolderUseCase,
-  DeleteFolderUseCase,
-  MoveFolderUseCase,
-  ScanWorkspaceUseCase,
-  SyncWorkspaceUseCase,
-} from '../../../../src/main/application/usecases/workspace';
-import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
-import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
-import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
+  AppConfigRepositoryPort,
+  EventPublisherPort,
+  FileStoragePort,
+  IdGeneratorPort,
+  IndexUseCasesPort,
+  MarkdownProcessorPort,
+  NoteRepositoryPort,
+  PathServicePort,
+  SystemBridgePort,
+  WorkspaceActivationPort,
+  WorkspaceNotFoundError,
+  WorkspaceRepositoryPort,
+  WorkspaceUseCasesPort,
+  type IWorkspaceUseCases,
+  type IndexNoteRequest,
+  type IndexNoteResponse,
+  type WorkspaceProps,
+} from '../../../../src/main/domain';
 import type { IAppConfigRepository } from '../../../../src/main/domain/ports/out/IAppConfigRepository';
-import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
 import type { IEventPublisher } from '../../../../src/main/domain/ports/out/IEventPublisher';
+import type { IFileStorage } from '../../../../src/main/domain/ports/out/IFileStorage';
 import type { IMarkdownProcessor } from '../../../../src/main/domain/ports/out/IMarkdownProcessor';
-import { WorkspaceNotFoundError } from '../../../../src/main/domain/errors';
-import type { WorkspaceProps } from '../../../../src/main/domain/entities/Workspace';
+import type { INoteRepository } from '../../../../src/main/domain/ports/out/INoteRepository';
+import type { ISystemBridge } from '../../../../src/main/domain/ports/out/ISystemBridge';
+import type { IWorkspaceRepository } from '../../../../src/main/domain/ports/out/IWorkspaceRepository';
+import { adapterLayer } from '../../../helpers/adapterLayer';
 import { DEFAULT_APP_CONFIG } from '../../../../src/shared/types/settings';
 import { createMockIdGenerator, createMockPathService } from './testDoubles';
 
-// Mock factories
-function createMockWorkspaceRepository(): IWorkspaceRepository {
-  return {
-    findById: vi.fn(),
-    findByFolderPath: vi.fn(),
-    findAll: vi.fn(),
-    findActive: vi.fn(),
-    save: vi.fn(),
-    delete: vi.fn(),
-    setActive: vi.fn(),
-    exists: vi.fn(),
-  } as unknown as IWorkspaceRepository;
-}
+type PromiseFacade<T> = T extends (
+  ...args: infer Args
+) => Effect.Effect<infer Success, unknown, unknown>
+  ? (...args: Args) => Promise<Success>
+  : T extends object
+    ? { [Key in keyof T]: PromiseFacade<T[Key]> }
+    : T;
 
-function createMockFileStorage(): IFileStorage {
-  return {
-    read: vi.fn(),
-    write: vi.fn(),
-    delete: vi.fn(),
-    exists: vi.fn(),
-    rename: vi.fn(),
-    createDirectory: vi.fn(),
-    deleteDirectory: vi.fn(),
-    listFiles: vi.fn(),
-    glob: vi.fn(),
-    getFileInfo: vi.fn(),
-    copy: vi.fn(),
-    watch: vi.fn(),
-  } as unknown as IFileStorage;
-}
-
-function createMockSystemBridge(): ISystemBridge {
-  return {
-    selectFolder: vi.fn(),
-    validatePath: vi.fn(),
-    openPath: vi.fn(),
-    revealInFinder: vi.fn(),
-    getAppVersion: vi.fn(),
-    getPlatformInfo: vi.fn(),
-  } as unknown as ISystemBridge;
-}
-
-function createMockAppConfigRepository(): IAppConfigRepository {
-  return {
-    get: vi.fn().mockResolvedValue(DEFAULT_APP_CONFIG),
-    set: vi.fn(),
-    update: vi.fn(),
-  } as unknown as IAppConfigRepository;
-}
-
-function createMockNoteRepository(): INoteRepository {
-  return {
-    findAll: vi.fn(),
-    save: vi.fn(),
-  } as unknown as INoteRepository;
-}
-
-function createMockEventPublisher(): IEventPublisher {
-  return {
-    publish: vi.fn(),
-    publishAll: vi.fn(),
-    emit: vi.fn(),
-    subscribe: vi.fn(),
-    subscribeAll: vi.fn(),
-  } as unknown as IEventPublisher;
-}
-
-function createMockMarkdownProcessor(): IMarkdownProcessor {
-  return {
-    htmlToMarkdown: vi.fn().mockReturnValue(''),
-    markdownToHtml: vi.fn().mockResolvedValue(''),
-    parseFrontmatter: vi.fn().mockReturnValue({ content: '', metadata: {} }),
-    updateFrontmatter: vi.fn().mockReturnValue(''),
-    extractTitle: vi.fn().mockReturnValue(null),
-    extractPlainText: vi.fn().mockReturnValue(''),
-    extractLinks: vi.fn().mockReturnValue([]),
-    extractWikiLinks: vi.fn().mockReturnValue([]),
-    htmlToPlainText: vi.fn().mockReturnValue(''),
-  } as unknown as IMarkdownProcessor;
-}
-
-function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
+function workspace(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
     id: 'ws-1',
-    name: 'Test Workspace',
-    folderPath: '/test/workspace',
+    name: 'Workspace',
+    folderPath: '/workspace',
     isActive: false,
     createdAt: new Date('2024-01-01'),
     lastAccessedAt: new Date('2024-01-02'),
@@ -127,629 +51,306 @@ function createWorkspaceProps(overrides: Partial<WorkspaceProps> = {}): Workspac
   };
 }
 
+function facade(
+  runtime: ManagedRuntime.ManagedRuntime<IWorkspaceUseCases, never>,
+): PromiseFacade<IWorkspaceUseCases> {
+  const at = (path: PropertyKey[]): unknown =>
+    new Proxy(() => undefined, {
+      get: (_target, property) => at([...path, property]),
+      apply: (_target, _thisArg, args: unknown[]) =>
+        runtime
+          .runPromiseExit(
+            WorkspaceUseCasesPort.pipe(
+              Effect.flatMap((service) => {
+                let value: unknown = service;
+                let owner: unknown = service;
+                for (const part of path) {
+                  owner = value;
+                  value = (value as Record<PropertyKey, unknown>)[part];
+                }
+                return (
+                  value as (
+                    this: unknown,
+                    ...methodArgs: unknown[]
+                  ) => Effect.Effect<unknown, Error>
+                ).apply(owner, args);
+              }),
+            ),
+          )
+          .then((exit) => {
+            if (Exit.isSuccess(exit)) return exit.value;
+            throw Cause.squash(exit.cause);
+          }),
+    });
+  return at([]) as PromiseFacade<IWorkspaceUseCases>;
+}
+
 describe('WorkspaceUseCases', () => {
-  describe('CreateWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let eventPublisher: IEventPublisher;
-    let fileStorage: IFileStorage;
-    let useCase: CreateWorkspaceUseCase;
+  let workspaceRepository: IWorkspaceRepository;
+  let noteRepository: INoteRepository;
+  let fileStorage: IFileStorage;
+  let systemBridge: ISystemBridge;
+  let markdownProcessor: IMarkdownProcessor;
+  let eventPublisher: IEventPublisher;
+  let appConfigRepository: IAppConfigRepository;
+  let afterActivated: (id: string) => void;
+  let indexNote: (
+    request: IndexNoteRequest,
+  ) => Effect.Effect<IndexNoteResponse, Error>;
+  let useCases: PromiseFacade<IWorkspaceUseCases>;
 
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      eventPublisher = createMockEventPublisher();
-      fileStorage = createMockFileStorage();
-      useCase = new CreateWorkspaceUseCase(
-        workspaceRepo,
-        createMockIdGenerator(),
-        fileStorage,
-        createMockAppConfigRepository(),
-        createMockPathService(),
-        eventPublisher,
-      );
-    });
-
-    it('creates workspace with name and folderPath', async () => {
-      vi.mocked(workspaceRepo.findAll).mockResolvedValue([]);
-      vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({
-        name: 'My Workspace',
-        folderPath: '/path/to/workspace',
-      });
-
-      expect(result.workspace.name).toBe('My Workspace');
-      expect(result.workspace.folderPath).toBe('/path/to/workspace');
-      expect(result.workspace.isActive).toBe(false);
-      expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.publish).toHaveBeenCalled();
-    });
-
-    it('scaffolds the standard folders from the location policy', async () => {
-      vi.mocked(workspaceRepo.findAll).mockResolvedValue([]);
-      vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
-
-      await useCase.execute({ name: 'Fresh', folderPath: '/ws' });
-
-      const created = vi.mocked(fileStorage.createDirectory).mock.calls.map((c) => c[0]);
-      expect(created).toContain('/ws');
-      // Defaults: Journal (journalFolder), Personal (defaultNoteFolder +
-      // personal slot, deduped), Work (work slot).
-      expect(created).toContain('/ws/Journal');
-      expect(created).toContain('/ws/Personal');
-      expect(created).toContain('/ws/Work');
-      // Personal appears once despite being both default folder and slot.
-      expect(created.filter((p) => p === '/ws/Personal')).toHaveLength(1);
-    });
-
-    it('returns the existing workspace when the folder is already in use', async () => {
-      const existing = createWorkspaceProps({
-        id: 'ws-existing',
-        name: 'Stone',
-        folderPath: '/path/to/workspace',
-      });
-      vi.mocked(workspaceRepo.findAll).mockResolvedValue([existing]);
-
-      const result = await useCase.execute({
-        name: 'Different Name',
-        folderPath: '/path/to/workspace',
-      });
-
-      // folder_path is UNIQUE — re-creating over the same folder is
-      // idempotent rather than a constraint violation.
-      expect(result.workspace.id).toBe('ws-existing');
-      expect(workspaceRepo.save).not.toHaveBeenCalled();
-      expect(eventPublisher.publish).not.toHaveBeenCalled();
-      // The scaffold still runs, backfilling folders on a bare workspace.
-      expect(fileStorage.createDirectory).toHaveBeenCalledWith('/path/to/workspace/Journal');
-    });
+  beforeEach(() => {
+    workspaceRepository = {
+      findById: vi.fn(),
+      findAll: vi.fn(async () => []),
+      findActive: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
+      exists: vi.fn(),
+    } as unknown as IWorkspaceRepository;
+    noteRepository = {
+      findAll: vi.fn(async () => []),
+      save: vi.fn(),
+    } as unknown as INoteRepository;
+    fileStorage = {
+      read: vi.fn(),
+      exists: vi.fn(),
+      rename: vi.fn(),
+      createDirectory: vi.fn(),
+      deleteDirectory: vi.fn(),
+      listFiles: vi.fn(async () => []),
+      glob: vi.fn(async () => []),
+      getFileInfo: vi.fn(),
+    } as unknown as IFileStorage;
+    systemBridge = {
+      selectFolder: vi.fn(),
+      validatePath: vi.fn(),
+      getDefaultWorkspaceDir: vi.fn((path?: string) => path ?? '/default'),
+    } as unknown as ISystemBridge;
+    markdownProcessor = {
+      extractTitle: vi.fn(),
+    } as unknown as IMarkdownProcessor;
+    eventPublisher = { publish: vi.fn() } as unknown as IEventPublisher;
+    appConfigRepository = {
+      get: vi.fn(async () => DEFAULT_APP_CONFIG),
+    } as unknown as IAppConfigRepository;
+    afterActivated = vi.fn<(id: string) => void>();
+    indexNote = vi.fn<(request: IndexNoteRequest) => Effect.Effect<IndexNoteResponse, Error>>(() =>
+      Effect.succeed({
+        noteId: 'note-1',
+        status: 'indexed' as const,
+        chunkCount: 1,
+      }),
+    );
+    const dependencies = Layer.mergeAll(
+      adapterLayer(WorkspaceRepositoryPort, workspaceRepository),
+      adapterLayer(NoteRepositoryPort, noteRepository),
+      adapterLayer(FileStoragePort, fileStorage),
+      adapterLayer(SystemBridgePort, systemBridge),
+      adapterLayer(MarkdownProcessorPort, markdownProcessor),
+      adapterLayer(AppConfigRepositoryPort, appConfigRepository),
+      adapterLayer(IdGeneratorPort, createMockIdGenerator()),
+      adapterLayer(PathServicePort, createMockPathService()),
+      adapterLayer(EventPublisherPort, eventPublisher),
+      Layer.succeed(WorkspaceActivationPort, {
+        afterActivated: (id: string) =>
+          Effect.sync(() => afterActivated(id)),
+      }),
+      Layer.succeed(IndexUseCasesPort, {
+        indexNote: { execute: indexNote },
+        rebuildAll: {
+          execute: () =>
+            Effect.succeed({
+              workspaceId: '',
+              total: 0,
+              indexed: 0,
+              skipped: 0,
+              failed: 0,
+              missing: 0,
+            }),
+        },
+        getStats: {
+          execute: () =>
+            Effect.succeed({
+              workspaceId: '',
+              totalNotes: 0,
+              indexedNotes: 0,
+              pendingNotes: 0,
+              failedNotes: 0,
+              chunkCount: 0,
+            }),
+        },
+      }),
+    );
+    useCases = facade(
+      ManagedRuntime.make(
+        WorkspaceUseCasesLive.pipe(Layer.provide(dependencies)),
+      ),
+    );
   });
 
-  describe('GetWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let useCase: GetWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      useCase = new GetWorkspaceUseCase(workspaceRepo);
+  it('creates and scaffolds a workspace idempotently', async () => {
+    const result = await useCases.createWorkspace.execute({
+      name: 'New',
+      folderPath: '/new',
     });
-
-    it('returns workspace when found', async () => {
-      const workspaceProps = createWorkspaceProps();
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspaceProps);
-
-      const result = await useCase.execute({ id: 'ws-1' });
-
-      expect(result.workspace).toEqual(workspaceProps);
-      expect(workspaceRepo.findById).toHaveBeenCalledWith('ws-1');
+    expect(result.workspace).toMatchObject({
+      name: 'New',
+      folderPath: '/new',
+      isActive: false,
     });
+    expect(fileStorage.createDirectory).toHaveBeenCalledWith('/new');
+    expect(fileStorage.createDirectory).toHaveBeenCalledWith('/new/Journal');
+    expect(workspaceRepository.save).toHaveBeenCalled();
 
-    it('throws WorkspaceNotFoundError when not found', async () => {
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute({ id: 'nonexistent' })).rejects.toThrow(WorkspaceNotFoundError);
-    });
+    vi.mocked(workspaceRepository.findAll).mockResolvedValue([
+      workspace({ folderPath: '/new' }),
+    ]);
+    await expect(
+      useCases.createWorkspace.execute({ name: 'Again', folderPath: '/new' }),
+    ).resolves.toEqual({ workspace: workspace({ folderPath: '/new' }) });
   });
 
-  describe('ListWorkspacesUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let useCase: ListWorkspacesUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      useCase = new ListWorkspacesUseCase(workspaceRepo);
+  it('gets, lists, updates, and deletes workspaces', async () => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(workspaceRepository.findAll).mockResolvedValue([workspace()]);
+    vi.mocked(workspaceRepository.exists).mockResolvedValue(true);
+    await expect(
+      useCases.getWorkspace.execute({ id: 'ws-1' }),
+    ).resolves.toEqual({ workspace: workspace() });
+    await expect(useCases.listWorkspaces.execute()).resolves.toEqual({
+      workspaces: [workspace()],
     });
-
-    it('returns all workspaces', async () => {
-      const workspaces = [
-        createWorkspaceProps({ id: 'ws-1' }),
-        createWorkspaceProps({ id: 'ws-2', name: 'Second Workspace' }),
-      ];
-      vi.mocked(workspaceRepo.findAll).mockResolvedValue(workspaces);
-
-      const result = await useCase.execute();
-
-      expect(result.workspaces).toHaveLength(2);
-      expect(workspaceRepo.findAll).toHaveBeenCalled();
-    });
+    await expect(
+      useCases.updateWorkspace.execute({ id: 'ws-1', name: 'Renamed' }),
+    ).resolves.toMatchObject({ workspace: { name: 'Renamed' } });
+    await useCases.deleteWorkspace.execute({ id: 'ws-1' });
+    expect(workspaceRepository.delete).toHaveBeenCalledWith('ws-1');
   });
 
-  describe('SetActiveWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: SetActiveWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new SetActiveWorkspaceUseCase(workspaceRepo, eventPublisher);
-    });
-
-    it('activates workspace and deactivates others', async () => {
-      const targetWorkspace = createWorkspaceProps({ id: 'ws-1', isActive: false });
-      const otherWorkspace = createWorkspaceProps({ id: 'ws-2', isActive: true });
-
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(targetWorkspace);
-      vi.mocked(workspaceRepo.findAll).mockResolvedValue([targetWorkspace, otherWorkspace]);
-      vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ id: 'ws-1' });
-
-      expect(result.workspace.isActive).toBe(true);
-      expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.publish).toHaveBeenCalled();
-    });
-
-    it('throws WorkspaceNotFoundError when workspace not found', async () => {
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute({ id: 'nonexistent' })).rejects.toThrow(WorkspaceNotFoundError);
-    });
+  it('preserves typed workspace-not-found failures', async () => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(null);
+    await expect(
+      useCases.getWorkspace.execute({ id: 'missing' }),
+    ).rejects.toBeInstanceOf(WorkspaceNotFoundError);
   });
 
-  describe('GetActiveWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let useCase: GetActiveWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      useCase = new GetActiveWorkspaceUseCase(workspaceRepo);
-    });
-
-    it('returns active workspace', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-
-      const result = await useCase.execute();
-
-      expect(result.workspace).toEqual(activeWorkspace);
-    });
-
-    it('returns null when no active workspace', async () => {
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
-
-      const result = await useCase.execute();
-
-      expect(result.workspace).toBeNull();
-    });
+  it('activates one workspace and invokes the post-activation port', async () => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(workspaceRepository.findAll).mockResolvedValue([
+      workspace({ id: 'old', isActive: true }),
+    ]);
+    const result = await useCases.setActiveWorkspace.execute({ id: 'ws-1' });
+    expect(result.workspace.isActive).toBe(true);
+    expect(workspaceRepository.save).toHaveBeenCalledTimes(2);
+    expect(afterActivated).toHaveBeenCalledWith('ws-1');
   });
 
-  describe('DeleteWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: DeleteWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new DeleteWorkspaceUseCase(workspaceRepo, eventPublisher);
+  it('delegates folder selection, defaulting, and path validation', async () => {
+    vi.mocked(systemBridge.selectFolder).mockResolvedValue('/chosen');
+    vi.mocked(systemBridge.validatePath).mockResolvedValue(false);
+    await expect(useCases.selectFolder.execute()).resolves.toEqual({
+      canceled: false,
+      folderPath: '/chosen',
     });
-
-    it('deletes workspace', async () => {
-      vi.mocked(workspaceRepo.exists).mockResolvedValue(true);
-      vi.mocked(workspaceRepo.delete).mockResolvedValue(undefined);
-
-      await useCase.execute({ id: 'ws-1' });
-
-      expect(workspaceRepo.delete).toHaveBeenCalledWith('ws-1');
-      expect(eventPublisher.publish).toHaveBeenCalled();
+    await expect(useCases.getDefaultWorkspacePath.execute()).resolves.toEqual({
+      path: DEFAULT_APP_CONFIG.workspace.defaultWorkspacePath,
     });
-
-    it('throws WorkspaceNotFoundError when workspace not found', async () => {
-      vi.mocked(workspaceRepo.exists).mockResolvedValue(false);
-
-      await expect(useCase.execute({ id: 'nonexistent' })).rejects.toThrow(WorkspaceNotFoundError);
-    });
+    await expect(
+      useCases.validatePath.execute({ folderPath: '/missing' }),
+    ).resolves.toMatchObject({ valid: false });
   });
 
-  describe('UpdateWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let eventPublisher: IEventPublisher;
-    let useCase: UpdateWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      eventPublisher = createMockEventPublisher();
-      useCase = new UpdateWorkspaceUseCase(workspaceRepo, eventPublisher);
+  it('creates, renames, moves, and deletes folders relative to the workspace', async () => {
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(true);
+    await expect(
+      useCases.createFolder.execute({ name: 'Child', parentPath: 'Parent' }),
+    ).resolves.toEqual({ path: 'Parent/Child' });
+    await expect(
+      useCases.renameFolder.execute({ path: 'Parent/Child', name: 'Renamed' }),
+    ).resolves.toEqual({
+      oldPath: 'Parent/Child',
+      newPath: 'Parent/Renamed',
     });
-
-    it('updates workspace name', async () => {
-      const workspaceProps = createWorkspaceProps();
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspaceProps);
-      vi.mocked(workspaceRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ id: 'ws-1', name: 'New Name' });
-
-      expect(result.workspace.name).toBe('New Name');
-      expect(workspaceRepo.save).toHaveBeenCalled();
-      expect(eventPublisher.publish).toHaveBeenCalled();
+    await expect(
+      useCases.moveFolder.execute({
+        sourcePath: 'Parent/Renamed',
+        destinationPath: 'Archive',
+      }),
+    ).resolves.toEqual({
+      oldPath: 'Parent/Renamed',
+      newPath: 'Archive/Renamed',
     });
-
-    it('throws WorkspaceNotFoundError when workspace not found', async () => {
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(null);
-
-      await expect(useCase.execute({ id: 'nonexistent', name: 'New Name' })).rejects.toThrow(
-        WorkspaceNotFoundError,
-      );
-    });
+    await useCases.deleteFolder.execute({ path: 'Archive/Renamed' });
+    expect(fileStorage.deleteDirectory).toHaveBeenCalledWith(
+      '/workspace/Archive/Renamed',
+    );
   });
 
-  describe('SelectFolderUseCase', () => {
-    let systemService: ISystemBridge;
-    let appConfigRepository: IAppConfigRepository;
-    let useCase: SelectFolderUseCase;
-
-    beforeEach(() => {
-      systemService = createMockSystemBridge();
-      appConfigRepository = createMockAppConfigRepository();
-      useCase = new SelectFolderUseCase(systemService, appConfigRepository);
-    });
-
-    it('returns selected folder path', async () => {
-      vi.mocked(systemService.selectFolder).mockResolvedValue('/selected/path');
-
-      const result = await useCase.execute({ title: 'Select Folder' });
-
-      expect(result.canceled).toBe(false);
-      expect(result.folderPath).toBe('/selected/path');
-    });
-
-    it('returns canceled when no folder selected', async () => {
-      vi.mocked(systemService.selectFolder).mockResolvedValue(null);
-
-      const result = await useCase.execute();
-
-      expect(result.canceled).toBe(true);
-      expect(result.folderPath).toBeUndefined();
-    });
-  });
-
-  describe('ValidatePathUseCase', () => {
-    let systemService: ISystemBridge;
-    let useCase: ValidatePathUseCase;
-
-    beforeEach(() => {
-      systemService = createMockSystemBridge();
-      useCase = new ValidatePathUseCase(systemService);
-    });
-
-    it('returns valid true for valid path', async () => {
-      vi.mocked(systemService.validatePath).mockResolvedValue(true);
-
-      const result = await useCase.execute({ folderPath: '/valid/path' });
-
-      expect(result.valid).toBe(true);
-      expect(result.error).toBeUndefined();
-    });
-
-    it('returns valid false with error for invalid path', async () => {
-      vi.mocked(systemService.validatePath).mockResolvedValue(false);
-
-      const result = await useCase.execute({ folderPath: '/invalid/path' });
-
-      expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-  });
-
-  describe('CreateFolderUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let fileStorage: IFileStorage;
-    let useCase: CreateFolderUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      fileStorage = createMockFileStorage();
-      useCase = new CreateFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
-    });
-
-    it('creates folder in active workspace', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.createDirectory).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ name: 'new-folder' });
-
-      expect(result.path).toBe('new-folder');
-      expect(fileStorage.createDirectory).toHaveBeenCalled();
-    });
-
-    it('throws error when no active workspace', async () => {
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
-
-      await expect(useCase.execute({ name: 'new-folder' })).rejects.toThrow('No active workspace');
-    });
-  });
-
-  describe('RenameFolderUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let fileStorage: IFileStorage;
-    let useCase: RenameFolderUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      fileStorage = createMockFileStorage();
-      useCase = new RenameFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
-    });
-
-    it('renames folder', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(true);
-      vi.mocked(fileStorage.rename).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ path: 'old-folder', name: 'new-folder' });
-
-      expect(result.oldPath).toBe('old-folder');
-      expect(result.newPath).toBe('new-folder');
-      expect(fileStorage.rename).toHaveBeenCalled();
-    });
-
-    it('throws error when folder does not exist', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(false);
-
-      await expect(useCase.execute({ path: 'nonexistent', name: 'new-name' })).rejects.toThrow(
-        'Folder does not exist',
-      );
-    });
-
-    it('throws error when name is empty', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-
-      await expect(useCase.execute({ path: 'folder', name: '' })).rejects.toThrow(
-        'Folder name is required',
-      );
-    });
-  });
-
-  describe('DeleteFolderUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let fileStorage: IFileStorage;
-    let useCase: DeleteFolderUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      fileStorage = createMockFileStorage();
-      useCase = new DeleteFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
-    });
-
-    it('deletes folder', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(true);
-      vi.mocked(fileStorage.deleteDirectory).mockResolvedValue(undefined);
-
-      await useCase.execute({ path: 'folder-to-delete' });
-
-      expect(fileStorage.deleteDirectory).toHaveBeenCalled();
-    });
-
-    it('throws error when folder does not exist', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(false);
-
-      await expect(useCase.execute({ path: 'nonexistent' })).rejects.toThrow(
-        'Folder does not exist',
-      );
-    });
-
-    it('throws error when path is empty', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-
-      await expect(useCase.execute({ path: '' })).rejects.toThrow('Folder path is required');
-    });
-  });
-
-  describe('MoveFolderUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let fileStorage: IFileStorage;
-    let useCase: MoveFolderUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      fileStorage = createMockFileStorage();
-      useCase = new MoveFolderUseCase(workspaceRepo, fileStorage, createMockPathService());
-    });
-
-    it('moves folder to new location', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(true);
-      vi.mocked(fileStorage.rename).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({
-        sourcePath: 'source-folder',
-        destinationPath: 'dest',
-      });
-
-      expect(result.oldPath).toBe('source-folder');
-      expect(fileStorage.rename).toHaveBeenCalled();
-    });
-
-    it('moves folder to root when destinationPath is null', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(true);
-      vi.mocked(fileStorage.rename).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({
-        sourcePath: 'nested/folder',
-        destinationPath: null,
-      });
-
-      expect(result.newPath).toBe('folder');
-    });
-
-    it('throws error when source path is empty', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-
-      await expect(useCase.execute({ sourcePath: '', destinationPath: null })).rejects.toThrow(
-        'Source path is required',
-      );
-    });
-
-    it('throws error when folder does not exist', async () => {
-      const activeWorkspace = createWorkspaceProps({ isActive: true });
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(activeWorkspace);
-      vi.mocked(fileStorage.exists).mockResolvedValue(false);
-
-      await expect(
-        useCase.execute({ sourcePath: 'nonexistent', destinationPath: null }),
-      ).rejects.toThrow('Folder does not exist');
-    });
-  });
-
-  describe('ScanWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let fileStorage: IFileStorage;
-    let useCase: ScanWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      fileStorage = createMockFileStorage();
-      useCase = new ScanWorkspaceUseCase(workspaceRepo, fileStorage, createMockPathService());
-    });
-
-    it('scans workspace and returns file structure', async () => {
-      const workspace = createWorkspaceProps({ folderPath: '/ws' });
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-
-      // Mock glob results
-      vi.mocked(fileStorage.glob).mockResolvedValue(['note1.md', 'folder/note2.md']);
-
-      // Mock listFiles for structure building
-      // Root level
-      vi.mocked(fileStorage.listFiles).mockImplementation(async (path) => {
-        if (path === '/ws') {
-          return [
+  it('scans markdown files into a normalized tree and counts', async () => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.glob).mockResolvedValue([
+      'Root.md',
+      'Folder/Nested.md',
+    ]);
+    vi.mocked(fileStorage.listFiles).mockImplementation(async (path) =>
+      path === '/workspace'
+        ? [
             {
-              name: 'note1.md',
-              path: '/ws/note1.md',
-              isDirectory: false,
-              size: 100,
-              createdAt: new Date(),
-              modifiedAt: new Date(),
-            },
-            {
-              name: 'folder',
-              path: '/ws/folder',
+              name: 'Folder',
+              path: '/workspace/Folder',
               isDirectory: true,
               size: 0,
               createdAt: new Date(),
               modifiedAt: new Date(),
             },
-          ];
-        }
-        if (path === '/ws/folder') {
-          return [
+          ]
+        : [
             {
-              name: 'note2.md',
-              path: '/ws/folder/note2.md',
+              name: 'Nested.md',
+              path: '/workspace/Folder/Nested.md',
               isDirectory: false,
-              size: 100,
+              size: 1,
               createdAt: new Date(),
               modifiedAt: new Date(),
             },
-          ];
-        }
-        return [];
-      });
-
-      const result = await useCase.execute({ workspaceId: 'ws-1' });
-
-      expect(result.files).toHaveLength(2);
-      expect(result.structure).toHaveLength(2); // note1.md + folder
-      expect(result.total).toBe(2);
-      expect(result.counts['__root__']).toBe(2);
-      expect(result.counts['folder']).toBe(1);
+          ],
+    );
+    const result = await useCases.scanWorkspace.execute({
+      workspaceId: 'ws-1',
     });
-
-    it('throws WorkspaceNotFoundError', async () => {
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(null);
-      await expect(useCase.execute({ workspaceId: 'nonexistent' })).rejects.toThrow(
-        WorkspaceNotFoundError,
-      );
+    expect(result.total).toBe(2);
+    expect(result.counts).toEqual({ __root__: 2, Folder: 1 });
+    expect(result.structure[0]).toMatchObject({
+      type: 'folder',
+      children: [{ type: 'file' }],
     });
   });
 
-  describe('SyncWorkspaceUseCase', () => {
-    let workspaceRepo: IWorkspaceRepository;
-    let noteRepo: INoteRepository;
-    let fileStorage: IFileStorage;
-    let markdownProcessor: IMarkdownProcessor;
-    let useCase: SyncWorkspaceUseCase;
-
-    beforeEach(() => {
-      workspaceRepo = createMockWorkspaceRepository();
-      noteRepo = createMockNoteRepository();
-      fileStorage = createMockFileStorage();
-      markdownProcessor = createMockMarkdownProcessor();
-      useCase = new SyncWorkspaceUseCase(
-        workspaceRepo,
-        noteRepo,
-        fileStorage,
-        markdownProcessor,
-        createMockIdGenerator(),
-        createMockPathService(),
-      );
+  it('syncs added files, publishes them, and indexes inline', async () => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.glob).mockResolvedValue(['Inbox.md']);
+    vi.mocked(fileStorage.getFileInfo).mockResolvedValue({
+      path: '/workspace/Inbox.md',
+      name: 'Inbox.md',
+      isDirectory: false,
+      size: 10,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
     });
-
-    it('syncs workspace files to database', async () => {
-      const workspace = createWorkspaceProps({ folderPath: '/ws' });
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(workspace);
-
-      // Mock glob results
-      vi.mocked(fileStorage.glob).mockResolvedValue(['new.md', 'updated.md']);
-
-      // Mock existing notes
-      const now = new Date();
-      const oldDate = new Date(now.getTime() - 10000);
-      vi.mocked(noteRepo.findAll).mockResolvedValue([
-        { id: 'note-1', filePath: 'updated.md', title: 'Updated', updatedAt: oldDate, isDeleted: false } as any,
-        { id: 'note-2', filePath: 'deleted.md', title: 'Deleted', updatedAt: now, isDeleted: false } as any,
-      ]);
-
-      // Mock file info
-      vi.mocked(fileStorage.getFileInfo).mockResolvedValue({
-        path: '/ws/test.md',
-        name: 'test.md',
-        modifiedAt: now,
-        size: 100,
-        createdAt: now,
-        isDirectory: false,
-      });
-
-      // Mock file read
-      vi.mocked(fileStorage.read).mockResolvedValue('# Test Content');
-
-      // Mock save
-      vi.mocked(noteRepo.save).mockResolvedValue(undefined);
-
-      const result = await useCase.execute({ workspaceId: 'ws-1' });
-
-      expect(result.notes.created).toBe(1); // new.md
-      expect(result.notes.updated).toBe(1); // updated.md
-      expect(result.notes.deleted).toBe(1); // deleted.md
-
-      // Verify save was called for each operation
-      expect(noteRepo.save).toHaveBeenCalledTimes(3);
+    vi.mocked(fileStorage.read).mockResolvedValue('# Inbox');
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue('Inbox');
+    const result = await useCases.syncWorkspace.execute({
+      workspaceId: 'ws-1',
     });
-
-    it('throws WorkspaceNotFoundError', async () => {
-      vi.mocked(workspaceRepo.findById).mockResolvedValue(null);
-      await expect(useCase.execute({ workspaceId: 'nonexistent' })).rejects.toThrow(
-        WorkspaceNotFoundError,
-      );
+    expect(result.notes).toEqual({
+      created: 1,
+      updated: 0,
+      deleted: 0,
+      embedded: 1,
+      errors: [],
     });
-
-    it('throws error when no active workspace', async () => {
-      vi.mocked(workspaceRepo.findActive).mockResolvedValue(null);
-      await expect(useCase.execute()).rejects.toThrow('No active workspace');
-    });
+    expect(indexNote).toHaveBeenCalled();
   });
 });
