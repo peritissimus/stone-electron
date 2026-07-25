@@ -56,15 +56,12 @@ export class Exporter implements IExporter {
         // We wait for both DOMContentLoaded and font loading
         await win.webContents.executeJavaScript(`
           new Promise((resolve) => {
-            // Wait for document ready and fonts
+            const afterPaint = () =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve));
             if (document.fonts && document.fonts.ready) {
-              document.fonts.ready.then(() => {
-                // Additional delay for any remaining rendering
-                setTimeout(resolve, 500);
-              });
+              document.fonts.ready.then(afterPaint);
             } else {
-              // Fallback: wait a fixed time if fonts API not available
-              setTimeout(resolve, 2000);
+              afterPaint();
             }
           });
         `);

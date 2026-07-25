@@ -11,6 +11,8 @@ import { glob as globModule } from 'glob';
 import type { IFileStorage, FileInfo } from '../../../domain';
 
 export class FileSystemStorage implements IFileStorage {
+  constructor(private readonly watchFn: typeof watch = watch) {}
+
   async read(filePath: string): Promise<string> {
     return fs.readFile(filePath, 'utf-8');
   }
@@ -124,7 +126,7 @@ export class FileSystemStorage implements IFileStorage {
     watchPath: string,
     callback: (event: 'add' | 'change' | 'unlink', filePath: string) => void,
   ): () => void {
-    const watcher: FSWatcher = watch(watchPath, {
+    const watcher: FSWatcher = this.watchFn(watchPath, {
       persistent: true,
       ignoreInitial: true,
       awaitWriteFinish: {

@@ -6,6 +6,7 @@
 
 import { performance, PerformanceObserver } from 'node:perf_hooks';
 import type { BrowserWindow } from 'electron';
+import { Effect, Fiber, Schedule } from 'effect';
 import type {
   IPerformanceMonitor,
   RendererWindowHandle,
@@ -45,12 +46,16 @@ export class PerformanceMonitor implements IPerformanceMonitor {
   private lastCPUUsage: CpuUsage | null = null;
   private lastCPUTime: number = 0;
   private eventLoopLag: number = 0;
-  private lagCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private lagCheckFiber: Fiber.RuntimeFiber<unknown, never> | null = null;
   private gcObserver: PerformanceObserver | null = null;
   private readonly maxHistorySize = 10000; // Keep last 10k records
   private readonly slowQueryThresholdMs = 100;
 
-  constructor() {
+  constructor(
+    private readonly runtime: {
+      runFork: <A, E>(effect: Effect.Effect<A, E>) => Fiber.RuntimeFiber<A, E>;
+    },
+  ) {
     this.startupMetrics = {
       appStartTime: performance.now(),
     };
@@ -127,12 +132,14 @@ export class PerformanceMonitor implements IPerformanceMonitor {
 
   startMonitoring(): void {
     // Event loop lag monitoring
-    this.lagCheckInterval = setInterval(() => {
-      const start = performance.now();
-      setImmediate(() => {
-        this.eventLoopLag = performance.now() - start;
-      });
-    }, 1000);
+    this.lagCheckFiber = this.runtime.runFork(
+      Effect.sync(() => {
+        const start = performance.now();
+        setImmediate(() => {
+          this.eventLoopLag = performance.now() - start;
+        });
+      }).pipe(Effect.repeat(Schedule.spaced(1_000))),
+    );
 
     // GC monitoring (if available)
     try {
@@ -153,9 +160,9 @@ export class PerformanceMonitor implements IPerformanceMonitor {
   }
 
   stopMonitoring(): void {
-    if (this.lagCheckInterval) {
-      clearInterval(this.lagCheckInterval);
-      this.lagCheckInterval = null;
+    if (this.lagCheckFiber) {
+      this.runtime.runFork(Fiber.interrupt(this.lagCheckFiber));
+      this.lagCheckFiber = null;
     }
     if (this.gcObserver) {
       this.gcObserver.disconnect();
@@ -389,4 +396,3 @@ export class PerformanceMonitor implements IPerformanceMonitor {
     logger.info('[Perf] Performance history cleared');
   }
 }
-

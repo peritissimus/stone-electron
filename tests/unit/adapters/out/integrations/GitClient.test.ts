@@ -1,12 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { GitClient } from '../../../../../src/main/adapters/out/integrations/GitClient';
 
-const simpleGitMock = vi.hoisted(() => ({
-  factory: vi.fn(),
-}));
-
-vi.mock('simple-git', () => ({
-  simpleGit: simpleGitMock.factory,
-}));
+const factory = vi.fn();
 
 function createGit(overrides: Record<string, unknown> = {}) {
   const git = {
@@ -50,15 +45,11 @@ function createGit(overrides: Record<string, unknown> = {}) {
     rebase: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
-  simpleGitMock.factory.mockReturnValue(git);
+  factory.mockReturnValue(git);
   return git;
 }
 
-async function loadGitClient() {
-  vi.resetModules();
-  const { GitClient } = await import('../../../../../src/main/adapters/out/integrations/GitClient');
-  return new GitClient();
-}
+const loadGitClient = () => new GitClient(factory);
 
 describe('GitClient', () => {
   beforeEach(() => {
@@ -157,7 +148,7 @@ describe('GitClient', () => {
     });
     // ssh fail-fast must go through core.sshCommand + the allowUnsafeSshCommand
     // opt-in (not .env(), which simple-git >=3.36 rejects for guarded vars).
-    expect(simpleGitMock.factory).toHaveBeenCalledWith(
+    expect(factory).toHaveBeenCalledWith(
       '/repo',
       expect.objectContaining({
         config: ['core.sshCommand=ssh -oBatchMode=yes'],

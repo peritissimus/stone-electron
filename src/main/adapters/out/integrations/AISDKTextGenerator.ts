@@ -3,6 +3,7 @@ import { createAzure } from '@ai-sdk/azure';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenAI } from '@ai-sdk/openai';
+import { Effect, Schedule } from 'effect';
 import type {
   AIConfig,
   CitationSource,
@@ -17,10 +18,22 @@ import type {
   QueryPlan,
 } from '../../../domain';
 import { assertCloudInferenceAllowed, assertCloudNoteContentAllowed } from '../../../domain';
-import { logger, withRetry } from '../../../shared/utils';
+import { logger } from '../../../shared/utils';
 
 /** Retry config for transient LLM failures. 3 attempts total (1 + 2 retries). */
 const LLM_RETRY = { retries: 2, baseMs: 500, maxMs: 8000 } as const;
+
+const llmRetrySchedule = Schedule.exponential(LLM_RETRY.baseMs).pipe(
+  Schedule.union(Schedule.spaced(LLM_RETRY.maxMs)),
+  Schedule.intersect(Schedule.recurs(LLM_RETRY.retries)),
+  Schedule.whileInput(isTransientLlmError),
+  Schedule.tapInput((error) =>
+    Effect.sync(() => {
+      const reason = error instanceof Error ? error.message : String(error);
+      logger.warn(`[AISDKTextGenerator] transient LLM failure; retrying: ${reason}`);
+    }),
+  ),
+);
 
 /**
  * Decide whether an LLM call failure is transient and worth retrying.
@@ -120,6 +133,7 @@ export interface AISDKTextGeneratorDeps {
   modelFactory?: (model: string) => LanguageModel;
   /** Override the OpenAI provider factory (tests). Defaults to createOpenAI. */
   openaiFactory?: OpenAIFactory;
+  runPromise: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>;
 }
 
 export class AISDKTextGenerator implements ITextGenerator {
@@ -149,17 +163,12 @@ export class AISDKTextGenerator implements ITextGenerator {
     this.generateTextFn = deps.generateTextFn
       ? baseGenerate
       : (request) =>
-          withRetry((): ReturnType<GenerateTextFn> => baseGenerate(request), {
-            ...LLM_RETRY,
-            shouldRetry: (error) => isTransientLlmError(error),
-            onRetry: (error, attempt, delayMs) => {
-              const reason = error instanceof Error ? error.message : String(error);
-              logger.warn(
-                `[AISDKTextGenerator] transient LLM failure (attempt ${attempt}), ` +
-                  `retrying in ${delayMs}ms: ${reason}`,
-              );
-            },
-          });
+          this.deps.runPromise(
+            Effect.tryPromise({
+              try: () => baseGenerate(request),
+              catch: (error) => error,
+            }).pipe(Effect.retry(llmRetrySchedule)),
+          );
   }
 
   async generateAnswer(request: GenerateAnswerRequest): Promise<GenerateAnswerResponse> {

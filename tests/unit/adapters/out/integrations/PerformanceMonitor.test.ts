@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Effect } from 'effect';
 import { PerformanceMonitor } from '../../../../../src/main/adapters/out/integrations/PerformanceMonitor';
 
 describe('PerformanceMonitor', () => {
   it('records startup phases and aggregates IPC and database metrics', () => {
-    const monitor = new PerformanceMonitor();
+    const monitor = new PerformanceMonitor({ runFork: Effect.runFork });
 
     monitor.markStartupPhase('dbInitTime');
     monitor.markWindowReady();
@@ -58,7 +59,7 @@ describe('PerformanceMonitor', () => {
   });
 
   it('returns empty metrics after clearHistory', () => {
-    const monitor = new PerformanceMonitor();
+    const monitor = new PerformanceMonitor({ runFork: Effect.runFork });
 
     monitor.recordIPCCall('notes:get', 10, true);
     monitor.recordDBQuery('NoteRepository', 'findById', 10, true);
@@ -69,7 +70,7 @@ describe('PerformanceMonitor', () => {
   });
 
   it('reads renderer metrics from a live window and nulls destroyed or failing windows', async () => {
-    const monitor = new PerformanceMonitor();
+    const monitor = new PerformanceMonitor({ runFork: Effect.runFork });
     const metrics = { fps: 60 };
     const liveWindow = {
       isDestroyed: () => false,

@@ -20,17 +20,13 @@ const chokidarMock = vi.hoisted(() => {
   };
 });
 
-vi.mock('chokidar', () => ({
-  watch: chokidarMock.watch,
-}));
-
 describe('FileSystemStorage', () => {
   let root: string;
   let storage: FileSystemStorage;
 
   beforeEach(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'stone-storage-'));
-    storage = new FileSystemStorage();
+    storage = new FileSystemStorage(chokidarMock.watch as any);
     chokidarMock.callbacks.clear();
     vi.clearAllMocks();
   });

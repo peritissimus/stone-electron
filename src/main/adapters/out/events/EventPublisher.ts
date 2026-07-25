@@ -39,6 +39,11 @@ const DOMAIN_TO_IPC_EVENT: Partial<Record<AppDomainEvent['type'], string>> = {
 };
 
 export class EventPublisher implements IEventPublisher {
+  constructor(
+    private readonly getAllWindows: typeof BrowserWindow.getAllWindows = () =>
+      BrowserWindow.getAllWindows(),
+  ) {}
+
   publish(event: AppDomainEvent): void {
     eventEmitter.emit(event.type, event.payload);
 
@@ -112,7 +117,7 @@ export class EventPublisher implements IEventPublisher {
 
   private broadcastToRenderer(channel: string, payload: unknown): void {
     try {
-      const windows = BrowserWindow.getAllWindows();
+      const windows = this.getAllWindows();
       for (const win of windows) {
         if (!win.isDestroyed()) {
           win.webContents.send(channel, payload);

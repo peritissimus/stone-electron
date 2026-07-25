@@ -15,6 +15,7 @@ import { logger } from '../../../shared';
 
 // Dynamically import simple-git when needed
 let simpleGit: any = null;
+export type GitFactory = (path: string, options?: unknown) => any;
 
 async function getSimpleGit() {
   if (!simpleGit) {
@@ -31,8 +32,7 @@ async function getSimpleGit() {
  * appears to hang. With it, the same situation fails fast with an auth
  * error we can classify.
  */
-async function openRepo(path: string) {
-  const factory = await getSimpleGit();
+async function openRepo(path: string, factory: GitFactory) {
   // Disable interactive prompts so a missing-credentials remote fails fast
   // instead of hanging on a TTY that doesn't exist. Set it on the ambient env
   // that simple-git inherits — do NOT pass process.env through .env(), because
@@ -84,10 +84,18 @@ function classifyGitError(message: string): GitErrorKind {
  * Git Service implementation using simple-git
  */
 export class GitClient implements IGitClient {
+  constructor(private readonly injectedFactory?: GitFactory) {}
+
+  private factory(): Promise<GitFactory> {
+    return this.injectedFactory
+      ? Promise.resolve(this.injectedFactory)
+      : getSimpleGit();
+  }
+
   async isRepository(path: string): Promise<boolean> {
     return await logger.withContext('out:GitClient.isRepository', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         return await git.checkIsRepo();
       } catch {
         return false;
@@ -98,7 +106,7 @@ export class GitClient implements IGitClient {
   async init(path: string): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.init', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         await git.init();
         logger.info(`[GitClient] Initialized repository at ${path}`);
         return { success: true, message: 'Repository initialized' };
@@ -113,7 +121,7 @@ export class GitClient implements IGitClient {
   async getStatus(path: string): Promise<GitStatus> {
     return await logger.withContext('out:GitClient.getStatus', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         const isRepo = await git.checkIsRepo();
 
       if (!isRepo) {
@@ -195,7 +203,7 @@ export class GitClient implements IGitClient {
   async stage(path: string, files?: string[]): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.stage', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         if (files && files.length > 0) {
           await git.add(files);
         } else {
@@ -213,7 +221,7 @@ export class GitClient implements IGitClient {
   async commit(path: string, message: string): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.commit', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         const result = await git.commit(message);
         logger.info(`[GitClient] Committed: ${result.commit}`);
         return { success: true, message: `Committed ${result.commit}` };
@@ -228,7 +236,7 @@ export class GitClient implements IGitClient {
   async pull(path: string): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.pull', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         const result = await git.pull();
         logger.info('[GitClient] Pulled changes');
         return {
@@ -246,7 +254,7 @@ export class GitClient implements IGitClient {
   async push(path: string): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.push', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         await git.push();
         logger.info('[GitClient] Pushed changes');
         return { success: true, message: 'Pushed to remote' };
@@ -261,7 +269,7 @@ export class GitClient implements IGitClient {
   async setRemote(path: string, url: string, name: string = 'origin'): Promise<GitOperationResult> {
     return await logger.withContext('out:GitClient.setRemote', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         const remotes = await git.getRemotes();
 
         if (remotes.find((r: any) => r.name === name)) {
@@ -283,7 +291,7 @@ export class GitClient implements IGitClient {
   async getCommits(path: string, limit: number = 50): Promise<GitCommit[]> {
     return await logger.withContext('out:GitClient.getCommits', async () => {
       try {
-        const git = (await getSimpleGit())(path);
+        const git = (await this.factory())(path);
         const log = await git.log({ maxCount: limit });
 
         return log.all.map((entry: any) => ({
@@ -322,7 +330,7 @@ export class GitClient implements IGitClient {
       let commitMessage: string | undefined;
 
       try {
-        const git = await openRepo(path);
+        const git = await openRepo(path, await this.factory());
 
         // 1. Commit local changes (if any).
         const before = await git.status();

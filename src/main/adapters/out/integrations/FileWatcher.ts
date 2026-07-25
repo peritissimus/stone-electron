@@ -5,6 +5,7 @@
 
 import chokidar, { FSWatcher } from 'chokidar';
 import path from 'node:path';
+import { Effect, Fiber, Schedule } from 'effect';
 import { logger } from '../../../shared';
 import type {
   WorkspaceProps,
@@ -33,6 +34,8 @@ export interface FileWatcherDeps {
   workspaceRepository: IWorkspaceRepository;
   eventPublisher: IEventPublisher;
   syncWorkspace: WorkspaceSyncTrigger;
+  runFork: <A, E>(effect: Effect.Effect<A, E>) => Fiber.RuntimeFiber<A, E>;
+  watch?: typeof chokidar.watch;
 }
 
 // Retry-on-failure tuning for the debounced workspace sync.
@@ -43,9 +46,7 @@ const SYNC_RETRY_MAX_ATTEMPTS = 5;
 
 export class FileWatcher implements IFileWatcher {
   private readonly watchers = new Map<string, WatchEntry>();
-  private readonly debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  // Number of consecutive failed sync attempts per workspace; drives backoff.
-  private readonly retryAttempts = new Map<string, number>();
+  private readonly syncFibers = new Map<string, Fiber.RuntimeFiber<void, never>>();
   private started = false;
 
   constructor(private readonly deps: FileWatcherDeps) {}
@@ -85,7 +86,7 @@ export class FileWatcher implements IFileWatcher {
       }
 
       const folder = workspace.folderPath;
-      const watcher = chokidar.watch(folder, {
+      const watcher = (this.deps.watch ?? chokidar.watch)(folder, {
         ignoreInitial: true,
         ignored: /(^|[/\\])\./, // dotfiles and folders
         awaitWriteFinish: { stabilityThreshold: 250, pollInterval: 100 },
@@ -173,8 +174,6 @@ export class FileWatcher implements IFileWatcher {
    * debounce timer and the retry/backoff state (fresh debounce wins).
    */
   private scheduleSync(workspaceId: string) {
-    // A new file event supersedes any pending sync or retry for this workspace.
-    this.retryAttempts.delete(workspaceId);
     this.runScheduledSync(workspaceId, SYNC_DEBOUNCE_MS);
   }
 
@@ -183,54 +182,63 @@ export class FileWatcher implements IFileWatcher {
    * exponential backoff up to SYNC_RETRY_MAX_ATTEMPTS before giving up.
    */
   private runScheduledSync(workspaceId: string, delayMs: number) {
-    const prev = this.debounceTimers.get(workspaceId);
-    if (prev) clearTimeout(prev);
+    const previous = this.syncFibers.get(workspaceId);
+    if (previous) this.deps.runFork(Fiber.interrupt(previous));
 
-    const timer = setTimeout(() => {
-      void logger.withContext(`out:FileWatcher.sync.${workspaceId}`, async () => {
-        this.debounceTimers.delete(workspaceId);
-        try {
-          await this.syncWorkspace(workspaceId);
-          this.retryAttempts.delete(workspaceId);
-        } catch (e) {
-          const attempt = (this.retryAttempts.get(workspaceId) ?? 0) + 1;
-          if (attempt >= SYNC_RETRY_MAX_ATTEMPTS) {
-            this.retryAttempts.delete(workspaceId);
-            logger.error(
-              `[Watcher] Sync failed for workspace ${workspaceId} after ${attempt} attempts, giving up:`,
-              e,
-            );
-            return;
-          }
-          this.retryAttempts.set(workspaceId, attempt);
-          const backoff = Math.min(SYNC_RETRY_BASE_MS * 2 ** (attempt - 1), SYNC_RETRY_MAX_MS);
+    const retrySchedule = Schedule.exponential(SYNC_RETRY_BASE_MS).pipe(
+      Schedule.union(Schedule.spaced(SYNC_RETRY_MAX_MS)),
+      Schedule.intersect(Schedule.recurs(SYNC_RETRY_MAX_ATTEMPTS - 1)),
+      Schedule.tapInput((error) =>
+        Effect.sync(() =>
+          logger.error(`[Watcher] Sync failed for workspace ${workspaceId}; retrying:`, error),
+        ),
+      ),
+    );
+    const program = Effect.sleep(delayMs).pipe(
+      Effect.andThen(
+        Effect.tryPromise({
+          try: () =>
+            Promise.resolve(
+              logger.withContext(`out:FileWatcher.sync.${workspaceId}`, () =>
+                this.syncWorkspace(workspaceId),
+              ),
+            ),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
+        }),
+      ),
+      Effect.retry(retrySchedule),
+      Effect.catchAll((error) =>
+        Effect.sync(() =>
           logger.error(
-            `[Watcher] Sync failed for workspace ${workspaceId} (attempt ${attempt}/${SYNC_RETRY_MAX_ATTEMPTS}), retrying in ${backoff}ms:`,
-            e,
-          );
-          this.runScheduledSync(workspaceId, backoff);
-        }
-      });
-    }, delayMs);
-
-    this.debounceTimers.set(workspaceId, timer);
+            `[Watcher] Sync failed for workspace ${workspaceId} after ${SYNC_RETRY_MAX_ATTEMPTS} attempts, giving up:`,
+            error,
+          ),
+        ),
+      ),
+      Effect.ensuring(
+        Effect.sync(() => {
+          if (this.syncFibers.get(workspaceId) === fiber) {
+            this.syncFibers.delete(workspaceId);
+          }
+        }),
+      ),
+    );
+    const fiber = this.deps.runFork(program);
+    this.syncFibers.set(workspaceId, fiber);
   }
 
   private clearTimer(workspaceId: string) {
-    const timer = this.debounceTimers.get(workspaceId);
-    if (timer) {
-      clearTimeout(timer);
-      this.debounceTimers.delete(workspaceId);
+    const fiber = this.syncFibers.get(workspaceId);
+    if (fiber) {
+      this.deps.runFork(Fiber.interrupt(fiber));
+      this.syncFibers.delete(workspaceId);
     }
-    this.retryAttempts.delete(workspaceId);
   }
 
   private clearAllTimers() {
-    for (const [workspaceId] of this.debounceTimers) {
+    for (const [workspaceId] of this.syncFibers) {
       this.clearTimer(workspaceId);
     }
-    // Clear any residual retry state not paired with a live timer.
-    this.retryAttempts.clear();
   }
 
   private async syncWorkspace(workspaceId: string) {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { Effect } from 'effect';
 import type { LanguageModel } from 'ai';
 import {
   type GenerateTextFn,
@@ -47,6 +48,7 @@ function createGenerator(config: AppConfig, generateTextFn: GenerateTextFn) {
     appConfigRepository: createAppConfigRepository(config),
     generateTextFn,
     modelFactory,
+    runPromise: Effect.runPromise,
   });
 
   return { generator, modelFactory };
@@ -191,6 +193,7 @@ describe('AISDKTextGenerator', () => {
       } as unknown as IAIProviderKeyStore,
       generateTextFn,
       openaiFactory,
+      runPromise: Effect.runPromise,
     });
 
     await generator.generateMarkdown({ prompt: 'hi' });
@@ -222,6 +225,7 @@ describe('AISDKTextGenerator', () => {
       } as unknown as IAIProviderKeyStore,
       generateTextFn,
       openaiFactory,
+      runPromise: Effect.runPromise,
     });
 
     await generator.generateMarkdown({ prompt: 'hi' });

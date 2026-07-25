@@ -31,7 +31,13 @@ try {
 /**
  * System Service implementation
  */
+export interface SystemBridgeDeps {
+  getFonts?: () => Promise<string[]>;
+}
+
 export class SystemBridge implements ISystemBridge {
+  constructor(private readonly deps: SystemBridgeDeps = {}) {}
+
   getDefaultWorkspaceDir(configuredPath?: string): string {
     // Honor an explicit absolute path the user has configured.
     if (configuredPath && path.isAbsolute(configuredPath)) {
@@ -52,8 +58,13 @@ export class SystemBridge implements ISystemBridge {
   async getFonts(): Promise<string[]> {
     return await logger.withContext('out:SystemBridge.getFonts', async () => {
       try {
-        const { getFonts } = await import('font-list');
-        const fonts = await getFonts();
+        const loadFonts =
+          this.deps.getFonts ??
+          (async () => {
+            const module = await import('font-list');
+            return module.getFonts();
+          });
+        const fonts = await loadFonts();
         return fonts.sort((a, b) => a.localeCompare(b));
       } catch (error) {
         logger.error('[SystemBridge] Failed to get fonts:', error);

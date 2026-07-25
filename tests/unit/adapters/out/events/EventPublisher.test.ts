@@ -1,11 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EVENTS } from '../../../../../src/shared/constants/ipcChannels';
+import { EventPublisher } from '../../../../../src/main/adapters/out/events/EventPublisher';
 
 const getAllWindows = vi.fn();
-
-vi.mock('electron', () => ({
-  BrowserWindow: { getAllWindows },
-}));
 
 describe('EventPublisher', () => {
   beforeEach(() => {
@@ -13,10 +10,7 @@ describe('EventPublisher', () => {
   });
 
   it('publishes subscribed domain events and supports unsubscribe', async () => {
-    const { EventPublisher } = await import(
-      '../../../../../src/main/adapters/out/events/EventPublisher'
-    );
-    const publisher = new EventPublisher();
+    const publisher = new EventPublisher(getAllWindows);
     const handler = vi.fn();
     const unsubscribe = publisher.subscribe('note:created', handler);
 
@@ -47,11 +41,7 @@ describe('EventPublisher', () => {
       { isDestroyed: () => false, webContents: { send } },
       { isDestroyed: () => true, webContents: { send: vi.fn() } },
     ]);
-    const { EventPublisher } = await import(
-      '../../../../../src/main/adapters/out/events/EventPublisher'
-    );
-
-    new EventPublisher().publish({
+    new EventPublisher(getAllWindows).publish({
       type: 'workspace:activated',
       timestamp: new Date('2026-04-21T10:00:00'),
       payload: { id: 'ws-1', name: 'Stone', folderPath: '/tmp/stone' },
@@ -65,10 +55,7 @@ describe('EventPublisher', () => {
   });
 
   it('subscribeAll wires multiple event types and unwires them together', async () => {
-    const { EventPublisher } = await import(
-      '../../../../../src/main/adapters/out/events/EventPublisher'
-    );
-    const publisher = new EventPublisher();
+    const publisher = new EventPublisher(getAllWindows);
     const handler = vi.fn();
     const unsubscribe = publisher.subscribeAll(handler);
 

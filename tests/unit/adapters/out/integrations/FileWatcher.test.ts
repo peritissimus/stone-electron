@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Effect } from 'effect';
 import {
   FileWatcher,
   type WorkspaceSyncTrigger,
@@ -21,11 +22,6 @@ const chokidarMock = vi.hoisted(() => {
     watcher,
   };
 });
-
-vi.mock('chokidar', () => ({
-  default: { watch: chokidarMock.watch },
-  watch: chokidarMock.watch,
-}));
 
 function workspace(overrides: Partial<WorkspaceProps> = {}): WorkspaceProps {
   return {
@@ -68,6 +64,8 @@ describe('FileWatcher', () => {
       workspaceRepository: repository,
       eventPublisher: publisher,
       syncWorkspace,
+      runFork: Effect.runFork,
+      watch: chokidarMock.watch as any,
     });
 
     await watcher.start();
@@ -88,6 +86,8 @@ describe('FileWatcher', () => {
       workspaceRepository: repository,
       eventPublisher: publisher,
       syncWorkspace,
+      runFork: Effect.runFork,
+      watch: chokidarMock.watch as any,
     });
 
     await watcher.watchWorkspace(workspace());
@@ -124,6 +124,8 @@ describe('FileWatcher', () => {
       workspaceRepository: repository,
       eventPublisher: publisher,
       syncWorkspace,
+      runFork: Effect.runFork,
+      watch: chokidarMock.watch as any,
     });
 
     await watcher.watchWorkspace(workspace());

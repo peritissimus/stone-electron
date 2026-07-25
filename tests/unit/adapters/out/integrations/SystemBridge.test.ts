@@ -1,21 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SystemBridge } from '../../../../../src/main/adapters/out/integrations/SystemBridge';
 
-const fontListMock = vi.hoisted(() => ({
-  getFonts: vi.fn().mockResolvedValue(['Zed Sans', 'Avenir']),
-}));
+const getFonts = vi.fn().mockResolvedValue(['Zed Sans', 'Avenir']);
 
-vi.mock('font-list', () => fontListMock);
-
-async function loadSystemBridge() {
-  vi.resetModules();
-  const { SystemBridge } = await import('../../../../../src/main/adapters/out/integrations/SystemBridge');
-  return new SystemBridge();
-}
+const loadSystemBridge = () => new SystemBridge({ getFonts });
 
 describe('SystemBridge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    fontListMock.getFonts.mockResolvedValue(['Zed Sans', 'Avenir']);
+    getFonts.mockResolvedValue(['Zed Sans', 'Avenir']);
   });
 
   it('resolves the default workspace directory from config or documents', async () => {
@@ -30,7 +23,7 @@ describe('SystemBridge', () => {
 
     await expect(bridge.getFonts()).resolves.toEqual(['Avenir', 'Zed Sans']);
 
-    fontListMock.getFonts.mockRejectedValueOnce(new Error('font scan failed'));
+    getFonts.mockRejectedValueOnce(new Error('font scan failed'));
     await expect(bridge.getFonts()).resolves.toContain('Arial');
   });
 
