@@ -150,7 +150,7 @@ describe('SearchUseCases', () => {
     await expect(
       useCases.semanticSearch.execute({ query: 'test' }),
     ).resolves.toEqual({
-      results: [{ noteId: 'note-2', title: 'Similar', distance: 0.9 }],
+      results: [{ noteId: 'note-2', title: 'Similar', similarity: 0.9 }],
     });
   });
 
