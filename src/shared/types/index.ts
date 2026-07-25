@@ -135,7 +135,8 @@ export interface ClassificationResult {
 export interface SimilarNote {
   noteId: string;
   title: string;
-  distance: number;
+  /** Cosine similarity in [-1, 1]; higher is a closer match. */
+  similarity: number;
 }
 
 // Embedding status
@@ -286,7 +287,6 @@ export * from './settings';
 export * from './ai';
 
 // Export topic suggestion wire types
-export * from './topicSuggestion';
 
 // Export related-notes wire types
 export * from './related';
