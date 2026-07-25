@@ -61,6 +61,14 @@ export type {
   SuggestedCluster,
 } from './TopicSuggester';
 
+export { TopicCurator } from './TopicCurator';
+export type {
+  CuratorCluster,
+  CuratorExistingTopic,
+  CurationOptions,
+  CuratedTopic,
+} from './TopicCurator';
+
 export { NoteGraphBuilder } from './NoteGraphBuilder';
 export { stripFirstHeading } from './MarkdownTitle';
 export { formatJournalDate, parseJournalDate, addCalendarDays } from './journalDate';
