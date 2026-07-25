@@ -10,7 +10,6 @@ import type {
   Note,
   NotebookWithCount,
   TagWithCount,
-  TopicWithCount,
   Workspace,
   FileTreeNode,
   UUID,
@@ -116,9 +115,13 @@ export interface TagStoreState extends MultiSelectStore<TagWithCount> {
 // TOPIC STORE
 // =============================================================================
 
-export interface TopicStoreState extends SingleSelectStore<TopicWithCount> {
-  // Already has: items, selectedId, loading, error
-  // Already has: setItems, addItem, updateItem, deleteItem, selectItem
+/** Topics live in the main process; the renderer only tracks search state. */
+export interface TopicStoreState extends BaseStoreState {
+  searchQuery: string;
+  searchResults: Array<{ noteId: UUID; title: string; similarity: number }>;
+
+  setSearchQuery(query: string): void;
+  setSearchResults(results: Array<{ noteId: UUID; title: string; similarity: number }>): void;
 }
 
 // =============================================================================
