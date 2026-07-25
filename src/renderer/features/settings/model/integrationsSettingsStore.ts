@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { settingsAPI } from '@renderer/api/settingsAPI';
 import { dailyReviewAPI } from '@renderer/api/dailyReviewAPI';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { createSettingsHydrator } from '@renderer/services/settings/createSettingsHydrator';
 import type { CalendarDescriptor, DailyReviewIntegrationStatus } from '@shared/types/dailyReview';
 import { DEFAULT_INTEGRATIONS_CONFIG, type IntegrationsConfig } from '@shared/types/settings';
 
@@ -25,26 +24,13 @@ interface IntegrationsSettingsState {
   setSelectedCalendarIds: (ids: string[] | null) => Promise<void>;
 }
 
-let hydrationPromise: Promise<void> | null = null;
-let eventUnsubscribe: (() => void) | null = null;
-
-async function loadIntegrations(
-  set: (state: Partial<IntegrationsSettingsState>) => void,
-): Promise<void> {
-  try {
-    const response = await settingsAPI.getIntegrations();
-    if (response.success && response.data) {
-      set({ integrations: response.data, loaded: true, error: null });
-      return;
-    }
-    set({ loaded: true, error: response.error?.message ?? 'Failed to load integrations' });
-  } catch (error) {
-    set({
-      loaded: true,
-      error: error instanceof Error ? error.message : 'Failed to load integrations',
-    });
-  }
-}
+const integrationsHydrator = createSettingsHydrator<IntegrationsSettingsState, IntegrationsConfig>({
+  scope: 'integrations',
+  load: settingsAPI.getIntegrations,
+  apply: (integrations, { set }) => set({ integrations, loaded: true, error: null }),
+  fail: (error, { set }) => set({ loaded: true, error }),
+  fallbackMessage: 'Failed to load integrations',
+});
 
 export const useIntegrationsSettingsStore = create<IntegrationsSettingsState>((set, get) => ({
   integrations: DEFAULT_INTEGRATIONS_CONFIG,
@@ -55,26 +41,7 @@ export const useIntegrationsSettingsStore = create<IntegrationsSettingsState>((s
   availableCalendars: [],
   calendarAccess: { status: 'idle', message: null },
 
-  hydrate: async () => {
-    if (hydrationPromise) return hydrationPromise;
-
-    hydrationPromise = (async () => {
-      await loadIntegrations(set);
-      if (!eventUnsubscribe) {
-        eventUnsubscribe = subscribe(EVENTS.SETTINGS_CHANGED, async (payload) => {
-          const scope = (payload as { scope?: string } | undefined)?.scope;
-          if (scope !== 'integrations') return;
-          await loadIntegrations(set);
-        });
-      }
-    })();
-
-    try {
-      await hydrationPromise;
-    } finally {
-      hydrationPromise = null;
-    }
-  },
+  hydrate: () => integrationsHydrator.hydrate(set, get),
 
   setLinearApiKey: async (key) => {
     const previous = get().integrations;

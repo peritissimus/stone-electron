@@ -16,8 +16,7 @@ import { useDocumentBufferStore } from '@renderer/services/documents/model/docum
 import type { CursorPosition } from '@renderer/services/documents/model/documentBufferStore';
 export type { CursorPosition };
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
-import { useNoteEvents } from '@renderer/features/notes/hooks/useNoteEvents';
-import { useFileEvents } from '@renderer/services/workspace/hooks/useFileEvents';
+import { useInvalidation } from '@renderer/services/invalidation/hooks/useInvalidation';
 import { logger } from '@renderer/services/telemetry/logger';
 import { deleteDraft } from '@renderer/services/documents/lib/draftStorage';
 import { noteAPI } from '@renderer/api';
@@ -140,80 +139,50 @@ export function useDocumentBuffer({
     [noteId, setBuffer, updateBuffer],
   );
 
-  // Debounce reload to prevent double-triggering from NOTE_UPDATED + FILE_CHANGED
-  const reloadTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Reload content from file when external update detected
-  const reloadFromFile = useCallback(() => {
+  const reloadFromFile = useCallback(async () => {
     if (!noteId || !editor) return;
     if (loadingNotes.has(noteId)) return;
-
-    // Debounce: cancel pending reload and schedule new one
-    if (reloadTimerRef.current) {
-      clearTimeout(reloadTimerRef.current);
+    if (useDocumentBufferStore.getState().isDirty(noteId)) {
+      logger.debug('[useDocumentBuffer] Ignoring external reload for dirty buffer:', noteId);
+      return;
     }
 
-    reloadTimerRef.current = setTimeout(async () => {
-      if (loadingNotes.has(noteId)) return;
-
-      logger.info('[useDocumentBuffer] External update detected, reloading:', noteId);
-
-      const { removeBuffer } = useDocumentBufferStore.getState();
-      removeBuffer(noteId);
-
-      loadingNotes.add(noteId);
-      try {
-        const response = await noteAPI.getContent(noteId);
-        if (response.success && response.data) {
-          hydrateEditor(response.data.content);
-          setBuffer(noteId, response.data.content);
-          logger.info('[useDocumentBuffer] Reloaded content from external update');
-        }
-      } catch (error) {
-        logger.error('[useDocumentBuffer] Failed to reload after external update:', error);
-      } finally {
-        loadingNotes.delete(noteId);
+    logger.info('[useDocumentBuffer] External update detected, reloading:', noteId);
+    loadingNotes.add(noteId);
+    try {
+      const response = await noteAPI.getContent(noteId);
+      // The user may have started typing while the read was in flight. Never
+      // replace that newer local buffer with an older disk snapshot.
+      if (useDocumentBufferStore.getState().isDirty(noteId)) return;
+      if (response.success && response.data) {
+        hydrateEditor(response.data.content);
+        setBuffer(noteId, response.data.content);
+        logger.info('[useDocumentBuffer] Reloaded content from external update');
       }
-    }, 100); // 100ms debounce
+    } catch (error) {
+      logger.error('[useDocumentBuffer] Failed to reload after external update:', error);
+    } finally {
+      loadingNotes.delete(noteId);
+    }
   }, [noteId, editor, setBuffer, hydrateEditor]);
 
-  // Cleanup reload timer on unmount
-  useEffect(() => {
-    return () => {
-      if (reloadTimerRef.current) {
-        clearTimeout(reloadTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Listen for NOTE_UPDATED events (e.g., from quick capture)
-  useNoteEvents({
-    onUpdated: useCallback(
-      (payload: unknown) => {
-        const data = payload as { id?: string };
-        if (data?.id === noteId) {
-          reloadFromFile();
-        }
-      },
-      [noteId, reloadFromFile],
-    ),
-  });
-
-  // Listen for FILE_CHANGED events (external file modifications)
-  useFileEvents({
-    onChanged: useCallback(
-      (payload: unknown) => {
-        if (!noteId) return;
-        const data = payload as { workspaceId?: string; path?: string };
-        // Get current note's file path and check if it matches
+  useInvalidation({
+    sources: ['note', 'file'],
+    actions: ['updated', 'changed'],
+    debounceMs: 100,
+    filter: (event) => {
+      if (!noteId) return false;
+      if (event.source === 'note') return event.noteId === noteId;
+      if (event.source === 'file') {
         const notes = useNoteStore.getState().notes;
         const currentNote = notes.find((n) => n.id === noteId);
-        if (currentNote?.filePath && data?.path && currentNote.filePath.endsWith(data.path)) {
-          reloadFromFile();
-        }
-      },
-      [noteId, reloadFromFile],
-    ),
+        return Boolean(currentNote?.filePath && currentNote.filePath.endsWith(event.path));
+      }
+      return false;
+    },
+    guard: () => Boolean(noteId && !useDocumentBufferStore.getState().isDirty(noteId)),
+    invalidate: reloadFromFile,
   });
 
   // Save current note to file

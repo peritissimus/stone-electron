@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { TodoItem } from '@shared/types';
-import { useFileEvents } from '@renderer/services/workspace/hooks/useFileEvents';
-import { useNoteEvents } from '@renderer/features/notes/hooks/useNoteEvents';
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
 import { useTaskStore, type TaskGroupBy } from '@renderer/features/tasks/model/taskStore';
 import { logger } from '@renderer/services/telemetry/logger';
+import { useInvalidation } from '@renderer/services/invalidation/hooks/useInvalidation';
 import { useWorkspaceStore } from '@renderer/services/workspace/model/workspaceStore';
 
 export const TASK_STATES: readonly { key: string; label: string; done: boolean; color: string }[] =
@@ -43,27 +42,18 @@ export function useTasks() {
   const refresh = useTaskStore((state) => state.refresh);
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId);
   const { updateTaskState } = useNoteAPI();
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [togglingTodoId, setTogglingTodoId] = useState<string | null>(null);
 
   useEffect(() => {
     void ensureLoaded();
   }, [activeWorkspaceId, ensureLoaded]);
 
-  const debouncedRefresh = useCallback(() => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    refreshTimerRef.current = setTimeout(() => void refresh(false), 500);
-  }, [refresh]);
-
-  useEffect(
-    () => () => {
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    },
-    [],
-  );
-
-  useNoteEvents({ onUpdated: debouncedRefresh });
-  useFileEvents({ onChanged: debouncedRefresh });
+  useInvalidation({
+    sources: ['note', 'file'],
+    actions: ['updated', 'changed'],
+    debounceMs: 500,
+    invalidate: () => refresh(false),
+  });
 
   const toggleStateVisibility = useCallback(
     (stateKey: string) => {

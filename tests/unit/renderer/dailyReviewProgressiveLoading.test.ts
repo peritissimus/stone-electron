@@ -3,11 +3,13 @@ import type { DailyReviewSnapshot } from '../../../src/shared/types';
 
 const get = vi.fn();
 const loadIntegration = vi.fn();
+const loadIntegrations = vi.fn();
 
 vi.mock('@renderer/api', () => ({
   dailyReviewAPI: {
     get,
     loadIntegration,
+    loadIntegrations,
     summarize: vi.fn(),
   },
 }));
@@ -39,14 +41,7 @@ describe('dailyReviewStore progressive integration loading', () => {
 
   it('makes local Today data usable without waiting for external applications', async () => {
     get.mockResolvedValue({ success: true, data: snapshot() });
-    loadIntegration.mockImplementation(({ source }: { source: string }) =>
-      source === 'linear'
-        ? Promise.resolve({
-            success: true,
-            data: { source: 'linear', status: 'connected', linearIssues: [] },
-          })
-        : new Promise(() => undefined),
-    );
+    loadIntegrations.mockImplementation(() => new Promise(() => undefined));
 
     await useDailyReviewStore.getState().load();
 
@@ -55,7 +50,8 @@ describe('dailyReviewStore progressive integration loading', () => {
       loading: false,
       snapshot: { todayJournal: { contentPreview: 'Local data is ready.' } },
     });
-    await vi.waitFor(() => expect(loadIntegration).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(loadIntegrations).toHaveBeenCalledOnce());
+    expect(loadIntegration).not.toHaveBeenCalled();
     expect(useDailyReviewStore.getState().integrations.mail.status).toBe('loading');
   });
 
@@ -66,7 +62,7 @@ describe('dailyReviewStore progressive integration loading', () => {
       data: {
         source: 'calendar',
         status: 'denied',
-        calendarEvents: [],
+        data: { events: [] },
         message: 'Access is blocked in macOS Automation settings.',
       },
     });
@@ -81,13 +77,16 @@ describe('dailyReviewStore progressive integration loading', () => {
 
   it('stores a Mail unread count even when Apple Mail supplies no previews', async () => {
     useDailyReviewStore.setState({ snapshot: snapshot() });
+    get.mockResolvedValue({
+      success: true,
+      data: { ...snapshot(), mailUnreadCount: 352, mailMessages: [] },
+    });
     loadIntegration.mockResolvedValue({
       success: true,
       data: {
         source: 'mail',
         status: 'connected',
-        mailUnreadCount: 352,
-        mailMessages: [],
+        data: { unreadCount: 352, messages: [] },
       },
     });
 

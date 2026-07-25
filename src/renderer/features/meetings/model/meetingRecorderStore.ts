@@ -95,11 +95,11 @@ interface MeetingRecorderState {
   appendLiveLine: (source: 'mic' | 'system', text: string) => void;
   clearLive: () => void;
   /** Warm the resident live model and reset the draft (recording start). */
-  startLive: (sessionId: string) => void;
+  startLive: () => void;
   /** Tear down the resident live model (recording stop). */
-  stopLive: (sessionId: string) => Promise<void>;
+  stopLive: () => Promise<void>;
   /** Transcribe one live WAV chunk and append the result to the draft. */
-  pushLiveChunk: (sessionId: string, source: 'mic' | 'system', wav: ArrayBuffer) => Promise<void>;
+  pushLiveChunk: (source: 'mic' | 'system', wav: ArrayBuffer) => Promise<void>;
   reset: () => void;
 }
 
@@ -186,8 +186,7 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
       }
 
       // finalize() now only ENQUEUES the durable background pipeline and
-      // returns the current recording immediately (status still e.g.
-      // 'recording', NOT 'ready'). We stay in 'finalizing' and let the
+      // returns the durable job id immediately. We stay in 'finalizing' and let the
       // `meetings:statusChanged` event (handled by _onStatusChanged) resolve
       // the phase to 'done'/'error' once the job completes.
       set({ phase: 'finalizing', finalizeStage: null });
@@ -199,14 +198,6 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
           error: finalizeRes.error?.message ?? 'Failed to finalize recording',
         });
         return;
-      }
-      // A job that fails synchronously at enqueue time still reports here.
-      if (finalizeRes.data.recording.status === 'failed') {
-        set({
-          phase: 'error',
-          finalizeStage: null,
-          error: finalizeRes.data.recording.error ?? 'Pipeline failed',
-        });
       }
     } catch (err) {
       logger.error('[meetingRecorderStore] uploadAndFinalize failed', err);
@@ -262,16 +253,16 @@ export const useMeetingRecorderStore = create<MeetingRecorderState>((set, get) =
   appendLiveLine: (source, text) =>
     set((s) => ({ liveLines: [...s.liveLines, { id: s.liveLines.length, source, text }] })),
   clearLive: () => set({ liveLines: [] }),
-  startLive: (sessionId) => {
+  startLive: () => {
     get().clearLive();
-    void meetingAPI.liveStart(sessionId);
+    void meetingAPI.liveStart();
   },
-  stopLive: async (sessionId) => {
-    await meetingAPI.liveStop(sessionId);
+  stopLive: async () => {
+    await meetingAPI.liveStop();
   },
-  pushLiveChunk: async (sessionId, source, wav) => {
+  pushLiveChunk: async (source, wav) => {
     try {
-      const res = await meetingAPI.transcribeLiveChunk(sessionId, wav);
+      const res = await meetingAPI.transcribeLiveChunk(wav);
       const text = res.success && res.data ? res.data.text.trim() : '';
       if (text) get().appendLiveLine(source, text);
     } catch {

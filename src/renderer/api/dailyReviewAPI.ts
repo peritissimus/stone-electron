@@ -33,6 +33,11 @@ export const dailyReviewAPI = {
   }): Promise<IpcResponse<DailyReviewIntegrationResult>> =>
     invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, input),
 
+  loadIntegrations: (input?: {
+    date?: string;
+  }): Promise<IpcResponse<DailyReviewIntegrationResult[]>> =>
+    invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, input ?? {}),
+
   summarize: (input?: {
     workspaceId?: string;
     date?: string;

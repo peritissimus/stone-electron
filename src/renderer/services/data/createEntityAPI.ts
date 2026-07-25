@@ -1,28 +1,7 @@
-/**
- * Entity API Factory - Generates CRUD hooks with consistent patterns
- *
- * Reduces boilerplate in API hooks by providing reusable CRUD operations
- * that integrate with Zustand stores and IPC channels.
- */
-
 import { useCallback } from 'react';
-import { invokeIpc, handleIpcResponse } from '@renderer/lib/ipc';
+import type { IpcResponse } from '@shared/types';
 import { logger } from '@renderer/services/telemetry/logger';
 
-/**
- * Channel configuration for entity operations
- */
-export interface EntityChannels {
-  GET_ALL: string;
-  CREATE?: string;
-  UPDATE?: string;
-  DELETE?: string;
-}
-
-/**
- * Store actions that the factory can use
- * Uses generic names that map to entity-specific methods
- */
 export interface EntityStoreActions<T> {
   setItems: (items: T[]) => void;
   addItem: (item: T) => void;
@@ -32,296 +11,131 @@ export interface EntityStoreActions<T> {
   setError: (error: string | null) => void;
 }
 
-/**
- * Configuration for creating an entity API
- */
-export interface EntityAPIConfig<T> {
-  /** Entity name for error messages (e.g., 'tag', 'notebook') */
-  entityName: string;
-  /** IPC channel configuration */
-  channels: EntityChannels;
-  /** Zustand store hook that returns the store actions */
-  useStore: () => EntityStoreActions<T>;
-  /** Key in the response object that contains the items array (e.g., 'tags', 'notebooks') */
-  responseKey: string;
-  /** Optional log prefix for debugging */
-  logPrefix?: string;
+export interface EntityAPIOperations<T, TParams> {
+  list: (params?: TParams) => Promise<IpcResponse<T[]>>;
+  create?: (data: Partial<T>) => Promise<IpcResponse<T>>;
+  update?: (id: string, data: Partial<T>) => Promise<IpcResponse<T>>;
+  remove?: (id: string) => Promise<IpcResponse<void>>;
 }
 
-/**
- * Result type for the generated API hook
- */
-export interface EntityAPIResult<T, TParams = Record<string, unknown>> {
-  /** Load all items with optional params */
+export interface EntityAPIConfig<T, TParams> {
+  entityName: string;
+  api: EntityAPIOperations<T, TParams>;
+  useStore: () => EntityStoreActions<T>;
+}
+
+export interface EntityAPIResult<T, TParams> {
   loadAll: (params?: TParams) => Promise<T[] | null>;
-  /** Create a new item */
   create: (data: Partial<T>) => Promise<T | null>;
-  /** Update an existing item */
   update: (id: string, data: Partial<T>) => Promise<T | null>;
-  /** Delete an item by ID */
   remove: (id: string) => Promise<boolean>;
 }
 
 /**
- * Create an entity API hook with standard CRUD operations
- *
- * @example
- * ```typescript
- * const useTagCRUD = createEntityAPI<TagWithCount>({
- *   entityName: 'tag',
- *   channels: {
- *     GET_ALL: TAG_CHANNELS.GET_ALL,
- *     CREATE: TAG_CHANNELS.CREATE,
- *     DELETE: TAG_CHANNELS.DELETE,
- *   },
- *   useStore: () => {
- *     const store = useTagStore();
- *     return {
- *       setItems: store.setTags,
- *       addItem: store.addTag,
- *       updateItem: store.updateTag,
- *       deleteItem: store.deleteTag,
- *       setLoading: store.setLoading,
- *       setError: store.setError,
- *     };
- *   },
- *   responseKey: 'tags',
- * });
- *
- * // Use in component
- * const { loadAll, create, remove } = useTagCRUD();
- * ```
+ * Builds consistent entity commands above the validated API modules. The
+ * factory never invokes IPC directly, so response validation cannot be
+ * bypassed by a store or command hook.
  */
 export function createEntityAPI<T extends { id: string }, TParams = Record<string, unknown>>(
-  config: EntityAPIConfig<T>,
+  config: EntityAPIConfig<T, TParams>,
 ): () => EntityAPIResult<T, TParams> {
-  const { entityName, channels, useStore, responseKey, logPrefix } = config;
-  const prefix = logPrefix || `[${entityName}API]`;
-
   return function useEntityAPI(): EntityAPIResult<T, TParams> {
-    const { setItems, addItem, updateItem, deleteItem, setLoading, setError } = useStore();
+    const store = config.useStore();
 
-    /**
-     * Load all items
-     */
     const loadAll = useCallback(
-      async (params?: TParams): Promise<T[] | null> => {
-        setLoading(true);
-        setError(null);
-        try {
-          logger.info(`${prefix}.loadAll`, params);
-          const response = await invokeIpc<Record<string, T[]>>(channels.GET_ALL, params);
-          const result = handleIpcResponse(response, `Failed to load ${entityName}s`);
-
-          if (result.success) {
-            const items = result.data[responseKey];
-            if (Array.isArray(items)) {
-              setItems(items);
-              logger.info(`${prefix}.loadAll loaded ${items.length} items`);
-              return items;
-            }
-            // Handle case where response structure differs
-            logger.warn(`${prefix}.loadAll unexpected response structure`, result.data);
-            return null;
-          }
-
-          setError(result.error);
-          return null;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : `Failed to load ${entityName}s`;
-          logger.error(`${prefix}.loadAll error`, error);
-          setError(message);
-          return null;
-        } finally {
-          setLoading(false);
-        }
-      },
-      [setItems, setLoading, setError],
+      async (params?: TParams) =>
+        runEntityOperation(
+          config.entityName,
+          'load',
+          store,
+          () => config.api.list(params),
+          (items) => store.setItems(items),
+          true,
+        ),
+      [store.setError, store.setItems, store.setLoading],
     );
 
-    /**
-     * Create a new item
-     */
     const create = useCallback(
-      async (data: Partial<T>): Promise<T | null> => {
-        if (!channels.CREATE) {
-          logger.warn(`${prefix}.create not configured`);
-          return null;
-        }
-
-        setLoading(true);
-        setError(null);
-        try {
-          logger.info(`${prefix}.create`, data);
-          const response = await invokeIpc<T>(channels.CREATE, data);
-          const result = handleIpcResponse(response, `Failed to create ${entityName}`);
-
-          if (result.success) {
-            addItem(result.data);
-            logger.info(`${prefix}.create success`, result.data);
-            return result.data;
-          }
-
-          setError(result.error);
-          return null;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : `Failed to create ${entityName}`;
-          logger.error(`${prefix}.create error`, error);
-          setError(message);
-          return null;
-        } finally {
-          setLoading(false);
-        }
+      async (data: Partial<T>) => {
+        if (!config.api.create) return null;
+        return runEntityOperation(
+          config.entityName,
+          'create',
+          store,
+          () => config.api.create!(data),
+          store.addItem,
+          true,
+        );
       },
-      [addItem, setLoading, setError],
+      [store.addItem, store.setError, store.setLoading],
     );
 
-    /**
-     * Update an existing item
-     */
     const update = useCallback(
-      async (id: string, data: Partial<T>): Promise<T | null> => {
-        if (!channels.UPDATE) {
-          logger.warn(`${prefix}.update not configured`);
-          return null;
-        }
-
-        setError(null);
-        try {
-          logger.info(`${prefix}.update`, { id, ...data });
-          const response = await invokeIpc<T>(channels.UPDATE, { id, ...data });
-          const result = handleIpcResponse(response, `Failed to update ${entityName}`);
-
-          if (result.success) {
-            updateItem(result.data);
-            logger.info(`${prefix}.update success`, result.data);
-            return result.data;
-          }
-
-          setError(result.error);
-          return null;
-        } catch (error) {
-          const message = error instanceof Error ? error.message : `Failed to update ${entityName}`;
-          logger.error(`${prefix}.update error`, error);
-          setError(message);
-          return null;
-        }
+      async (id: string, data: Partial<T>) => {
+        if (!config.api.update) return null;
+        return runEntityOperation(
+          config.entityName,
+          'update',
+          store,
+          () => config.api.update!(id, data),
+          store.updateItem,
+        );
       },
-      [updateItem, setError],
+      [store.setError, store.updateItem],
     );
 
-    /**
-     * Delete an item by ID
-     */
     const remove = useCallback(
-      async (id: string): Promise<boolean> => {
-        if (!channels.DELETE) {
-          logger.warn(`${prefix}.remove not configured`);
-          return false;
-        }
-
-        setError(null);
+      async (id: string) => {
+        if (!config.api.remove) return false;
+        store.setError(null);
         try {
-          logger.info(`${prefix}.remove`, { id });
-          const response = await invokeIpc<void>(channels.DELETE, { id });
-
-          if (response.success) {
-            deleteItem(id);
-            logger.info(`${prefix}.remove success`);
-            return true;
+          const response = await config.api.remove(id);
+          if (!response.success) {
+            store.setError(response.error?.message ?? `Failed to delete ${config.entityName}`);
+            return false;
           }
-
-          setError(response.error?.message || `Failed to delete ${entityName}`);
-          return false;
+          store.deleteItem(id);
+          return true;
         } catch (error) {
-          const message = error instanceof Error ? error.message : `Failed to delete ${entityName}`;
-          logger.error(`${prefix}.remove error`, error);
-          setError(message);
+          store.setError(toMessage(error, `Failed to delete ${config.entityName}`));
           return false;
         }
       },
-      [deleteItem, setError],
+      [store.deleteItem, store.setError],
     );
 
     return { loadAll, create, update, remove };
   };
 }
 
-/**
- * Helper to create a simple IPC action (for entity-specific operations)
- *
- * @example
- * ```typescript
- * const toggleFavorite = useEntityAction<Note>(
- *   NOTE_CHANNELS.FAVORITE,
- *   'Failed to toggle favorite',
- *   setError,
- *   (note) => updateNote(note)
- * );
- * ```
- */
-export function useEntityAction<T>(
-  channel: string,
-  errorMessage: string,
-  setError: (error: string | null) => void,
-  onSuccess?: (data: T) => void,
-) {
-  return useCallback(
-    async (params: Record<string, unknown>): Promise<T | null> => {
-      setError(null);
-      try {
-        const response = await invokeIpc<T>(channel, params);
-        const result = handleIpcResponse(response, errorMessage);
-
-        if (result.success) {
-          if (onSuccess) {
-            onSuccess(result.data);
-          }
-          return result.data;
-        }
-
-        setError(result.error);
-        return null;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : errorMessage;
-        setError(message);
-        return null;
-      }
-    },
-    [channel, errorMessage, setError, onSuccess],
-  );
+async function runEntityOperation<T>(
+  entityName: string,
+  operation: string,
+  store: Pick<EntityStoreActions<T>, 'setError' | 'setLoading'>,
+  request: () => Promise<IpcResponse<T>>,
+  apply: (data: T) => void,
+  loading = false,
+): Promise<T | null> {
+  if (loading) store.setLoading(true);
+  store.setError(null);
+  try {
+    const response = await request();
+    if (!response.success || response.data === undefined) {
+      store.setError(response.error?.message ?? `Failed to ${operation} ${entityName}`);
+      return null;
+    }
+    apply(response.data);
+    return response.data;
+  } catch (error) {
+    const message = toMessage(error, `Failed to ${operation} ${entityName}`);
+    logger.error(`[${entityName}API] ${operation} failed`, error);
+    store.setError(message);
+    return null;
+  } finally {
+    if (loading) store.setLoading(false);
+  }
 }
 
-/**
- * Helper to create a void IPC action (for operations that don't return data)
- */
-export function useEntityVoidAction(
-  channel: string,
-  errorMessage: string,
-  setError: (error: string | null) => void,
-  onSuccess?: () => void,
-) {
-  return useCallback(
-    async (params: Record<string, unknown>): Promise<boolean> => {
-      setError(null);
-      try {
-        const response = await invokeIpc<void>(channel, params);
-
-        if (response.success) {
-          if (onSuccess) {
-            onSuccess();
-          }
-          return true;
-        }
-
-        setError(response.error?.message || errorMessage);
-        return false;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : errorMessage;
-        setError(message);
-        return false;
-      }
-    },
-    [channel, errorMessage, setError, onSuccess],
-  );
+function toMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
 }

@@ -6,8 +6,7 @@
 
 import { useCallback } from 'react';
 import { useTagStore } from '@renderer/features/notes/model/tagStore';
-import { TagWithCount } from '@shared/types';
-import { TAG_CHANNELS } from '@shared/constants/ipcChannels';
+import type { IpcResponse, TagWithCount } from '@shared/types';
 import { createEntityAPI } from '@renderer/services/data/createEntityAPI';
 import { tagAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
@@ -15,12 +14,24 @@ import { handleIpcResponse } from '@renderer/lib/ipc';
 /**
  * Base CRUD operations from factory
  */
-const useTagCRUD = createEntityAPI<TagWithCount>({
+const useTagCRUD = createEntityAPI<TagWithCount, { sort?: 'name' | 'count' | 'recent' }>({
   entityName: 'tag',
-  channels: {
-    GET_ALL: TAG_CHANNELS.GET_ALL,
-    CREATE: TAG_CHANNELS.CREATE,
-    DELETE: TAG_CHANNELS.DELETE,
+  api: {
+    list: async (params) => {
+      const response = await tagAPI.getAll(params);
+      return { ...response, data: response.data?.tags };
+    },
+    create: async (data) => {
+      const response = await tagAPI.create({
+        name: data.name ?? '',
+        ...(data.color ? { color: data.color } : {}),
+      });
+      return {
+        ...response,
+        data: response.data ? { ...response.data, note_count: 0 } : undefined,
+      } as IpcResponse<TagWithCount>;
+    },
+    remove: tagAPI.delete,
   },
   useStore: () => {
     const store = useTagStore();
@@ -33,8 +44,6 @@ const useTagCRUD = createEntityAPI<TagWithCount>({
       setError: store.setError,
     };
   },
-  responseKey: 'tags',
-  logPrefix: '[TagAPI]',
 });
 
 /**

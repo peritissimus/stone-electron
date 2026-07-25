@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { journalAPI } from '@renderer/api';
 import { logger } from '@renderer/services/telemetry/logger';
+import type { InvalidationEvent } from '@renderer/services/invalidation/invalidation';
 import type { JournalEntry } from '@shared/schemas';
 
 export const JOURNAL_FEED_WINDOW_DAYS = 14;
@@ -8,11 +9,6 @@ export const JOURNAL_FEED_WINDOW_DAYS = 14;
 // Payload shape emitted by the journal-aware backend use cases. The
 // backend is the source of truth for whether a note is a journal entry
 // (via `journalDate`), so the renderer no longer regexes file paths.
-interface NoteEventPayload {
-  id?: string;
-  journalDate?: string;
-}
-
 interface JournalState {
   entries: JournalEntry[];
   loading: boolean;
@@ -20,7 +16,7 @@ interface JournalState {
   error: string | null;
   load: () => Promise<void>;
   materialize: (date: string) => Promise<string | null>;
-  refreshForNoteEvent: (payload: unknown) => Promise<void>;
+  refreshForNoteEvent: (event: InvalidationEvent) => Promise<void>;
   reset: () => void;
 }
 
@@ -81,21 +77,20 @@ export const useJournalStore = create<JournalState>()((set, get) => ({
     return noteId;
   },
 
-  refreshForNoteEvent: async (payload: unknown) => {
+  refreshForNoteEvent: async (event) => {
     const state = get();
     if (!state.loadedOnce) return;
-
-    const data = (payload ?? {}) as NoteEventPayload;
+    if (event.source !== 'note') return;
 
     // Backend tells us this is a journal write — only reload if the date
     // is within the visible window.
-    if (data.journalDate && state.entries.some((entry) => entry.date === data.journalDate)) {
+    if (event.journalDate && state.entries.some((entry) => entry.date === event.journalDate)) {
       await state.load();
       return;
     }
 
     // Updates/deletes for a note that's already pinned to a visible entry.
-    if (data.id && state.entries.some((entry) => entry.noteId === data.id)) {
+    if (event.noteId && state.entries.some((entry) => entry.noteId === event.noteId)) {
       await state.load();
     }
   },

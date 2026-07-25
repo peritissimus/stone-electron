@@ -14,8 +14,7 @@
 
 import { create } from 'zustand';
 import { settingsAPI } from '@renderer/api/settingsAPI';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { createSettingsHydrator } from '@renderer/services/settings/createSettingsHydrator';
 import { DEFAULT_APP_SHORTCUTS } from '@shared/constants/defaultShortcuts';
 import {
   DEFAULT_SHORTCUTS_CONFIG,
@@ -231,60 +230,25 @@ function projectCustomBindings(
   return out;
 }
 
-let hydrationPromise: Promise<void> | null = null;
-let eventUnsubscribe: (() => void) | null = null;
+const shortcutsHydrator = createSettingsHydrator<ShortcutsState, ShortcutsConfig>({
+  scope: 'shortcuts',
+  load: settingsAPI.getShortcuts,
+  apply: (overrides, { set }) =>
+    set({
+      overrides,
+      customBindings: projectCustomBindings(overrides),
+      loaded: true,
+    }),
+  fail: (_error, { set }) => set({ loaded: true }),
+  fallbackMessage: 'Failed to load shortcuts',
+});
 
 export const useShortcutsStore = create<ShortcutsState>((set, get) => ({
   overrides: DEFAULT_SHORTCUTS_CONFIG,
   loaded: false,
   customBindings: projectCustomBindings(DEFAULT_SHORTCUTS_CONFIG),
 
-  hydrate: async () => {
-    if (hydrationPromise) return hydrationPromise;
-
-    hydrationPromise = (async () => {
-      try {
-        const response = await settingsAPI.getShortcuts();
-        const overrides =
-          response.success && response.data ? response.data : DEFAULT_SHORTCUTS_CONFIG;
-        set({
-          overrides,
-          customBindings: projectCustomBindings(overrides),
-          loaded: true,
-        });
-      } catch {
-        // Hydration failure: surface as "loaded with defaults" so UI doesn't hang.
-        set({ loaded: true });
-      }
-
-      // Subscribe once to settings:changed so future updates from the main
-      // process (e.g. another window) refresh the local state.
-      if (!eventUnsubscribe) {
-        eventUnsubscribe = subscribe(EVENTS.SETTINGS_CHANGED, async (payload) => {
-          const scope = (payload as { scope?: string } | undefined)?.scope;
-          if (scope !== 'shortcuts') return;
-          try {
-            const response = await settingsAPI.getShortcuts();
-            if (response.success && response.data) {
-              set({
-                overrides: response.data,
-                customBindings: projectCustomBindings(response.data),
-              });
-            }
-          } catch {
-            // Ignore — local state stays as-is until next hydrate.
-          }
-        });
-      }
-    })();
-
-    try {
-      await hydrationPromise;
-    } finally {
-      // Allow re-hydration if needed (e.g. after settings imported).
-      hydrationPromise = null;
-    }
-  },
+  hydrate: () => shortcutsHydrator.hydrate(set, get),
 
   getShortcut: (id: ShortcutAction): ShortcutDefinition => {
     const def = DEFAULT_BY_ID[id];

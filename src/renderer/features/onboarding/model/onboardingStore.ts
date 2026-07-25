@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { settingsAPI } from '@renderer/api/settingsAPI';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { createSettingsHydrator } from '@renderer/services/settings/createSettingsHydrator';
 import {
   DEFAULT_ONBOARDING_CONFIG,
   type OnboardingConfig,
@@ -21,50 +20,20 @@ interface OnboardingState {
   reset: () => Promise<void>;
 }
 
-let hydrationPromise: Promise<void> | null = null;
-let eventUnsubscribe: (() => void) | null = null;
+const onboardingHydrator = createSettingsHydrator<OnboardingState, OnboardingConfig>({
+  scope: 'onboarding',
+  load: settingsAPI.getOnboarding,
+  apply: (config, { set }) => set({ config, loaded: true, error: null }),
+  fail: (error, { set }) => set({ loaded: true, error }),
+  fallbackMessage: 'Failed to load onboarding state',
+});
 
-async function load(set: (state: Partial<OnboardingState>) => void): Promise<void> {
-  try {
-    const response = await settingsAPI.getOnboarding();
-    if (response.success && response.data) {
-      set({ config: response.data, loaded: true, error: null });
-      return;
-    }
-    set({ loaded: true, error: response.error?.message ?? 'Failed to load onboarding state' });
-  } catch (error) {
-    set({
-      loaded: true,
-      error: error instanceof Error ? error.message : 'Failed to load onboarding state',
-    });
-  }
-}
-
-export const useOnboardingStore = create<OnboardingState>((set) => ({
+export const useOnboardingStore = create<OnboardingState>((set, get) => ({
   config: DEFAULT_ONBOARDING_CONFIG,
   loaded: false,
   error: null,
 
-  hydrate: async () => {
-    if (hydrationPromise) return hydrationPromise;
-
-    hydrationPromise = (async () => {
-      await load(set);
-      if (!eventUnsubscribe) {
-        eventUnsubscribe = subscribe(EVENTS.SETTINGS_CHANGED, async (payload) => {
-          const scope = (payload as { scope?: string } | undefined)?.scope;
-          if (scope !== 'onboarding') return;
-          await load(set);
-        });
-      }
-    })();
-
-    try {
-      await hydrationPromise;
-    } finally {
-      hydrationPromise = null;
-    }
-  },
+  hydrate: () => onboardingHydrator.hydrate(set, get),
 
   markSteps: async (steps) => {
     const response = await settingsAPI.updateOnboarding({ steps });

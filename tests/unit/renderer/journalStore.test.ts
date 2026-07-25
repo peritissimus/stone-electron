@@ -16,6 +16,16 @@ vi.mock('@renderer/api', () => ({
 
 const { useJournalStore } = await import('@renderer/features/journals/model/journalStore');
 
+function noteEvent(noteId: string, journalDate?: string) {
+  return {
+    source: 'note' as const,
+    action: 'updated' as const,
+    noteId,
+    journalDate,
+    payload: { id: noteId, journalDate },
+  };
+}
+
 describe('journalStore', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,7 +53,7 @@ describe('journalStore', () => {
     await useJournalStore.getState().load();
     listRange.mockClear();
 
-    await useJournalStore.getState().refreshForNoteEvent({ id: 'quick-1' });
+    await useJournalStore.getState().refreshForNoteEvent(noteEvent('quick-1'));
 
     expect(getById).not.toHaveBeenCalled();
     expect(listRange).not.toHaveBeenCalled();
@@ -65,9 +75,7 @@ describe('journalStore', () => {
       },
     });
 
-    await useJournalStore
-      .getState()
-      .refreshForNoteEvent({ id: 'journal-1', journalDate: '2026-05-25' });
+    await useJournalStore.getState().refreshForNoteEvent(noteEvent('journal-1', '2026-05-25'));
 
     expect(listRange).toHaveBeenCalledTimes(1);
     expect(useJournalStore.getState().entries[0]).toMatchObject({
@@ -92,7 +100,7 @@ describe('journalStore', () => {
       },
     });
 
-    await useJournalStore.getState().refreshForNoteEvent({ id: 'journal-1' });
+    await useJournalStore.getState().refreshForNoteEvent(noteEvent('journal-1'));
 
     expect(getById).not.toHaveBeenCalled();
     expect(listRange).toHaveBeenCalledTimes(1);
@@ -114,7 +122,7 @@ describe('journalStore', () => {
       },
     });
 
-    await useJournalStore.getState().refreshForNoteEvent({ id: 'journal-1' });
+    await useJournalStore.getState().refreshForNoteEvent(noteEvent('journal-1'));
 
     expect(listRange).toHaveBeenCalledTimes(1);
     expect(useJournalStore.getState().entries[0]).toMatchObject({
@@ -133,9 +141,7 @@ describe('journalStore', () => {
     await useJournalStore.getState().load();
     listRange.mockClear();
 
-    await useJournalStore
-      .getState()
-      .refreshForNoteEvent({ id: 'old-journal', journalDate: '2025-01-01' });
+    await useJournalStore.getState().refreshForNoteEvent(noteEvent('old-journal', '2025-01-01'));
 
     expect(listRange).not.toHaveBeenCalled();
   });

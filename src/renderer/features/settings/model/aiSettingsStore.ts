@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { settingsAPI } from '@renderer/api/settingsAPI';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { createSettingsHydrator } from '@renderer/services/settings/createSettingsHydrator';
+import type { IpcResponse } from '@shared/types';
 import {
   DEFAULT_AI_CONFIG,
   type AIConfig,
@@ -29,31 +29,7 @@ interface AISettingsState {
   resetAI: () => Promise<void>;
 }
 
-let hydrationPromise: Promise<void> | null = null;
 let keyHydrationPromise: Promise<void> | null = null;
-let eventUnsubscribe: (() => void) | null = null;
-
-async function loadAISettings(
-  set: (state: Partial<AISettingsState>) => void,
-): Promise<AIConfig | null> {
-  try {
-    const response = await settingsAPI.getAI();
-    if (response.success && response.data) {
-      set({ ai: response.data, loaded: true, error: null });
-      return response.data;
-    }
-    set({
-      loaded: true,
-      error: response.error?.message ?? 'Failed to load AI settings',
-    });
-  } catch (error) {
-    set({
-      loaded: true,
-      error: error instanceof Error ? error.message : 'Failed to load AI settings',
-    });
-  }
-  return null;
-}
 
 async function loadProviderKeys(
   set: (state: Partial<AISettingsState>) => void,
@@ -77,6 +53,35 @@ async function loadProviderKeys(
   return null;
 }
 
+interface AIHydrationData {
+  ai: AIConfig;
+  providerKeys: AIProviderKeyStatus[];
+}
+
+const aiHydrator = createSettingsHydrator<AISettingsState, AIHydrationData>({
+  scope: 'ai',
+  load: async (): Promise<IpcResponse<AIHydrationData>> => {
+    const [ai, keys] = await Promise.all([settingsAPI.getAI(), settingsAPI.getAIProviderKeys()]);
+    if (!ai.success || !ai.data) {
+      return { success: false, error: ai.error };
+    }
+    if (!keys.success || !keys.data) {
+      return { success: false, error: keys.error };
+    }
+    return { success: true, data: { ai: ai.data, providerKeys: keys.data } };
+  },
+  apply: (data, { set }) =>
+    set({
+      ai: data.ai,
+      providerKeys: data.providerKeys,
+      loaded: true,
+      keysLoaded: true,
+      error: null,
+    }),
+  fail: (error, { set }) => set({ loaded: true, keysLoaded: true, error }),
+  fallbackMessage: 'Failed to load AI settings',
+});
+
 export const useAISettingsStore = create<AISettingsState>((set, get) => ({
   ai: DEFAULT_AI_CONFIG,
   providerKeys: [],
@@ -85,27 +90,7 @@ export const useAISettingsStore = create<AISettingsState>((set, get) => ({
   saving: false,
   error: null,
 
-  hydrate: async () => {
-    if (hydrationPromise) return hydrationPromise;
-
-    hydrationPromise = (async () => {
-      await Promise.all([loadAISettings(set), loadProviderKeys(set)]);
-
-      if (!eventUnsubscribe) {
-        eventUnsubscribe = subscribe(EVENTS.SETTINGS_CHANGED, async (payload) => {
-          const scope = (payload as { scope?: string } | undefined)?.scope;
-          if (scope !== 'ai') return;
-          await Promise.all([loadAISettings(set), loadProviderKeys(set)]);
-        });
-      }
-    })();
-
-    try {
-      await hydrationPromise;
-    } finally {
-      hydrationPromise = null;
-    }
-  },
+  hydrate: () => aiHydrator.hydrate(set, get),
 
   hydrateProviderKeys: async () => {
     if (keyHydrationPromise) return keyHydrationPromise;

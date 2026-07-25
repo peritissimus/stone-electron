@@ -8,7 +8,6 @@ import { create } from 'zustand';
 import { dailyReviewAPI } from '@renderer/api';
 import { logger } from '@renderer/services/telemetry/logger';
 import type {
-  DailyReviewIntegrationResult,
   DailyReviewIntegrationSource,
   DailyReviewIntegrationStatus,
   DailyReviewSnapshot,
@@ -102,11 +101,11 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
         const response = await dailyReviewAPI.get();
         if (response.success && response.data) {
           const nextSnapshot = response.data;
-          set((state) => ({
-            snapshot: preserveIntegrationData(nextSnapshot, state.snapshot),
+          set({
+            snapshot: nextSnapshot,
             refreshing: false,
             error: null,
-          }));
+          });
         } else {
           set({ refreshing: false });
         }
@@ -147,8 +146,8 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
             ...state.integrations,
             [source]: { status: result.status, message: result.message ?? null },
           },
-          snapshot: mergeIntegrationResult(state.snapshot, result),
         }));
+        await get().refresh();
       } catch (err) {
         setIntegrationFailure(
           set,
@@ -167,12 +166,46 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   },
 
   loadIntegrations: async () => {
-    // Apple Events are serialized deliberately. Calendar can generate many
-    // TCC checks on newer macOS releases; running it beside Mail can starve
-    // Mail until both child processes hit their timeout.
-    await get().loadIntegration('linear');
-    await get().loadIntegration('mail');
-    await get().loadIntegration('calendar');
+    set((state) => ({
+      integrations: Object.fromEntries(
+        Object.entries(state.integrations).map(([source, integration]) => [
+          source,
+          { ...integration, status: 'loading', message: null },
+        ]),
+      ) as DailyReviewIntegrationStates,
+    }));
+
+    try {
+      // The main process owns source ordering, TCC serialization, and caching.
+      const response = await dailyReviewAPI.loadIntegrations({
+        date: get().snapshot?.date,
+      });
+      if (!response.success || !response.data) {
+        const message = response.error?.message ?? 'Could not check integrations.';
+        for (const source of ['calendar', 'mail', 'linear'] as const) {
+          setIntegrationFailure(set, source, message);
+        }
+        return;
+      }
+      set((state) => ({
+        integrations: response.data!.reduce(
+          (integrations, result) => ({
+            ...integrations,
+            [result.source]: {
+              status: result.status,
+              message: result.message ?? null,
+            },
+          }),
+          state.integrations,
+        ),
+      }));
+      await get().refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not check integrations.';
+      for (const source of ['calendar', 'mail', 'linear'] as const) {
+        setIntegrationFailure(set, source, message);
+      }
+    }
   },
 
   summarize: async (saveToJournal) => {
@@ -217,41 +250,6 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
     });
   },
 }));
-
-function preserveIntegrationData(
-  next: DailyReviewSnapshot,
-  previous: DailyReviewSnapshot | null,
-): DailyReviewSnapshot {
-  if (!previous) return next;
-  return {
-    ...next,
-    ...(previous.calendarEvents ? { calendarEvents: previous.calendarEvents } : {}),
-    ...(previous.mailUnreadCount !== undefined
-      ? { mailUnreadCount: previous.mailUnreadCount }
-      : {}),
-    ...(previous.mailMessages ? { mailMessages: previous.mailMessages } : {}),
-    ...(previous.linearIssues ? { linearIssues: previous.linearIssues } : {}),
-  };
-}
-
-function mergeIntegrationResult(
-  snapshot: DailyReviewSnapshot | null,
-  result: DailyReviewIntegrationResult,
-): DailyReviewSnapshot | null {
-  if (!snapshot) return null;
-  switch (result.source) {
-    case 'calendar':
-      return { ...snapshot, calendarEvents: result.calendarEvents ?? [] };
-    case 'mail':
-      return {
-        ...snapshot,
-        mailUnreadCount: result.mailUnreadCount ?? 0,
-        mailMessages: result.mailMessages ?? [],
-      };
-    case 'linear':
-      return { ...snapshot, linearIssues: result.linearIssues ?? [] };
-  }
-}
 
 function setIntegrationFailure(
   set: (

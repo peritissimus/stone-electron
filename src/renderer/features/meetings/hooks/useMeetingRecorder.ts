@@ -36,45 +36,27 @@ const analyserFrameRef: { current: number | null } = { current: null };
 const systemAnalyserCtxRef: { current: AudioContext | null } = { current: null };
 const systemAnalyserFrameRef: { current: number | null } = { current: null };
 const liveTimerRef: { current: ReturnType<typeof setInterval> | null } = { current: null };
-const liveSessionIdRef: { current: string | null } = { current: null };
-const liveChunkPromiseRef: { current: Promise<void> | null } = { current: null };
 
 /** Cadence for the live (raw) draft — long enough that each chunk is a few
  *  utterances of context, short enough to feel live. */
 const LIVE_INTERVAL_MS = 6_000;
 const MIN_LIVE_CHUNK_S = 0.6;
 
-/** Guards against overlapping live ticks. The resident whisper-server handles
- *  one /inference at a time; without this, a slow or wedged server lets
- *  interval ticks pile up into dozens of concurrent requests. Skipping a tick
- *  while one is in flight just lets the next drain batch more audio. */
 /** Drain new audio from each track (hook owns the hardware), encode it, and
  *  hand it to the store to transcribe + append. Best-effort. */
 async function streamLiveChunk(): Promise<void> {
-  if (liveChunkPromiseRef.current) return liveChunkPromiseRef.current;
-  const sessionId = liveSessionIdRef.current;
-  if (!sessionId) return;
-  const work = drainAndTranscribe(sessionId).finally(() => {
-    if (liveChunkPromiseRef.current === work) liveChunkPromiseRef.current = null;
-  });
-  liveChunkPromiseRef.current = work;
-  return work;
-}
-
-async function drainAndTranscribe(sessionId: string): Promise<void> {
   const store = useMeetingRecorderStore.getState();
   const recorders: Array<['mic' | 'system', PcmRecording | null]> = [
     ['mic', micPcmRecorderRef.current],
     ['system', systemPcmRecorderRef.current],
   ];
   for (const [source, recorder] of recorders) {
-    if (liveSessionIdRef.current !== sessionId) return;
     if (!recorder) continue;
     const { samples, sampleRate } = recorder.drain();
     if (samples.length < sampleRate * MIN_LIVE_CHUNK_S) continue;
     try {
       const wav = await pcmToWavArrayBuffer(samples, sampleRate, WHISPER_SAMPLE_RATE);
-      await store.pushLiveChunk(sessionId, source, wav);
+      await store.pushLiveChunk(source, wav);
     } catch {
       // Live draft is best-effort; the clean transcript comes from finalize.
     }
@@ -83,9 +65,7 @@ async function drainAndTranscribe(sessionId: string): Promise<void> {
 
 function startLiveStreaming(): void {
   if (liveTimerRef.current) return;
-  const sessionId = crypto.randomUUID();
-  liveSessionIdRef.current = sessionId;
-  useMeetingRecorderStore.getState().startLive(sessionId); // warm model + reset draft
+  useMeetingRecorderStore.getState().startLive(); // warm model + reset draft
   liveTimerRef.current = setInterval(() => void streamLiveChunk(), LIVE_INTERVAL_MS);
 }
 
@@ -94,13 +74,7 @@ async function stopLiveStreaming(): Promise<void> {
     clearInterval(liveTimerRef.current);
     liveTimerRef.current = null;
   }
-  const sessionId = liveSessionIdRef.current;
-  liveSessionIdRef.current = null;
-  if (!sessionId) return;
-
-  const stop = useMeetingRecorderStore.getState().stopLive(sessionId);
-  const inFlight = liveChunkPromiseRef.current;
-  await Promise.allSettled(inFlight ? [stop, inFlight] : [stop]);
+  await useMeetingRecorderStore.getState().stopLive();
 }
 
 /** Run a smoothed peak-level meter on a stream, writing each frame via setLevel. */

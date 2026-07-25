@@ -12,8 +12,7 @@
 
 import { create } from 'zustand';
 import { settingsAPI } from '@renderer/api/settingsAPI';
-import { subscribe } from '@renderer/lib/events';
-import { EVENTS } from '@shared/constants/ipcChannels';
+import { createSettingsHydrator } from '@renderer/services/settings/createSettingsHydrator';
 import { DEFAULT_EDITOR_SETTINGS, type EditorSettings } from '@shared/types/settings';
 
 interface EditorConfigState {
@@ -32,55 +31,25 @@ interface EditorConfigState {
   acknowledgeOpenEditor: () => void;
 }
 
-let hydrationPromise: Promise<void> | null = null;
-let eventUnsubscribe: (() => void) | null = null;
+const editorHydrator = createSettingsHydrator<EditorConfigState, EditorSettings>({
+  scope: 'editor',
+  load: settingsAPI.getEditor,
+  apply: (settings, { event, set, get }) =>
+    set({
+      settings,
+      loaded: true,
+      staleForOpenEditor: event && get().loaded,
+    }),
+  fail: (_error, { set }) => set({ loaded: true }),
+  fallbackMessage: 'Failed to load editor settings',
+});
 
 export const useEditorConfigStore = create<EditorConfigState>((set, get) => ({
   settings: DEFAULT_EDITOR_SETTINGS,
   loaded: false,
   staleForOpenEditor: false,
 
-  hydrate: async () => {
-    if (hydrationPromise) return hydrationPromise;
-
-    hydrationPromise = (async () => {
-      try {
-        const response = await settingsAPI.getEditor();
-        if (response.success && response.data) {
-          set({ settings: response.data, loaded: true });
-        } else {
-          set({ loaded: true });
-        }
-      } catch {
-        set({ loaded: true });
-      }
-
-      if (!eventUnsubscribe) {
-        eventUnsubscribe = subscribe(EVENTS.SETTINGS_CHANGED, async (payload) => {
-          const scope = (payload as { scope?: string } | undefined)?.scope;
-          if (scope !== 'editor') return;
-          try {
-            const response = await settingsAPI.getEditor();
-            if (response.success && response.data) {
-              const wasLoaded = get().loaded;
-              set({
-                settings: response.data,
-                staleForOpenEditor: wasLoaded,
-              });
-            }
-          } catch {
-            // Ignore; next hydrate will catch up.
-          }
-        });
-      }
-    })();
-
-    try {
-      await hydrationPromise;
-    } finally {
-      hydrationPromise = null;
-    }
-  },
+  hydrate: () => editorHydrator.hydrate(set, get),
 
   acknowledgeOpenEditor: () => set({ staleForOpenEditor: false }),
 }));

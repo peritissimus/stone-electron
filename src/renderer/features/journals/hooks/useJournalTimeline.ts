@@ -1,8 +1,8 @@
 import { useCallback, useEffect } from 'react';
 import { useJournalActions } from '@renderer/features/journals/commands/useJournalActions';
-import { useNoteEvents } from '@renderer/features/notes/hooks/useNoteEvents';
 import { useJournalStore } from '@renderer/features/journals/model/journalStore';
 import { useDocumentBufferStore } from '@renderer/services/documents/model/documentBufferStore';
+import { useInvalidation } from '@renderer/services/invalidation/hooks/useInvalidation';
 import type { JournalEntry } from '@shared/schemas';
 
 /**
@@ -47,10 +47,10 @@ export function useJournalTimeline() {
     preloadDocumentBuffers(entries);
   }, [entries]);
 
-  useNoteEvents({
-    onCreated: refreshForNoteEvent,
-    onUpdated: refreshForNoteEvent,
-    onDeleted: refreshForNoteEvent,
+  useInvalidation({
+    sources: ['note'],
+    debounceMs: 100,
+    invalidate: refreshForNoteEvent,
   });
 
   // Open a day in the dedicated single-note editor (separate from the inline

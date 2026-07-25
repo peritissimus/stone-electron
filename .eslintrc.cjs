@@ -25,6 +25,32 @@ module.exports = {
   },
   ignorePatterns: ['dist', 'node_modules'],
   overrides: [
+    // Hooks are renderer orchestration boundaries. They may read models and
+    // command/service hooks may call API, but hooks never depend outward on UI
+    // leaves or the workbench shell.
+    {
+      files: ['src/renderer/**/hooks/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  '@renderer/**/views',
+                  '@renderer/**/views/*',
+                  '@renderer/components',
+                  '@renderer/components/*',
+                  '@renderer/workbench',
+                  '@renderer/workbench/*',
+                ],
+                message: 'Hooks must not depend on views, components, or the workbench shell.',
+              },
+            ],
+          },
+        ],
+      },
+    },
     // Feature views are renderer leaves: data and mutations arrive through hooks/commands.
     {
       files: ['src/renderer/features/*/views/**/*.{ts,tsx}'],

@@ -1,18 +1,30 @@
 import { useCallback } from 'react';
 import { useTopicStore } from '@renderer/features/topics/model/topicStore';
-import type { TopicWithCount } from '@shared/types';
-import { TOPIC_CHANNELS } from '@shared/constants/ipcChannels';
+import type { IpcResponse, TopicWithCount } from '@shared/types';
 import { createEntityAPI } from '@renderer/services/data/createEntityAPI';
 import { topicAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
 
-const useTopicCRUD = createEntityAPI<TopicWithCount>({
+const useTopicCRUD = createEntityAPI<TopicWithCount, { excludeJournal?: boolean }>({
   entityName: 'topic',
-  channels: {
-    GET_ALL: TOPIC_CHANNELS.GET_ALL,
-    CREATE: TOPIC_CHANNELS.CREATE,
-    UPDATE: TOPIC_CHANNELS.UPDATE,
-    DELETE: TOPIC_CHANNELS.DELETE,
+  api: {
+    list: async (options) => {
+      const response = await topicAPI.getAll(options);
+      return { ...response, data: response.data?.topics };
+    },
+    create: async (data) =>
+      topicAPI.create({
+        name: data.name ?? '',
+        ...(data.description ? { description: data.description } : {}),
+        ...(data.color ? { color: data.color } : {}),
+      }) as Promise<IpcResponse<TopicWithCount>>,
+    update: async (id, data) =>
+      topicAPI.update(id, {
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.description != null ? { description: data.description } : {}),
+        ...(data.color != null ? { color: data.color } : {}),
+      }) as Promise<IpcResponse<TopicWithCount>>,
+    remove: topicAPI.delete,
   },
   useStore: () => {
     const store = useTopicStore();
@@ -25,8 +37,6 @@ const useTopicCRUD = createEntityAPI<TopicWithCount>({
       setError: store.setError,
     };
   },
-  responseKey: 'topics',
-  logPrefix: '[TopicAPI]',
 });
 
 export function useTopicCrud() {
