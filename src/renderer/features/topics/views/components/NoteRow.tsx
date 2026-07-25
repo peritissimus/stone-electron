@@ -29,7 +29,10 @@ export const NoteRow = memo(function NoteRow({
       <FileText className="size-4 text-muted-foreground/60 shrink-0" />
       <span className="flex-1 text-sm truncate">{note.title || 'Untitled'}</span>
       {note.confidence && (
-        <span className="text-[11px] text-muted-foreground tabular-nums">
+        <span
+          className="text-[11px] text-muted-foreground tabular-nums"
+          title="How closely this note matches, by meaning"
+        >
           {Math.round(note.confidence * 100)}%
         </span>
       )}
