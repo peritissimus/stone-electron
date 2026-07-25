@@ -425,7 +425,7 @@ export const SearchUseCasesLive = Layer.effect(
               results: results.map((item) => ({
                 noteId: item.noteId,
                 title: item.title,
-                distance: item.similarity,
+                similarity: item.similarity,
               })),
             })),
           ),
@@ -452,7 +452,7 @@ export const SearchUseCasesLive = Layer.effect(
               results: results.map((item) => ({
                 noteId: item.noteId,
                 title: item.title,
-                distance: item.similarity,
+                similarity: item.similarity,
               })),
             })),
           ),
