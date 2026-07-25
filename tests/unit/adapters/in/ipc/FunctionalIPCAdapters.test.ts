@@ -911,26 +911,11 @@ describe('function-style IPC adapters', () => {
     expectUnregistered(Object.values(GIT_CHANNELS));
   });
 
-  it('delegates topic channels and serializes note-topic dates', async () => {
+  it('delegates the topic channels the renderer still owns', async () => {
     const topicUseCases = {
-      initialize: execute({ initialized: true }),
-      getAllTopics: execute([{ id: 'topic-1' }]),
-      getTopicById: execute({ id: 'topic-1' }),
-      createTopic: execute({ id: 'topic-1' }),
-      updateTopic: execute({ id: 'topic-1' }),
-      deleteTopic: execute(undefined),
-      assignTopicToNote: execute(undefined),
-      removeTopicFromNote: execute(undefined),
-      classifyNote: execute({ topics: [] }),
-      classifyAllNotes: execute({ classified: 1 }),
-      semanticSearch: execute([{ id: 'note-1' }]),
-      getSimilarNotes: execute([{ id: 'note-2' }]),
-      recomputeCentroids: execute(undefined),
+      initialize: execute({ success: true, ready: true }),
+      semanticSearch: execute([{ noteId: 'note-1' }]),
       getEmbeddingStatus: execute({ ready: true }),
-      suggestTopics: execute([{ name: 'Idea' }]),
-      adoptSuggestedTopic: execute({ topicId: 'topic-1' }),
-      getNotesForTopic: execute([{ id: 'note-1' }]),
-      getTopicsForNote: execute([{ id: 'topic-1', createdAt: date }]),
     };
 
     const topicService = effectifyUseCases(topicUseCases);
@@ -940,39 +925,20 @@ describe('function-style IPC adapters', () => {
       ) => Effect.runPromise(use(topicService)),
     } as any);
 
-    await invoke(TOPIC_CHANNELS.INITIALIZE);
-    await expect(invoke(TOPIC_CHANNELS.GET_ALL)).resolves.toEqual({
+    await expect(invoke(TOPIC_CHANNELS.INITIALIZE)).resolves.toEqual({
       success: true,
-      data: { topics: [{ id: 'topic-1' }] },
+      data: { success: true, ready: true },
     });
-    await invoke(TOPIC_CHANNELS.GET_BY_ID, { id: 'topic-1' });
-    await invoke(TOPIC_CHANNELS.CREATE, { name: 'Topic' });
-    await invoke(TOPIC_CHANNELS.UPDATE, { id: 'topic-1', name: 'Renamed' });
-    await invoke(TOPIC_CHANNELS.DELETE, { id: 'topic-1' });
-    await invoke(TOPIC_CHANNELS.ASSIGN_TO_NOTE, { noteId: 'note-1', topicId: 'topic-1' });
-    await invoke(TOPIC_CHANNELS.REMOVE_FROM_NOTE, { noteId: 'note-1', topicId: 'topic-1' });
-    await invoke(TOPIC_CHANNELS.CLASSIFY_NOTE, { noteId: 'note-1', force: true });
-    await invoke(TOPIC_CHANNELS.CLASSIFY_ALL, { excludeJournal: true });
-    await invoke(TOPIC_CHANNELS.RECLASSIFY_ALL, { excludeJournal: true });
-    await invoke(TOPIC_CHANNELS.SEMANTIC_SEARCH, { query: 'topic', limit: 5 });
-    await invoke(TOPIC_CHANNELS.GET_SIMILAR_NOTES, { noteId: 'note-1', limit: 5 });
-    await invoke(TOPIC_CHANNELS.RECOMPUTE_CENTROIDS);
-    await invoke(TOPIC_CHANNELS.GET_EMBEDDING_STATUS);
-    await invoke(TOPIC_CHANNELS.GET_SUGGESTIONS, { workspaceId: 'ws-1' });
-    await invoke(TOPIC_CHANNELS.ADOPT_SUGGESTION, { name: 'Idea', noteIds: ['note-1'] });
-    await invoke(TOPIC_CHANNELS.GET_NOTES_BY_TOPIC, { topicId: 'topic-1', limit: 10 });
     await expect(
-      invoke(TOPIC_CHANNELS.GET_TOPICS_FOR_NOTE, { noteId: 'note-1' }),
-    ).resolves.toMatchObject({
+      invoke(TOPIC_CHANNELS.SEMANTIC_SEARCH, { query: 'topic', limit: 5 }),
+    ).resolves.toEqual({
       success: true,
-      data: { topics: [{ id: 'topic-1', createdAt: date.toISOString() }] },
+      data: { results: [{ noteId: 'note-1' }] },
     });
+    await invoke(TOPIC_CHANNELS.GET_EMBEDDING_STATUS);
 
-    expect(topicUseCases.recomputeCentroids.execute).toHaveBeenCalledWith();
-    expect(topicUseCases.classifyAllNotes.execute).toHaveBeenCalledWith({
-      force: true,
-      excludeJournal: true,
-    });
+    expect(topicUseCases.semanticSearch.execute).toHaveBeenCalledWith('topic', 5);
+    expect(topicUseCases.getEmbeddingStatus.execute).toHaveBeenCalledWith();
 
     unregisterTopicHandlers();
     expectUnregistered(Object.values(TOPIC_CHANNELS));
