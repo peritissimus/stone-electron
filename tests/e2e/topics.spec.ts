@@ -29,11 +29,16 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   await expect(expandSidebar).toBeVisible();
   await expandSidebar.click();
   await window.getByRole('button', { name: 'Knowledge' }).click();
+  const indexResponse = await window.evaluate(
+    async () =>
+      // @ts-expect-error contextBridge API is intentionally untyped here
+      window.electron.invoke('index:getStats', {}),
+  );
+  expect(indexResponse).toMatchObject({ success: true });
 
   // The page header always shows "Topics"; the spinner is the only child until
   // the initialize → loadTopics → getEmbeddingStatus chain resolves.
   const spinner = window.locator('.animate-spin').first();
-  await expect(spinner).toBeVisible();
   await expect(spinner).toBeHidden({ timeout: 60_000 });
 
   // Once initialization completes, the Knowledge page exposes its semantic

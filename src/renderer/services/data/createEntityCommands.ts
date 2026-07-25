@@ -11,20 +11,20 @@ export interface EntityStoreActions<T> {
   setError: (error: string | null) => void;
 }
 
-export interface EntityAPIOperations<T, TParams> {
+export interface EntityCommandOperations<T, TParams> {
   list: (params?: TParams) => Promise<IpcResponse<T[]>>;
   create?: (data: Partial<T>) => Promise<IpcResponse<T>>;
   update?: (id: string, data: Partial<T>) => Promise<IpcResponse<T>>;
   remove?: (id: string) => Promise<IpcResponse<void>>;
 }
 
-export interface EntityAPIConfig<T, TParams> {
+export interface EntityCommandsConfig<T, TParams> {
   entityName: string;
-  api: EntityAPIOperations<T, TParams>;
+  api: EntityCommandOperations<T, TParams>;
   useStore: () => EntityStoreActions<T>;
 }
 
-export interface EntityAPIResult<T, TParams> {
+export interface EntityCommandsResult<T, TParams> {
   loadAll: (params?: TParams) => Promise<T[] | null>;
   create: (data: Partial<T>) => Promise<T | null>;
   update: (id: string, data: Partial<T>) => Promise<T | null>;
@@ -36,10 +36,13 @@ export interface EntityAPIResult<T, TParams> {
  * factory never invokes IPC directly, so response validation cannot be
  * bypassed by a store or command hook.
  */
-export function createEntityAPI<T extends { id: string }, TParams = Record<string, unknown>>(
-  config: EntityAPIConfig<T, TParams>,
-): () => EntityAPIResult<T, TParams> {
-  return function useEntityAPI(): EntityAPIResult<T, TParams> {
+export function createEntityCommands<
+  T extends { id: string },
+  TParams = Record<string, unknown>,
+>(
+  config: EntityCommandsConfig<T, TParams>,
+): () => EntityCommandsResult<T, TParams> {
+  return function useEntityCommands(): EntityCommandsResult<T, TParams> {
     const store = config.useStore();
 
     const loadAll = useCallback(

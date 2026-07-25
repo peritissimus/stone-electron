@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useTopicStore } from '@renderer/features/topics/model/topicStore';
 import type { IpcResponse, TopicWithCount } from '@shared/types';
-import { createEntityAPI } from '@renderer/services/data/createEntityAPI';
+import { createEntityCommands } from '@renderer/services/data/createEntityCommands';
 import { topicAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
 
-const useTopicCRUD = createEntityAPI<TopicWithCount, { excludeJournal?: boolean }>({
+const useTopicCRUD = createEntityCommands<TopicWithCount, { excludeJournal?: boolean }>({
   entityName: 'topic',
   api: {
     list: async (options) => {

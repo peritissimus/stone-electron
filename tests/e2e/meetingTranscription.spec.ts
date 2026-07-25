@@ -62,7 +62,10 @@ test('records simulated mic + system audio and transcribes it', async ({ app }) 
     location.hash = '#/meetings';
   });
   await expect(window.getByRole('heading', { name: 'Meetings' })).toBeVisible({ timeout: 20_000 });
-  await window.getByRole('button', { name: /New recording/i }).click();
+  await window
+    .getByRole('banner')
+    .getByRole('button', { name: /New recording/i })
+    .click();
 
   // Capture several seconds of the looping fixtures, then stop.
   await window.waitForTimeout(8_000);

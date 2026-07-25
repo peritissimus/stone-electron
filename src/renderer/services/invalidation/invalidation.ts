@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@shared/schemas/schema';
 import { EVENTS } from '@shared/constants/ipcChannels';
 import { subscribe } from '@renderer/lib/events';
 

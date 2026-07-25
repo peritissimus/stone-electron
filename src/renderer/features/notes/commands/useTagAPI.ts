@@ -1,20 +1,20 @@
 /**
  * Tag API Hook - React hooks for tag operations
  *
- * Uses createEntityAPI for base CRUD, extends with tag-specific operations.
+ * Uses shared entity commands for base CRUD, extended with tag operations.
  */
 
 import { useCallback } from 'react';
 import { useTagStore } from '@renderer/features/notes/model/tagStore';
 import type { IpcResponse, TagWithCount } from '@shared/types';
-import { createEntityAPI } from '@renderer/services/data/createEntityAPI';
+import { createEntityCommands } from '@renderer/services/data/createEntityCommands';
 import { tagAPI } from '@renderer/api';
 import { handleIpcResponse } from '@renderer/lib/ipc';
 
 /**
  * Base CRUD operations from factory
  */
-const useTagCRUD = createEntityAPI<TagWithCount, { sort?: 'name' | 'count' | 'recent' }>({
+const useTagCRUD = createEntityCommands<TagWithCount, { sort?: 'name' | 'count' | 'recent' }>({
   entityName: 'tag',
   api: {
     list: async (params) => {

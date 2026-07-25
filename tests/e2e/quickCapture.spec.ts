@@ -14,7 +14,8 @@ test('appendToJournal refreshes the open journal in place', async ({ app }) => {
   // today's note before exercising the in-place refresh chain.
   const journalSection = window.getByRole('heading', { name: "Today's journal" }).locator('..');
   await journalSection.getByRole('button').click();
-  await expect(window.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 });
+  const journalEditor = window.locator('.ProseMirror').first();
+  await expect(journalEditor).toBeVisible({ timeout: 15_000 });
 
   // Unique token per-run so assertions can't accidentally pass against
   // stale content from a previous iteration in the same userDataDir.
@@ -30,5 +31,5 @@ test('appendToJournal refreshes the open journal in place', async ({ app }) => {
   expect(result).toMatchObject({ success: true });
 
   // reloadFromFile has a 100ms debounce after NOTE_UPDATED; 10s is ample.
-  await expect(window.locator('.ProseMirror')).toContainText(marker, { timeout: 10_000 });
+  await expect(journalEditor).toContainText(marker, { timeout: 10_000 });
 });

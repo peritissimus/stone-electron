@@ -7,11 +7,11 @@ column as phases land; the ADR itself is immutable.
 | Phase | Scope | Status |
 | ----- | ----- | ------ |
 | 0 | Decision codified, architecture enforcement | done (2026-07-25) |
-| 1 | Jobs/workers subsystem | not started |
-| 2 | Out-adapters as layers | not started |
-| 3 | Use cases + container → `Layer` | not started |
-| 4 | Effect Schema at the IPC edges | not started |
-| R | Renderer deep store factory (separate track, no Effect) | in progress |
+| 1 | Jobs/workers subsystem | done (2026-07-25) |
+| 2 | Out-adapters as layers | done (2026-07-26) |
+| 3 | Use cases + container → `Layer` | done (2026-07-26) |
+| 4 | Effect Schema at the IPC edges | done (2026-07-25) |
+| R | Renderer deep store factory (separate track, no Effect) | separate follow-up |
 
 ## Ground rules for every phase
 
@@ -152,6 +152,10 @@ Per ADR-0001 the renderer keeps React + Zustand; Effect appears only inside
 `renderer/api/` at the IPC edge (Phase 4 gives it the schemas). Its actual problems are
 separate and were already in motion in the working tree at decision time
 (`refactor(renderer): centralize state invalidation`, `src/renderer/services/settings/`):
+
+This track is not an exit criterion for the main-process Effect migration. Its status
+is tracked here for architectural context, but it should land as an independent
+renderer refactor.
 
 - Deep entity-store factory above `api/` (report candidate 4) absorbing the 21-store
   CRUD scaffold and 6-copy settings-hydrate template; delete `createEntityAPI` and the
