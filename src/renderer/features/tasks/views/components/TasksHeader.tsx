@@ -1,25 +1,19 @@
-import { CheckSquare } from '@phosphor-icons/react';
-import { sizeHeightClasses } from '@renderer/components/composites';
-import { cn } from '@renderer/lib/utils';
+import { ViewHeader } from '@renderer/components/composites';
 
 interface TasksHeaderProps {
-  counts: { visible: number; total: number };
+  counts: { visible: number; total: number; active: number; completed: number };
 }
 
+/**
+ * "0 of 15 tasks" names a number without saying what makes the difference — the
+ * reader cannot tell a filtered-out task from a finished one. The active/done
+ * split describes the actual workload and holds true whichever states are shown.
+ */
 export function TasksHeader({ counts }: TasksHeaderProps) {
-  return (
-    <div
-      className={cn(
-        'px-4 border-b border-border shrink-0 bg-card flex items-center gap-3',
-        sizeHeightClasses['spacious'],
-      )}
-    >
-      <CheckSquare className="size-4 text-muted-foreground" />
-      <span className="text-sm font-medium">Tasks</span>
-      <div className="flex-1" />
-      <span className="text-xs text-muted-foreground">
-        {counts.visible} of {counts.total} tasks
-      </span>
-    </div>
-  );
+  const meta =
+    counts.total === 0
+      ? undefined
+      : `${counts.active} active · ${counts.completed} done`;
+
+  return <ViewHeader title="Tasks" meta={meta} />;
 }

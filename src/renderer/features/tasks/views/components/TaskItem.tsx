@@ -5,7 +5,7 @@
  */
 
 import { memo } from 'react';
-import { ArrowRight, Circle } from '@phosphor-icons/react';
+import { Circle } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@renderer/components/base/ui/dropdown-menu';
+import { cn } from '@renderer/lib/utils';
 
 // All available task states
 const TASK_STATES = [
@@ -58,31 +59,37 @@ export const TaskItem = memo(function TaskItem({
   };
 
   return (
+    // The row is a plain container rather than a role="button": it holds the
+    // state menu, and nesting a button inside a button is invalid and leaves
+    // the menu unreachable by keyboard. Full-row clickability comes from the
+    // title button stretching over the row instead (see `after:absolute`
+    // below), so the tag stays above it and keeps its own hit area.
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className="w-full flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/10 cursor-pointer transition-colors group text-left"
+      className={cn(
+        'group relative flex items-start rounded-lg px-2 py-2',
+        'transition-colors duration-150 ease-out hover:bg-foreground/[0.035]',
+        'focus-within:bg-foreground/[0.035]',
+        isToggling && 'opacity-60',
+      )}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={(e) => e.stopPropagation()}
-                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badgeColor} hover:opacity-80 transition-opacity`}
+                aria-label={`Change state, currently ${todo.state.toUpperCase()}`}
+                className={cn(
+                  'relative z-10 rounded px-1.5 py-0.5 text-[10px] font-semibold',
+                  'transition-opacity duration-150 ease-out hover:opacity-80',
+                  'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/25',
+                  badgeColor,
+                )}
               >
                 {todo.state.toUpperCase()}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent align="start">
               {TASK_STATES.map((state) => (
                 <DropdownMenuItem
                   key={state.key}
@@ -97,18 +104,23 @@ export const TaskItem = memo(function TaskItem({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          <p className={`text-sm ${isDone ? 'text-muted-foreground line-through' : ''}`}>
+
+          <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+              'min-w-0 text-left text-sm after:absolute after:inset-0 after:rounded-lg',
+              'focus-visible:outline-hidden focus-visible:after:ring-1 focus-visible:after:ring-ring/25',
+              isDone && 'text-muted-foreground line-through decoration-muted-foreground/40',
+            )}
+          >
             {todo.text}
-          </p>
+          </button>
         </div>
         {todo.noteTitle && (
-          <p className="text-xs text-muted-foreground/70 mt-0.5 truncate">{todo.noteTitle}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground/70">{todo.noteTitle}</p>
         )}
       </div>
-      <ArrowRight
-        size={16}
-        className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5"
-      />
     </div>
   );
 });
