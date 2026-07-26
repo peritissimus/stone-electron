@@ -4,7 +4,6 @@ import {
   Pulse,
   Brain,
   Database,
-  Gear,
   GitBranch,
   Info,
   Keyboard,
@@ -14,7 +13,7 @@ import {
   PuzzlePiece,
 } from '@phosphor-icons/react';
 import { ScrollArea } from '@renderer/components/base/ui';
-import { sizeHeightClasses } from '@renderer/components/composites';
+import { ViewHeader } from '@renderer/components/composites';
 import { cn } from '@renderer/lib/utils';
 import { toSettings } from '@renderer/services/navigation/routes';
 import { AboutSettings } from '@renderer/features/settings/views/components/AboutSettings';
@@ -141,15 +140,7 @@ export default function SettingsView() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-background">
-      <div
-        className={cn(
-          'shrink-0 border-b border-border bg-card px-4 flex items-center gap-3',
-          sizeHeightClasses.spacious,
-        )}
-      >
-        <Gear size={16} className="text-muted-foreground" />
-        <span className="text-sm font-medium">Settings</span>
-      </div>
+      <ViewHeader title="Settings" />
 
       <div className="flex min-h-0 flex-1">
         <aside className="hidden w-52 shrink-0 border-r border-border/50 bg-muted/[0.035] md:flex md:flex-col">

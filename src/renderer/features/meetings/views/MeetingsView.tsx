@@ -26,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
 import { renderMarkdown } from '@renderer/features/notes/editor/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
-import { sizeHeightClasses } from '@renderer/components/composites';
+import { ViewHeader } from '@renderer/components/composites';
 import { useMeetings } from '@renderer/features/meetings/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/features/meetings/hooks/useMeetingRecorder';
 import {
@@ -83,25 +83,21 @@ export default function MeetingsView() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header
-        className={cn(
-          'flex shrink-0 items-center gap-3 border-b border-border bg-card px-4',
-          sizeHeightClasses['spacious'],
-        )}
-      >
-        <Microphone size={16} className="text-muted-foreground" />
-        <h1 className="text-sm font-semibold">Meetings</h1>
-        {recordings.length > 0 && (
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-            {recordings.length}
-          </span>
-        )}
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={startRecording} className="text-xs">
-          <Microphone size={14} />
-          New recording
-        </Button>
-      </header>
+      <ViewHeader
+        title="Meetings"
+        meta={recordings.length > 0 ? `${recordings.length} recorded` : undefined}
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={startRecording}
+            className="shrink-0 text-xs [&_svg]:size-3.5"
+          >
+            <Microphone weight="fill" />
+            New recording
+          </Button>
+        }
+      />
 
       <InlineRecordingPanel />
 
