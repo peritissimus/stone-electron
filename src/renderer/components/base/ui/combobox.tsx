@@ -74,7 +74,7 @@ export function Combobox({
           className={cn(
             'flex h-9 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm',
             'ring-offset-background transition-[border-color,box-shadow] duration-150 ease-out',
-            'hover:border-border focus:outline-hidden focus:ring-2 focus:ring-ring/40 focus:border-ring',
+            'hover:border-border focus:outline-hidden focus:ring-1 focus:ring-ring/25 focus:border-ring/60',
             'disabled:cursor-not-allowed disabled:opacity-50',
             className,
           )}

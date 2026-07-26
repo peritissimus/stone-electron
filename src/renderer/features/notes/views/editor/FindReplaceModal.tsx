@@ -156,6 +156,7 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
           aria-describedby={undefined}
           onOpenAutoFocus={handleOpenAutoFocus}
           className={cn(
+            'focus:outline-none',
             'fixed left-1/2 top-[15vh] z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex flex-col gap-3 rounded-xl border border-border bg-popover p-4',
             'shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]',
           )}

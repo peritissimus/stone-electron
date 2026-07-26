@@ -57,6 +57,13 @@ export const App: React.FC = () => {
   }, [effectiveTheme, isQuickCapture]);
 
   // Apply accent color (skip for quick capture)
+  //
+  // `--ring` is deliberately not accented. The accent marks what the app chose
+  // to emphasise; a focus ring marks where the reader's cursor is. Painting the
+  // ring in a saturated accent puts a loud band around every text field the
+  // moment it is focused, which reads as emphasis the field has not earned.
+  // The neutral ring in index.css stays authoritative — these inline styles
+  // would otherwise outrank it.
   useEffect(() => {
     if (isQuickCapture) return;
 
@@ -66,12 +73,10 @@ export const App: React.FC = () => {
 
     if (isDark) {
       root.style.setProperty('--primary', `${hue} 100% 60%`);
-      root.style.setProperty('--ring', `${hue} 100% 60%`);
       root.style.setProperty('--accent', `${hue} 80% 40% / 0.6`);
       root.style.setProperty('--accent-foreground', `${hue} 100% 75%`);
     } else {
       root.style.setProperty('--primary', `${hue} 100% 50%`);
-      root.style.setProperty('--ring', `${hue} 100% 50%`);
       root.style.setProperty('--accent', `${hue} 100% 90% / 0.6`);
       root.style.setProperty('--accent-foreground', `${hue} 100% 40%`);
     }

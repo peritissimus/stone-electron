@@ -76,6 +76,9 @@ export function AskNotesPanel() {
         <DialogPrimitive.Content
           aria-describedby={undefined}
           className={[
+            // Radix focuses this container on open; without this the browser
+            // paints its native ring around the whole dialog.
+            'focus:outline-none',
             'fixed left-[50%] top-[12vh] z-50 w-[calc(100%-2rem)] max-w-2xl translate-x-[-50%]',
             'flex flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-2xl',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
