@@ -46,21 +46,15 @@ export interface DeleteAttachmentRequest {
 
 // Use case interfaces
 export interface IAddAttachmentUseCase {
-  execute(
-    request: AddAttachmentRequest,
-  ): Effect.Effect<AddAttachmentResponse, Error>;
+  execute(request: AddAttachmentRequest): Effect.Effect<AddAttachmentResponse, Error>;
 }
 
 export interface IUploadImageUseCase {
-  execute(
-    request: UploadImageRequest,
-  ): Effect.Effect<UploadImageResponse, Error>;
+  execute(request: UploadImageRequest): Effect.Effect<UploadImageResponse, Error>;
 }
 
 export interface IGetAttachmentsUseCase {
-  execute(
-    request: GetAttachmentsRequest,
-  ): Effect.Effect<GetAttachmentsResponse, Error>;
+  execute(request: GetAttachmentsRequest): Effect.Effect<GetAttachmentsResponse, Error>;
 }
 
 export interface IDeleteAttachmentUseCase {
@@ -75,22 +69,22 @@ export interface IAttachmentUseCases {
     noteId: string,
     filePath: string,
     filename?: string,
-  ): Effect.Effect<{
-    id: string;
-    noteId: string;
-    filename: string;
-    originalName: string;
-    mimeType: string;
-    size: number;
-    path: string;
-    isImage: boolean;
-    isPdf: boolean;
-    createdAt: Date;
-  }, Error>;
-  deleteAttachment(
-    attachmentId: string,
-    deleteFile?: boolean,
-  ): Effect.Effect<void, Error>;
+  ): Effect.Effect<
+    {
+      id: string;
+      noteId: string;
+      filename: string;
+      originalName: string;
+      mimeType: string;
+      size: number;
+      path: string;
+      isImage: boolean;
+      isPdf: boolean;
+      createdAt: Date;
+    },
+    Error
+  >;
+  deleteAttachment(attachmentId: string, deleteFile?: boolean): Effect.Effect<void, Error>;
   getAttachments(noteId: string): Effect.Effect<
     Array<{
       id: string;
@@ -103,29 +97,38 @@ export interface IAttachmentUseCases {
       isImage: boolean;
       isPdf: boolean;
       createdAt: Date;
-    }>
-  , Error>;
+    }>,
+    Error
+  >;
+  getAttachmentContent(
+    noteId: string,
+    attachmentId: string,
+  ): Effect.Effect<{ bytes: Uint8Array; mimeType: string; filename: string }, Error>;
   uploadImage(
     noteId: string,
     imageData: Buffer | string,
     filename: string,
     mimeType?: string,
-  ): Effect.Effect<{
-    attachment: {
-      id: string;
-      noteId: string;
-      filename: string;
-      originalName: string;
-      mimeType: string;
-      size: number;
-      path: string;
-      isImage: boolean;
-      isPdf: boolean;
-      createdAt: Date;
-    };
-    markdownLink: string;
-  }, Error>;
+  ): Effect.Effect<
+    {
+      attachment: {
+        id: string;
+        noteId: string;
+        filename: string;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        path: string;
+        isImage: boolean;
+        isPdf: boolean;
+        createdAt: Date;
+      };
+      markdownLink: string;
+    },
+    Error
+  >;
 }
 
-export const AttachmentUseCasesPort =
-  Context.GenericTag<IAttachmentUseCases>('stone/IAttachmentUseCases');
+export const AttachmentUseCasesPort = Context.GenericTag<IAttachmentUseCases>(
+  'stone/IAttachmentUseCases',
+);
