@@ -5,3 +5,4 @@
  */
 
 export * from './ipc';
+export * from './http';
