@@ -4,7 +4,8 @@
  * Mounted once per day in the journals timeline. Content is preloaded into
  * the documentBufferStore by useJournalTimeline when the timeline loads, so
  * the editor hydrates from buffer (no per-row IPC). Edits go through the
- * standard documentBuffer + useDocumentAutosave path — saved on window blur.
+ * standard documentBuffer + useDocumentAutosave path — saved after a short
+ * idle period, and on window blur.
  */
 
 import { RichTextEditorContent, useRichTextEditor } from '@renderer/features/notes/editor';
