@@ -36,17 +36,29 @@ function computeStats(editor: RichTextEditor | null): Stats {
 }
 
 export function EditorStats({ editor }: EditorStatsProps) {
-  // The editor is a mutable instance — subscribe to its 'update' events for
-  // live stats instead of memoizing against it (deps would go stale).
+  // The editor is a mutable instance — subscribe to its events for live stats
+  // instead of memoizing against it (deps would go stale).
   const [stats, setStats] = useState<Stats>(() => computeStats(editor));
 
   useEffect(() => {
     const update = () => setStats(computeStats(editor));
     update();
     if (!editor) return;
+
+    // 'update' alone misses the note being hydrated: the content can be loaded
+    // into the editor before this effect subscribes, leaving the counts stuck at
+    // zero until the first keystroke. 'transaction' also covers programmatic
+    // content changes, so filter to the ones that actually changed the document
+    // and ignore pure selection moves.
+    const onTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (transaction.docChanged) update();
+    };
+
     editor.on('update', update);
+    editor.on('transaction', onTransaction);
     return () => {
       editor.off('update', update);
+      editor.off('transaction', onTransaction);
     };
   }, [editor]);
 
