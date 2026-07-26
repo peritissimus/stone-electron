@@ -63,9 +63,9 @@ async function loadWorkerModule() {
 
 async function initializeService(service: { initialize(): Promise<void> }) {
   const initializing = service.initialize();
-  const worker = workerMock.instances[0];
-  // Effect.runPromise schedules the async registration on its runtime.
-  await Promise.resolve();
+  // The worker is spawned after the Electron defaults resolve, so wait for the
+  // instance rather than assuming a fixed number of ticks.
+  const worker = await waitForWorkerInstance();
   worker.emit('message', { type: 'ready' });
   const initMessage = await waitForPostedMessage(worker, 'init');
   worker.emit('message', {
@@ -75,6 +75,15 @@ async function initializeService(service: { initialize(): Promise<void> }) {
   });
   await initializing;
   return worker;
+}
+
+async function waitForWorkerInstance() {
+  for (let i = 0; i < 50; i += 1) {
+    const worker = workerMock.instances[0];
+    if (worker) return worker;
+    await Promise.resolve();
+  }
+  throw new Error('worker was never constructed');
 }
 
 async function waitForPostedMessage(worker: { postMessage: any }, type: string) {
