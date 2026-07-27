@@ -10,16 +10,35 @@
 # server. electron-builder bundles both.
 #
 # Models are NOT downloaded here — the app fetches the GGML model on first use.
+#
+# Packaging depends on this script, so it has to be cheap to call repeatedly:
+# it returns immediately once both binaries are present. Pass --force to
+# rebuild them anyway (after bumping WHISPER_VERSION, say).
 set -e
 
 WHISPER_VERSION="v1.8.6"
 SRC_DIR="vendor/whisper.cpp"
 OUT_DIR="vendor/whisper/bin"
+BINARIES=(whisper-cli whisper-server)
+
+FORCE=0
+[ "${1:-}" = "--force" ] && FORCE=1
 
 case "$(uname)" in
   Darwin|Linux) ;;
   *) echo "build-whisper: $(uname) not supported here (Windows uses its own toolchain) — skipping"; exit 0 ;;
 esac
+
+if [ "$FORCE" -eq 0 ]; then
+  have_all=1
+  for name in "${BINARIES[@]}"; do
+    [ -x "$OUT_DIR/$name" ] || have_all=0
+  done
+  if [ "$have_all" -eq 1 ]; then
+    echo "build-whisper: ${BINARIES[*]} already built — skipping (use --force to rebuild)"
+    exit 0
+  fi
+fi
 
 if ! command -v cmake >/dev/null 2>&1; then
   echo "build-whisper: cmake not found. Install it (brew install cmake) and re-run." >&2
@@ -44,7 +63,7 @@ echo "build-whisper: building whisper-cli + whisper-server…"
 cmake --build "$SRC_DIR/build" --config Release -j --target whisper-cli whisper-server
 
 mkdir -p "$OUT_DIR"
-for name in whisper-cli whisper-server; do
+for name in "${BINARIES[@]}"; do
   BIN="$SRC_DIR/build/bin/$name"
   if [ ! -f "$BIN" ]; then
     echo "build-whisper: expected binary not found at $BIN" >&2
