@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { dailyReviewAPI } from '@renderer/api';
 import { logger } from '@renderer/services/telemetry/logger';
+import { DAILY_REVIEW_SOURCES } from '@shared/constants/dailyReviewSources';
 import type {
   DailyReviewIntegrationSource,
   DailyReviewIntegrationStatus,
@@ -50,11 +51,10 @@ interface DailyReviewState {
 let inFlight: Promise<void> | null = null;
 const integrationInFlight: Partial<Record<DailyReviewIntegrationSource, Promise<void>>> = {};
 
-const initialIntegrations = (): DailyReviewIntegrationStates => ({
-  calendar: { status: 'idle', message: null },
-  mail: { status: 'idle', message: null },
-  linear: { status: 'idle', message: null },
-});
+const initialIntegrations = (): DailyReviewIntegrationStates =>
+  Object.fromEntries(
+    DAILY_REVIEW_SOURCES.map((source) => [source, { status: 'idle', message: null }]),
+  ) as DailyReviewIntegrationStates;
 
 export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   snapshot: null,
@@ -185,7 +185,7 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
       });
       if (!response.success || !response.data) {
         const message = response.error?.message ?? 'Could not check integrations.';
-        for (const source of ['calendar', 'mail', 'linear'] as const) {
+        for (const source of DAILY_REVIEW_SOURCES) {
           setIntegrationFailure(set, source, message);
         }
         return;
@@ -206,7 +206,7 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
       }));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not check integrations.';
-      for (const source of ['calendar', 'mail', 'linear'] as const) {
+      for (const source of DAILY_REVIEW_SOURCES) {
         setIntegrationFailure(set, source, message);
       }
     }
@@ -238,7 +238,7 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   clearSummary: () => set({ summary: null, summaryError: null }),
 
   reset: () => {
-    for (const source of ['calendar', 'mail', 'linear'] as const) {
+    for (const source of DAILY_REVIEW_SOURCES) {
       delete integrationInFlight[source];
     }
     set({

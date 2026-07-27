@@ -1,4 +1,5 @@
 import { z } from './schema';
+import { DAILY_REVIEW_SOURCES } from '../constants/dailyReviewSources';
 import { NoteSchema, TodoItemSchema } from './notes';
 
 const DateLike = z.union([z.date(), z.string(), z.number()]).transform((value) => new Date(value));
@@ -36,7 +37,7 @@ const IntegrationStatusSchema = z.literalEnum([
   'error',
 ]);
 export const LoadDailyReviewIntegrationRequestSchema = z.object({
-  source: z.literalEnum(['calendar', 'mail', 'linear']),
+  source: z.literalEnum(DAILY_REVIEW_SOURCES),
   date: z.string().optional(),
 });
 export const LoadDailyReviewIntegrationsRequestSchema = z.object({

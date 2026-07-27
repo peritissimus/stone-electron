@@ -9,7 +9,16 @@ import type { DailyReviewSnapshot } from '../../../domain/ports/in/IDailyReviewU
 
 const MAIL_LIMIT = 10;
 const SNAPSHOT_TTL_MS = 5 * 60_000;
-const LOAD_ORDER: ExternalSourceId[] = ['linear', 'mail', 'calendar'];
+/**
+ * Deliberate order, preserved as it was. Written as a rank per source rather
+ * than a bare list so the type is exhaustive: a new source stops this
+ * compiling until it has been given a position, instead of silently never
+ * being loaded.
+ */
+const LOAD_RANK: Record<ExternalSourceId, number> = { linear: 0, mail: 1, calendar: 2 };
+const LOAD_ORDER = (Object.keys(LOAD_RANK) as ExternalSourceId[]).sort(
+  (left, right) => LOAD_RANK[left] - LOAD_RANK[right],
+);
 
 export interface ExternalSourceRegistryDeps {
   sources: IExternalSource[];
