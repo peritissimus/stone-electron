@@ -231,13 +231,29 @@ export const DailyReviewUseCasesLive = Layer.effect(
             ),
           ),
       },
+      // Both of these re-read the day after loading, because the registry
+      // merges from its own cache: reading after the load is what makes the
+      // fresh data visible. Doing it here rather than leaving it to the caller
+      // is the difference between one request and two, and it keeps the
+      // ordering a fact of this module instead of a convention the caller has
+      // to know.
       loadIntegration: {
         execute: (request) =>
-          externalSourceRegistry.load(request.source, { date: request.date }),
+          Effect.gen(function* () {
+            const result = yield* externalSourceRegistry.load(request.source, {
+              date: request.date,
+            });
+            const snapshot = yield* getDailyReview({ date: request.date });
+            return { result, snapshot };
+          }),
       },
       loadIntegrations: {
         execute: (request = {}) =>
-          externalSourceRegistry.loadAll({ date: request.date }),
+          Effect.gen(function* () {
+            const results = yield* externalSourceRegistry.loadAll({ date: request.date });
+            const snapshot = yield* getDailyReview({ date: request.date });
+            return { results, snapshot };
+          }),
       },
       summarizeDailyReview: {
         execute: (request = {}) =>

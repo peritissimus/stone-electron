@@ -60,10 +60,13 @@ describe('dailyReviewStore progressive integration loading', () => {
     loadIntegration.mockResolvedValue({
       success: true,
       data: {
-        source: 'calendar',
-        status: 'denied',
-        data: { events: [] },
-        message: 'Access is blocked in macOS Automation settings.',
+        result: {
+          source: 'calendar',
+          status: 'denied',
+          data: { events: [] },
+          message: 'Access is blocked in macOS Automation settings.',
+        },
+        snapshot: null,
       },
     });
 
@@ -77,16 +80,15 @@ describe('dailyReviewStore progressive integration loading', () => {
 
   it('stores a Mail unread count even when Apple Mail supplies no previews', async () => {
     useDailyReviewStore.setState({ snapshot: snapshot() });
-    get.mockResolvedValue({
-      success: true,
-      data: { ...snapshot(), mailUnreadCount: 352, mailMessages: [] },
-    });
     loadIntegration.mockResolvedValue({
       success: true,
       data: {
-        source: 'mail',
-        status: 'connected',
-        data: { unreadCount: 352, messages: [] },
+        result: {
+          source: 'mail',
+          status: 'connected',
+          data: { unreadCount: 352, messages: [] },
+        },
+        snapshot: { ...snapshot(), mailUnreadCount: 352, mailMessages: [] },
       },
     });
 
@@ -96,5 +98,27 @@ describe('dailyReviewStore progressive integration loading', () => {
       mailUnreadCount: 352,
       mailMessages: [],
     });
+    // The load carried the day it belongs in, so collecting the count costs no
+    // second read. Re-reading here is what the old sequence did, and it only
+    // worked while the main process still held the data in cache.
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('leaves the loaded day alone when a transport has no sources to merge', async () => {
+    useDailyReviewStore.setState({ snapshot: snapshot() });
+    loadIntegration.mockResolvedValue({
+      success: true,
+      data: {
+        result: { source: 'linear', status: 'unavailable', data: { issues: [] } },
+        snapshot: null,
+      },
+    });
+
+    await useDailyReviewStore.getState().loadIntegration('linear');
+
+    expect(useDailyReviewStore.getState().snapshot).toMatchObject({
+      todayJournal: { contentPreview: 'Local data is ready.' },
+    });
+    expect(useDailyReviewStore.getState().integrations.linear.status).toBe('unavailable');
   });
 });

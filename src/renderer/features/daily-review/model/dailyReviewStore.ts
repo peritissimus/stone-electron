@@ -140,14 +140,17 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
           setIntegrationFailure(set, source, response.error?.message ?? 'Could not check access.');
           return;
         }
-        const result = response.data;
+        const { result, snapshot } = response.data;
         set((state) => ({
           integrations: {
             ...state.integrations,
             [source]: { status: result.status, message: result.message ?? null },
           },
+          // The load already returned the day this result belongs in. Re-reading
+          // it here is what used to cost a second request, and it only worked
+          // because the main process happened to still hold the data in cache.
+          ...(snapshot ? { snapshot } : {}),
         }));
-        await get().refresh();
       } catch (err) {
         setIntegrationFailure(
           set,
@@ -187,8 +190,9 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
         }
         return;
       }
+      const { results, snapshot } = response.data;
       set((state) => ({
-        integrations: response.data!.reduce(
+        integrations: results.reduce(
           (integrations, result) => ({
             ...integrations,
             [result.source]: {
@@ -198,8 +202,8 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
           }),
           state.integrations,
         ),
+        ...(snapshot ? { snapshot } : {}),
       }));
-      await get().refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not check integrations.';
       for (const source of ['calendar', 'mail', 'linear'] as const) {

@@ -76,6 +76,25 @@ export interface LoadDailyReviewIntegrationRequest {
 
 export type DailyReviewIntegrationResult = DailyReviewExternalResult;
 
+/**
+ * What a source load yields: its own result, plus the snapshot that result now
+ * belongs in. Handing back both keeps the merge in one module — the caller
+ * applies a snapshot rather than reproducing the mapping from each source's
+ * payload onto the day.
+ *
+ * `snapshot` is null when a transport has no sources to merge, which means
+ * "nothing newer to apply" rather than "the day is empty".
+ */
+export interface DailyReviewIntegrationOutcome {
+  result: DailyReviewIntegrationResult;
+  snapshot: DailyReviewSnapshot | null;
+}
+
+export interface DailyReviewIntegrationsOutcome {
+  results: DailyReviewIntegrationResult[];
+  snapshot: DailyReviewSnapshot | null;
+}
+
 export interface ListDailyReviewCalendarsResult {
   status: ExternalSourceStatus;
   calendars: CalendarDescriptor[];
@@ -105,15 +124,19 @@ export interface IDailyReviewUseCases {
   listCalendars: {
     execute: () => Effect.Effect<ListDailyReviewCalendarsResult, never>;
   };
+  /**
+   * Loads one source and returns the snapshot it now belongs in, so the caller
+   * never has to re-read the day to collect data it was already handed.
+   */
   loadIntegration: {
     execute: (
       request: LoadDailyReviewIntegrationRequest,
-    ) => Effect.Effect<DailyReviewIntegrationResult, Error>;
+    ) => Effect.Effect<DailyReviewIntegrationOutcome, Error>;
   };
   loadIntegrations: {
     execute: (
       request?: { date?: string },
-    ) => Effect.Effect<DailyReviewIntegrationResult[], Error>;
+    ) => Effect.Effect<DailyReviewIntegrationsOutcome, Error>;
   };
   summarizeDailyReview: {
     execute: (

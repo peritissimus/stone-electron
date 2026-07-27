@@ -5,15 +5,16 @@
 import { invokeIpc } from '@renderer/lib/ipc';
 import { DAILY_REVIEW_CHANNELS } from '@shared/constants/ipcChannels';
 import type {
-  DailyReviewIntegrationResult,
+  DailyReviewIntegrationOutcome,
+  DailyReviewIntegrationsOutcome,
   DailyReviewIntegrationSource,
   DailyReviewSnapshot,
   ListDailyReviewCalendarsResult,
   IpcResponse,
 } from '@shared/types';
 import {
-  DailyReviewIntegrationResultSchema,
-  DailyReviewIntegrationsResultSchema,
+  DailyReviewIntegrationOutcomeSchema,
+  DailyReviewIntegrationsOutcomeSchema,
   DailyReviewSnapshotSchema,
   DailyReviewSummarySchema,
   ListDailyReviewCalendarsResultSchema,
@@ -38,16 +39,16 @@ export const dailyReviewAPI = {
   loadIntegration: (input: {
     source: DailyReviewIntegrationSource;
     date?: string;
-  }): Promise<IpcResponse<DailyReviewIntegrationResult>> =>
+  }): Promise<IpcResponse<DailyReviewIntegrationOutcome>> =>
     invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION, input).then((response) =>
-      validateResponse(response, DailyReviewIntegrationResultSchema),
+      validateResponse(response, DailyReviewIntegrationOutcomeSchema),
     ),
 
   loadIntegrations: (input?: {
     date?: string;
-  }): Promise<IpcResponse<DailyReviewIntegrationResult[]>> =>
+  }): Promise<IpcResponse<DailyReviewIntegrationsOutcome>> =>
     invokeIpc(DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS, input ?? {}).then((response) =>
-      validateResponse(response, DailyReviewIntegrationsResultSchema),
+      validateResponse(response, DailyReviewIntegrationsOutcomeSchema),
     ),
 
   summarize: (input?: {

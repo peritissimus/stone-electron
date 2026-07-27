@@ -585,14 +585,21 @@ async function invokeWebChannel<T>(channel: string, args: unknown[]): Promise<Ip
           calendars: [],
           message: 'Calendar integration is available in the desktop app.',
         }) as IpcResponse<T>;
+      // No sources exist on this transport, so there is never a newer snapshot
+      // to merge — null says exactly that, and leaves the day already loaded
+      // in place.
       case DAILY_REVIEW_CHANNELS.LOAD_INTEGRATIONS:
         // Every source must report back; an empty list leaves the UI spinning.
-        return success(Object.values(UNAVAILABLE_INTEGRATIONS)) as IpcResponse<T>;
+        return success({
+          results: Object.values(UNAVAILABLE_INTEGRATIONS),
+          snapshot: null,
+        }) as IpcResponse<T>;
       case DAILY_REVIEW_CHANNELS.LOAD_INTEGRATION: {
         const source = String(payload.source);
-        return success(
-          UNAVAILABLE_INTEGRATIONS[source] ?? UNAVAILABLE_INTEGRATIONS.linear,
-        ) as IpcResponse<T>;
+        return success({
+          result: UNAVAILABLE_INTEGRATIONS[source] ?? UNAVAILABLE_INTEGRATIONS.linear,
+          snapshot: null,
+        }) as IpcResponse<T>;
       }
       case MEETING_CHANNELS.LIST: {
         const query = new URLSearchParams();
