@@ -9,6 +9,7 @@ import {
   TextGeneratorPort,
   WorkspaceRepositoryPort,
   type IStatusReportUseCases,
+  formatJournalDate,
 } from '../../../domain';
 
 const DEFAULT_WINDOW_DAYS = 7;
@@ -29,16 +30,10 @@ interface EvidencePacket {
   modifiedNotes: Array<{ title: string; updatedAt: Date }>;
 }
 
-function formatIso(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function renderEvidence(packet: EvidencePacket): string {
   const lines = [
-    `Window: ${formatIso(packet.windowStart)} to ${formatIso(packet.windowEnd)}.`,
+    `Window: ${formatJournalDate(packet.windowStart)} to ${formatJournalDate(packet.windowEnd)}.`,
     '',
     '## Daily journal entries',
   ];
@@ -126,7 +121,7 @@ export const StatusReportUseCasesLive = Layer.effect(
                       .filter(
                         (entry) =>
                           Boolean(entry.content) &&
-                          entry.date >= formatIso(windowStart),
+                          entry.date >= formatJournalDate(windowStart),
                       )
                       .map((entry) => ({
                         date: entry.date,
@@ -145,7 +140,7 @@ export const StatusReportUseCasesLive = Layer.effect(
                       )
                       .slice(0, MAX_MEETINGS)
                       .map((recording) => ({
-                        date: formatIso(recording.createdAt),
+                        date: formatJournalDate(recording.createdAt),
                         title: recording.title,
                         summary: recording.summary,
                       })),
@@ -210,8 +205,8 @@ export const StatusReportUseCasesLive = Layer.effect(
                 'You produce only the markdown the user asks for. Output the result directly with no preamble or closing remarks.',
             });
             return {
-              windowStart: formatIso(windowStart),
-              windowEnd: formatIso(windowEnd),
+              windowStart: formatJournalDate(windowStart),
+              windowEnd: formatJournalDate(windowEnd),
               evidence: {
                 journalEntries: journalEntries.length,
                 meetings: meetingEvidence.length,

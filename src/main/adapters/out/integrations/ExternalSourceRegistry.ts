@@ -1,3 +1,4 @@
+import { formatJournalDate } from '../../../domain';
 import type {
   DailyReviewExternalResult,
   ExternalSourceId,
@@ -93,7 +94,7 @@ export class ExternalSourceRegistry implements IExternalSourceRegistry {
     sourceId: ExternalSourceId,
     options: { date?: string; signal?: AbortSignal },
   ): Promise<DailyReviewExternalResult> {
-    const date = options.date ?? todayIso();
+    const date = options.date ?? formatJournalDate(new Date());
     if (options.signal?.aborted) throw options.signal.reason;
     const source = this.sources.get(sourceId);
     if (!source) return unavailable(sourceId);
@@ -155,10 +156,3 @@ function failed(source: ExternalSourceId): DailyReviewExternalResult {
   }
 }
 
-function todayIso(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}

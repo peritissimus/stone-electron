@@ -12,6 +12,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { todayIso } from '@renderer/lib/dateFormat';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
 import {
   Sun,
@@ -772,11 +773,6 @@ function ErrorBox({ message }: { message: string }) {
 // =============================================================================
 // Date / duration helpers
 // =============================================================================
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function formatHeaderDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);

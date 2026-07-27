@@ -23,6 +23,7 @@ import {
   WORKSPACE_CHANNELS,
 } from '@shared/constants/ipcChannels';
 import type { IpcResponse, Note, Workspace } from '@shared/types';
+import { todayIso } from '@renderer/lib/dateFormat';
 import { apiFetch, apiFetchBytes } from '@renderer/api/httpClient';
 import * as browserEventStream from './browserEventStream';
 import * as browserExport from './browserExport';
@@ -64,14 +65,6 @@ const failure = (channel: string, error: unknown): IpcResponse<never> => ({
 });
 
 const request = (args: unknown[]): RequestPayload => (args[0] as RequestPayload | undefined) ?? {};
-
-/** Journal dates are calendar-local everywhere else in the app, never UTC. */
-const localCalendarDate = (): string => {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${mm}-${dd}`;
-};
 
 /** Desktop-only integrations, reported per source so the daily review can settle. */
 const UNAVAILABLE_INTEGRATIONS: Record<
@@ -552,7 +545,7 @@ async function invokeWebChannel<T>(channel: string, args: unknown[]): Promise<Ip
       }
 
       case DAILY_REVIEW_CHANNELS.GET: {
-        const date = localCalendarDate();
+        const date = todayIso();
         const [result, todayJournal] = await Promise.all([fetchNotes(), fetchTodayJournal(date)]);
         return success({
           date,

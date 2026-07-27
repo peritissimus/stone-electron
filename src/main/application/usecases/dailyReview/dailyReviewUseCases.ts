@@ -19,6 +19,7 @@ import {
   type IDailyReviewUseCases,
   type NoteProps,
   type TaskItem,
+  formatJournalDate,
 } from '../../../domain';
 
 const PREVIEW_CHARS = 240;
@@ -49,7 +50,7 @@ export const DailyReviewUseCasesLive = Layer.effect(
         const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
         const workspaceId =
           request.workspaceId ?? (yield* workspaceRepository.findActive())?.id;
-        const date = request.date ?? formatIso(new Date(now));
+        const date = request.date ?? formatJournalDate(new Date(now));
         if (!workspaceId) return emptySnapshot(date);
 
         const target = parseIso(date);
@@ -299,12 +300,6 @@ function emptySnapshot(date: string): DailyReviewSnapshot {
   };
 }
 
-function formatIso(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function parseIso(date: string): Date {
   const [year, month, day] = date
