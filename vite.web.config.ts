@@ -16,7 +16,9 @@ export default defineConfig({
           // Send every navigation to the web entry, not just '/', so a deep link
           // or a stale path cannot load the wrong app. Mirrors what the Fastify
           // notFoundHandler already does in production.
-          const isViteInternal = /^\/(?:@|src\/|node_modules\/|api\/|web\.html)/.test(url);
+          // /capture is its own entry, not a route inside the SPA — redirecting
+          // it to web.html would hand the phone the 7 MB app it exists to avoid.
+          const isViteInternal = /^\/(?:@|src\/|node_modules\/|api\/|web\.html|capture)/.test(url);
           if (request.method === 'GET' && wantsHtml && !isViteInternal) {
             response.statusCode = 302;
             response.setHeader('Location', '/web.html');
@@ -50,7 +52,10 @@ export default defineConfig({
     outDir: 'dist/web',
     emptyOutDir: true,
     rollupOptions: {
-      input: path.resolve(__dirname, 'web.html'),
+      input: {
+        web: path.resolve(__dirname, 'web.html'),
+        capture: path.resolve(__dirname, 'capture.html'),
+      },
     },
   },
 });

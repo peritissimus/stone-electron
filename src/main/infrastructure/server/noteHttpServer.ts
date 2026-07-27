@@ -120,6 +120,13 @@ export async function createNoteHttpServer(
       index: false,
       wildcard: false,
     });
+
+    // Quick capture is a separate entry, so it needs a route of its own ahead of
+    // the SPA fallback below — otherwise /capture would serve the full client.
+    if (fs.existsSync(path.join(staticDir, 'capture.html'))) {
+      app.get('/capture', (_request, reply) => reply.type('text/html').sendFile('capture.html'));
+    }
+
     app.setNotFoundHandler((request, reply) => {
       if (request.method === 'GET' && !request.url.startsWith('/api/')) {
         return reply.type('text/html').sendFile('web.html');
