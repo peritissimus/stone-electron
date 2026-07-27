@@ -147,8 +147,11 @@ export default function TopicsView() {
 
   if (initializing) {
     return (
-      <div className="flex h-full items-center justify-center bg-background">
-        <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
+      <div className="flex h-full min-w-0 flex-col overflow-hidden">
+        <ViewHeader title="Knowledge" />
+        <div className="flex flex-1 items-center justify-center bg-background">
+          <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
+        </div>
       </div>
     );
   }
@@ -158,14 +161,17 @@ export default function TopicsView() {
       <ViewHeader title="Knowledge" />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto bg-background">
-        <div
-          className={cn(
-            'mx-auto flex min-h-full w-full max-w-2xl flex-col gap-6 px-6 py-10',
-            // Idle, the field is the page and sits in the middle. Once there are
-            // results it anchors to the top so they read as a list under it.
-            searchQuery ? 'justify-start' : 'justify-center',
-          )}
-        >
+        <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-6 px-6 pb-10">
+          {/* The field rides on this spacer instead of on justify-content, so
+              making room for results is a glide rather than a cut. */}
+          <div
+            aria-hidden
+            className={cn(
+              'shrink-0 transition-[height] duration-300 ease-out motion-reduce:transition-none',
+              searchQuery ? 'h-2' : 'h-[34vh]',
+            )}
+          />
+
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
