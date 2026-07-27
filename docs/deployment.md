@@ -168,12 +168,26 @@ Cloudflare's edge imposes three constraints the server does not.
 
 | Cloudflare | Stone | Effect |
 | --- | --- | --- |
-| ~100 s request timeout (error 524) | `requestTimeout` is 180 s | `POST /api/status-report` and `POST /api/ai/actions/ask-notes` run synchronously and routinely exceed a minute. They fail through the tunnel. |
 | 100 MB request body (Free/Pro) | `bodyLimit` is 512 MB | Meeting audio is 16 kHz mono WAV at ~32 KB/s, so roughly 52 minutes per channel hits the cap. |
 | Access sessions expire | `EventSource` reconnects silently | On expiry the SSE reconnect receives a login redirect instead of a stream, and live updates stop without saying so. Reload to recover. |
 
 Capture, notes, search and journals are unaffected. Verify the numbers against
 your current plan — Cloudflare adjusts them.
+
+### Long requests (handled)
+
+Cloudflare answers **524** when an origin sends nothing for ~100 s, and
+generation over a whole window routinely takes longer. The limit applies to
+time-to-first-byte rather than total duration, so `POST /api/status-report` and
+`POST /api/ai/actions/ask-notes` begin responding immediately and emit
+whitespace until the payload is ready — measured at 6 ms to first byte for work
+taking 3 s. Whitespace is legal between JSON tokens, so callers parse the result
+unchanged.
+
+One consequence worth knowing when reading these two routes: the status line is
+committed before the outcome is known, so a failure arrives as `200` with an
+error envelope in the body carrying the status it would have had. `apiFetch`
+turns that back into a thrown error.
 
 ## Backups
 
