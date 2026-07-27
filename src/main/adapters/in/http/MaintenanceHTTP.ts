@@ -7,6 +7,7 @@ import type {
   IStatusReportUseCases,
 } from '../../../domain';
 import { sendError } from './httpError';
+import { sendStreamedJson } from './streamedJson';
 
 interface MaintenanceHTTPDeps {
   workspaceId: string;
@@ -112,25 +113,23 @@ export class MaintenanceHTTP {
       }
     });
 
+    // Generation over a whole window runs well past a minute, so this streams
+    // rather than making a proxy wait in silence for the first byte.
     app.post('/api/status-report', async (request, reply) => {
-      try {
-        const body = (request.body as Record<string, unknown> | undefined) ?? {};
-        const windowDays = typeof body.windowDays === 'number' ? body.windowDays : undefined;
-        return reply.send(
-          await this.deps.runStatusReportEffect((service) =>
-            service.generate.execute({
-              workspaceId:
-                typeof body.workspaceId === 'string' ? body.workspaceId : this.deps.workspaceId,
-              ...(windowDays ? { windowDays } : {}),
-              ...(typeof body.promptTemplate === 'string'
-                ? { promptTemplate: body.promptTemplate }
-                : {}),
-            }),
-          ),
-        );
-      } catch (error) {
-        return sendError(request, reply, error, 'Status report');
-      }
+      const body = (request.body as Record<string, unknown> | undefined) ?? {};
+      const windowDays = typeof body.windowDays === 'number' ? body.windowDays : undefined;
+      await sendStreamedJson(request, reply, 'Status report', () =>
+        this.deps.runStatusReportEffect((service) =>
+          service.generate.execute({
+            workspaceId:
+              typeof body.workspaceId === 'string' ? body.workspaceId : this.deps.workspaceId,
+            ...(windowDays ? { windowDays } : {}),
+            ...(typeof body.promptTemplate === 'string'
+              ? { promptTemplate: body.promptTemplate }
+              : {}),
+          }),
+        ),
+      );
     });
   }
 }

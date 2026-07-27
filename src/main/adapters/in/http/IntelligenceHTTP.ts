@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Effect } from 'effect';
 import type { IAIUseCases, IIndexUseCases, ITopicUseCases } from '../../../domain';
 import { sendError } from './httpError';
+import { sendStreamedJson } from './streamedJson';
 
 interface IntelligenceHTTPDeps {
   workspaceId: string;
@@ -112,28 +113,28 @@ export class IntelligenceHTTP {
       }
     });
 
+    // Retrieval plus generation regularly outlasts a proxy's first-byte
+    // deadline, so the response starts before the answer exists.
     app.post('/api/ai/actions/ask-notes', async (request, reply) => {
-      try {
-        const body = (request.body as Record<string, unknown> | undefined) ?? {};
-        if (typeof body.query !== 'string' || !body.query.trim()) {
-          return reply
-            .status(400)
-            .send({ error: { code: 'VALIDATION_ERROR', message: 'query is required.' } });
-        }
-        const limit = positiveInt(body.limit);
-        return reply.send(
-          await this.deps.runAIEffect((service) =>
-            service.askNotes.execute({
-              query: body.query as string,
-              workspaceId:
-                typeof body.workspaceId === 'string' ? body.workspaceId : this.deps.workspaceId,
-              ...(limit ? { limit } : {}),
-            }),
-          ),
-        );
-      } catch (error) {
-        return sendError(request, reply, error, 'AI');
+      const body = (request.body as Record<string, unknown> | undefined) ?? {};
+      // Validated before hijacking the reply, so a bad request still gets a
+      // real 400 status rather than one smuggled through a 200 body.
+      if (typeof body.query !== 'string' || !body.query.trim()) {
+        return reply
+          .status(400)
+          .send({ error: { code: 'VALIDATION_ERROR', message: 'query is required.' } });
       }
+      const limit = positiveInt(body.limit);
+      await sendStreamedJson(request, reply, 'AI', () =>
+        this.deps.runAIEffect((service) =>
+          service.askNotes.execute({
+            query: body.query as string,
+            workspaceId:
+              typeof body.workspaceId === 'string' ? body.workspaceId : this.deps.workspaceId,
+            ...(limit ? { limit } : {}),
+          }),
+        ),
+      );
     });
 
     app.post('/api/notes/:id/ai/summarize', async (request, reply) => {

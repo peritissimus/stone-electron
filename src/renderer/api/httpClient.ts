@@ -30,6 +30,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     error?: {
       code?: string;
       message?: string;
+      status?: number;
     };
   } | null;
 
@@ -38,6 +39,22 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       payload?.error?.message ?? `Request failed with status ${response.status}`,
       response.status,
       payload?.error?.code,
+    );
+  }
+
+  // Long-running routes stream their response so a proxy sees bytes immediately,
+  // which commits the status line before the outcome is known. A failure can
+  // then only arrive in the body, carrying the status it would have had.
+  //
+  // Matched on `status` specifically: payloads legitimately carry an `error`
+  // field of their own — a failed meeting recording has one — and those are
+  // strings, never an envelope naming its own HTTP status.
+  const streamedFailure = payload?.error;
+  if (streamedFailure && typeof streamedFailure.status === 'number') {
+    throw new HTTPError(
+      streamedFailure.message ?? 'Request failed',
+      streamedFailure.status,
+      streamedFailure.code,
     );
   }
 
