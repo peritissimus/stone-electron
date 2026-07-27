@@ -16,12 +16,12 @@
     <meta charset="utf-8" />
     <!-- viewport-fit=cover lets the layout reach under the notch and home
          indicator; the safe-area insets below keep content clear of both.
-         Zoom is intentionally left enabled — inputs use 16px so iOS has no
+         Zoom is intentionally left enabled — inputs use 17px so iOS has no
          reason to zoom on focus, which is the real fix. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)" />
     <!-- Added to the Home Screen it opens chromeless, like an app. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -29,26 +29,22 @@
     <meta name="robots" content="noindex, nofollow" />
     <title>Capture</title>
     <style>
+      /*
+        Monochrome by construction: there is no hue anywhere in this file. State
+        is carried by contrast alone — muted for ambient, full strength for
+        anything that wants reading. A capture box has one action and one
+        outcome, so colour would only be decoration competing with the text.
+      */
       :root {
         --bg: #ffffff;
-        --fg: #16181c;
-        --muted: #6b7280;
-        --line: rgba(0, 0, 0, 0.12);
-        --field: rgba(0, 0, 0, 0.03);
-        --accent: #0a84ff;
-        --ok: #1a9e5f;
-        --bad: #d92d20;
+        --fg: #111111;
+        --muted: rgba(17, 17, 17, 0.45);
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #0a0a0a;
-          --fg: #ececec;
-          --muted: #8b8f96;
-          --line: rgba(255, 255, 255, 0.14);
-          --field: rgba(255, 255, 255, 0.04);
-          --accent: #3b9dff;
-          --ok: #35c07f;
-          --bad: #ff6257;
+          --bg: #0b0b0b;
+          --fg: #f0f0f0;
+          --muted: rgba(240, 240, 240, 0.42);
         }
       }
 
@@ -70,57 +66,68 @@
            vh-sized layout is scrolled under it the moment the keyboard opens. */
         height: 100dvh;
         padding:
-          calc(env(safe-area-inset-top) + 14px)
-          calc(env(safe-area-inset-right) + 16px)
-          calc(env(safe-area-inset-bottom) + 14px)
-          calc(env(safe-area-inset-left) + 16px);
-        gap: 12px;
+          calc(env(safe-area-inset-top) + 18px)
+          calc(env(safe-area-inset-right) + 20px)
+          calc(env(safe-area-inset-bottom) + 18px)
+          calc(env(safe-area-inset-left) + 20px);
+        gap: 14px;
       }
 
-      header {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 12px;
+      /* The only thing worth stating up front is which day this lands in —
+         everything else about the page is evident from looking at it. */
+      #target {
         flex: none;
+        color: var(--muted);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
       }
-      h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-      #target { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
 
       textarea {
         flex: 1 1 auto;
         width: 100%;
         min-height: 0;
         resize: none;
-        padding: 14px;
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        background: var(--field);
+        padding: 0;
+        border: 0;
+        background: none;
         color: inherit;
         /* Must stay >=16px or iOS zooms the page on focus. */
         font: inherit;
         font-size: 17px;
-        line-height: 1.55;
-        transition: border-color 150ms ease-out;
+        line-height: 1.6;
       }
-      textarea:focus { outline: none; border-color: color-mix(in oklab, var(--accent) 55%, transparent); }
+      /* No focus ring: the field occupies the page and already holds the caret,
+         so a ring would outline the obvious. */
+      textarea:focus { outline: none; }
       textarea::placeholder { color: var(--muted); }
 
-      footer { display: flex; align-items: center; gap: 12px; flex: none; }
+      footer {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: none;
+      }
 
-      #status { flex: 1; min-width: 0; font-size: 13px; color: var(--muted); }
-      #status[data-tone="ok"] { color: var(--ok); }
-      #status[data-tone="bad"] { color: var(--bad); }
+      #status {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        color: var(--muted);
+        transition: color 150ms ease-out;
+      }
+      /* Failure earns full contrast rather than a colour. */
+      #status[data-loud] { color: var(--fg); }
 
       button {
         flex: none;
         /* 44px is Apple's minimum comfortable touch target. */
         min-height: 44px;
-        padding: 0 22px;
+        padding: 0 24px;
         border: 0;
-        border-radius: 12px;
-        background: var(--accent);
-        color: #fff;
+        border-radius: 11px;
+        background: var(--fg);
+        color: var(--bg);
         font: inherit;
         font-size: 16px;
         font-weight: 590;
@@ -128,20 +135,11 @@
         transition: opacity 150ms ease-out, scale 150ms ease-out;
       }
       button:active:not(:disabled) { scale: 0.96; }
-      button:disabled { opacity: 0.4; cursor: default; }
-
-      kbd {
-        font: inherit;
-        font-size: 12px;
-        color: var(--muted);
-      }
+      button:disabled { opacity: 0.22; cursor: default; }
     </style>
   </head>
   <body>
-    <header>
-      <h1>Capture</h1>
-      <span id="target"></span>
-    </header>
+    <span id="target"></span>
 
     <textarea
       id="text"
@@ -155,7 +153,7 @@
     ></textarea>
 
     <footer>
-      <span id="status" role="status" aria-live="polite"><kbd>⌘↵</kbd> to add</span>
+      <span id="status" role="status" aria-live="polite"></span>
       <button id="add" type="button" disabled>Add</button>
     </footer>
 
@@ -169,15 +167,15 @@
         // Journal dates are calendar-local everywhere else in Stone, never UTC.
         var now = new Date();
         target.textContent = now.toLocaleDateString(undefined, {
-          weekday: 'short',
+          weekday: 'long',
           day: 'numeric',
-          month: 'short',
+          month: 'long',
         });
 
-        function say(message, tone) {
+        function say(message, loud) {
           status.textContent = message;
-          if (tone) status.setAttribute('data-tone', tone);
-          else status.removeAttribute('data-tone');
+          if (loud) status.setAttribute('data-loud', '');
+          else status.removeAttribute('data-loud');
         }
 
         function sync() {
@@ -217,12 +215,12 @@
               // one thing a capture tool must never do.
               text.value = '';
               sync();
-              say('Added to today', 'ok');
+              say('Added');
               text.focus();
             })
             .catch(function (error) {
               // The text stays in the box, so retry costs a tap and nothing else.
-              say(error.message || 'Could not add', 'bad');
+              say(error.message || 'Could not add', true);
               sync();
             })
             .finally(function () {
