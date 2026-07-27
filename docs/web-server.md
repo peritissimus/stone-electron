@@ -149,6 +149,9 @@ The first slice is deliberately single-user and does not include public
 internet authentication. Do not bind it to a public interface until
 authentication and authorization are added.
 
+[deployment.md](deployment.md) covers reaching the server from a phone with
+Cloudflare Tunnel, where Access supplies the authentication the app lacks.
+
 Persist and back up both the database and workspace directory. Note metadata
 lives in SQLite while note content lives in Markdown files.
 
