@@ -133,6 +133,7 @@ The Node process serves both surfaces from one origin:
 
 ```text
 GET /             browser frontend
+GET /capture      quick capture (see below)
 GET /api/health   health check
 GET /api/notes    notes API
 GET /api/search   full-text search
@@ -150,6 +151,33 @@ authentication and authorization are added.
 
 Persist and back up both the database and workspace directory. Note metadata
 lives in SQLite while note content lives in Markdown files.
+
+## Quick capture
+
+`/capture` is a second, separate entry point: a single box that appends a
+timestamped line to today's journal.
+
+It shares nothing with the web client but the API. The full frontend is roughly
+7 MB — an editor, a graph renderer and a maths typesetter — and none of it helps
+someone jotting one line from a phone, so the capture page is a self-contained
+12 KB HTML file with no framework, no external asset and one request. It is
+built from `capture.html` at the repo root as a second Vite entry, and Fastify
+routes `/capture` to it ahead of the frontend's catch-all.
+
+It posts to a single endpoint:
+
+```text
+POST /api/quick-capture/journal   {"text": "..."}  →  {"noteId", "appended"}
+```
+
+`appended` distinguishes an entry added to an existing day from one that
+created the day's note; both are success. Empty or whitespace-only text is
+rejected with `400 VALIDATION_ERROR` rather than writing a bare timestamp, and
+the page keeps what you typed until the write is confirmed, so a failed request
+costs a retry rather than the thought.
+
+On iOS, Share → *Add to Home Screen* gives it an icon and opens it without
+browser chrome.
 
 ## Environment variables
 
