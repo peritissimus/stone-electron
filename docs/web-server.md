@@ -153,6 +153,13 @@ lives in SQLite while note content lives in Markdown files.
 
 ## Environment variables
 
+The server reads a `.env` from its working directory on startup, so the table
+below can live in a file rather than in the command that launches it.
+`.env.example` at the repo root lists every variable with its default; copy it
+to `.env` to get started. Values already present in the environment win, which
+is what lets a process manager override a single setting without editing the
+file.
+
 | Variable               | Default                       | Purpose                        |
 | ---------------------- | ----------------------------- | ------------------------------ |
 | `STONE_DATA_DIR`       | `./data`                      | Default parent for server data |
@@ -168,5 +175,10 @@ lives in SQLite while note content lives in Markdown files.
 | `STONE_WHISPER_MODEL_DIR` | `<config dir>/whisper-models` | Whisper ggml models         |
 | `STONE_WHISPER_BINARY` | bundled/dev path              | whisper-cli override           |
 | `STONE_WHISPER_SERVER_BINARY` | bundled/dev path       | whisper-server override        |
+| `STONE_LOG_LEVEL`      | `info`                        | `error`/`warn`/`info`/`debug`  |
 | `VITE_API_BASE_URL`    | empty                         | Optional browser API origin    |
 | `VITE_DEV_API_URL`     | `http://127.0.0.1:3000`       | Development proxy target       |
+
+Successful operations log at `debug` and only surface at `info` when they run
+long, so a quiet log is the expected state. Raise `STONE_LOG_LEVEL` to `debug`
+to follow a single request through the layers.
