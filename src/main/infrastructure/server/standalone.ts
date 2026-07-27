@@ -1,3 +1,7 @@
+// Everything below is configured from the environment, and the desktop entry
+// already reads a .env. Without this the server was the one process that
+// silently ignored the file its settings were written in.
+import 'dotenv/config';
 import path from 'node:path';
 import { createDatabaseManager } from '../database/DatabaseManager';
 import { createNoteServerRuntime } from '../di/noteServerRuntime';
