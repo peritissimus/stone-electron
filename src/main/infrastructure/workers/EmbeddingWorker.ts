@@ -13,11 +13,57 @@
 
 import { Worker } from 'worker_threads';
 import path from 'node:path';
-import { app } from 'electron';
 import { Context, Effect, Layer } from 'effect';
 import { logger } from '../../shared/utils';
-import { getMLStatusTracker } from './MLStatusTracker';
-import type { MLModelDownloadProgressPayload } from '@shared/types/mlStatus';
+import type { MLModelDownloadProgressPayload, MLServiceStatus } from '@shared/types/mlStatus';
+
+/**
+ * Where run-state is reported. On the desktop this is the tracker that pushes
+ * to renderer windows; headless there is nobody to tell, so it is dropped.
+ */
+export interface MLStatusSink {
+  setServiceStatus: (
+    status: MLServiceStatus,
+    options?: { error?: string; model?: { name: string; dims: number } },
+  ) => void;
+  broadcastModelDownloadProgress: (payload: MLModelDownloadProgressPayload) => void;
+}
+
+export interface EmbeddingWorkerOptions {
+  /** Model cache directory. Required outside Electron, which has no userData. */
+  cacheDir?: string;
+  /** Absolute path to the built `embedding.worker.cjs`. */
+  workerPath?: string;
+  statusSink?: MLStatusSink;
+}
+
+const NOOP_STATUS_SINK: MLStatusSink = {
+  setServiceStatus: () => {},
+  broadcastModelDownloadProgress: () => {},
+};
+
+/**
+ * Electron supplies the userData path and the renderer status tracker. Both are
+ * absent in the headless server, so they are resolved lazily and fall back
+ * rather than failing at import time.
+ */
+async function desktopDefaults(): Promise<{ cacheDir: string | null; statusSink: MLStatusSink }> {
+  try {
+    const { app } = await import('electron');
+    // Outside Electron the `electron` package resolves to a binary path string,
+    // so probe for the real API rather than trusting the import to fail.
+    if (typeof app?.getPath !== 'function') {
+      return { cacheDir: null, statusSink: NOOP_STATUS_SINK };
+    }
+    const { getMLStatusTracker } = await import('./MLStatusTracker');
+    return {
+      cacheDir: path.join(app.getPath('userData'), 'ml-cache'),
+      statusSink: getMLStatusTracker(),
+    };
+  } catch {
+    return { cacheDir: null, statusSink: NOOP_STATUS_SINK };
+  }
+}
 
 const EMBEDDING_DIMS = 384; // BGE-small-en-v1.5 dimensions
 
@@ -42,6 +88,8 @@ interface WorkerResponse {
 }
 
 export class EmbeddingWorker {
+  constructor(private readonly options: EmbeddingWorkerOptions = {}) {}
+
   static readonly Service = Context.GenericTag<EmbeddingWorker>('stone/EmbeddingWorker');
 
   static layer(worker: EmbeddingWorker): Layer.Layer<EmbeddingWorker> {
@@ -79,6 +127,7 @@ export class EmbeddingWorker {
    * Get the worker script path (handles both dev and packaged app)
    */
   private getWorkerPath(): string {
+    if (this.options.workerPath) return this.options.workerPath;
     // worker_threads.Worker() cannot load entry files from inside app.asar.
     // electron-builder unpacks the worker bundle (asarUnpack rule), but
     // __dirname still points into the asar — translate to the unpacked
@@ -105,7 +154,8 @@ export class EmbeddingWorker {
   }
 
   private async doInitialize(): Promise<void> {
-    const mlStatus = getMLStatusTracker();
+    const defaults = await desktopDefaults();
+    const mlStatus = this.options.statusSink ?? defaults.statusSink;
 
     try {
       mlStatus.setServiceStatus('initializing');
@@ -118,7 +168,10 @@ export class EmbeddingWorker {
       // Pass a user-writable cache dir. Default ${install}/.cache lives inside
       // app.asar in packaged builds and fails to mkdir, forcing a model
       // re-download on every cold start.
-      const cacheDir = path.join(app.getPath('userData'), 'ml-cache');
+      const cacheDir = this.options.cacheDir ?? defaults.cacheDir;
+      if (!cacheDir) {
+        throw new Error('EmbeddingWorker requires a cacheDir outside Electron.');
+      }
 
       this.worker = new Worker(workerPath, { workerData: { cacheDir } });
 
@@ -148,9 +201,7 @@ export class EmbeddingWorker {
         // Unsolicited model-download progress (no request id) — broadcast to
         // renderers so onboarding/status UIs can show a real progress bar.
         if (msg.type === 'downloadProgress') {
-          getMLStatusTracker().broadcastModelDownloadProgress(
-            msg as unknown as MLModelDownloadProgressPayload,
-          );
+          mlStatus.broadcastModelDownloadProgress(msg as unknown as MLModelDownloadProgressPayload);
           return;
         }
 
@@ -271,7 +322,8 @@ export class EmbeddingWorker {
     this.transcriberReady = false;
     this.pendingRequests.clear();
 
-    getMLStatusTracker().setServiceStatus('idle');
+    const statusSink = this.options.statusSink ?? (await desktopDefaults()).statusSink;
+    statusSink.setServiceStatus('idle');
   }
 
   /**
@@ -431,6 +483,6 @@ export function getEmbeddingWorker(): EmbeddingWorker {
 /**
  * Create EmbeddingWorker instance (for DI container)
  */
-export function createEmbeddingWorker(): EmbeddingWorker {
-  return new EmbeddingWorker();
+export function createEmbeddingWorker(options: EmbeddingWorkerOptions = {}): EmbeddingWorker {
+  return new EmbeddingWorker(options);
 }

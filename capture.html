@@ -1,0 +1,242 @@
+<!doctype html>
+<!--
+  Quick capture — the phone surface.
+
+  Deliberately standalone: no framework, no bundler output, no shared module
+  with the app. The full web client is ~7 MB because it carries an editor, a
+  graph renderer and a maths typesetter; none of that helps someone jotting one
+  line at a bus stop, and waiting for it on cellular is the difference between
+  capturing a thought and losing it. Everything needed is inline below.
+
+  Auth is Cloudflare Access in front of the tunnel, so there is no token here —
+  the request carries Access's own cookie and never sees a credential.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <!-- viewport-fit=cover lets the layout reach under the notch and home
+         indicator; the safe-area insets below keep content clear of both.
+         Zoom is intentionally left enabled — inputs use 17px so iOS has no
+         reason to zoom on focus, which is the real fix. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0b0b" media="(prefers-color-scheme: dark)" />
+    <!-- Added to the Home Screen it opens chromeless, like an app. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Capture" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Capture</title>
+    <style>
+      /*
+        Monochrome by construction: there is no hue anywhere in this file. State
+        is carried by contrast alone — muted for ambient, full strength for
+        anything that wants reading. A capture box has one action and one
+        outcome, so colour would only be decoration competing with the text.
+      */
+      :root {
+        --bg: #ffffff;
+        --fg: #111111;
+        --muted: rgba(17, 17, 17, 0.45);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b0b0b;
+          --fg: #f0f0f0;
+          --muted: rgba(240, 240, 240, 0.42);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font: 400 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        /* 100dvh, not 100vh: Safari's vh excludes the collapsing toolbar, so a
+           vh-sized layout is scrolled under it the moment the keyboard opens. */
+        height: 100dvh;
+        padding:
+          calc(env(safe-area-inset-top) + 18px)
+          calc(env(safe-area-inset-right) + 20px)
+          calc(env(safe-area-inset-bottom) + 18px)
+          calc(env(safe-area-inset-left) + 20px);
+        gap: 14px;
+      }
+
+      /* The only thing worth stating up front is which day this lands in —
+         everything else about the page is evident from looking at it. */
+      #target {
+        flex: none;
+        color: var(--muted);
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.01em;
+      }
+
+      textarea {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: 0;
+        resize: none;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        /* Must stay >=16px or iOS zooms the page on focus. */
+        font: inherit;
+        font-size: 17px;
+        line-height: 1.6;
+      }
+      /* No focus ring: the field occupies the page and already holds the caret,
+         so a ring would outline the obvious. */
+      textarea:focus { outline: none; }
+      textarea::placeholder { color: var(--muted); }
+
+      footer {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: none;
+      }
+
+      #status {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        color: var(--muted);
+        transition: color 150ms ease-out;
+      }
+      /* Failure earns full contrast rather than a colour. */
+      #status[data-loud] { color: var(--fg); }
+
+      button {
+        flex: none;
+        /* 44px is Apple's minimum comfortable touch target. */
+        min-height: 44px;
+        padding: 0 24px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--fg);
+        color: var(--bg);
+        font: inherit;
+        font-size: 16px;
+        font-weight: 590;
+        cursor: pointer;
+        transition: opacity 150ms ease-out, scale 150ms ease-out;
+      }
+      button:active:not(:disabled) { scale: 0.96; }
+      button:disabled { opacity: 0.22; cursor: default; }
+    </style>
+  </head>
+  <body>
+    <span id="target"></span>
+
+    <textarea
+      id="text"
+      autofocus
+      enterkeyhint="done"
+      autocapitalize="sentences"
+      autocorrect="on"
+      spellcheck="true"
+      placeholder="What's on your mind?"
+      aria-label="Text to append to today's journal"
+    ></textarea>
+
+    <footer>
+      <span id="status" role="status" aria-live="polite"></span>
+      <button id="add" type="button" disabled>Add</button>
+    </footer>
+
+    <script>
+      (function () {
+        var text = document.getElementById('text');
+        var button = document.getElementById('add');
+        var status = document.getElementById('status');
+        var target = document.getElementById('target');
+
+        // Journal dates are calendar-local everywhere else in Stone, never UTC.
+        var now = new Date();
+        target.textContent = now.toLocaleDateString(undefined, {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+        });
+
+        function say(message, loud) {
+          status.textContent = message;
+          if (loud) status.setAttribute('data-loud', '');
+          else status.removeAttribute('data-loud');
+        }
+
+        function sync() {
+          button.disabled = text.value.trim().length === 0;
+        }
+        text.addEventListener('input', sync);
+
+        var sending = false;
+
+        function send() {
+          var body = text.value.trim();
+          if (!body || sending) return;
+          sending = true;
+          button.disabled = true;
+          say('Adding…');
+
+          fetch('/api/quick-capture/journal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // Carries the Cloudflare Access cookie.
+            credentials: 'same-origin',
+            body: JSON.stringify({ text: body }),
+          })
+            .then(function (response) {
+              // An expired Access session answers with a login redirect, not an
+              // error — without this it would read as a mysterious parse failure.
+              if (response.status === 401 || response.status === 403 || response.redirected) {
+                throw new Error('Session expired — reload to sign in');
+              }
+              if (!response.ok) throw new Error('Server returned ' + response.status);
+              return response.json();
+            })
+            .then(function (result) {
+              if (result && result.error) throw new Error(result.error.message || 'Failed');
+              // Only clear once the write is confirmed. Clearing optimistically
+              // would throw the text away on a flaky connection, which is the
+              // one thing a capture tool must never do.
+              text.value = '';
+              sync();
+              say('Added');
+              text.focus();
+            })
+            .catch(function (error) {
+              // The text stays in the box, so retry costs a tap and nothing else.
+              say(error.message || 'Could not add', true);
+              sync();
+            })
+            .finally(function () {
+              sending = false;
+            });
+        }
+
+        button.addEventListener('click', send);
+
+        text.addEventListener('keydown', function (event) {
+          if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+            event.preventDefault();
+            send();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

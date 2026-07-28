@@ -22,6 +22,7 @@ import { NoteEditorEmptyState } from './NoteEditorEmptyState';
 import { NoteEditorContent } from './NoteEditorContent';
 import { RawMarkdownEditor } from './RawMarkdownEditor';
 import { EditorStats } from './EditorStats';
+import { SaveIndicator } from './SaveIndicator';
 import { BacklinksPanel } from './BacklinksPanel';
 import { RelatedNotesPanel } from './RelatedNotesPanel';
 import { Copy, Check } from '@phosphor-icons/react';
@@ -405,12 +406,15 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
         ) : (
           <EditorStats editor={editor} />
         )}
-        {activeNote?.filePath && activeWorkspace?.folderPath && (
-          <CopyPathButton
-            filePath={activeNote.filePath}
-            workspacePath={activeWorkspace.folderPath}
-          />
-        )}
+        <div className="flex items-center gap-3">
+          <SaveIndicator noteId={activeNoteId} />
+          {activeNote?.filePath && activeWorkspace?.folderPath && (
+            <CopyPathButton
+              filePath={activeNote.filePath}
+              workspacePath={activeWorkspace.folderPath}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

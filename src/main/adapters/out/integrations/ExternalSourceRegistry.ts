@@ -1,3 +1,4 @@
+import { formatJournalDate } from '../../../domain';
 import type {
   DailyReviewExternalResult,
   ExternalSourceId,
@@ -9,7 +10,16 @@ import type { DailyReviewSnapshot } from '../../../domain/ports/in/IDailyReviewU
 
 const MAIL_LIMIT = 10;
 const SNAPSHOT_TTL_MS = 5 * 60_000;
-const LOAD_ORDER: ExternalSourceId[] = ['linear', 'mail', 'calendar'];
+/**
+ * Deliberate order, preserved as it was. Written as a rank per source rather
+ * than a bare list so the type is exhaustive: a new source stops this
+ * compiling until it has been given a position, instead of silently never
+ * being loaded.
+ */
+const LOAD_RANK: Record<ExternalSourceId, number> = { linear: 0, mail: 1, calendar: 2 };
+const LOAD_ORDER = (Object.keys(LOAD_RANK) as ExternalSourceId[]).sort(
+  (left, right) => LOAD_RANK[left] - LOAD_RANK[right],
+);
 
 export interface ExternalSourceRegistryDeps {
   sources: IExternalSource[];
@@ -84,7 +94,7 @@ export class ExternalSourceRegistry implements IExternalSourceRegistry {
     sourceId: ExternalSourceId,
     options: { date?: string; signal?: AbortSignal },
   ): Promise<DailyReviewExternalResult> {
-    const date = options.date ?? todayIso();
+    const date = options.date ?? formatJournalDate(new Date());
     if (options.signal?.aborted) throw options.signal.reason;
     const source = this.sources.get(sourceId);
     if (!source) return unavailable(sourceId);
@@ -146,10 +156,3 @@ function failed(source: ExternalSourceId): DailyReviewExternalResult {
   }
 }
 
-function todayIso(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}

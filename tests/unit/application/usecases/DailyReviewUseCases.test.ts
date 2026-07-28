@@ -428,15 +428,19 @@ describe('DailyReviewUseCases', () => {
     };
     const harness = makeHarness({ registry });
 
-    await expect(
-      harness.useCases.loadIntegration.execute({
-        source: 'calendar',
-        date: '2026-07-16',
-      }),
-    ).resolves.toEqual(result);
+    const outcome = await harness.useCases.loadIntegration.execute({
+      source: 'calendar',
+      date: '2026-07-16',
+    });
+
+    expect(outcome.result).toEqual(result);
     expect(registry.load).toHaveBeenCalledWith('calendar', {
       date: '2026-07-16',
     });
+    // The load is followed by a read of the day, because that read is what
+    // makes the newly-loaded data visible. Returning it here is what spares
+    // the caller a second request.
+    expect(outcome.snapshot).toMatchObject({ date: '2026-07-16' });
   });
 
   it('returns available calendars with their access status', async () => {

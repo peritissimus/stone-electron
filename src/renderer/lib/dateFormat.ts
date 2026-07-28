@@ -3,6 +3,20 @@
  */
 
 /**
+ * Today as `YYYY-MM-DD` in the reader's own calendar.
+ *
+ * Not `toISOString()`, which converts to UTC first and so names yesterday for
+ * anyone west of Greenwich during their evening — journals and daily reviews
+ * are keyed by local calendar date everywhere in the app.
+ */
+export function todayIso(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Format a date as a relative time string (e.g., "just now", "5 minutes ago")
  */
 export function formatRelativeDate(dateInput: Date | string): string {

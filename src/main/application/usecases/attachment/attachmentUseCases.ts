@@ -27,15 +27,11 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.pdf': 'application/pdf',
   '.doc': 'application/msword',
-  '.docx':
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   '.txt': 'text/plain',
 };
 
-function result(
-  attachment: AttachmentProps,
-  originalName = attachment.filename,
-): AttachmentResult {
+function result(attachment: AttachmentProps, originalName = attachment.filename): AttachmentResult {
   return {
     ...attachment,
     originalName,
@@ -53,51 +49,30 @@ export const AttachmentUseCasesLive = Layer.effect(
     const files = yield* FileStoragePort;
     const ids = yield* IdGeneratorPort;
     const paths = yield* PathServicePort;
-    const addAttachment = (
-      noteId: string,
-      filePath: string,
-      filename?: string,
-    ) =>
+    const addAttachment = (noteId: string, filePath: string, filename?: string) =>
       Effect.gen(function* () {
         const note = yield* notes.findById(noteId);
         if (!note?.workspaceId) {
-          return yield* Effect.fail(
-            new Error(`Note not found: ${noteId}`),
-          );
+          return yield* Effect.fail(new Error(`Note not found: ${noteId}`));
         }
         const workspace = yield* workspaces.findById(note.workspaceId);
         if (!workspace) {
-          return yield* Effect.fail(
-            new Error(`Workspace not found: ${note.workspaceId}`),
-          );
+          return yield* Effect.fail(new Error(`Workspace not found: ${note.workspaceId}`));
         }
-        const originalName =
-          filename ?? (yield* paths.basename(filePath));
+        const originalName = filename ?? (yield* paths.basename(filePath));
         const extension = yield* paths.extname(originalName);
         const uniqueFilename = `${yield* ids.generate()}${extension}`;
-        const directory = yield* paths.join(
-          workspace.folderPath,
-          '.attachments',
-          noteId,
-        );
+        const directory = yield* paths.join(workspace.folderPath, '.attachments', noteId);
         yield* files.createDirectory(directory);
-        const destination = yield* paths.join(
-          directory,
-          uniqueFilename,
-        );
+        const destination = yield* paths.join(directory, uniqueFilename);
         yield* files.copy(filePath, destination);
         const info = yield* files.getFileInfo(destination);
-        const relativePath = yield* paths.relative(
-          workspace.folderPath,
-          destination,
-        );
+        const relativePath = yield* paths.relative(workspace.folderPath, destination);
         const entity = AttachmentEntity.create({
           id: yield* ids.generate(),
           noteId,
           filename: uniqueFilename,
-          mimeType:
-            MIME_TYPES[extension.toLowerCase()] ??
-            'application/octet-stream',
+          mimeType: MIME_TYPES[extension.toLowerCase()] ?? 'application/octet-stream',
           size: info?.size ?? 0,
           path: relativePath,
         });
@@ -110,19 +85,14 @@ export const AttachmentUseCasesLive = Layer.effect(
         Effect.gen(function* () {
           const attachment = yield* attachments.findById(attachmentId);
           if (!attachment) {
-            return yield* Effect.fail(
-              new Error(`Attachment not found: ${attachmentId}`),
-            );
+            return yield* Effect.fail(new Error(`Attachment not found: ${attachmentId}`));
           }
           if (deleteFile) {
             const note = yield* notes.findById(attachment.noteId);
             if (note?.workspaceId) {
               const workspace = yield* workspaces.findById(note.workspaceId);
               if (workspace) {
-                const absolutePath = yield* paths.join(
-                  workspace.folderPath,
-                  attachment.path,
-                );
+                const absolutePath = yield* paths.join(workspace.folderPath, attachment.path);
                 yield* files.delete(absolutePath);
               }
             }
@@ -130,25 +100,45 @@ export const AttachmentUseCasesLive = Layer.effect(
           yield* attachments.delete(attachmentId);
         }),
       getAttachments: (noteId) =>
-        attachments.findByNoteId(noteId).pipe(
-          Effect.map((items) => items.map((item) => result(item))),
-        ),
+        attachments
+          .findByNoteId(noteId)
+          .pipe(Effect.map((items) => items.map((item) => result(item)))),
+      getAttachmentContent: (noteId, attachmentId) =>
+        Effect.gen(function* () {
+          const attachment = yield* attachments.findById(attachmentId);
+          if (!attachment || attachment.noteId !== noteId) {
+            return yield* Effect.fail(new Error(`Attachment not found: ${attachmentId}`));
+          }
+          const note = yield* notes.findById(noteId);
+          if (!note?.workspaceId) {
+            return yield* Effect.fail(new Error(`Note not found: ${noteId}`));
+          }
+          const workspace = yield* workspaces.findById(note.workspaceId);
+          if (!workspace) {
+            return yield* Effect.fail(new Error(`Workspace not found: ${note.workspaceId}`));
+          }
+          const absolutePath = yield* paths.join(workspace.folderPath, attachment.path);
+          const bytes = yield* files.readBytes(absolutePath);
+          if (!bytes) {
+            return yield* Effect.fail(new Error(`Attachment file not found: ${attachmentId}`));
+          }
+          return {
+            bytes,
+            mimeType: attachment.mimeType,
+            filename: attachment.filename,
+          };
+        }),
       uploadImage: (noteId, imageData, filename) =>
         Effect.gen(function* () {
           const note = yield* notes.findById(noteId);
           if (!note?.workspaceId) {
-            return yield* Effect.fail(
-              new Error(`Note not found: ${noteId}`),
-            );
+            return yield* Effect.fail(new Error(`Note not found: ${noteId}`));
           }
           const workspace = yield* workspaces.findById(note.workspaceId);
           if (!workspace) {
-            return yield* Effect.fail(
-              new Error(`Workspace not found: ${note.workspaceId}`),
-            );
+            return yield* Effect.fail(new Error(`Workspace not found: ${note.workspaceId}`));
           }
-          const extension =
-            (yield* paths.extname(filename)) || '.png';
+          const extension = (yield* paths.extname(filename)) || '.png';
           const temporaryPath = yield* paths.join(
             workspace.folderPath,
             '.temp',
@@ -157,24 +147,14 @@ export const AttachmentUseCasesLive = Layer.effect(
           const directory = yield* paths.dirname(temporaryPath);
           yield* files.createDirectory(directory);
           const buffer =
-            typeof imageData === 'string'
-              ? Buffer.from(imageData, 'base64')
-              : imageData;
-          yield* files.write(temporaryPath, buffer.toString('base64'));
-          return yield* addAttachment(
-            noteId,
-            temporaryPath,
-            filename,
-          ).pipe(
+            typeof imageData === 'string' ? Buffer.from(imageData, 'base64') : imageData;
+          yield* files.writeBytes(temporaryPath, buffer);
+          return yield* addAttachment(noteId, temporaryPath, filename).pipe(
             Effect.map((attachment) => ({
               attachment,
               markdownLink: `![${attachment.originalName}](${attachment.path})`,
             })),
-            Effect.ensuring(
-              files
-                .delete(temporaryPath)
-                .pipe(Effect.catchAll(() => Effect.void)),
-            ),
+            Effect.ensuring(files.delete(temporaryPath).pipe(Effect.catchAll(() => Effect.void))),
           );
         }),
     };

@@ -237,6 +237,7 @@ describe('QuickCaptureUseCases', () => {
 
       vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
       vi.mocked(noteRepo.findByFilePath).mockResolvedValue(journalNote);
+      vi.mocked(fileStorage.exists).mockResolvedValue(true);
       vi.mocked(fileStorage.read).mockResolvedValue(`# ${FIXED_TODAY}\n\nExisting content`);
       vi.mocked(fileStorage.write).mockResolvedValue(undefined);
       vi.mocked(noteRepo.save).mockResolvedValue(undefined);
@@ -247,6 +248,65 @@ describe('QuickCaptureUseCases', () => {
       expect(result.noteId).toBe('journal-1');
       expect(fileStorage.read).toHaveBeenCalled();
       expect(fileStorage.write).toHaveBeenCalled();
+    });
+
+    it.each([['   '], [''], ['\n\t  \n']])(
+      'refuses to record %j as an entry',
+      async (blank) => {
+        vi.mocked(workspaceRepo.findActive).mockResolvedValue(createWorkspaceProps());
+
+        await expect(useCases.appendToJournal(blank)).rejects.toThrow(
+          'Cannot capture an empty entry.',
+        );
+        expect(fileStorage.write).not.toHaveBeenCalled();
+      },
+    );
+
+    it('trims surrounding whitespace off the entry', async () => {
+      const workspace = createWorkspaceProps();
+      const journalNote = createNoteProps({
+        id: 'journal-1',
+        title: FIXED_TODAY,
+        filePath: `Journal/${FIXED_TODAY}.md`,
+      });
+
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(journalNote);
+      vi.mocked(fileStorage.exists).mockResolvedValue(true);
+      vi.mocked(fileStorage.read).mockResolvedValue(`# ${FIXED_TODAY}`);
+      vi.mocked(fileStorage.write).mockResolvedValue(undefined);
+      vi.mocked(noteRepo.save).mockResolvedValue(undefined);
+
+      await useCases.appendToJournal('   padded thought   ');
+
+      const written = vi.mocked(fileStorage.write).mock.calls[0][1] as string;
+      expect(written).toMatch(/\] padded thought$/);
+    });
+
+    // A branch switch or a pull can delete the markdown while the note row
+    // survives, and the capture must still land rather than 500.
+    it('rebuilds the day file when the note row outlived it', async () => {
+      const workspace = createWorkspaceProps();
+      const journalNote = createNoteProps({
+        id: 'journal-1',
+        title: FIXED_TODAY,
+        filePath: `Journal/${FIXED_TODAY}.md`,
+      });
+
+      vi.mocked(workspaceRepo.findActive).mockResolvedValue(workspace);
+      vi.mocked(noteRepo.findByFilePath).mockResolvedValue(journalNote);
+      vi.mocked(fileStorage.exists).mockResolvedValue(false);
+      vi.mocked(fileStorage.read).mockRejectedValue(new Error('ENOENT'));
+      vi.mocked(fileStorage.write).mockResolvedValue(undefined);
+      vi.mocked(noteRepo.save).mockResolvedValue(undefined);
+
+      const result = await useCases.appendToJournal('Survives the checkout');
+
+      expect(result.noteId).toBe('journal-1');
+      expect(fileStorage.read).not.toHaveBeenCalled();
+      const written = vi.mocked(fileStorage.write).mock.calls[0][1] as string;
+      expect(written).toContain(`# ${FIXED_TODAY}`);
+      expect(written).toContain('Survives the checkout');
     });
 
     it('uses specific workspace when provided', async () => {

@@ -5,6 +5,7 @@
 import { useState, memo } from 'react';
 import { CaretRight } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
+import { cn } from '@renderer/lib/utils';
 import { TaskItem } from './TaskItem';
 
 interface TaskSectionProps {
@@ -47,18 +48,29 @@ export const TaskSection = memo(function TaskSection({
   const colorClass = STATE_COLORS[state] || STATE_COLORS.todo;
 
   return (
-    <div className="mb-4">
+    <div className="mb-2">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/10 transition-colors"
+        aria-expanded={expanded}
+        className={cn(
+          'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left',
+          'transition-colors duration-150 ease-out hover:bg-foreground/[0.035]',
+          'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/25',
+        )}
       >
         <CaretRight
-          size={16}
-          className={`text-muted-foreground motion-safe:transition-transform duration-200 ease-out ${expanded ? 'rotate-90' : ''}`}
+          size={11}
+          weight="bold"
+          className={cn(
+            'text-muted-foreground/60 motion-safe:transition-transform duration-200 ease-out',
+            expanded && 'rotate-90',
+          )}
         />
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${colorClass}`}>{label}</span>
-        <span className="text-xs text-muted-foreground">{todos.length}</span>
+        <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', colorClass)}>
+          {label}
+        </span>
+        <span className="text-xs tabular-nums text-muted-foreground/60">{todos.length}</span>
       </button>
 
       <div
@@ -67,7 +79,8 @@ export const TaskSection = memo(function TaskSection({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="mt-1 ml-2">
+          {/* Indented to the label, not the caret, so the rows read as its contents. */}
+          <div className="ml-[18px]">
             {todos.map((todo) => (
               <TaskItem
                 key={todo.id}

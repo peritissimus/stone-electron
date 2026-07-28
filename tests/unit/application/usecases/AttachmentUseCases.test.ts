@@ -68,6 +68,8 @@ function createMockFileStorage(): IFileStorage {
   return {
     read: vi.fn(),
     write: vi.fn(),
+    writeBytes: vi.fn(),
+    readBytes: vi.fn(),
     delete: vi.fn(),
     exists: vi.fn(),
     copy: vi.fn(),
@@ -145,34 +147,23 @@ describe('AttachmentUseCases', () => {
         ),
       ),
     );
-    const run = <A, E>(
-      use: (service: IAttachmentUseCases) => Effect.Effect<A, E>,
-    ) =>
+    const run = <A, E>(use: (service: IAttachmentUseCases) => Effect.Effect<A, E>) =>
       runtime
-        .runPromiseExit(
-          AttachmentUseCasesPort.pipe(
-            Effect.flatMap((service) => use(service)),
-          ),
-        )
+        .runPromiseExit(AttachmentUseCasesPort.pipe(Effect.flatMap((service) => use(service))))
         .then((exit) => {
           if (Exit.isSuccess(exit)) return exit.value;
           throw Cause.squash(exit.cause);
         });
     useCases = {
       addAttachment: (noteId, filePath, filename) =>
-        run((service) =>
-          service.addAttachment(noteId, filePath, filename),
-        ),
+        run((service) => service.addAttachment(noteId, filePath, filename)),
       deleteAttachment: (attachmentId, deleteFile) =>
-        run((service) =>
-          service.deleteAttachment(attachmentId, deleteFile),
-        ),
-      getAttachments: (noteId) =>
-        run((service) => service.getAttachments(noteId)),
+        run((service) => service.deleteAttachment(attachmentId, deleteFile)),
+      getAttachments: (noteId) => run((service) => service.getAttachments(noteId)),
+      getAttachmentContent: (noteId, attachmentId) =>
+        run((service) => service.getAttachmentContent(noteId, attachmentId)),
       uploadImage: (noteId, imageData, filename, mimeType) =>
-        run((service) =>
-          service.uploadImage(noteId, imageData, filename, mimeType),
-        ),
+        run((service) => service.uploadImage(noteId, imageData, filename, mimeType)),
     };
   });
 

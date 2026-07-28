@@ -74,16 +74,27 @@ function createRunner(
   return { repository, runner };
 }
 
-async function eventually(assertion: () => void): Promise<void> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+/**
+ * Polls until the assertion holds or the deadline passes.
+ *
+ * Counting attempts instead of watching the clock made the budget depend on how
+ * promptly timers fire: 100 sleeps of 2ms is ~200ms alone on an idle machine,
+ * but these run alongside the rest of the suite, where a contended event loop
+ * stretches every one of them. The work being waited on had not failed — the
+ * waiting had simply run out of turns. A wall-clock deadline is unaffected by
+ * that, and still returns the instant the assertion passes.
+ */
+async function eventually(assertion: () => void, timeoutMs = 5_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
     try {
       assertion();
       return;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 2));
+    } catch (error) {
+      if (Date.now() >= deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 5));
     }
   }
-  assertion();
 }
 
 afterEach(() => {
@@ -193,6 +204,23 @@ describe('JobRunner', () => {
     // the one currently suspended inside claimDue.
     await runner.enqueue('test.race');
     await eventually(() => expect(releases.length).toBe(2));
+
+    // The suspended poller captured its timestamp before this job existed, and
+    // claims match on `runAfter <= now`. A job stamped at enqueue time is
+    // therefore not yet due from that poller's point of view, so a single
+    // millisecond between the two decides whether it claims anything — which is
+    // a coin flip, not the behaviour under test. Backdating settles it and
+    // leaves the real subject: that a claim made inside the uninterruptible
+    // region still reaches launch despite the pending interrupt.
+    const enqueued = inner.jobs.get('job-1');
+    if (!enqueued) throw new Error('expected enqueue to persist job-1');
+    inner.jobs.set(
+      'job-1',
+      JobEntity.fromPersistence({
+        ...enqueued.toPersistence(),
+        runAfter: new Date(Date.now() - 60_000),
+      }),
+    );
 
     // Releasing the interrupted poller's claim flips the row to running; the
     // claim-and-launch region must still execute the job instead of dropping it.

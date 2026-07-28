@@ -12,6 +12,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { todayIso } from '@renderer/lib/dateFormat';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
 import {
   Sun,
@@ -34,7 +35,7 @@ import {
 import { cn } from '@renderer/lib/utils';
 import { renderMarkdown } from '@renderer/features/notes/editor/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
-import { sizeHeightClasses } from '@renderer/components/composites';
+import { ViewHeader } from '@renderer/components/composites';
 import {
   useDailyReview,
   type DailyReviewIntegrationStates,
@@ -54,6 +55,24 @@ import type {
   Note,
   TodoItem,
 } from '@shared/types';
+
+/**
+ * Header actions all drop their labels at the same width, so the row never
+ * mixes labelled pills with icon-only buttons.
+ *
+ * Collapsing the label has to collapse the padding too — otherwise the button
+ * keeps `px-2.5` and renders as a 34×32 lozenge instead of a square. `size-3.5`
+ * restores the 14px icon the call sites ask for; the base button forces
+ * `size-4` on any nested svg.
+ *
+ * These breakpoint variants are written out in full: Tailwind only generates
+ * classes it can find as literals in the source, so building them by
+ * interpolation silently produces no CSS.
+ */
+const HEADER_ACTION =
+  'shrink-0 text-xs [&_svg]:size-3.5 max-[1100px]:w-8 max-[1100px]:justify-center max-[1100px]:px-0';
+
+const HEADER_ACTION_LABEL = 'max-[1100px]:sr-only';
 
 export default function DailyReviewView() {
   const scrollRef = useViewScrollRestoration('daily-review');
@@ -82,75 +101,73 @@ export default function DailyReviewView() {
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <header
-        className={cn(
-          'flex min-w-0 shrink-0 items-center gap-3 overflow-hidden border-b border-border bg-card px-4',
-          'max-[900px]:gap-1.5 max-[900px]:px-2',
-          sizeHeightClasses['spacious'],
-        )}
-      >
-        <Sun size={16} className="shrink-0 text-muted-foreground" />
-        <div className="flex min-w-0 items-baseline gap-2 max-[900px]:gap-0">
-          <h1 className="shrink-0 text-sm font-semibold">Today</h1>
-          <span className="truncate text-xs text-muted-foreground tabular-nums max-[900px]:hidden">
-            {headerDate}
-          </span>
-        </div>
-        <div className="min-w-0 flex-1" />
-        {refreshing && (
-          <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void reload()}
-          disabled={refreshing}
-          className="shrink-0 text-xs"
-          aria-label="Refresh today"
-          title="Refresh today"
-        >
-          <ArrowClockwise size={14} className={refreshing ? 'animate-spin' : undefined} />
-          <span className="max-[1100px]:sr-only">Refresh</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={openVoiceCapture}
-          className="shrink-0 text-xs"
-          aria-label="Record voice note"
-          title="Record a voice note — transcribed locally and saved to today's journal"
-        >
-          <Microphone size={14} weight="fill" />
-          <span className="max-[900px]:sr-only">Voice note</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void summarize(false)}
-          disabled={summarizing}
-          className="shrink-0 text-xs"
-          aria-label="Summarize day"
-          title="Summarize today from your journal, meetings, tasks, calendar, mail, and Linear (local or configured AI)"
-        >
-          {summarizing ? (
-            <CircleNotch size={14} className="animate-spin" />
-          ) : (
-            <MagicWand size={14} weight="fill" />
-          )}
-          <span className="max-[1100px]:sr-only">Summarize day</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => void openStatusReport()}
-          className="shrink-0 text-xs"
-          aria-label="Create weekly status"
-          title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
-        >
-          <Sparkle size={14} weight="fill" />
-          <span className="max-[1100px]:sr-only">Weekly status</span>
-        </Button>
-      </header>
+      <ViewHeader
+        title="Today"
+        meta={headerDate}
+        actions={
+          <>
+            {refreshing && (
+              <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
+            )}
+            <div className="flex shrink-0 items-center gap-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void reload()}
+                disabled={refreshing}
+                className={HEADER_ACTION}
+                aria-label="Refresh today"
+                title="Refresh today"
+              >
+                <ArrowClockwise className={refreshing ? 'animate-spin' : undefined} />
+                <span className={HEADER_ACTION_LABEL}>Refresh</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={openVoiceCapture}
+                className={HEADER_ACTION}
+                aria-label="Record voice note"
+                title="Record a voice note — transcribed locally and saved to today's journal"
+              >
+                <Microphone weight="fill" />
+                <span className={HEADER_ACTION_LABEL}>Voice note</span>
+              </Button>
+
+              {/* The two generative actions read as their own group. */}
+              <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-border" />
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void summarize(false)}
+                disabled={summarizing}
+                className={HEADER_ACTION}
+                aria-label="Summarize day"
+                title="Summarize today from your journal, meetings, tasks, calendar, mail, and Linear (local or configured AI)"
+              >
+                {summarizing ? (
+                  <CircleNotch className="animate-spin" />
+                ) : (
+                  <MagicWand weight="fill" />
+                )}
+                <span className={HEADER_ACTION_LABEL}>Summarize day</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void openStatusReport()}
+                className={HEADER_ACTION}
+                aria-label="Create weekly status"
+                title="Draft a weekly status report from the last 7 days of journal, meetings, completed tasks, and modified notes"
+              >
+                <Sparkle weight="fill" />
+                <span className={HEADER_ACTION_LABEL}>Weekly status</span>
+              </Button>
+            </div>
+          </>
+        }
+      />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto bg-background">
         <div className="mx-auto w-full max-w-3xl px-8 py-7 max-[900px]:px-4 max-[900px]:py-5">
@@ -596,19 +613,12 @@ function LinearSection({ issues }: { issues: LinearIssue[] }) {
   );
 }
 
-function MailSection({
-  unreadCount,
-  messages,
-}: {
-  unreadCount: number;
-  messages: MailMessage[];
-}) {
+function MailSection({ unreadCount, messages }: { unreadCount: number; messages: MailMessage[] }) {
   const count = Math.max(unreadCount, messages.length);
   return (
     <section>
       <SectionLabel icon={<Envelope size={12} />}>
-        Unread mail{' '}
-        <span className="ml-1 text-muted-foreground/70 tabular-nums">({count})</span>
+        Unread mail <span className="ml-1 text-muted-foreground/70 tabular-nums">({count})</span>
       </SectionLabel>
       {messages.length > 0 ? (
         <ul className="mt-2 space-y-1">
@@ -763,11 +773,6 @@ function ErrorBox({ message }: { message: string }) {
 // =============================================================================
 // Date / duration helpers
 // =============================================================================
-
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
 
 function formatHeaderDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);

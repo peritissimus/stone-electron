@@ -2,8 +2,8 @@
  * TasksPage - Full page view for all tasks grouped by state
  */
 
-import { useCallback } from 'react';
-import { CheckSquare, Funnel } from '@phosphor-icons/react';
+import { useCallback, type ReactNode } from 'react';
+import { CheckCircle, CheckSquare, Funnel } from '@phosphor-icons/react';
 import { TodoItem } from '@shared/types';
 import { useTasks, TASK_STATES } from '@renderer/features/tasks/hooks/useTasks';
 import { useNavigateToNote } from '@renderer/services/navigation';
@@ -44,6 +44,14 @@ export default function TasksView() {
     },
     [navigateToNote],
   );
+
+  const handleClearFilters = useCallback(() => {
+    setSearchQuery('');
+    setFolderFilter('all');
+    selectActiveStates();
+  }, [selectActiveStates, setFolderFilter, setSearchQuery]);
+
+  const isNarrowed = searchQuery.trim() !== '' || folderFilter !== 'all';
 
   if (loading) {
     return (
@@ -91,9 +99,11 @@ export default function TasksView() {
             groupedTodos={groupedTodos}
             visibleStates={visibleStates}
             togglingTodoId={togglingTodoId}
+            isNarrowed={isNarrowed}
             onTodoClick={handleTodoClick}
             onToggle={handleToggleTask}
             onSelectAllStates={selectAllStates}
+            onClearFilters={handleClearFilters}
           />
         </div>
       </div>
@@ -102,14 +112,17 @@ export default function TasksView() {
 }
 
 interface TasksContentProps {
-  counts: { total: number; visible: number };
+  counts: { total: number; visible: number; active: number; completed: number };
   groupBy: string;
   groupedTodos: Record<string, TodoItem[]>;
   visibleStates: Set<string>;
   togglingTodoId: string | null;
+  /** A search term or notebook filter is narrowing the set, not just state visibility. */
+  isNarrowed: boolean;
   onTodoClick: (todo: TodoItem) => void;
   onToggle: (todo: TodoItem, newState: string) => Promise<void>;
   onSelectAllStates: () => void;
+  onClearFilters: () => void;
 }
 
 function TasksContent({
@@ -118,34 +131,52 @@ function TasksContent({
   groupedTodos,
   visibleStates,
   togglingTodoId,
+  isNarrowed,
   onTodoClick,
   onToggle,
   onSelectAllStates,
+  onClearFilters,
 }: TasksContentProps) {
   if (counts.total === 0) {
     return (
-      <div className="mt-3 rounded-xl bg-muted/20 px-6 py-10 text-center">
-        <CheckSquare className="mx-auto mb-3 size-7 text-muted-foreground/50" />
-        <h2 className="mb-1 text-sm font-medium text-foreground">No tasks yet</h2>
-        <p className="mx-auto max-w-sm text-sm text-muted-foreground">
-          Add TODO or DOING to a note and it will appear here.
-        </p>
-      </div>
+      <EmptyState
+        icon={<CheckSquare size={28} className="text-muted-foreground/50" />}
+        title="No tasks yet"
+        body="Add TODO or DOING to a note and it will appear here."
+      />
+    );
+  }
+
+  // Every task being finished is the good outcome, not a failed query. Reporting
+  // it as "nothing matches your filters" when the reader has typed nothing and
+  // touched nothing makes a working page look broken.
+  if (counts.visible === 0 && !isNarrowed && counts.active === 0) {
+    return (
+      <EmptyState
+        icon={<CheckCircle size={28} className="text-muted-foreground/50" />}
+        title="You're all caught up"
+        body={`Nothing active. ${counts.completed} ${counts.completed === 1 ? 'task is' : 'tasks are'} finished.`}
+        action={
+          <Button variant="outline" size="sm" onClick={onSelectAllStates}>
+            Show completed
+          </Button>
+        }
+      />
     );
   }
 
   if (counts.visible === 0) {
     return (
-      <div className="mt-3 rounded-xl bg-muted/20 px-6 py-10 text-center">
-        <Funnel size={28} className="mx-auto mb-3 text-muted-foreground/50" />
-        <h2 className="mb-1 text-sm font-medium text-foreground">No matching tasks</h2>
-        <p className="text-sm text-muted-foreground">
-          Nothing matches the current search and filters.
-        </p>
-        <Button variant="ghost" size="sm" onClick={onSelectAllStates} className="mt-4">
-          Show all states
-        </Button>
-      </div>
+      <EmptyState
+        icon={<Funnel size={28} className="text-muted-foreground/50" />}
+        title="No matching tasks"
+        body={`${counts.total} ${counts.total === 1 ? 'task is' : 'tasks are'} hidden by the current search and filters.`}
+        action={
+          <Button variant="outline" size="sm" onClick={onClearFilters}>
+            Clear filters
+          </Button>
+        }
+      />
     );
   }
 
@@ -199,5 +230,23 @@ function TasksContent({
           />
         ))}
     </>
+  );
+}
+
+interface EmptyStateProps {
+  icon: ReactNode;
+  title: string;
+  body: string;
+  action?: ReactNode;
+}
+
+function EmptyState({ icon, title, body, action }: EmptyStateProps) {
+  return (
+    <div className="mt-3 rounded-xl bg-muted/20 px-6 py-12 text-center">
+      <div className="mb-3 flex justify-center">{icon}</div>
+      <h2 className="mb-1 text-sm font-medium text-foreground">{title}</h2>
+      <p className="mx-auto max-w-sm text-pretty text-sm text-muted-foreground">{body}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }

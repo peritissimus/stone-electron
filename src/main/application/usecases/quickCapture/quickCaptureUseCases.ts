@@ -7,6 +7,7 @@ import {
   IdGeneratorPort,
   NoteEntity,
   NoteRepositoryPort,
+  NoteValidationError,
   PathServicePort,
   QuickCaptureUseCasesPort,
   TranscriberPort,
@@ -58,6 +59,18 @@ export const QuickCaptureUseCasesLive = Layer.effect(
     const service: IQuickCaptureUseCases = {
       appendToJournal: (content, workspaceId) =>
         Effect.gen(function* () {
+          // A journal entry has to say something. Without this an empty or
+          // whitespace-only capture wrote a bare "[10:42]" into the day's note
+          // — and a capture endpoint reachable from a phone will be called by
+          // stray taps and retries, so the guard belongs here rather than in
+          // whichever UI happens to be in front of it.
+          const entryText = content.trim();
+          if (!entryText) {
+            return yield* Effect.fail(
+              new NoteValidationError('Cannot capture an empty entry.'),
+            );
+          }
+
           const workspace = yield* resolveWorkspace(workspaceId);
           const config = yield* configRepository.get();
           const folder = config.notes.locationPolicy.journalFolder;
@@ -76,13 +89,19 @@ export const QuickCaptureUseCasesLive = Layer.effect(
             minute: '2-digit',
             hour12: false,
           });
-          const entry = `\n\n[${timestamp}] ${content}`;
+          const entry = `\n\n[${timestamp}] ${entryText}`;
           const absolutePath = yield* paths.join(
             workspace.folderPath,
             relativePath,
           );
           if (existing) {
-            const current = (yield* files.read(absolutePath)) || '';
+            // The index can outlive the file it points at: a branch switch, a
+            // pull, or a manual delete removes the markdown while the note row
+            // survives. Reading blind turned that into a 500 and dropped the
+            // capture. Markdown is the source of truth, so rebuild the day's
+            // file around the entry rather than refusing to record it.
+            const present = yield* files.exists(absolutePath);
+            const current = present ? (yield* files.read(absolutePath)) || '' : `# ${date}`;
             yield* files.write(absolutePath, current + entry);
             yield* notes.save(NoteEntity.fromPersistence(existing));
             yield* publish(

@@ -11,9 +11,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Microphone,
   CaretDown,
-  ArrowsClockwise,
-  PaperPlaneTilt,
-  Trash,
   Warning,
   Check,
   CircleNotch,
@@ -26,7 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@renderer/lib/utils';
 import { renderMarkdown } from '@renderer/features/notes/editor/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
-import { sizeHeightClasses } from '@renderer/components/composites';
+import { ViewHeader } from '@renderer/components/composites';
 import { useMeetings } from '@renderer/features/meetings/hooks/useMeetings';
 import { useMeetingRecorder } from '@renderer/features/meetings/hooks/useMeetingRecorder';
 import {
@@ -83,25 +80,21 @@ export default function MeetingsView() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <header
-        className={cn(
-          'flex shrink-0 items-center gap-3 border-b border-border bg-card px-4',
-          sizeHeightClasses['spacious'],
-        )}
-      >
-        <Microphone size={16} className="text-muted-foreground" />
-        <h1 className="text-sm font-semibold">Meetings</h1>
-        {recordings.length > 0 && (
-          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-            {recordings.length}
-          </span>
-        )}
-        <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={startRecording} className="text-xs">
-          <Microphone size={14} />
-          New recording
-        </Button>
-      </header>
+      <ViewHeader
+        title="Meetings"
+        meta={recordings.length > 0 ? `${recordings.length} recorded` : undefined}
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={startRecording}
+            className="shrink-0 text-xs [&_svg]:size-3.5"
+          >
+            <Microphone weight="fill" />
+            New recording
+          </Button>
+        }
+      />
 
       <InlineRecordingPanel />
 
@@ -133,7 +126,7 @@ export default function MeetingsView() {
                           selected?.id === r.id ? 'text-foreground' : 'text-foreground/90',
                         )}
                       >
-                        {r.title}
+                        {hasCustomTitle(r.title) ? r.title : 'Recording'}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center gap-1.5 pl-[22px] text-[11px] text-muted-foreground">
@@ -205,13 +198,29 @@ function DetailPanel({
     <div className="mx-auto max-w-3xl px-8 py-7">
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <h2 className="text-balance text-xl font-semibold leading-tight">{recording.title}</h2>
+          {/* Unnamed, the recording's moment is its name — so it is the heading
+              rather than a line repeating what the heading already encodes. */}
+          <h2 className="text-balance text-xl font-semibold leading-tight">
+            {hasCustomTitle(recording.title)
+              ? recording.title
+              : formatAbsolute(recording.createdAt)}
+          </h2>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted-foreground">
-            <span className="tabular-nums">{formatAbsolute(recording.createdAt)}</span>
-            <Dot />
+            {hasCustomTitle(recording.title) && (
+              <>
+                <span className="tabular-nums">{formatAbsolute(recording.createdAt)}</span>
+                <Dot />
+              </>
+            )}
             <span className="tabular-nums">{formatDuration(recording.durationMs)}</span>
-            <Dot />
-            <StatusInline status={recording.status} />
+            {/* "ready" is the resting state, and the summary below it is the
+                proof. Only a status worth acting on earns a line. */}
+            {recording.status !== 'ready' && (
+              <>
+                <Dot />
+                <StatusInline status={recording.status} />
+              </>
+            )}
             {recording.journalDate && (
               <>
                 <Dot />
@@ -237,7 +246,6 @@ function DetailPanel({
             'disabled:cursor-not-allowed disabled:opacity-50',
           )}
         >
-          <PaperPlaneTilt size={12} weight="fill" />
           Send to journal
         </button>
         <button
@@ -252,12 +260,9 @@ function DetailPanel({
             'disabled:cursor-not-allowed disabled:opacity-50',
           )}
         >
-          <ArrowsClockwise
-            size={12}
-            weight={busy ? 'fill' : 'regular'}
-            className={cn(busy && 'animate-spin')}
-          />
-          Re-summarize
+          {/* The label carries the progress. A spinning icon says something is
+              happening but not which of these actions is doing it. */}
+          {busy ? 'Re-summarizing…' : 'Re-summarize'}
         </button>
         {recording.audioPath && (
           <button
@@ -272,7 +277,6 @@ function DetailPanel({
               'disabled:cursor-not-allowed disabled:opacity-50',
             )}
           >
-            <Waveform size={12} weight={busy ? 'fill' : 'regular'} />
             Re-transcribe
           </button>
         )}
@@ -613,7 +617,6 @@ function DeleteButton({ onConfirm, disabled }: { onConfirm: () => void; disabled
           : 'border-border bg-background text-destructive hover:bg-destructive/10',
       )}
     >
-      <Trash size={12} weight={armed ? 'fill' : 'regular'} />
       {armed ? 'Confirm delete' : 'Delete'}
     </button>
   );
@@ -774,6 +777,18 @@ function formatRelative(value: Date | string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * A recording nobody renamed is titled `Meeting YYYY-MM-DD HH:mm`, which then
+ * sits directly above a meta line stating the same moment in a friendlier form.
+ * Recognising the generated title lets each surface show the date once, in
+ * whichever form suits it, instead of twice in two notations.
+ */
+const DEFAULT_TITLE_PATTERN = /^Meeting \d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+
+function hasCustomTitle(title: string): boolean {
+  return !DEFAULT_TITLE_PATTERN.test(title.trim());
 }
 
 function formatAbsolute(value: Date | string): string {

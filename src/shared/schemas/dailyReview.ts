@@ -1,4 +1,5 @@
 import { z } from './schema';
+import { DAILY_REVIEW_SOURCES } from '../constants/dailyReviewSources';
 import { NoteSchema, TodoItemSchema } from './notes';
 
 const DateLike = z.union([z.date(), z.string(), z.number()]).transform((value) => new Date(value));
@@ -36,7 +37,7 @@ const IntegrationStatusSchema = z.literalEnum([
   'error',
 ]);
 export const LoadDailyReviewIntegrationRequestSchema = z.object({
-  source: z.literalEnum(['calendar', 'mail', 'linear']),
+  source: z.literalEnum(DAILY_REVIEW_SOURCES),
   date: z.string().optional(),
 });
 export const LoadDailyReviewIntegrationsRequestSchema = z.object({
@@ -110,6 +111,28 @@ export const DailyReviewSnapshotSchema = z.object({
   linearIssues: z.array(LinearIssueSchema).optional(),
 });
 
+/**
+ * Loading an integration also yields the snapshot it belongs in.
+ *
+ * The external data and the snapshot it merges into used to travel separately:
+ * the caller received a result, discarded its payload, and fetched the whole
+ * snapshot again to pick the same data back up out of a cache. Returning both
+ * together lets the merge stay in one module and costs the caller one request
+ * instead of two.
+ *
+ * `snapshot` is null where a transport has no sources to merge — the browser
+ * build — meaning "nothing newer to apply", not "empty day".
+ */
+export const DailyReviewIntegrationOutcomeSchema = z.object({
+  result: DailyReviewIntegrationResultSchema,
+  snapshot: DailyReviewSnapshotSchema.nullable(),
+});
+
+export const DailyReviewIntegrationsOutcomeSchema = z.object({
+  results: DailyReviewIntegrationsResultSchema,
+  snapshot: DailyReviewSnapshotSchema.nullable(),
+});
+
 export const DailyReviewSummarySchema = z.object({
   summary: z.string(),
   journalNoteId: z.string().nullable(),
@@ -120,6 +143,12 @@ export type MailMessage = z.infer<typeof MailMessageSchema>;
 export type LinearIssue = z.infer<typeof LinearIssueSchema>;
 export type CalendarDescriptor = z.infer<typeof CalendarDescriptorSchema>;
 export type DailyReviewIntegrationResult = z.infer<typeof DailyReviewIntegrationResultSchema>;
+export type DailyReviewIntegrationOutcome = z.infer<
+  typeof DailyReviewIntegrationOutcomeSchema
+>;
+export type DailyReviewIntegrationsOutcome = z.infer<
+  typeof DailyReviewIntegrationsOutcomeSchema
+>;
 export type ListDailyReviewCalendarsResult = z.infer<
   typeof ListDailyReviewCalendarsResultSchema
 >;

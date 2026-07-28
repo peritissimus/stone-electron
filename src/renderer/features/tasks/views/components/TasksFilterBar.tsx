@@ -1,4 +1,4 @@
-import { MagnifyingGlass, FolderOpen, Funnel, Stack } from '@phosphor-icons/react';
+import { MagnifyingGlass, X } from '@phosphor-icons/react';
 import { Input } from '@renderer/components/base/ui/input';
 import {
   Select,
@@ -11,14 +11,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@renderer/components/base/ui/dropdown-menu';
-import { Button } from '@renderer/components/base/ui/button';
 import { cn } from '@renderer/lib/utils';
 
 type GroupByOption = 'state' | 'notebook' | 'note' | 'none';
+
+/**
+ * These three are refinements, not primary actions. Given a border and a fill
+ * each they read as four equal-weight boxes competing with the search field;
+ * as quiet text they recede until wanted and the bar stops looking like a form.
+ */
+const QUIET_CONTROL =
+  'h-8 w-auto gap-1.5 rounded-md border-transparent bg-transparent px-2 text-xs font-medium text-muted-foreground shadow-none hover:bg-muted/60 hover:text-foreground focus:border-transparent data-[state=open]:bg-muted/60 data-[state=open]:text-foreground';
 
 interface TasksFilterBarProps {
   searchQuery: string;
@@ -49,31 +57,54 @@ export function TasksFilterBar({
   groupBy,
   setGroupBy,
 }: TasksFilterBarProps) {
-  const activeStates = taskStates.filter((s) => !s.done);
-  const allActiveSelected =
-    visibleStates.size === activeStates.length &&
-    activeStates.every((s) => visibleStates.has(s.key));
+  const allStatesShown = visibleStates.size === taskStates.length;
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 px-6 pb-4 pt-5">
-      <div className="relative min-w-[220px] flex-1">
+    <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-1 px-6 pb-3 pt-4">
+      <div className="relative min-w-[200px] flex-1">
         <MagnifyingGlass
-          size={16}
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          size={15}
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/70"
         />
         <Input
           type="text"
-          placeholder="Search tasks..."
+          placeholder="Search tasks…"
+          aria-label="Search tasks"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="h-9 rounded-lg border-border/70 bg-card pl-9 shadow-sm"
+          onKeyDown={(e) => {
+            if (e.key === 'Escape' && searchQuery) {
+              e.stopPropagation();
+              setSearchQuery('');
+            }
+          }}
+          className="h-8 rounded-md border-transparent bg-muted/40 pl-8 pr-8 text-[13px] shadow-none hover:bg-muted/60 focus-visible:bg-transparent focus-visible:border-border/70"
         />
+        {/* Clearing a search by selecting the text and deleting it is work the
+            control should absorb. Escape does the same for keyboard users. */}
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            aria-label="Clear search"
+            className={cn(
+              'absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded',
+              'text-muted-foreground transition-[background-color,color,scale] duration-150 ease-out',
+              'hover:bg-muted hover:text-foreground active:scale-[0.96]',
+              'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/25',
+            )}
+          >
+            <X size={11} weight="bold" />
+          </button>
+        )}
       </div>
 
       {folders.length > 0 && (
         <Select value={folderFilter} onValueChange={setFolderFilter}>
-          <SelectTrigger className={cn('w-[140px] h-8')}>
-            <FolderOpen className="size-4 mr-2 text-muted-foreground" />
+          <SelectTrigger
+            aria-label="Filter by notebook"
+            className={cn(QUIET_CONTROL, folderFilter !== 'all' && 'text-foreground')}
+          >
             <SelectValue placeholder="All notebooks" />
           </SelectTrigger>
           <SelectContent>
@@ -89,13 +120,23 @@ export function TasksFilterBar({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 gap-2">
-            <Funnel size={16} />
+          <button
+            type="button"
+            className={cn(
+              QUIET_CONTROL,
+              'inline-flex items-center whitespace-nowrap transition-colors duration-150 ease-out',
+              'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/25',
+              !allStatesShown && 'text-foreground',
+            )}
+          >
             States
-            <span className="text-xs text-muted-foreground">
-              ({visibleStates.size}/{taskStates.length})
-            </span>
-          </Button>
+            {/* Only worth a number when it is not the default "everything". */}
+            {!allStatesShown && (
+              <span className="tabular-nums text-muted-foreground">
+                {visibleStates.size}/{taskStates.length}
+              </span>
+            )}
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48">
           <DropdownMenuLabel>Show States</DropdownMenuLabel>
@@ -113,24 +154,16 @@ export function TasksFilterBar({
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuCheckboxItem
-            checked={visibleStates.size === taskStates.length}
-            onCheckedChange={selectAllStates}
-          >
-            All states
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={allActiveSelected}
-            onCheckedChange={selectActiveStates}
-          >
-            Active only
-          </DropdownMenuCheckboxItem>
+          {/* These two set the whole selection; they are not independently
+              toggleable. Shaped as checkboxes they invited an "uncheck" that
+              silently re-ran the same action and appeared to do nothing. */}
+          <DropdownMenuItem onSelect={selectAllStates}>All states</DropdownMenuItem>
+          <DropdownMenuItem onSelect={selectActiveStates}>Active only</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Select value={groupBy} onValueChange={(v) => setGroupBy(v as GroupByOption)}>
-        <SelectTrigger className="w-[140px] h-8">
-          <Stack size={16} className="mr-2 text-muted-foreground" />
+        <SelectTrigger aria-label="Group tasks by" className={QUIET_CONTROL}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

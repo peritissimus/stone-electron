@@ -8,7 +8,7 @@
  * Route is unchanged (`/topics`) so deep links stay valid.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowsClockwise, MagnifyingGlass, WarningCircle, X } from '@phosphor-icons/react';
 import { useNavigateToNote } from '@renderer/services/navigation';
 import { useTopicsData } from '@renderer/features/topics/hooks/useTopicsData';
@@ -18,6 +18,7 @@ import { Button } from '@renderer/components/base/ui/button';
 import { cn } from '@renderer/lib/utils';
 import { NoteRow } from '@renderer/features/topics/views/components/NoteRow';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
+import { ViewHeader } from '@renderer/components/composites';
 
 interface IndexStatusCardProps {
   stats: {
@@ -89,8 +90,15 @@ export default function TopicsView() {
   const scrollRef = useViewScrollRestoration('topics');
   const navigateToNote = useNavigateToNote();
 
-  const { searchResults, searchQuery, searchInput, searching, error, initializing, setSearchInput } =
-    useTopicsData();
+  const {
+    searchResults,
+    searchQuery,
+    searchInput,
+    searching,
+    error,
+    initializing,
+    setSearchInput,
+  } = useTopicsData();
 
   const { stats: indexStats, rebuilding, rebuildAll } = useIndexStats();
 
@@ -98,11 +106,50 @@ export default function TopicsView() {
     await rebuildAll(false);
   }, [rebuildAll]);
 
+  // Searching is a keyboard activity: the reader is already typing, and making
+  // them reach for the pointer to open a result breaks the one flow this page
+  // exists for. Arrow keys move a highlight, Enter opens it, and focus never
+  // leaves the field so the query stays editable throughout.
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setActiveIndex(searchResults.length > 0 ? 0 : -1);
+  }, [searchResults]);
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    listRef.current?.children[activeIndex]?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex]);
+
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Escape' && searchInput) {
+        event.preventDefault();
+        setSearchInput('');
+        return;
+      }
+      if (searchResults.length === 0) return;
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActiveIndex((index) => (index + 1) % searchResults.length);
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActiveIndex((index) => (index - 1 + searchResults.length) % searchResults.length);
+      } else if (event.key === 'Enter' && activeIndex >= 0) {
+        event.preventDefault();
+        navigateToNote(searchResults[activeIndex].noteId);
+      }
+    },
+    [activeIndex, navigateToNote, searchInput, searchResults, setSearchInput],
+  );
+
   if (initializing) {
     return (
-      <div className="flex h-full flex-col bg-background">
-        <TitlebarStrip />
-        <div className="flex flex-1 items-center justify-center">
+      <div className="flex h-full min-w-0 flex-col overflow-hidden">
+        <ViewHeader title="Knowledge" />
+        <div className="flex flex-1 items-center justify-center bg-background">
           <div className="size-6 animate-spin rounded-full border-2 border-muted-foreground/20 border-t-muted-foreground" />
         </div>
       </div>
@@ -110,9 +157,10 @@ export default function TopicsView() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-background">
-      <TitlebarStrip />
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden">
+      <ViewHeader title="Knowledge" />
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto bg-background">
         <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col gap-6 px-6 pb-10">
           {/* The field rides on this spacer instead of on justify-content, so
               making room for results is a glide rather than a cut. */}
@@ -140,15 +188,18 @@ export default function TopicsView() {
                 type="text"
                 autoFocus
                 aria-label="Search notes by meaning"
-                placeholder="Find notes by meaning, not just keywords…"
+                // The old placeholder explained the feature, then vanished on the
+                // first keystroke — the moment the explanation stopped applying.
+                placeholder="Search notes by meaning…"
+                role="combobox"
+                aria-expanded={searchResults.length > 0}
+                aria-controls="knowledge-search-results"
+                aria-activedescendant={
+                  activeIndex >= 0 ? `knowledge-result-${activeIndex}` : undefined
+                }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape' && searchInput) {
-                    e.preventDefault();
-                    setSearchInput('');
-                  }
-                }}
+                onKeyDown={handleSearchKeyDown}
                 className="h-14 rounded-2xl border-border/70 bg-card pl-11 pr-11 text-[15px] shadow-sm"
               />
               {searching ? (
@@ -178,10 +229,19 @@ export default function TopicsView() {
                     No semantic matches for "{searchQuery}"
                   </div>
                 ) : (
-                  <div className="divide-y divide-border/60">
-                    {searchResults.map((r) => (
+                  <div
+                    ref={listRef}
+                    id="knowledge-search-results"
+                    role="listbox"
+                    aria-label="Search results"
+                    className="divide-y divide-border/60"
+                  >
+                    {searchResults.map((r, index) => (
                       <NoteRow
                         key={r.noteId}
+                        id={`knowledge-result-${index}`}
+                        isActive={index === activeIndex}
+                        onMouseEnter={() => setActiveIndex(index)}
                         note={{
                           id: r.noteId,
                           title: r.title,
@@ -201,14 +261,4 @@ export default function TopicsView() {
       </div>
     </div>
   );
-}
-
-/**
- * The window controls float over the top-left of every view. Pages normally
- * clear them with their header row — this one has no header, so it reserves
- * the strip instead: index.css insets a view's first child when the sidebar is
- * collapsed, and exempts it from content zoom.
- */
-function TitlebarStrip() {
-  return <div className="h-10 shrink-0" aria-hidden />;
 }

@@ -2,6 +2,9 @@ import { logger } from './logger';
 
 export type AdapterLayer = 'in' | 'out';
 
+/** Past this, an adapter call is worth surfacing even when it succeeded. */
+const SLOW_OPERATION_MS = 200;
+
 export interface HandleRequestOptions {
   layer: AdapterLayer;
   adapter: string;
@@ -22,7 +25,9 @@ export async function handleRequest<T>(
     try {
       const result = await fn();
       const durationMs = Date.now() - startedAt;
-      logger.info({
+      // A successful adapter call is not news — three of these per HTTP request
+      // buried anything worth reading. Only a slow one earns attention.
+      logger[durationMs >= SLOW_OPERATION_MS ? 'warn' : 'debug']({
         event: 'request',
         layer,
         adapter,

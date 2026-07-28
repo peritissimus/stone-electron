@@ -1,18 +1,15 @@
 import { create } from 'zustand';
 import type { TodoItem } from '@shared/types';
 import { noteAPI } from '@renderer/api';
-import { useWorkspaceStore } from '@renderer/services/workspace/model/workspaceStore';
-import { logger } from '@renderer/services/telemetry/logger';
+import {
+  createWorkspaceCache,
+  type WorkspaceCacheState,
+} from '@renderer/services/stores/createWorkspaceCache';
 
 export type TaskGroupBy = 'state' | 'notebook' | 'note' | 'none';
 
-interface TaskState {
+interface TaskState extends WorkspaceCacheState {
   todos: TodoItem[];
-  workspaceId: string | null;
-  loaded: boolean;
-  loading: boolean;
-  refreshing: boolean;
-  error: string | null;
   searchQuery: string;
   folderFilter: string;
   visibleStates: Set<string>;
@@ -26,16 +23,16 @@ interface TaskState {
   refresh: (showLoading?: boolean) => Promise<void>;
 }
 
-let pendingLoad: Promise<void> | null = null;
-let pendingWorkspaceId: string | null = null;
+const cache = createWorkspaceCache<TaskState, TodoItem[]>({
+  label: 'taskStore',
+  load: () => noteAPI.getAllTodos(),
+  apply: (todos) => ({ todos }),
+  failureMessage: 'Failed to load tasks',
+});
 
 export const useTaskStore = create<TaskState>((set, get) => ({
+  ...cache.initialState,
   todos: [],
-  workspaceId: null,
-  loaded: false,
-  loading: false,
-  refreshing: false,
-  error: null,
   searchQuery: '',
   folderFilter: 'all',
   visibleStates: new Set(['doing', 'waiting', 'todo', 'hold', 'idea']),
@@ -50,47 +47,6 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   setVisibleStates: (visibleStates) => set({ visibleStates }),
   setGroupBy: (groupBy) => set({ groupBy }),
 
-  ensureLoaded: async () => {
-    const workspaceId = useWorkspaceStore.getState().activeWorkspaceId;
-    const state = get();
-    if (state.loaded && state.workspaceId === workspaceId) return;
-    await state.refresh(true);
-  },
-
-  refresh: async (showLoading = false) => {
-    const workspaceId = useWorkspaceStore.getState().activeWorkspaceId;
-    if (pendingLoad) {
-      if (pendingWorkspaceId === workspaceId) return pendingLoad;
-      await pendingLoad;
-      return get().refresh(showLoading);
-    }
-
-    pendingWorkspaceId = workspaceId;
-    set({
-      loading: showLoading && !get().loaded,
-      refreshing: !showLoading || get().loaded,
-      error: null,
-    });
-
-    pendingLoad = (async () => {
-      try {
-        const response = await noteAPI.getAllTodos();
-        if (!response.success || !response.data) {
-          throw new Error(response.error?.message || 'Failed to load tasks');
-        }
-        if (useWorkspaceStore.getState().activeWorkspaceId === workspaceId) {
-          set({ todos: response.data, workspaceId, loaded: true });
-        }
-      } catch (error) {
-        logger.error('[taskStore] Failed to load tasks', { error });
-        set({ error: error instanceof Error ? error.message : 'Failed to load tasks' });
-      } finally {
-        set({ loading: false, refreshing: false });
-        pendingLoad = null;
-        pendingWorkspaceId = null;
-      }
-    })();
-
-    return pendingLoad;
-  },
+  ensureLoaded: () => cache.ensureLoaded(set, get),
+  refresh: (showLoading) => cache.refresh(set, get, showLoading),
 }));

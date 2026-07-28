@@ -13,6 +13,7 @@ import {
 } from '@renderer/features/notes/editor/document';
 import type { RichTextEditor } from '@renderer/features/notes/editor/types';
 import { useDocumentBufferStore } from '@renderer/services/documents/model/documentBufferStore';
+import { useSaveStatusStore } from '@renderer/services/documents/model/saveStatusStore';
 import type { CursorPosition } from '@renderer/services/documents/model/documentBufferStore';
 export type { CursorPosition };
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
@@ -240,36 +241,96 @@ export function useDocumentBuffer({
   };
 }
 
+/** Quiet period after the last keystroke before a buffer is written. */
+const AUTOSAVE_IDLE_MS = 2000;
+
 /**
- * Hook for autosaving dirty buffers on blur, note switch, and app close.
- * No periodic autosave - saves only on explicit triggers to avoid
- * unnecessary writes while user is actively editing.
+ * Hook for autosaving dirty buffers after a short idle period, and on blur,
+ * note switch, and app close.
+ *
+ * The idle save is what makes the other triggers a safety net rather than the
+ * only line of defence: blur never fires during a long writing session, and the
+ * `beforeunload` write cannot be awaited, so without it a session could hold
+ * unsaved work indefinitely.
  */
 export function useDocumentAutosave() {
   const getDirtyBuffers = useDocumentBufferStore((state) => state.getDirtyBuffers);
   const markClean = useDocumentBufferStore((state) => state.markClean);
+  const buffers = useDocumentBufferStore((state) => state.buffers);
   const { updateNote } = useNoteAPI();
+  // A save awaits the network; without this, a blur landing mid-flight would
+  // start a second concurrent write of the same buffer.
+  const savingRef = useRef(false);
+
+  /**
+   * Clearing the dirty flag is only safe if the buffer has not changed since the
+   * content was captured. `lastModified` bumps on every edit, so an edit made
+   * while the write was in flight leaves the buffer dirty and the next idle save
+   * picks it up — instead of the newer text being marked clean and lost.
+   */
+  const markCleanIfUnchanged = useCallback(
+    (noteId: string, savedVersion: number): boolean => {
+      const current = useDocumentBufferStore.getState().getBuffer(noteId);
+      if (!current || current.lastModified !== savedVersion) return false;
+      markClean(noteId);
+      deleteDraft(noteId);
+      return true;
+    },
+    [markClean],
+  );
 
   const saveAllDirty = useCallback(async () => {
+    if (savingRef.current) return;
     const dirtyBuffers = getDirtyBuffers();
     if (dirtyBuffers.length === 0) return;
 
-    logger.info('[useDocumentAutosave] Saving dirty buffers:', dirtyBuffers.length);
-
-    for (const buffer of dirtyBuffers) {
-      try {
-        const markdown = buffer.content;
-        const result = await updateNote(buffer.noteId, { content: markdown }, false);
-        if (result) {
-          markClean(buffer.noteId);
-          deleteDraft(buffer.noteId);
-          logger.debug('[useDocumentAutosave] Saved:', buffer.noteId);
+    savingRef.current = true;
+    try {
+      const status = useSaveStatusStore.getState();
+      for (const buffer of dirtyBuffers) {
+        status.markSaving(buffer.noteId);
+        try {
+          const result = await updateNote(buffer.noteId, { content: buffer.content }, false);
+          if (result) {
+            const settled = markCleanIfUnchanged(buffer.noteId, buffer.lastModified);
+            status.markSaved(buffer.noteId);
+            logger.debug(
+              settled
+                ? '[useDocumentAutosave] Saved:'
+                : '[useDocumentAutosave] Saved, but edited again while in flight:',
+              buffer.noteId,
+            );
+          } else {
+            status.markFailed(buffer.noteId, 'The note could not be saved.');
+          }
+        } catch (error) {
+          status.markFailed(
+            buffer.noteId,
+            error instanceof Error ? error.message : 'The note could not be saved.',
+          );
+          logger.error('[useDocumentAutosave] Failed to save:', buffer.noteId, error);
         }
-      } catch (error) {
-        logger.error('[useDocumentAutosave] Failed to save:', buffer.noteId, error);
+      }
+    } finally {
+      savingRef.current = false;
+    }
+  }, [getDirtyBuffers, updateNote, markCleanIfUnchanged]);
+
+  // Write after the typing stops. `buffers` is a fresh Map on every edit, so
+  // each keystroke re-runs this effect and pushes the timer out.
+  useEffect(() => {
+    let hasDirty = false;
+    for (const buffer of buffers.values()) {
+      if (buffer.isDirty) {
+        hasDirty = true;
+        break;
       }
     }
-  }, [getDirtyBuffers, updateNote, markClean]);
+    if (!hasDirty) return;
+
+    const timer = setTimeout(() => void saveAllDirty(), AUTOSAVE_IDLE_MS);
+    return () => clearTimeout(timer);
+  }, [buffers, saveAllDirty]);
 
   // Save a specific note (used when switching notes)
   const saveNote = useCallback(
@@ -278,18 +339,25 @@ export function useDocumentAutosave() {
       if (!buffer || !buffer.isDirty) return;
 
       logger.debug('[useDocumentAutosave] Saving note on switch:', noteId);
+      const status = useSaveStatusStore.getState();
+      status.markSaving(noteId);
       try {
-        const markdown = buffer.content;
-        const result = await updateNote(noteId, { content: markdown }, false);
+        const result = await updateNote(noteId, { content: buffer.content }, false);
         if (result) {
-          markClean(noteId);
-          deleteDraft(noteId);
+          markCleanIfUnchanged(noteId, buffer.lastModified);
+          status.markSaved(noteId);
+        } else {
+          status.markFailed(noteId, 'The note could not be saved.');
         }
       } catch (error) {
+        status.markFailed(
+          noteId,
+          error instanceof Error ? error.message : 'The note could not be saved.',
+        );
         logger.error('[useDocumentAutosave] Failed to save on switch:', noteId, error);
       }
     },
-    [updateNote, markClean],
+    [updateNote, markCleanIfUnchanged],
   );
 
   // Save on window blur

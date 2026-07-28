@@ -38,11 +38,21 @@ import { logger } from '../../shared/utils';
 import { AppConfigRepository } from '../../adapters/out/persistence/AppConfigRepository';
 import { DEFAULT_APP_CONFIG, type AppConfig } from '@shared/types/settings';
 
-async function readLegacyAppearanceConfig(db: ReturnType<typeof drizzle>): Promise<Partial<AppConfig> | null> {
+async function readLegacyAppearanceConfig(
+  db: ReturnType<typeof drizzle>,
+): Promise<Partial<AppConfig> | null> {
   const [themeSetting, accentColorSetting, fontSettingsSetting] = await Promise.all([
     db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.theme')).limit(1),
-    db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.accentColor')).limit(1),
-    db.select().from(schema.settings).where(eq(schema.settings.key, 'appearance.fontSettings')).limit(1),
+    db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.key, 'appearance.accentColor'))
+      .limit(1),
+    db
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.key, 'appearance.fontSettings'))
+      .limit(1),
   ]);
 
   const hasLegacySettings =
@@ -81,7 +91,9 @@ async function readLegacyAppearanceConfig(db: ReturnType<typeof drizzle>): Promi
           : DEFAULT_APP_CONFIG.appearance.accentColor,
       fontSettings: {
         ...DEFAULT_APP_CONFIG.appearance.fontSettings,
-        ...(typeof parsedFontSettings === 'object' && parsedFontSettings !== null ? parsedFontSettings : {}),
+        ...(typeof parsedFontSettings === 'object' && parsedFontSettings !== null
+          ? parsedFontSettings
+          : {}),
       },
     },
   };
@@ -128,6 +140,15 @@ export class DatabaseManager {
 
       this.client = createClient({ url: `file:${this.dbPath}` });
       await this.client.execute('PRAGMA foreign_keys = ON');
+      // The default rollback journal makes a writer block every reader, and the
+      // default busy timeout of 0 turns that contention straight into
+      // SQLITE_BUSY. The server reads far more concurrently than a single
+      // desktop window ever did — the job queue polling for due work would
+      // collide with in-flight note reads. WAL lets one writer proceed alongside
+      // readers; the timeout absorbs the writer-vs-writer case.
+      await this.client.execute('PRAGMA journal_mode = WAL');
+      await this.client.execute('PRAGMA busy_timeout = 5000');
+      await this.client.execute('PRAGMA synchronous = NORMAL');
 
       this.db = drizzle(this.client, { schema });
 
@@ -152,6 +173,7 @@ export class DatabaseManager {
 
     const legacyConfig = await readLegacyAppearanceConfig(this.db);
     const appConfigRepository = new AppConfigRepository({
+      configPath: process.env.STONE_CONFIG_PATH,
       initialConfig: {
         ...DEFAULT_APP_CONFIG,
         ...legacyConfig,

@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { dailyReviewAPI } from '@renderer/api';
 import { logger } from '@renderer/services/telemetry/logger';
+import { DAILY_REVIEW_SOURCES } from '@shared/constants/dailyReviewSources';
 import type {
   DailyReviewIntegrationSource,
   DailyReviewIntegrationStatus,
@@ -50,11 +51,10 @@ interface DailyReviewState {
 let inFlight: Promise<void> | null = null;
 const integrationInFlight: Partial<Record<DailyReviewIntegrationSource, Promise<void>>> = {};
 
-const initialIntegrations = (): DailyReviewIntegrationStates => ({
-  calendar: { status: 'idle', message: null },
-  mail: { status: 'idle', message: null },
-  linear: { status: 'idle', message: null },
-});
+const initialIntegrations = (): DailyReviewIntegrationStates =>
+  Object.fromEntries(
+    DAILY_REVIEW_SOURCES.map((source) => [source, { status: 'idle', message: null }]),
+  ) as DailyReviewIntegrationStates;
 
 export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   snapshot: null,
@@ -140,14 +140,17 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
           setIntegrationFailure(set, source, response.error?.message ?? 'Could not check access.');
           return;
         }
-        const result = response.data;
+        const { result, snapshot } = response.data;
         set((state) => ({
           integrations: {
             ...state.integrations,
             [source]: { status: result.status, message: result.message ?? null },
           },
+          // The load already returned the day this result belongs in. Re-reading
+          // it here is what used to cost a second request, and it only worked
+          // because the main process happened to still hold the data in cache.
+          ...(snapshot ? { snapshot } : {}),
         }));
-        await get().refresh();
       } catch (err) {
         setIntegrationFailure(
           set,
@@ -182,13 +185,14 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
       });
       if (!response.success || !response.data) {
         const message = response.error?.message ?? 'Could not check integrations.';
-        for (const source of ['calendar', 'mail', 'linear'] as const) {
+        for (const source of DAILY_REVIEW_SOURCES) {
           setIntegrationFailure(set, source, message);
         }
         return;
       }
+      const { results, snapshot } = response.data;
       set((state) => ({
-        integrations: response.data!.reduce(
+        integrations: results.reduce(
           (integrations, result) => ({
             ...integrations,
             [result.source]: {
@@ -198,11 +202,11 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
           }),
           state.integrations,
         ),
+        ...(snapshot ? { snapshot } : {}),
       }));
-      await get().refresh();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not check integrations.';
-      for (const source of ['calendar', 'mail', 'linear'] as const) {
+      for (const source of DAILY_REVIEW_SOURCES) {
         setIntegrationFailure(set, source, message);
       }
     }
@@ -234,7 +238,7 @@ export const useDailyReviewStore = create<DailyReviewState>((set, get) => ({
   clearSummary: () => set({ summary: null, summaryError: null }),
 
   reset: () => {
-    for (const source of ['calendar', 'mail', 'linear'] as const) {
+    for (const source of DAILY_REVIEW_SOURCES) {
       delete integrationInFlight[source];
     }
     set({

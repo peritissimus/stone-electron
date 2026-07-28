@@ -18,6 +18,7 @@ export {
 
 // Export components
 export { Header, type HeaderProps } from './Header';
+export { ViewHeader, type ViewHeaderProps } from './ViewHeader';
 export { ControlGroup, type ControlGroupProps } from './ControlGroup';
 export { ListItem, type ListItemProps } from './ListItem';
 export { ListContainer, type ListContainerProps } from './ListContainer';

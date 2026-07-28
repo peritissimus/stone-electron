@@ -1,8 +1,7 @@
 import { useJournalTimeline } from '@renderer/features/journals/hooks/useJournalTimeline';
-import { sizeHeightClasses } from '@renderer/components/composites';
+import { ViewHeader } from '@renderer/components/composites';
 import { Skeleton } from '@renderer/components/base/ui/skeleton';
 import { JournalEntrySection } from '@renderer/features/journals/views/components/JournalEntrySection';
-import { cn } from '@renderer/lib/utils';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
 
 function JournalSkeleton() {
@@ -26,14 +25,7 @@ export default function JournalsView() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background">
-      <div
-        className={cn(
-          'border-b border-border/40 bg-background px-4 flex items-center gap-3 shrink-0',
-          sizeHeightClasses.spacious,
-        )}
-      >
-        <h1 className="text-sm font-semibold text-foreground">Journals</h1>
-      </div>
+      <ViewHeader title="Journals" />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[48rem] px-4 pb-16 pt-3 sm:px-8">

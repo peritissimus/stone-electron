@@ -19,6 +19,7 @@ import {
   type IDailyReviewUseCases,
   type NoteProps,
   type TaskItem,
+  formatJournalDate,
 } from '../../../domain';
 
 const PREVIEW_CHARS = 240;
@@ -49,7 +50,7 @@ export const DailyReviewUseCasesLive = Layer.effect(
         const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
         const workspaceId =
           request.workspaceId ?? (yield* workspaceRepository.findActive())?.id;
-        const date = request.date ?? formatIso(new Date(now));
+        const date = request.date ?? formatJournalDate(new Date(now));
         if (!workspaceId) return emptySnapshot(date);
 
         const target = parseIso(date);
@@ -231,13 +232,29 @@ export const DailyReviewUseCasesLive = Layer.effect(
             ),
           ),
       },
+      // Both of these re-read the day after loading, because the registry
+      // merges from its own cache: reading after the load is what makes the
+      // fresh data visible. Doing it here rather than leaving it to the caller
+      // is the difference between one request and two, and it keeps the
+      // ordering a fact of this module instead of a convention the caller has
+      // to know.
       loadIntegration: {
         execute: (request) =>
-          externalSourceRegistry.load(request.source, { date: request.date }),
+          Effect.gen(function* () {
+            const result = yield* externalSourceRegistry.load(request.source, {
+              date: request.date,
+            });
+            const snapshot = yield* getDailyReview({ date: request.date });
+            return { result, snapshot };
+          }),
       },
       loadIntegrations: {
         execute: (request = {}) =>
-          externalSourceRegistry.loadAll({ date: request.date }),
+          Effect.gen(function* () {
+            const results = yield* externalSourceRegistry.loadAll({ date: request.date });
+            const snapshot = yield* getDailyReview({ date: request.date });
+            return { results, snapshot };
+          }),
       },
       summarizeDailyReview: {
         execute: (request = {}) =>
@@ -283,12 +300,6 @@ function emptySnapshot(date: string): DailyReviewSnapshot {
   };
 }
 
-function formatIso(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function parseIso(date: string): Date {
   const [year, month, day] = date

@@ -12,7 +12,9 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
           'ring-offset-background transition-[border-color,box-shadow] duration-150 ease-out',
           'file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground',
           'placeholder:text-muted-foreground',
-          'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:border-ring focus-visible:ring-offset-0',
+          // A hairline, not a band: focus only has to say "the caret is here",
+          // and a 2px ring stacked on an opaque border reads as an alert.
+          'focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring/25 focus-visible:border-ring/60 focus-visible:ring-offset-0',
           'disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}

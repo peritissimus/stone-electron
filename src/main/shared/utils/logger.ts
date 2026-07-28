@@ -53,7 +53,20 @@ try {
 const isDev = app ? !app.isPackaged : process.env.NODE_ENV === 'development';
 const isTest = process.env.NODE_ENV === 'test';
 const levels: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
-const minLevel: LogLevel = isDev ? 'debug' : 'info';
+
+/**
+ * STONE_LOG_LEVEL overrides the default. A long-running server is far chattier
+ * than a desktop window — one that serves a request per second writes hundreds
+ * of thousands of lines a day — so the level has to be tunable without a
+ * rebuild.
+ */
+const configuredLevel = process.env.STONE_LOG_LEVEL?.trim().toLowerCase();
+const minLevel: LogLevel =
+  configuredLevel && configuredLevel in levels
+    ? (configuredLevel as LogLevel)
+    : isDev
+      ? 'debug'
+      : 'info';
 
 if (app?.getPath) {
   // Dev: console only, no file logging
