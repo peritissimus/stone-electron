@@ -46,3 +46,4 @@ native/bin/
 .claude/worktrees/
 vendor/
 tests/e2e/fixtures/.cache/
+.pnpm-store/

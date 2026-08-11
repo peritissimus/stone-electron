@@ -31,6 +31,7 @@
     "preview": "vite preview",
     "package": "pnpm run build:whisper && electron-builder",
     "package:dir": "pnpm run build:whisper && electron-builder --dir",
+    "install:mac": "pnpm run build && pnpm run package:dir && rm -rf /Applications/Stone.app && ditto dist/build/mac-arm64/Stone.app /Applications/Stone.app",
     "package:all": "pnpm run build:whisper && electron-builder -mwl",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
