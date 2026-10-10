@@ -10,6 +10,8 @@ export interface CitationSource {
 }
 
 export interface GenerateAnswerRequest {
+  /** Cancels generation and retry backoff when the caller stops waiting. */
+  signal?: AbortSignal;
   query: string;
   sources: CitationSource[];
   /** Today's date (YYYY-MM-DD) for grounding relative temporal references. */
@@ -27,6 +29,8 @@ export interface GenerateAnswerResponse {
 }
 
 export interface GenerateMarkdownRequest {
+  /** Cancels generation and retry backoff when the caller stops waiting. */
+  signal?: AbortSignal;
   /** User prompt (markdown-producing). Caller is responsible for any
    *  templating; the generator does not interpolate variables. */
   prompt: string;
@@ -61,6 +65,8 @@ export interface QueryPlan {
 }
 
 export interface PlanQueryRequest {
+  /** Cancels generation and retry backoff when the caller stops waiting. */
+  signal?: AbortSignal;
   query: string;
   /** Today's date as YYYY-MM-DD so the model can resolve relative references. */
   today: string;
@@ -72,7 +78,8 @@ export interface ITextGenerator {
   /**
    * Use the LLM to turn a natural-language question into a retrieval plan:
    * a cleaned search query plus any resolved date range. Implementations must
-   * degrade gracefully (return the original query, no dates) on any failure.
+   * degrade gracefully (return the original query, no dates) on failures,
+   * while preserving cancellation so callers can stop pending work.
    */
   planQuery(request: PlanQueryRequest): Promise<QueryPlan>;
   /**

@@ -89,10 +89,14 @@ const WHISPER_SAMPLE_RATE = 16_000;
 // Pipeline instances. Three models share the worker — the embedder is loaded
 // eagerly on first request, the reranker + transcriber lazy-load on first
 // call so users who never hit the AI surface don't pay the memory cost.
-type Pipeline = Awaited<ReturnType<(typeof import('@xenova/transformers'))['pipeline']>>;
-let pipeline: Pipeline | null = null;
-let rerankerPipeline: Pipeline | null = null;
-let transcriberPipeline: Pipeline | null = null;
+import type {
+  FeatureExtractionPipeline,
+  TextClassificationPipeline,
+  AutomaticSpeechRecognitionPipeline,
+} from '@huggingface/transformers';
+let pipeline: FeatureExtractionPipeline | null = null;
+let rerankerPipeline: TextClassificationPipeline | null = null;
+let transcriberPipeline: AutomaticSpeechRecognitionPipeline | null = null;
 let initialized = false;
 let rerankerInitialized = false;
 let transcriberInitialized = false;
@@ -134,7 +138,7 @@ async function initialize(): Promise<{ model: string; dims: number }> {
     return { model: MODEL_NAME, dims: EMBEDDING_DIMS };
   }
 
-  const { pipeline: createPipeline, env } = await import('@xenova/transformers');
+  const { pipeline: createPipeline, env } = await import('@huggingface/transformers');
 
   // Configure for Node.js environment
   env.allowLocalModels = true;
@@ -150,7 +154,8 @@ async function initialize(): Promise<{ model: string; dims: number }> {
 
   // Create feature extraction pipeline with quantized model
   pipeline = await createPipeline('feature-extraction', MODEL_NAME, {
-    quantized: true,
+    dtype: 'q8',
+    device: 'cpu',
     progress_callback: makeDownloadProgressCallback('embedding'),
   });
 
@@ -238,7 +243,7 @@ async function initializeReranker(): Promise<{ model: string }> {
     return { model: RERANKER_MODEL_NAME };
   }
 
-  const { pipeline: createPipeline, env } = await import('@xenova/transformers');
+  const { pipeline: createPipeline, env } = await import('@huggingface/transformers');
 
   env.allowLocalModels = true;
   env.useBrowserCache = false;
@@ -248,7 +253,8 @@ async function initializeReranker(): Promise<{ model: string }> {
   }
 
   rerankerPipeline = await createPipeline('text-classification', RERANKER_MODEL_NAME, {
-    quantized: true,
+    dtype: 'q8',
+    device: 'cpu',
   });
 
   rerankerInitialized = true;
@@ -266,18 +272,19 @@ async function rerank(query: string, texts: string[]): Promise<number[]> {
 
   if (texts.length === 0) return [];
 
-  // Feed the pair as "query [SEP] text" — transformers.js's text-classification
-  // pipeline accepts a `text_pair` option for cross-encoder usage.
+  // Use the tokenizer/model directly: the classification pipeline ignores
+  // text_pair and softmaxes a single logit to 1, destroying ranking information.
   const scores: number[] = [];
   for (const text of texts) {
-    const result = (await rerankerPipeline!(query, {
+    const inputs = rerankerPipeline!.tokenizer(query, {
       text_pair: text,
-    } as any)) as Array<{ label: string; score: number }> | { label: string; score: number };
-
-    // Pipeline can return either a single object or an array depending on
-    // model config; normalize to the highest-scoring entry's raw score.
-    const top = Array.isArray(result) ? result[0] : result;
-    scores.push(top?.score ?? 0);
+      padding: true,
+      truncation: true,
+    });
+    const output = await rerankerPipeline!.model(inputs);
+    const score = Number(output.logits.data[0]);
+    if (!Number.isFinite(score)) throw new Error('Reranker returned an invalid relevance score');
+    scores.push(score);
   }
 
   return scores;
@@ -293,7 +300,7 @@ async function initializeTranscriber(): Promise<{ model: string }> {
     return { model: TRANSCRIBER_MODEL_NAME };
   }
 
-  const { pipeline: createPipeline, env } = await import('@xenova/transformers');
+  const { pipeline: createPipeline, env } = await import('@huggingface/transformers');
 
   env.allowLocalModels = true;
   env.useBrowserCache = false;
@@ -305,7 +312,7 @@ async function initializeTranscriber(): Promise<{ model: string }> {
   transcriberPipeline = await createPipeline(
     'automatic-speech-recognition',
     TRANSCRIBER_MODEL_NAME,
-    { quantized: true, progress_callback: makeDownloadProgressCallback('whisper') },
+    { dtype: 'q8', device: 'cpu', progress_callback: makeDownloadProgressCallback('whisper') },
   );
 
   transcriberInitialized = true;
@@ -330,8 +337,11 @@ interface TranscribeResultData {
  */
 async function loadPcmFromWav(audioPath: string): Promise<Float32Array> {
   const buf = await fs.readFile(audioPath);
-  if (buf.length < 44 || buf.toString('ascii', 0, 4) !== 'RIFF' ||
-      buf.toString('ascii', 8, 12) !== 'WAVE') {
+  if (
+    buf.length < 44 ||
+    buf.toString('ascii', 0, 4) !== 'RIFF' ||
+    buf.toString('ascii', 8, 12) !== 'WAVE'
+  ) {
     throw new Error('audio file is not a RIFF/WAVE container');
   }
   // Walk the chunks; we only care about 'fmt ' and 'data'.

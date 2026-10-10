@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const workerMock = vi.hoisted(() => {
   class MiniEmitter {
@@ -17,6 +17,7 @@ const workerMock = vi.hoisted(() => {
   }
 
   class MockWorker extends MiniEmitter {
+    telemetryDisabledAtSpawn = process.env.ORT_DISABLE_TELEMETRY;
     postMessage = vi.fn();
     terminate = vi.fn().mockResolvedValue(0);
   }
@@ -98,10 +99,26 @@ async function waitForPostedMessage(worker: { postMessage: any }, type: string) 
 }
 
 describe('EmbeddingWorker', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     workerMock.instances.length = 0;
   });
+
+  it.each([undefined, '0'])(
+    'disables native telemetry before spawning when configured as %s',
+    async (value) => {
+      vi.stubEnv('ORT_DISABLE_TELEMETRY', value);
+      const { EmbeddingWorker } = await loadWorkerModule();
+      const service = new EmbeddingWorker();
+      const worker = await initializeService(service);
+
+      expect(worker.telemetryDisabledAtSpawn).toBe('1');
+    },
+  );
 
   it('initializes a worker, routes requests, and broadcasts model download progress', async () => {
     const { EmbeddingWorker } = await loadWorkerModule();

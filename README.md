@@ -111,6 +111,8 @@ Download the latest macOS build from GitHub:
 
 Current release artifacts are macOS DMG and ZIP builds. Windows and Linux packaging targets exist in the project configuration, but release automation currently publishes macOS builds.
 
+The updated desktop build requires macOS 14 (Sonoma) or later.
+
 ### First launch on macOS
 
 Stone isn't notarized by Apple yet, so macOS blocks it the first time. To get past it once:
@@ -129,9 +131,9 @@ xattr -dr com.apple.quarantine /Applications/Stone.app
 
 ### Prerequisites
 
-- Node.js 20+
+- Node.js 22.13+
 - pnpm 10.27.0 via Corepack
-- macOS with Xcode Command Line Tools (to build the bundled whisper.cpp binary via `pnpm build:whisper`)
+- macOS 14+ with Xcode Command Line Tools (to build the bundled whisper.cpp binary via `pnpm build:whisper`)
 
 ### Run Locally
 
@@ -190,20 +192,20 @@ Core rule: dependencies point inward. Domain code has no external imports, use c
 
 ## Tech Stack
 
-| Area | Technology |
-| --- | --- |
-| Desktop | Electron |
-| UI | React, TypeScript, Vite |
-| Editor | TipTap / ProseMirror |
-| Styling | Tailwind CSS, Radix primitives |
-| State | Zustand |
-| Storage | Markdown files, SQLite/libSQL, Drizzle ORM |
-| Search | Full-text, local embeddings, workspace ranking |
+| Area          | Technology                                                                       |
+| ------------- | -------------------------------------------------------------------------------- |
+| Desktop       | Electron                                                                         |
+| UI            | React, TypeScript, Vite                                                          |
+| Editor        | TipTap / ProseMirror                                                             |
+| Styling       | Tailwind CSS, Radix primitives                                                   |
+| State         | Zustand                                                                          |
+| Storage       | Markdown files, SQLite/libSQL, Drizzle ORM                                       |
+| Search        | Full-text, local embeddings, workspace ranking                                   |
 | Transcription | whisper.cpp (large-v3-turbo) + Silero VAD, DTLN echo cancellation (ONNX Runtime) |
-| AI | Vercel AI SDK — OpenAI, Azure, Google, Groq |
-| Diagrams | Mermaid |
-| Testing | Vitest, Playwright |
-| Packaging | electron-builder |
+| AI            | Vercel AI SDK — OpenAI, Azure, Google, Groq                                      |
+| Diagrams      | Mermaid                                                                          |
+| Testing       | Vitest, Playwright                                                               |
+| Packaging     | electron-builder                                                                 |
 
 ## Status
 

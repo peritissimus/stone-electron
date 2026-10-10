@@ -1,0 +1,69 @@
+{
+  "description": "Synthetic English notes. A deterministic smoke corpus for the local embedding runtime, not a measure of full Ask Notes answer quality.",
+  "notes": [
+    {
+      "id": "release",
+      "text": "The desktop release is scheduled for Friday. Maya owns signing and notarization. We must pass the packaged smoke test before publishing."
+    },
+    {
+      "id": "backup",
+      "text": "Restore a deleted note from the nightly backup in the archive folder. Backups run every evening and retain thirty days of history."
+    },
+    {
+      "id": "recording",
+      "text": "Meeting recordings are transcribed locally. Choose the microphone in Settings, start recording, and stop to generate the transcript."
+    },
+    {
+      "id": "garden",
+      "text": "Water the tomato plants every morning during summer. Add compost to the raised beds and remove weeds weekly."
+    },
+    {
+      "id": "recipe",
+      "text": "For lentil soup, saute onions and carrots, add red lentils and vegetable stock, then simmer for twenty minutes."
+    },
+    {
+      "id": "search",
+      "text": "Semantic search retrieves notes with similar meaning even when the wording differs. The local embedding model produces 384-dimensional vectors."
+    },
+    {
+      "id": "travel",
+      "text": "The train to Edinburgh departs at 09:30 from platform four. Reserve a window seat and bring the railcard."
+    },
+    {
+      "id": "design",
+      "text": "The sidebar must support keyboard navigation. Arrow keys move between notes, Enter opens the selection, and Home moves to the first item."
+    },
+    {
+      "id": "budget",
+      "text": "The monthly infrastructure budget is 400 dollars. Storage costs 80 dollars, hosting costs 250 dollars, leaving 70 dollars for monitoring."
+    },
+    {
+      "id": "exercise",
+      "text": "The running plan includes an easy five kilometre run on Tuesday, intervals on Thursday, and a long run on Sunday."
+    },
+    {
+      "id": "sync",
+      "text": "Git synchronization commits Markdown notes before pulling remote updates. If two people edit the same paragraph, resolve the merge conflict manually."
+    },
+    {
+      "id": "privacy",
+      "text": "Cloud summarization sends the selected note text to the configured provider. Local search keeps embeddings and note content on the device."
+    }
+  ],
+  "queries": [
+    {
+      "text": "Who is responsible for signing the Friday desktop release?",
+      "relevant": ["release"]
+    },
+    { "text": "How can I recover a note I accidentally removed?", "relevant": ["backup"] },
+    { "text": "How do I turn meeting audio into written text?", "relevant": ["recording"] },
+    { "text": "Find a vegetarian lentil dinner recipe", "relevant": ["recipe"] },
+    { "text": "Searching by meaning rather than exact keywords", "relevant": ["search"] },
+    { "text": "Operate the notes sidebar without using a mouse", "relevant": ["design"] },
+    {
+      "text": "What happens when collaborators change the same lines in a note?",
+      "relevant": ["sync"]
+    },
+    { "text": "Does AI summarization send my notes off my computer?", "relevant": ["privacy"] }
+  ]
+}

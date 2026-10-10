@@ -40,6 +40,9 @@ import {
   TranscriberPort,
   VersionRepositoryPort,
   WorkspaceRepositoryPort,
+  type ISummarizationStrategy,
+  type ITextGenerator,
+  type ITranscriber,
 } from '../../domain';
 
 const asError = (error: unknown): Error =>
@@ -64,10 +67,33 @@ function serviceOf<Service>(adapter: object): Service {
   }) as Service;
 }
 
+type AdapterFor<Service> = {
+  [Key in keyof Service]: Service[Key] extends (
+    ...args: infer Args
+  ) => Effect.Effect<infer Result, unknown>
+    ? (...args: Args) => Result | Promise<Result>
+    : Service[Key];
+};
+
 function defineLive<Identifier, Service>(
   tag: Context.Tag<Identifier, Service>,
-): (adapter: object) => Layer.Layer<Identifier> {
+): (adapter: AdapterFor<Service>) => Layer.Layer<Identifier> {
   return (adapter) => Layer.succeed(tag, serviceOf<Service>(adapter));
+}
+
+/** Connect interruption to the external operation, including callers' own signals. */
+function cancellableRequest<Request extends { signal?: AbortSignal }, Result>(
+  request: Request,
+  run: (request: Request) => Promise<Result>,
+): Effect.Effect<Result, Error> {
+  return Effect.tryPromise({
+    try: (signal) =>
+      run({
+        ...request,
+        signal: request.signal ? AbortSignal.any([signal, request.signal]) : signal,
+      }),
+    catch: asError,
+  });
 }
 
 export const AIProviderKeyStoreLive = defineLive(AIProviderKeyStorePort);
@@ -91,9 +117,7 @@ export const JournalReaderLive = defineLive(JournalReaderPort);
 export const LinearSourceLive = defineLive(LinearSourcePort);
 export const MailSourceLive = defineLive(MailSourcePort);
 export const MarkdownProcessorLive = defineLive(MarkdownProcessorPort);
-export const MeetingRecordingRepositoryLive = defineLive(
-  MeetingRecordingRepositoryPort,
-);
+export const MeetingRecordingRepositoryLive = defineLive(MeetingRecordingRepositoryPort);
 export const NoteLinkRepositoryLive = defineLive(NoteLinkRepositoryPort);
 export const NoteRepositoryLive = defineLive(NoteRepositoryPort);
 export const NotebookRepositoryLive = defineLive(NotebookRepositoryPort);
@@ -102,12 +126,27 @@ export const PerformanceMonitorLive = defineLive(PerformanceMonitorPort);
 export const RerankerLive = defineLive(RerankerPort);
 export const SearchEngineLive = defineLive(SearchEnginePort);
 export const SettingsRepositoryLive = defineLive(SettingsRepositoryPort);
-export const SummarizationStrategyLive = defineLive(SummarizationStrategyPort);
+export const SummarizationStrategyLive = (adapter: ISummarizationStrategy) =>
+  Layer.succeed(SummarizationStrategyPort, {
+    summarize: (request) => cancellableRequest(request, (input) => adapter.summarize(input)),
+  });
 export const SystemBridgeLive = defineLive(SystemBridgePort);
 export const TagRepositoryLive = defineLive(TagRepositoryPort);
 export const TemplateRepositoryLive = defineLive(TemplateRepositoryPort);
-export const TextGeneratorLive = defineLive(TextGeneratorPort);
+export const TextGeneratorLive = (adapter: ITextGenerator) =>
+  Layer.succeed(TextGeneratorPort, {
+    generateAnswer: (request) =>
+      cancellableRequest(request, (input) => adapter.generateAnswer(input)),
+    generateMarkdown: (request) =>
+      cancellableRequest(request, (input) => adapter.generateMarkdown(input)),
+    planQuery: (request) => cancellableRequest(request, (input) => adapter.planQuery(input)),
+  });
 export const TopicRepositoryLive = defineLive(TopicRepositoryPort);
-export const TranscriberLive = defineLive(TranscriberPort);
+export const TranscriberLive = (adapter: ITranscriber) =>
+  Layer.succeed(TranscriberPort, {
+    isReady: () => Effect.try({ try: () => adapter.isReady(), catch: asError }),
+    initialize: () => Effect.tryPromise({ try: () => adapter.initialize(), catch: asError }),
+    transcribe: (request) => cancellableRequest(request, (input) => adapter.transcribe(input)),
+  });
 export const VersionRepositoryLive = defineLive(VersionRepositoryPort);
 export const WorkspaceRepositoryLive = defineLive(WorkspaceRepositoryPort);

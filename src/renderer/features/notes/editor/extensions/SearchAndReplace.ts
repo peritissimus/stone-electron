@@ -24,6 +24,10 @@ export interface SearchAndReplaceStorage {
 }
 
 declare module '@tiptap/core' {
+  interface Storage {
+    searchAndReplace: SearchAndReplaceStorage;
+  }
+
   interface Commands<ReturnType> {
     searchAndReplace: {
       setSearchTerm: (searchTerm: string) => ReturnType;

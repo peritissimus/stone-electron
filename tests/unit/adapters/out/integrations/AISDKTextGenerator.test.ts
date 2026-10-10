@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import type { LanguageModel } from 'ai';
 import {
   type GenerateTextFn,
+  type GenerateQueryPlanFn,
   AISDKTextGenerator,
 } from '../../../../../src/main/adapters/out/integrations/AISDKTextGenerator';
 import type { IAIProviderKeyStore, IAppConfigRepository } from '../../../../../src/main/domain';
@@ -52,6 +53,17 @@ function createGenerator(config: AppConfig, generateTextFn: GenerateTextFn) {
   });
 
   return { generator, modelFactory };
+}
+
+function createPlanGenerator(config: AppConfig, generateQueryPlanFn: GenerateQueryPlanFn) {
+  return {
+    generator: new AISDKTextGenerator({
+      appConfigRepository: createAppConfigRepository(config),
+      generateQueryPlanFn,
+      modelFactory: () => ({}) as LanguageModel,
+      runPromise: Effect.runPromise,
+    }),
+  };
 }
 
 const source = {
@@ -253,17 +265,92 @@ describe('AISDKTextGenerator', () => {
   });
 
   describe('planQuery', () => {
+    const enabledConfig = () =>
+      createConfig({
+        privacy: {
+          allowCloudInference: true,
+          allowSendingNoteContent: true,
+          allowSendingMetadata: false,
+        },
+      });
+
+    it.each([
+      { searchQuery: 'meeting', dateStart: '2026-02-30', dateEnd: null },
+      { searchQuery: 'meeting', dateStart: '2026-13-01', dateEnd: null },
+      { searchQuery: 'meeting', dateStart: null, dateEnd: '2026-06-01' },
+      { searchQuery: 42, dateStart: null, dateEnd: null },
+      { searchQuery: ' ', dateStart: null, dateEnd: null },
+      { searchQuery: 'meeting', dateStart: null, dateEnd: null, extra: true },
+    ])('falls back to local search when the structured plan is invalid: %j', async (output) => {
+      const { generator } = createPlanGenerator(enabledConfig(), async () => output);
+      expect(
+        await generator.planQuery({ query: 'original question', today: '2026-06-16' }),
+      ).toEqual({
+        searchQuery: 'original question',
+        dateStart: null,
+        dateEnd: null,
+      });
+    });
+
+    it('accepts leap days and normalizes a single-day range', async () => {
+      const { generator } = createPlanGenerator(enabledConfig(), async () => ({
+        searchQuery: 'meeting',
+        dateStart: '2028-02-29',
+        dateEnd: null,
+      }));
+      expect(
+        await generator.planQuery({ query: 'meeting on leap day', today: '2028-03-01' }),
+      ).toEqual({
+        searchQuery: 'meeting',
+        dateStart: '2028-02-29',
+        dateEnd: '2028-02-29',
+      });
+    });
+
+    it('keeps literal search available when a provider does not support structured output', async () => {
+      const { generator } = createPlanGenerator(enabledConfig(), async () => {
+        throw new Error('structured output is not supported by this model');
+      });
+      expect(
+        await generator.planQuery({ query: 'original question', today: '2026-06-16' }),
+      ).toEqual({
+        searchQuery: 'original question',
+        dateStart: null,
+        dateEnd: null,
+      });
+    });
+
+    it('does not turn cancellation into a successful fallback', async () => {
+      const controller = new AbortController();
+      const { generator } = createPlanGenerator(enabledConfig(), async (request) => {
+        expect(request.abortSignal).toBe(controller.signal);
+        controller.abort(new Error('stopped'));
+        return { searchQuery: 'late', dateStart: null, dateEnd: null };
+      });
+      await expect(
+        generator.planQuery({
+          query: 'question',
+          today: '2026-06-16',
+          signal: controller.signal,
+        }),
+      ).rejects.toThrow('stopped');
+    });
+
     it('does not contact the cloud when cloud inference is disabled', async () => {
-      const generateTextFn = vi.fn(async () => ({ text: '{}' }));
+      const generateQueryPlanFn = vi.fn(async () => ({
+        searchQuery: 'unused',
+        dateStart: null,
+        dateEnd: null,
+      }));
       // DEFAULT_APP_CONFIG has allowCloudInference: false.
-      const { generator } = createGenerator(DEFAULT_APP_CONFIG, generateTextFn);
+      const { generator } = createPlanGenerator(DEFAULT_APP_CONFIG, generateQueryPlanFn);
 
       const plan = await generator.planQuery({
         query: 'what did I do yesterday',
         today: '2026-06-16',
       });
 
-      expect(generateTextFn).not.toHaveBeenCalled();
+      expect(generateQueryPlanFn).not.toHaveBeenCalled();
       expect(plan).toEqual({
         searchQuery: 'what did I do yesterday',
         dateStart: null,
@@ -272,10 +359,12 @@ describe('AISDKTextGenerator', () => {
     });
 
     it('resolves a date range when cloud inference is enabled', async () => {
-      const generateTextFn = vi.fn(async () => ({
-        text: '{"searchQuery":"standup","dateStart":"2026-06-15","dateEnd":"2026-06-15"}',
+      const generateQueryPlanFn = vi.fn(async () => ({
+        searchQuery: 'standup',
+        dateStart: '2026-06-15',
+        dateEnd: '2026-06-15',
       }));
-      const { generator } = createGenerator(
+      const { generator } = createPlanGenerator(
         createConfig({
           privacy: {
             allowCloudInference: true,
@@ -283,18 +372,22 @@ describe('AISDKTextGenerator', () => {
             allowSendingMetadata: false,
           },
         }),
-        generateTextFn,
+        generateQueryPlanFn,
       );
 
       const plan = await generator.planQuery({ query: 'standup on the 15th', today: '2026-06-16' });
 
-      expect(generateTextFn).toHaveBeenCalled();
-      expect(plan).toEqual({ searchQuery: 'standup', dateStart: '2026-06-15', dateEnd: '2026-06-15' });
+      expect(generateQueryPlanFn).toHaveBeenCalled();
+      expect(plan).toEqual({
+        searchQuery: 'standup',
+        dateStart: '2026-06-15',
+        dateEnd: '2026-06-15',
+      });
     });
 
     it('falls back to the literal query on malformed model output', async () => {
-      const generateTextFn = vi.fn(async () => ({ text: 'not json at all' }));
-      const { generator } = createGenerator(
+      const generateQueryPlanFn = vi.fn(async () => 'not an object');
+      const { generator } = createPlanGenerator(
         createConfig({
           privacy: {
             allowCloudInference: true,
@@ -302,7 +395,7 @@ describe('AISDKTextGenerator', () => {
             allowSendingMetadata: false,
           },
         }),
-        generateTextFn,
+        generateQueryPlanFn,
       );
 
       const plan = await generator.planQuery({ query: 'anything', today: '2026-06-16' });

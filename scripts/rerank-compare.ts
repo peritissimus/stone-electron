@@ -104,11 +104,12 @@ interface ScoredChunk extends Chunk {
 }
 
 async function loadEmbedder() {
-  const { pipeline, env } = await import('@xenova/transformers');
+  process.env.ORT_DISABLE_TELEMETRY = '1';
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = true;
   env.useBrowserCache = false;
   env.cacheDir = resolveCacheDir();
-  const extractor = await pipeline('feature-extraction', EMBED_MODEL, { quantized: true });
+  const extractor = await pipeline('feature-extraction', EMBED_MODEL, { dtype: 'q8' });
   return async (text: string): Promise<Float32Array> => {
     const out = (await extractor(text, { pooling: 'mean', normalize: true })) as {
       data: Float32Array;
@@ -118,21 +119,27 @@ async function loadEmbedder() {
 }
 
 async function loadReranker() {
-  const { pipeline, env } = await import('@xenova/transformers');
+  process.env.ORT_DISABLE_TELEMETRY = '1';
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = true;
   env.useBrowserCache = false;
   env.cacheDir = resolveCacheDir();
-  const scorer = await pipeline('text-classification', RERANK_MODEL, { quantized: true });
+  const scorer = await pipeline('text-classification', RERANK_MODEL, { dtype: 'q8' });
   return async (query: string, texts: string[]): Promise<number[]> => {
     if (texts.length === 0) return [];
     // Cross-encoder mode: pass query alongside each document via text_pair
     // so the model attends to both jointly and outputs a single relevance
     // logit per pair.
-    const out = (await scorer(
+    const inputs = scorer.tokenizer(
       texts.map(() => query),
-      { text_pair: texts, top_k: 1 } as Record<string, unknown>,
-    )) as Array<Array<{ label: string; score: number }>>;
-    return out.map((rs) => rs[0]?.score ?? 0);
+      {
+        text_pair: texts,
+        padding: true,
+        truncation: true,
+      },
+    );
+    const out = await scorer.model(inputs);
+    return Array.from(out.logits.data, Number);
   };
 }
 
@@ -169,9 +176,7 @@ function runVector(
     scored.push({ chunk: c, similarity: cosineSimilarity(queryVec, vec) });
   }
   scored.sort((a, b) => b.similarity - a.similarity);
-  return scored
-    .slice(0, CHUNK_CANDIDATES)
-    .map(({ chunk }, i) => ({ chunk, rank: i }));
+  return scored.slice(0, CHUNK_CANDIDATES).map(({ chunk }, i) => ({ chunk, rank: i }));
 }
 
 function rrfMerge(
@@ -249,8 +254,14 @@ function printSideBySide(query: string, before: NoteRow[], after: NoteRow[], lat
     const r = after[i];
     const prev = beforeIdxByNote.get(r.noteId);
     const delta =
-      prev === undefined ? '(new)' : prev === i ? '(=)' : `(was #${prev + 1}, ${prev - i > 0 ? '↑' : '↓'}${Math.abs(prev - i)})`;
-    console.log(`    ${i + 1}. ${r.title}   ›   ${r.bestHeadingPath.join(' › ') || '(root)'}   ${delta}`);
+      prev === undefined
+        ? '(new)'
+        : prev === i
+          ? '(=)'
+          : `(was #${prev + 1}, ${prev - i > 0 ? '↑' : '↓'}${Math.abs(prev - i)})`;
+    console.log(
+      `    ${i + 1}. ${r.title}   ›   ${r.bestHeadingPath.join(' › ') || '(root)'}   ${delta}`,
+    );
     console.log(`        “${trimSnippet(r.bestChunkText)}”`);
   }
 }
@@ -315,7 +326,13 @@ async function main() {
 
     const pool = merged.slice(0, RERANK_POOL);
     const tStart = Date.now();
-    const scores = pool.length > 0 ? await rerank(query, pool.map((c) => c.text)) : [];
+    const scores =
+      pool.length > 0
+        ? await rerank(
+            query,
+            pool.map((c) => c.text),
+          )
+        : [];
     const latencyMs = Date.now() - tStart;
 
     for (let i = 0; i < pool.length; i += 1) {

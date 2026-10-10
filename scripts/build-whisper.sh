@@ -20,12 +20,17 @@ WHISPER_VERSION="v1.8.6"
 SRC_DIR="vendor/whisper.cpp"
 OUT_DIR="vendor/whisper/bin"
 BINARIES=(whisper-cli whisper-server)
+MACOS_TARGET="14.0"
+BUILD_ID="$WHISPER_VERSION-$(uname)-$(uname -m)-$MACOS_TARGET-portable"
+BUILD_STAMP="$OUT_DIR/.build-id"
+cmake_platform_options=()
 
 FORCE=0
 [ "${1:-}" = "--force" ] && FORCE=1
 
 case "$(uname)" in
-  Darwin|Linux) ;;
+  Darwin) cmake_platform_options+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOS_TARGET") ;;
+  Linux) ;;
   *) echo "build-whisper: $(uname) not supported here (Windows uses its own toolchain) — skipping"; exit 0 ;;
 esac
 
@@ -34,7 +39,7 @@ if [ "$FORCE" -eq 0 ]; then
   for name in "${BINARIES[@]}"; do
     [ -x "$OUT_DIR/$name" ] || have_all=0
   done
-  if [ "$have_all" -eq 1 ]; then
+  if [ "$have_all" -eq 1 ] && [ -f "$BUILD_STAMP" ] && [ "$(cat "$BUILD_STAMP")" = "$BUILD_ID" ]; then
     echo "build-whisper: ${BINARIES[*]} already built — skipping (use --force to rebuild)"
     exit 0
   fi
@@ -50,10 +55,17 @@ if [ ! -d "$SRC_DIR" ]; then
   git clone --depth 1 --branch "$WHISPER_VERSION" https://github.com/ggml-org/whisper.cpp "$SRC_DIR"
 fi
 
+if [ "$(git -C "$SRC_DIR" describe --tags --exact-match 2>/dev/null)" != "$WHISPER_VERSION" ]; then
+  echo "build-whisper: $SRC_DIR is not at pinned $WHISPER_VERSION; refresh that build checkout first." >&2
+  exit 1
+fi
+
 echo "build-whisper: configuring…"
 cmake -S "$SRC_DIR" -B "$SRC_DIR/build" \
+  "${cmake_platform_options[@]}" \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_SHARED_LIBS=OFF \
+  -DGGML_NATIVE=OFF \
   -DGGML_METAL_EMBED_LIBRARY=ON \
   -DWHISPER_BUILD_TESTS=OFF \
   -DWHISPER_BUILD_SERVER=ON \
@@ -72,3 +84,4 @@ for name in "${BINARIES[@]}"; do
   cp "$BIN" "$OUT_DIR/$name"
   echo "build-whisper: ✓ $OUT_DIR/$name"
 done
+printf '%s\n' "$BUILD_ID" > "$BUILD_STAMP"

@@ -32,7 +32,6 @@ function radiusOf(node: GraphNode): number {
 export function NoteForceGraph({ data, activeNoteId, onNodeClick }: NoteForceGraphProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // react-force-graph's ref type is not exported; `any` is the library convention.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const graphRef = useRef<any>();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 

@@ -20,7 +20,7 @@ import Link from '@tiptap/extension-link';
 import Highlight from '@tiptap/extension-highlight';
 import TaskList from '@tiptap/extension-task-list';
 import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
@@ -79,6 +79,10 @@ export function buildEditorExtensions(deps: BuildEditorExtensionsDeps) {
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       codeBlock: false,
+      // Keep our configured link extension and the existing Markdown schema.
+      link: false,
+      underline: false,
+      trailingNode: false,
     }),
     CodeBlockWithMermaid.configure({
       lowlight,

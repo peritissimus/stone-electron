@@ -62,11 +62,12 @@ function stripMarkdown(markdown: string): string {
 
 async function loadEmbeddingPipeline() {
   console.log(`Loading embedding model "${MODEL_NAME}"…`);
-  const { pipeline, env } = await import('@xenova/transformers');
+  process.env.ORT_DISABLE_TELEMETRY = '1';
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = true;
   env.useBrowserCache = false;
   env.cacheDir = resolveCacheDir();
-  const extractor = await pipeline('feature-extraction', MODEL_NAME, { quantized: true });
+  const extractor = await pipeline('feature-extraction', MODEL_NAME, { dtype: 'q8' });
   return async (text: string): Promise<Float32Array> => {
     if (!text.trim()) return new Float32Array(EMBEDDING_DIMS);
     const output = (await extractor(text, { pooling: 'mean', normalize: true })) as {
@@ -81,9 +82,7 @@ async function main() {
   console.log(`db: ${dbPath}`);
   const client = createClient({ url: `file:${dbPath}` });
 
-  const totalRs = await client.execute(
-    `SELECT COUNT(*) AS c FROM notes WHERE is_deleted = 0`,
-  );
+  const totalRs = await client.execute(`SELECT COUNT(*) AS c FROM notes WHERE is_deleted = 0`);
   const indexedRs = await client.execute(
     `SELECT COUNT(*) AS c FROM notes WHERE is_deleted = 0 AND embedding IS NOT NULL`,
   );
@@ -161,9 +160,7 @@ async function main() {
   }
 
   const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
-  console.log(
-    `\nDone in ${elapsed}s · ${success} indexed · ${skipped} skipped · ${failed} failed`,
-  );
+  console.log(`\nDone in ${elapsed}s · ${success} indexed · ${skipped} skipped · ${failed} failed`);
 
   const finalIndexedRs = await client.execute(
     `SELECT COUNT(*) AS c FROM notes WHERE is_deleted = 0 AND embedding IS NOT NULL`,

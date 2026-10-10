@@ -46,11 +46,12 @@ function resolveCacheDir(): string {
 }
 
 async function loadEmbedder() {
-  const { pipeline, env } = await import('@xenova/transformers');
+  process.env.ORT_DISABLE_TELEMETRY = '1';
+  const { pipeline, env } = await import('@huggingface/transformers');
   env.allowLocalModels = true;
   env.useBrowserCache = false;
   env.cacheDir = resolveCacheDir();
-  const extractor = await pipeline('feature-extraction', MODEL, { quantized: true });
+  const extractor = await pipeline('feature-extraction', MODEL, { dtype: 'q8' });
   return async (text: string): Promise<Float32Array> => {
     if (!text.trim()) return new Float32Array(DIMS);
     const output = (await extractor(text, { pooling: 'mean', normalize: true })) as {

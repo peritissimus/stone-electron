@@ -2,6 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Effect, Layer, ManagedRuntime } from 'effect';
 import { makeMeetingUseCasesLayer } from '../../../../src/main/application/usecases/meeting/meetingUseCases';
 import {
+  SummarizationStrategyLive,
+  TranscriberLive,
+} from '../../../../src/main/adapters/out/layers';
+import { createMeetingEffectRunner } from '../../../../src/main/infrastructure/di/meetingEffectRunner';
+import { createMeetingFinalizeJobHandler } from '../../../../src/main/infrastructure/workers/meetingFinalizeJob';
+import {
   AppConfigRepositoryPort,
   EchoCancellerPort,
   EventPublisherPort,
@@ -10,7 +16,6 @@ import {
   JobQueue,
   LiveTranscriber,
   MeetingRecordingRepositoryPort,
-  MeetingUseCasesPort,
   PathServicePort,
   QuickCaptureUseCasesPort,
   SummarizationStrategyPort,
@@ -188,6 +193,7 @@ type PromiseMeetingUseCases<T> = T extends (
 
 function createMeetingUseCases(
   deps: MeetingTestDeps,
+  cancellableAdapters = false,
 ): PromiseMeetingUseCases<IMeetingUseCases> {
   const live = deps.liveTranscriber;
   const dependencyLayer = Layer.mergeAll(
@@ -196,8 +202,12 @@ function createMeetingUseCases(
     adapterLayer(FileStoragePort, deps.fileStorage),
     adapterLayer(IdGeneratorPort, deps.idGenerator),
     adapterLayer(PathServicePort, deps.pathService),
-    adapterLayer(TranscriberPort, deps.transcriber),
-    adapterLayer(SummarizationStrategyPort, deps.summarizer),
+    cancellableAdapters
+      ? TranscriberLive(deps.transcriber)
+      : adapterLayer(TranscriberPort, deps.transcriber),
+    cancellableAdapters
+      ? SummarizationStrategyLive(deps.summarizer)
+      : adapterLayer(SummarizationStrategyPort, deps.summarizer),
     adapterLayer(AppConfigRepositoryPort, deps.appConfigRepository),
     adapterLayer(EventPublisherPort, deps.eventPublisher),
     adapterLayer(
@@ -217,16 +227,16 @@ function createMeetingUseCases(
       start: Effect.tryPromise(() => live?.start() ?? Promise.resolve()),
       stop: Effect.tryPromise(() => live?.stop() ?? Promise.resolve()),
       transcribeChunk: (wav) =>
-        Effect.tryPromise(() =>
-          live?.transcribeChunk(wav) ?? Promise.resolve({ text: '', segments: [] }),
+        Effect.tryPromise(
+          () => live?.transcribeChunk(wav) ?? Promise.resolve({ text: '', segments: [] }),
         ),
     }),
     useCasesLayer(QuickCaptureUseCasesPort, {
       appendToJournal: deps.appendToJournal,
-      transcribeVoiceCapture: async (_request: {
-        wav: Uint8Array;
-        workspaceId?: string;
-      }) => ({ text: '', durationMs: 0 }),
+      transcribeVoiceCapture: async (_request: { wav: Uint8Array; workspaceId?: string }) => ({
+        text: '',
+        durationMs: 0,
+      }),
     }),
   );
   const runtime = ManagedRuntime.make(
@@ -234,12 +244,7 @@ function createMeetingUseCases(
       Layer.provide(dependencyLayer),
     ),
   );
-  const run = <A, E>(
-    use: (service: IMeetingUseCases) => Effect.Effect<A, E>,
-  ) =>
-    runtime.runPromise(
-      MeetingUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
-    );
+  const run = createMeetingEffectRunner(runtime);
 
   return {
     reserveRecordingSlot: {
@@ -253,7 +258,7 @@ function createMeetingUseCases(
     },
     finalizeRecording: {
       execute: (request, options) =>
-        run((service) => service.finalizeRecording.execute(request, options)),
+        run((service) => service.finalizeRecording.execute(request, options), options),
     },
     listMeetingRecordings: {
       execute: (request) => run((service) => service.listMeetingRecordings.execute(request)),
@@ -646,6 +651,66 @@ describe('MeetingUseCases', () => {
       audioPath: '/workspace/.stone/recordings/rec-1.wav',
       signal: controller.signal,
     });
+  });
+
+  it('interrupts a job during summary generation and never saves a late result', async () => {
+    const current = recording();
+    vi.mocked(meetingRepository.findById).mockResolvedValue(current);
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.exists).mockResolvedValue(false);
+    let completeSummary!: (result: { summary: string; promptUsed: string }) => void;
+    let started!: (signal: AbortSignal) => void;
+    const summaryStarted = new Promise<AbortSignal>((resolve) => {
+      started = resolve;
+    });
+    vi.mocked(summarizer.summarize).mockImplementation((request) => {
+      started(request.signal!);
+      // Simulate a provider that completes after abort, despite receiving the signal.
+      return new Promise((resolve) => {
+        completeSummary = resolve;
+      });
+    });
+    const cases = createMeetingUseCases(
+      {
+        meetingRepository,
+        workspaceRepository,
+        fileStorage,
+        transcriber,
+        summarizer,
+        idGenerator: createMockIdGenerator(),
+        pathService: createMockPathService(),
+        appConfigRepository: createMockAppConfigRepository(-1),
+        eventPublisher: createMockEventPublisher(),
+        jobQueue: createMockJobQueue(),
+        appendToJournal,
+      },
+      true,
+    );
+    const handler = createMeetingFinalizeJobHandler(async (request, signal) => {
+      await cases.finalizeRecording.execute(request, { signal });
+    });
+    const controller = new AbortController();
+    const pending = handler(
+      { recordingId: 'rec-1', durationMs: 2_000 },
+      {
+        signal: controller.signal,
+        jobId: 'job-1',
+        attempt: 1,
+      },
+    );
+    const rejection = expect(pending).rejects.toBeDefined();
+    const providerSignal = await summaryStarted;
+    const saveCount = vi.mocked(meetingRepository.save).mock.calls.length;
+    controller.abort();
+    await rejection;
+    expect(providerSignal.aborted).toBe(true);
+
+    completeSummary({ summary: 'Late result', promptUsed: 'Prompt' });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(meetingRepository.save).toHaveBeenCalledTimes(saveCount);
+    expect(current.status).toBe('summarizing');
+    expect(current.summary).toBeNull();
+    expect(fileStorage.delete).not.toHaveBeenCalled();
   });
 
   it('re-transcribes a recording from its kept audio', async () => {

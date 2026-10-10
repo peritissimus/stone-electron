@@ -48,7 +48,9 @@ export function useDocumentBuffer({
   const setBuffer = useDocumentBufferStore((state) => state.setBuffer);
   const updateBuffer = useDocumentBufferStore((state) => state.updateBuffer);
   const markClean = useDocumentBufferStore((state) => state.markClean);
-  const isDirty = useDocumentBufferStore((state) => state.isDirty);
+  const isDirty = useDocumentBufferStore((state) =>
+    noteId ? (state.buffers.get(noteId)?.isDirty ?? false) : false,
+  );
   const getDirtyBuffers = useDocumentBufferStore((state) => state.getDirtyBuffers);
 
   const isLoadingRef = useRef(false);
@@ -233,7 +235,7 @@ export function useDocumentBuffer({
   }, [getDirtyBuffers, updateNote, markClean]);
 
   return {
-    isDirty: noteId ? isDirty(noteId) : false,
+    isDirty,
     isLoading: isLoadingRef.current,
     save,
     saveAll,
@@ -256,7 +258,6 @@ const AUTOSAVE_IDLE_MS = 2000;
 export function useDocumentAutosave() {
   const getDirtyBuffers = useDocumentBufferStore((state) => state.getDirtyBuffers);
   const markClean = useDocumentBufferStore((state) => state.markClean);
-  const buffers = useDocumentBufferStore((state) => state.buffers);
   const { updateNote } = useNoteAPI();
   // A save awaits the network; without this, a blur landing mid-flight would
   // start a second concurrent write of the same buffer.
@@ -316,21 +317,33 @@ export function useDocumentAutosave() {
     }
   }, [getDirtyBuffers, updateNote, markCleanIfUnchanged]);
 
-  // Write after the typing stops. `buffers` is a fresh Map on every edit, so
-  // each keystroke re-runs this effect and pushes the timer out.
+  // Observe buffer edits without subscribing the workbench's React render to
+  // every keystroke. Only the idle timer needs to know that content changed.
   useEffect(() => {
-    let hasDirty = false;
-    for (const buffer of buffers.values()) {
-      if (buffer.isDirty) {
-        hasDirty = true;
-        break;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const saveAfterIdle = () => {
+      // An edit made during a slow write must still get its own later save.
+      if (savingRef.current) {
+        timer = setTimeout(saveAfterIdle, AUTOSAVE_IDLE_MS);
+        return;
       }
-    }
-    if (!hasDirty) return;
-
-    const timer = setTimeout(() => void saveAllDirty(), AUTOSAVE_IDLE_MS);
-    return () => clearTimeout(timer);
-  }, [buffers, saveAllDirty]);
+      timer = undefined;
+      void saveAllDirty();
+    };
+    const scheduleSave = () => {
+      clearTimeout(timer);
+      timer = undefined;
+      if (getDirtyBuffers().length > 0) timer = setTimeout(saveAfterIdle, AUTOSAVE_IDLE_MS);
+    };
+    const unsubscribe = useDocumentBufferStore.subscribe((state, previous) => {
+      if (state.buffers !== previous.buffers) scheduleSave();
+    });
+    scheduleSave();
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [getDirtyBuffers, saveAllDirty]);
 
   // Save a specific note (used when switching notes)
   const saveNote = useCallback(

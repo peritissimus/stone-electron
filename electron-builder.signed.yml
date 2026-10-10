@@ -1,0 +1,8 @@
+# Opt-in Developer ID distribution. The default config still supports local,
+# ad-hoc packages; this config must never silently fall back to those.
+extends: ./electron-builder.yml
+forceCodeSigning: true
+mac:
+  identity: ${env.CSC_NAME}
+  hardenedRuntime: true
+  notarize: true

@@ -66,7 +66,7 @@ export default defineConfig({
         'onnxruntime-common',
         'sharp',
         // Transformers.js - must be external for proper ONNX backend selection
-        '@xenova/transformers',
+        '@huggingface/transformers',
       ],
     },
   },

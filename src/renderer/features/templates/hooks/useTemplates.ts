@@ -39,7 +39,7 @@ export function useTemplates() {
     if (selected && selected.prompts.length === 0 && step === 'filling-prompts' && !creating) {
       void submit();
     }
-  }, [selected, step, creating]);
+  }, [selected, step, creating, submit]);
 
   return {
     open,

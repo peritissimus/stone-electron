@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Test script to verify @xenova/transformers works with polyfill
+ * Test script to verify @huggingface/transformers works with polyfill
  * Run with: node scripts/test-transformers.mjs
  */
 
 console.log('='.repeat(60));
-console.log('Testing @xenova/transformers in Node.js environment');
+console.log('Testing @huggingface/transformers in Node.js environment');
 console.log('='.repeat(60));
 
 // Step 1: Check if 'self' exists
@@ -20,10 +20,11 @@ if (typeof globalThis.self === 'undefined') {
 console.log('   typeof globalThis.self after polyfill:', typeof globalThis.self);
 
 // Step 3: Try to import transformers
-console.log('\n3. Attempting to import @xenova/transformers...');
+console.log('\n3. Attempting to import @huggingface/transformers...');
 try {
-  const { pipeline, env } = await import('@xenova/transformers');
-  console.log('   SUCCESS: @xenova/transformers imported!');
+  process.env.ORT_DISABLE_TELEMETRY = '1';
+  const { pipeline, env } = await import('@huggingface/transformers');
+  console.log('   SUCCESS: @huggingface/transformers imported!');
 
   // Configure for Node.js
   env.allowLocalModels = true;
@@ -33,7 +34,7 @@ try {
   console.log('   Model: Xenova/bge-small-en-v1.5 (this may take a minute on first run)');
 
   const extractor = await pipeline('feature-extraction', 'Xenova/bge-small-en-v1.5', {
-    quantized: true,
+    dtype: 'q8',
   });
   console.log('   SUCCESS: Pipeline created!');
 

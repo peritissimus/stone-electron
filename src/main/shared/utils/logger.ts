@@ -143,9 +143,11 @@ function devPrefix(ctx: RequestContext | undefined): string {
   return `[${ctx.request_id.slice(0, 8)}] `;
 }
 
-function normalizeArgs(
-  args: unknown[],
-): { message: string; data: Record<string, unknown>; extraArgs: unknown[] } {
+function normalizeArgs(args: unknown[]): {
+  message: string;
+  data: Record<string, unknown>;
+  extraArgs: unknown[];
+} {
   if (args.length === 0) return { message: '', data: {}, extraArgs: [] };
 
   const [first, second, ...rest] = args;
@@ -170,7 +172,12 @@ function normalizeArgs(
   }
 
   const errorData = serializeError(first);
-  if (errorData) return { message: errorData.message || 'error', data: { error: errorData }, extraArgs: [second, ...rest] };
+  if (errorData)
+    return {
+      message: errorData.message || 'error',
+      data: { error: errorData },
+      extraArgs: [second, ...rest],
+    };
 
   return { message: util.format(...args), data: {}, extraArgs: [] };
 }
@@ -207,7 +214,6 @@ function write(level: LogLevel, ...args: unknown[]): void {
     baseLog[level](line);
   } else {
     // No electron-log file transport (tests/scripts); write to stdout
-    // eslint-disable-next-line no-console
     console.log(line);
   }
 }
@@ -256,7 +262,10 @@ export const logger = {
         return result;
       } catch (error) {
         const code = (error as { code?: unknown } | null)?.code;
-        const errorData = serializeError(error) ?? { name: 'UnknownError', message: 'Unknown error' };
+        const errorData = serializeError(error) ?? {
+          name: 'UnknownError',
+          message: 'Unknown error',
+        };
         logger.error(`${channel} failed`, { ...baseData, success: false, code, error: errorData });
         throw error;
       }

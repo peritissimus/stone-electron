@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
 import { NoteUseCasesLive } from '../../../../src/main/application/usecases/note';
 import {
@@ -8,6 +8,7 @@ import {
   IdGeneratorPort,
   MarkdownProcessorPort,
   NoteNotFoundError,
+  NoteOperationError,
   NoteRepositoryPort,
   NoteUseCasesPort,
   PathServicePort,
@@ -93,6 +94,9 @@ describe('NoteUseCases', () => {
   let eventPublisher: IEventPublisher;
   let appConfigRepository: IAppConfigRepository;
   let useCases: PromiseFacade<INoteUseCases>;
+  let runtime: ManagedRuntime.ManagedRuntime<INoteUseCases, never>;
+
+  afterEach(() => runtime.dispose());
 
   beforeEach(() => {
     noteRepository = {
@@ -137,11 +141,21 @@ describe('NoteUseCases', () => {
       adapterLayer(PathServicePort, createMockPathService()),
       adapterLayer(EventPublisherPort, eventPublisher),
     );
-    useCases = makeFacade(
-      ManagedRuntime.make(
-        NoteUseCasesLive.pipe(Layer.provide(dependencies)),
+    runtime = ManagedRuntime.make(NoteUseCasesLive.pipe(Layer.provide(dependencies)));
+    useCases = makeFacade(runtime);
+  });
+
+  it('lets callers recover from rejected entity transitions without treating them as defects', async () => {
+    vi.mocked(noteRepository.findById).mockResolvedValue(note({ isDeleted: true }));
+    const result = await runtime.runPromise(
+      NoteUseCasesPort.pipe(
+        Effect.flatMap((service) => service.togglePin.execute({ id: 'note-1' })),
+        Effect.catchAll((error) => Effect.succeed(error)),
       ),
     );
+    expect(result).toBeInstanceOf(NoteOperationError);
+    expect(noteRepository.save).not.toHaveBeenCalled();
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
   });
 
   it('creates a note through storage, repository, and event ports', async () => {
@@ -155,19 +169,16 @@ describe('NoteUseCases', () => {
     });
     expect(result.note.title).toBe('New Note');
     expect(result.note.workspaceId).toBe('ws-1');
-    expect(fileStorage.write).toHaveBeenCalledWith(
-      expect.stringContaining('/workspace/'),
-      'Body',
-    );
+    expect(fileStorage.write).toHaveBeenCalledWith(expect.stringContaining('/workspace/'), 'Body');
     expect(noteRepository.save).toHaveBeenCalled();
     expect(eventPublisher.publish).toHaveBeenCalled();
   });
 
   it('fails creation when no workspace is active', async () => {
     vi.mocked(workspaceRepository.findActive).mockResolvedValue(null);
-    await expect(
-      useCases.createNote.execute({ title: 'New Note' }),
-    ).rejects.toThrow('No active workspace');
+    await expect(useCases.createNote.execute({ title: 'New Note' })).rejects.toThrow(
+      'No active workspace',
+    );
   });
 
   it('gets a note with optional raw content', async () => {
@@ -210,9 +221,9 @@ describe('NoteUseCases', () => {
     } as never);
     vi.mocked(fileStorage.exists).mockResolvedValue(true);
     vi.mocked(fileStorage.read).mockResolvedValue('# Test Note\n\nBody text');
-    await expect(
-      useCases.getNoteContent.execute({ id: 'note-1' }),
-    ).resolves.toEqual({ content: 'Body text' });
+    await expect(useCases.getNoteContent.execute({ id: 'note-1' })).resolves.toEqual({
+      content: 'Body text',
+    });
     await useCases.saveNoteContent.execute({
       id: 'note-1',
       content: 'Changed',
@@ -230,12 +241,14 @@ describe('NoteUseCases', () => {
     } as never);
     vi.mocked(noteRepository.findFavorites).mockResolvedValue([favorite]);
     vi.mocked(noteRepository.searchByTitle).mockResolvedValue([favorite]);
-    await expect(
-      useCases.listNotes.execute({ filter: 'favorites' }),
-    ).resolves.toEqual({ notes: [favorite], total: 1 });
-    await expect(
-      useCases.searchNotes.execute({ query: 'Test' }),
-    ).resolves.toEqual({ notes: [favorite], total: 1 });
+    await expect(useCases.listNotes.execute({ filter: 'favorites' })).resolves.toEqual({
+      notes: [favorite],
+      total: 1,
+    });
+    await expect(useCases.searchNotes.execute({ query: 'Test' })).resolves.toEqual({
+      notes: [favorite],
+      total: 1,
+    });
   });
 
   it('soft deletes, restores, moves, and toggles note flags', async () => {
@@ -246,15 +259,15 @@ describe('NoteUseCases', () => {
       id: 'note-1',
       targetNotebookId: 'nb-2',
     });
-    await expect(
-      useCases.toggleFavorite.execute({ id: 'note-1' }),
-    ).resolves.toMatchObject({ note: { isFavorite: true } });
-    await expect(
-      useCases.togglePin.execute({ id: 'note-1' }),
-    ).resolves.toMatchObject({ note: { isPinned: true } });
-    await expect(
-      useCases.toggleArchive.execute({ id: 'note-1' }),
-    ).resolves.toMatchObject({ note: { isArchived: true } });
+    await expect(useCases.toggleFavorite.execute({ id: 'note-1' })).resolves.toMatchObject({
+      note: { isFavorite: true },
+    });
+    await expect(useCases.togglePin.execute({ id: 'note-1' })).resolves.toMatchObject({
+      note: { isPinned: true },
+    });
+    await expect(useCases.toggleArchive.execute({ id: 'note-1' })).resolves.toMatchObject({
+      note: { isArchived: true },
+    });
     expect(noteRepository.save).toHaveBeenCalledTimes(6);
   });
 
@@ -266,9 +279,7 @@ describe('NoteUseCases', () => {
     } as never);
     vi.mocked(fileStorage.exists).mockResolvedValue(true);
     await useCases.deleteNote.execute({ id: 'note-1', permanent: true });
-    expect(fileStorage.delete).toHaveBeenCalledWith(
-      '/workspace/Personal/test.md',
-    );
+    expect(fileStorage.delete).toHaveBeenCalledWith('/workspace/Personal/test.md');
     expect(noteRepository.delete).toHaveBeenCalledWith('note-1');
   });
 
@@ -280,9 +291,9 @@ describe('NoteUseCases', () => {
     vi.mocked(noteRepository.findByFilePath)
       .mockResolvedValueOnce(note())
       .mockResolvedValueOnce(null);
-    await expect(
-      useCases.getNoteByPath.execute({ filePath: 'Personal/test.md' }),
-    ).resolves.toEqual({ note: note() });
+    await expect(useCases.getNoteByPath.execute({ filePath: 'Personal/test.md' })).resolves.toEqual(
+      { note: note() },
+    );
     vi.mocked(fileStorage.exists).mockResolvedValue(true);
     vi.mocked(fileStorage.read).mockResolvedValue('# Disk title\n\nBody');
     vi.mocked(markdownProcessor.extractTitle).mockReturnValue('Disk title');
@@ -312,8 +323,8 @@ describe('NoteUseCases', () => {
 
   it('preserves typed not-found failures', async () => {
     vi.mocked(noteRepository.findById).mockResolvedValue(null);
-    await expect(
-      useCases.getNote.execute({ id: 'missing' }),
-    ).rejects.toBeInstanceOf(NoteNotFoundError);
+    await expect(useCases.getNote.execute({ id: 'missing' })).rejects.toBeInstanceOf(
+      NoteNotFoundError,
+    );
   });
 });

@@ -36,6 +36,15 @@ const VOLATILE_ENTRIES = new Set([
  * does, copy durable data across so nothing is lost on upgrade.
  */
 export function relocateUserData(): string {
+  if (process.env.E2E_TEST === 'true') {
+    const testPath = app.commandLine.getSwitchValue('user-data-dir');
+    if (!testPath || !path.isAbsolute(testPath)) {
+      throw new Error('E2E_TEST requires an absolute --user-data-dir');
+    }
+    fs.mkdirSync(testPath, { recursive: true });
+    app.setPath('userData', testPath);
+    return testPath;
+  }
   const target = path.join(os.homedir(), '.config', 'stone');
   const previous = app.getPath('userData'); // default home, before the override
 

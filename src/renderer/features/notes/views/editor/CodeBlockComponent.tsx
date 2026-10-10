@@ -18,7 +18,7 @@ interface CodeBlockComponentProps {
   updateAttributes: (attributes: Record<string, any>) => void;
   extension: any;
   editor: any;
-  getPos: () => number;
+  getPos: () => number | undefined;
   selected: boolean;
 }
 
@@ -110,7 +110,7 @@ const CodeBlockComponentView: React.FC<CodeBlockComponentProps> = ({
   const handleUpdateSource = (nodeId: string, oldLabel: string, newLabel: string) => {
     if (oldLabel === newLabel || !newLabel.trim()) return;
 
-    let updatedCode = codeContent;
+    let updatedCode: string;
 
     if (isFlowDSL) {
       // For FlowDSL, replace the node definition line
@@ -163,7 +163,7 @@ const CodeBlockComponentView: React.FC<CodeBlockComponentProps> = ({
     return (
       <NodeViewWrapper className="code-block-wrapper" data-language={language}>
         <pre className="my-4 overflow-x-auto rounded-lg border border-border bg-code-bg">
-          <NodeViewContent as="code" className="hljs" />
+          <NodeViewContent<'code'> as="code" className="hljs" />
         </pre>
       </NodeViewWrapper>
     );
@@ -185,7 +185,7 @@ const CodeBlockComponentView: React.FC<CodeBlockComponentProps> = ({
             // Code editor for diagrams
             <div className="p-4">
               <pre className="bg-code-bg rounded-md">
-                <NodeViewContent as="code" className="hljs" />
+                <NodeViewContent<'code'> as="code" className="hljs" />
               </pre>
             </div>
           ) : (
@@ -209,7 +209,7 @@ const CodeBlockComponentView: React.FC<CodeBlockComponentProps> = ({
                 />
               </div>
               <pre className="sr-only" aria-hidden="true">
-                <NodeViewContent as="code" />
+                <NodeViewContent<'code'> as="code" />
               </pre>
             </>
           )
@@ -217,7 +217,7 @@ const CodeBlockComponentView: React.FC<CodeBlockComponentProps> = ({
           // Regular code block - always show code
           <div>
             <pre className="bg-code-bg">
-              <NodeViewContent as="code" className="hljs" />
+              <NodeViewContent<'code'> as="code" className="hljs" />
             </pre>
           </div>
         )}

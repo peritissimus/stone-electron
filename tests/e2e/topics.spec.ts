@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/electron';
 
-// Topics initialization spawns a worker thread that loads @xenova/transformers
+// Topics initialization spawns a worker thread that loads @huggingface/transformers
 // and an ONNX model. First run can be slow on a cold cache.
 test.slow();
 
@@ -29,10 +29,9 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
   await expect(expandSidebar).toBeVisible();
   await expandSidebar.click();
   await window.getByRole('button', { name: 'Knowledge' }).click();
-  const indexResponse = await window.evaluate(
-    async () =>
-      // @ts-expect-error contextBridge API is intentionally untyped here
-      window.electron.invoke('index:getStats', {}),
+  const indexResponse = await window.evaluate(async () =>
+    // @ts-expect-error contextBridge API is intentionally untyped here
+    window.electron.invoke('index:getStats', {}),
   );
   expect(indexResponse).toMatchObject({ success: true });
 
@@ -43,9 +42,7 @@ test('topics page initializes the embedder without errors', async ({ app }) => {
 
   // Once initialization completes, the Knowledge page is its search field —
   // topics themselves are maintained in the background with no UI.
-  await expect(
-    window.getByRole('textbox', { name: 'Search notes by meaning' }),
-  ).toBeEnabled();
+  await expect(window.getByRole('textbox', { name: 'Search notes by meaning' })).toBeEnabled();
 
   // Dump captured logs so we can see the embedder boot path even on success.
   const embedderLogs = mainLogs.filter((l) => /Embedder|xenova|onnx|worker/i.test(l));

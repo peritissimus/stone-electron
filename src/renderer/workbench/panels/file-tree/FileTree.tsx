@@ -7,7 +7,7 @@
 import React, { useState, useCallback } from 'react';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { InputModal } from '@renderer/components/composites';
-import { useFileTree } from '@renderer/services/workspace/hooks/useFileTree';
+import { useFileTreeNodes } from '@renderer/services/workspace/hooks/useFileTree';
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/services/workspace/commands/useFileTreeAPI';
 import { useNavigateToNote } from '@renderer/services/navigation';
@@ -15,12 +15,15 @@ import { logger } from '@renderer/services/telemetry/logger';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
-export function FileTree() {
+export const FileTree = React.memo(function FileTree() {
   const navigateToNote = useNavigateToNote();
-  const { tree } = useFileTree();
+  const tree = useFileTreeNodes();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
+  const requestRename = useCallback((noteId: string, title: string) => {
+    setRenameTarget({ noteId, title });
+  }, []);
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string | null) => {
@@ -116,7 +119,7 @@ export function FileTree() {
             node={node}
             level={0}
             onCreateNote={handleCreateNoteInFolder}
-            onRenameFile={(noteId, title) => setRenameTarget({ noteId, title })}
+            onRenameFile={requestRename}
             onDeleteFile={handleDeleteNote}
             onMoveFile={handleMoveNote}
             onMoveFolder={handleMoveFolder}
@@ -126,7 +129,7 @@ export function FileTree() {
             key={`file-${node.path}`}
             node={node}
             level={0}
-            onRename={(noteId, title) => setRenameTarget({ noteId, title })}
+            onRename={requestRename}
             onDelete={handleDeleteNote}
             onMove={handleMoveNote}
           />
@@ -149,4 +152,4 @@ export function FileTree() {
       />
     </div>
   );
-}
+});

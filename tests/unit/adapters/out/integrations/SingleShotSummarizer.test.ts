@@ -41,4 +41,25 @@ describe('SingleShotSummarizer', () => {
       expect.objectContaining({ prompt: 'Summarize this\n\nTranscript:\nraw' }),
     );
   });
+
+  it('forwards cancellation to the model and rejects a late response after abort', async () => {
+    const generator = textGenerator();
+    const controller = new AbortController();
+    vi.mocked(generator.generateMarkdown).mockImplementation(async (request) => {
+      expect(request.signal).toBe(controller.signal);
+      controller.abort(new Error('job stopped'));
+      return { text: 'late summary' };
+    });
+    const summarizer = new SingleShotSummarizer({ textGenerator: generator });
+    const onProgress = vi.fn();
+    await expect(
+      summarizer.summarize({
+        transcript: 'raw',
+        promptTemplate: '{{transcript}}',
+        signal: controller.signal,
+        onProgress,
+      }),
+    ).rejects.toThrow('job stopped');
+    expect(onProgress).toHaveBeenCalledTimes(1);
+  });
 });

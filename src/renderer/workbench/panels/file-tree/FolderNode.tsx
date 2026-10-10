@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FolderSimple, FolderOpen, Plus } from '@phosphor-icons/react';
-import { useFileTree, type FileTreeNode } from '@renderer/services/workspace/hooks/useFileTree';
-import { useSidebarCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import {
+  useFileTreeFolder,
+  type FileTreeNode,
+} from '@renderer/services/workspace/hooks/useFileTree';
+import { useSidebarItemCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import { getSidebarTreeItemId } from '@renderer/lib/sidebarTree';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/services/telemetry/logger';
 import { normalizePath } from '@renderer/lib/path';
@@ -31,12 +35,10 @@ export const FolderNode = React.memo<FolderNodeProps>(
   ({ node, level, onCreateNote, onRenameFile, onDeleteFile, onMoveFile, onMoveFolder }) => {
     const normalizedPath = normalizePath(node.path);
 
-    const { expandedPaths, activeFolder, toggleExpanded } = useFileTree();
-    const isExpanded = expandedPaths.has(normalizedPath);
-    const isActive = normalizePath(activeFolder || '') === normalizedPath;
+    const { isExpanded, isActive, toggleExpanded } = useFileTreeFolder(normalizedPath);
 
-    const { cursorPath, setCursor } = useSidebarCursor();
-    const isCursor = cursorPath === normalizedPath;
+    const { isCursor, requestFocus } = useSidebarItemCursor(normalizedPath);
+    const itemId = getSidebarTreeItemId(normalizedPath);
     const rowRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -122,12 +124,18 @@ export const FolderNode = React.memo<FolderNodeProps>(
 
     const handleClick = (event: React.MouseEvent | React.KeyboardEvent) => {
       event.stopPropagation();
-      setCursor(normalizedPath);
+      requestFocus(normalizedPath);
       toggleExpanded(normalizedPath);
     };
 
     return (
-      <>
+      <div
+        id={itemId}
+        role="treeitem"
+        aria-labelledby={`${itemId}-label`}
+        aria-level={level + 1}
+        aria-expanded={hasChildren ? isExpanded : undefined}
+      >
         <div
           draggable={!isRootFolder}
           onDragStart={handleDragStart}
@@ -146,15 +154,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
             ref={rowRef}
             className={fileTreeRowClassName}
             data-sidebar-cursor={isCursor ? 'true' : undefined}
-            role="button"
-            tabIndex={-1}
             onClick={handleClick}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleClick(e);
-              }
-            }}
             style={getFileTreeRowStyle(level)}
           >
             {isExpanded ? (
@@ -169,6 +169,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
               />
             )}
             <span
+              id={`${itemId}-label`}
               className={cn(
                 fileTreeLabelClassName,
                 isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
@@ -180,7 +181,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
             <div
               className={cn(
                 'ml-auto opacity-0 transition-opacity duration-150 group-focus-within:opacity-100',
-                isHovered && 'opacity-100',
+                (isHovered || isCursor) && 'opacity-100',
               )}
               onClick={(e) => e.stopPropagation()}
             >
@@ -190,6 +191,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
                 className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 ease-out hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
                 title={`New note in ${node.name}`}
                 aria-label={`Create note in ${node.name}`}
+                tabIndex={isCursor ? 0 : -1}
               >
                 <Plus size={14} weight="bold" />
               </button>
@@ -197,7 +199,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
           </div>
         </div>
         {hasChildren && isExpanded && (
-          <div>
+          <div role="group">
             {(node.children ?? []).map((child) =>
               child.type === 'folder' ? (
                 <FolderNode
@@ -223,7 +225,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
             )}
           </div>
         )}
-      </>
+      </div>
     );
   },
 );

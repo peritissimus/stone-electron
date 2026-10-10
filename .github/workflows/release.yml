@@ -2,56 +2,46 @@ name: Release Build
 
 on:
   push:
-    tags:
-      - 'v*' # Trigger on version tags like v0.1.0, v1.0.0, etc.
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: macos-latest
+  validate:
+    uses: ./.github/workflows/validate.yml
+    with:
+      release: true
+    secrets: inherit
+
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-      discussions: write
-
+      id-token: write
+      attestations: write
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Build application
-        run: pnpm build
-
-      - name: Package application
-        run: pnpm package
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false # Skip code signing for now
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+      - name: Download artifacts verified in this run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: stone-macos
-          retention-days: 7
-          path: |
-            dist/build/*.dmg
-            dist/build/*.zip
-            dist/build/*.dmg.blockmap
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+          path: dist/build
+      - name: Attest release provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
-          files: |
-            dist/build/*
-          draft: false
-          generate_release_notes: true
+          subject-path: dist/build/*
+      - name: Publish verified artifacts
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          files=(dist/build/*.dmg dist/build/*.zip dist/build/*.blockmap)
+          test "${#files[@]}" -gt 0
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes

@@ -59,26 +59,6 @@ export function useVoiceCapture() {
     };
   }, [phase]);
 
-  // Safety net: stop hardware on unmount.
-  useEffect(() => {
-    return () => {
-      releaseHardware();
-    };
-  }, []);
-
-  function releaseHardware() {
-    if (pcmRecorderRef.current) {
-      pcmRecorderRef.current.stop();
-      pcmRecorderRef.current = null;
-    }
-    if (streamRef.current) {
-      for (const track of streamRef.current.getTracks()) track.stop();
-      streamRef.current = null;
-    }
-    stopLevelMeter();
-    pcmRecorderRef.current = null;
-  }
-
   function startLevelMeter(stream: MediaStream) {
     const AudioCtx =
       window.AudioContext ??
@@ -107,7 +87,7 @@ export function useVoiceCapture() {
     analyserFrameRef.current = requestAnimationFrame(tick);
   }
 
-  function stopLevelMeter() {
+  const stopLevelMeter = useCallback(() => {
     if (analyserFrameRef.current !== null) {
       cancelAnimationFrame(analyserFrameRef.current);
       analyserFrameRef.current = null;
@@ -117,7 +97,23 @@ export function useVoiceCapture() {
       analyserCtxRef.current = null;
     }
     useVoiceCaptureStore.getState().setAudioLevel(0);
-  }
+  }, []);
+
+  const releaseHardware = useCallback(() => {
+    if (pcmRecorderRef.current) {
+      pcmRecorderRef.current.stop();
+      pcmRecorderRef.current = null;
+    }
+    if (streamRef.current) {
+      for (const track of streamRef.current.getTracks()) track.stop();
+      streamRef.current = null;
+    }
+    stopLevelMeter();
+    pcmRecorderRef.current = null;
+  }, [stopLevelMeter]);
+
+  // Safety net: stop hardware on unmount, using the same stable release path.
+  useEffect(() => () => releaseHardware(), [releaseHardware]);
 
   const start = useCallback(async () => {
     const store = useVoiceCaptureStore.getState();
@@ -138,7 +134,7 @@ export function useVoiceCapture() {
       releaseHardware();
       store.markError(describeMicError(err));
     }
-  }, []);
+  }, [releaseHardware]);
 
   const stop = useCallback(async () => {
     const store = useVoiceCaptureStore.getState();
@@ -176,12 +172,12 @@ export function useVoiceCapture() {
     } finally {
       pcmRecorderRef.current = null;
     }
-  }, [navigate]);
+  }, [navigate, stopLevelMeter]);
 
   const cancel = useCallback(() => {
     releaseHardware();
     useVoiceCaptureStore.getState().close();
-  }, []);
+  }, [releaseHardware]);
 
   return {
     open,

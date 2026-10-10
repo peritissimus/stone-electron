@@ -42,6 +42,9 @@ export function useRichTextEditor() {
 
   const editor = useEditor({
     immediatelyRender: false,
+    // Document and node-view subscribers own their updates. Transactions
+    // must not rerender the surrounding note header and side panels.
+    shouldRerenderOnTransaction: false,
     extensions: buildEditorExtensions({
       editorConfig,
       shortcuts,

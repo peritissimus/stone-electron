@@ -4,4 +4,8 @@
  * This file runs before all tests.
  */
 
-// Empty setup for now - domain layer tests are pure and need no setup
+import { disableOnnxTelemetry } from '../src/main/infrastructure/telemetry/onnxTelemetry';
+
+// Vitest's fork pool runs this on each test process's main thread, before any
+// direct native ONNX consumers (including AEC integrations) initialize.
+disableOnnxTelemetry();
