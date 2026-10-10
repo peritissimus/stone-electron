@@ -24,7 +24,9 @@ export interface InputModalProps {
   /** Close handler */
   onClose: () => void;
   /** Submit handler - receives trimmed input value */
-  onSubmit: (value: string) => void;
+  onSubmit: (value: string) => void | boolean | Promise<void | boolean>;
+  /** Optional validation; invalid input stays in the modal for correction. */
+  validate?: (value: string) => string | null;
   /** Size variant for spacing */
   size?: SizeVariant;
   /** Left content (title/header) */
@@ -60,6 +62,7 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
       isOpen,
       onClose,
       onSubmit,
+      validate,
       size = 'normal',
       left,
       right,
@@ -72,6 +75,8 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
     ref,
   ) => {
     const [value, setValue] = useState(defaultValue);
+    const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Reset the input when the modal opens (or the default changes while open)
@@ -80,6 +85,7 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
       setPrevReset({ isOpen, defaultValue });
       if (isOpen) {
         setValue(defaultValue);
+        setError(null);
       }
     }
 
@@ -92,12 +98,25 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
       return () => clearTimeout(focusTimer);
     }, [isOpen]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (isSubmitting) return;
       const trimmedValue = value.trim();
+      const validationError = validate?.(trimmedValue);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
       if (trimmedValue) {
-        onSubmit(trimmedValue);
-        setValue('');
+        setIsSubmitting(true);
+        try {
+          const submitted = await onSubmit(trimmedValue);
+          if (submitted !== false) setValue('');
+        } catch (error) {
+          setError(error instanceof Error ? error.message : 'Could not save. Try again.');
+        } finally {
+          setIsSubmitting(false);
+        }
       }
     };
 
@@ -124,17 +143,28 @@ export const InputModal = React.forwardRef<HTMLDivElement, InputModalProps>(
                 ref={inputRef}
                 type="text"
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  if (error) setError(validate?.(e.target.value.trim()) ?? null);
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
+                aria-invalid={!!error}
+                aria-describedby={error ? 'input-modal-error' : undefined}
+                disabled={isSubmitting}
                 autoFocus
               />
+              {error && (
+                <p id="input-modal-error" role="alert" className="mt-2 text-xs text-destructive">
+                  {error}
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 {cancelLabel}
               </Button>
-              <Button type="submit" disabled={!value.trim()}>
+              <Button type="submit" disabled={!value.trim() || isSubmitting}>
                 {submitLabel}
               </Button>
             </DialogFooter>

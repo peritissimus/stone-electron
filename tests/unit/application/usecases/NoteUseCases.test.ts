@@ -316,4 +316,45 @@ describe('NoteUseCases', () => {
       useCases.getNote.execute({ id: 'missing' }),
     ).rejects.toBeInstanceOf(NoteNotFoundError);
   });
+
+  it.each([' \t ', 'a'.repeat(256)])(
+    'does not write files or rows for invalid new titles: %j',
+    async (title) => {
+      vi.mocked(workspaceRepository.findActive).mockResolvedValue({
+        id: 'ws-1',
+        folderPath: '/workspace',
+      } as never);
+      await expect(useCases.createNote.execute({ title })).rejects.toThrow('Note title');
+      expect(fileStorage.write).not.toHaveBeenCalled();
+      expect(noteRepository.save).not.toHaveBeenCalled();
+    },
+  );
+
+  it('gets a note with optional raw content', async () => {
+    vi.mocked(noteRepository.findById).mockResolvedValue(note());
+    vi.mocked(workspaceRepository.findById).mockResolvedValue({
+      id: 'ws-1',
+      folderPath: '/workspace',
+    } as never);
+    vi.mocked(fileStorage.exists).mockResolvedValue(true);
+    vi.mocked(fileStorage.read).mockResolvedValue('# Test\n\nBody');
+    await expect(
+      useCases.getNote.execute({ id: 'note-1', includeContent: true }),
+    ).resolves.toMatchObject({ content: '# Test\n\nBody' });
+  });
+
+  it('opens imported markdown with an oversized title without shortening it', async () => {
+    const title = 'a'.repeat(500);
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue({
+      id: 'ws-1',
+      folderPath: '/workspace',
+    } as never);
+    vi.mocked(noteRepository.findByFilePath).mockResolvedValue(null);
+    vi.mocked(fileStorage.exists).mockResolvedValue(true);
+    vi.mocked(fileStorage.read).mockResolvedValue(`# ${title}\n\nBody`);
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue(title);
+    const result = await useCases.getNoteByPath.execute({ filePath: 'Personal/imported.md' });
+    expect(result.note.title).toBe(title);
+    expect(fileStorage.write).not.toHaveBeenCalled();
+  });
 });

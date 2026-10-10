@@ -353,4 +353,38 @@ describe('WorkspaceUseCases', () => {
     });
     expect(indexNote).toHaveBeenCalled();
   });
+
+  it('syncs imported headings beyond the rename limit without truncation', async () => {
+    const title = 'a'.repeat(500);
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.glob).mockResolvedValue(['Imported.md']);
+    vi.mocked(fileStorage.getFileInfo).mockResolvedValue({
+      path: '/workspace/Imported.md',
+      name: 'Imported.md',
+      isDirectory: false,
+      size: 500,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+    });
+    vi.mocked(fileStorage.read).mockResolvedValue(`# ${title}`);
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue(title);
+    const result = await useCases.syncWorkspace.execute({ workspaceId: 'ws-1' });
+    expect(result.notes.created).toBe(1);
+    expect(result.notes.errors).toEqual([]);
+    const saved = vi.mocked(noteRepository.save).mock.calls[0][0];
+    expect(saved.title).toBe(title);
+
+    const revisedTitle = `${title} revised`;
+    vi.mocked(noteRepository.findAll).mockResolvedValue([saved.toPersistence()]);
+    vi.mocked(fileStorage.getFileInfo).mockResolvedValue({
+      path: '/workspace/Imported.md', name: 'Imported.md', isDirectory: false, size: 600,
+      createdAt: saved.createdAt, modifiedAt: new Date(saved.updatedAt.getTime() + 60_000),
+    });
+    vi.mocked(fileStorage.read).mockResolvedValue(`# ${revisedTitle}`);
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue(revisedTitle);
+    const refreshed = await useCases.syncWorkspace.execute({ workspaceId: 'ws-1' });
+    expect(refreshed.notes.updated).toBe(1);
+    expect(refreshed.notes.errors).toEqual([]);
+    expect(vi.mocked(noteRepository.save).mock.calls.at(-1)?.[0].title).toBe(revisedTitle);
+  });
 });

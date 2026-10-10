@@ -54,7 +54,7 @@ describe('NoteEntity', () => {
         NoteEntity.create({
           id: '',
           workspaceId: 'ws-1',
-        })
+        }),
       ).toThrow(NoteValidationError);
     });
 
@@ -65,6 +65,23 @@ describe('NoteEntity', () => {
       });
 
       expect(note.workspaceId).toBeNull();
+    });
+
+    it('trims the title on creation, just as a rename does', () => {
+      const note = NoteEntity.create({ id: 'note-1', title: '  Hội nghị — 東京  ' });
+      expect(note.title).toBe('Hội nghị — 東京');
+    });
+
+    it.each(['', ' \t\n ', 'a'.repeat(256)])(
+      'rejects invalid titles before creation: %j',
+      (title) => {
+        expect(() => NoteEntity.create({ id: 'note-1', title })).toThrow(NoteValidationError);
+      },
+    );
+
+    it('allows a trimmed title at the maximum length', () => {
+      const title = 'a'.repeat(255);
+      expect(NoteEntity.create({ id: 'note-1', title: ` ${title} ` }).title).toBe(title);
     });
   });
 
