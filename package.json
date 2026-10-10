@@ -17,6 +17,7 @@
   },
   "scripts": {
     "dev": "pnpm run build:dev-runtime && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev:stress": "vite --host 127.0.0.1 --port 5174 --strictPort --open /stress-test.html",
     "build:calendar-bridge": "node scripts/build-calendar-bridge.cjs",
     "build:dev-runtime": "pnpm run build:calendar-bridge && pnpm run build:main && pnpm run build:worker && pnpm run build:preload",
     "build": "pnpm run build:calendar-bridge && pnpm run build:main && pnpm run build:worker && pnpm run build:preload && pnpm run build:renderer",
