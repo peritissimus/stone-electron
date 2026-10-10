@@ -50,6 +50,25 @@ if ! command -v cmake >/dev/null 2>&1; then
   exit 1
 fi
 
+if [ "$(uname)" = "Darwin" ]; then
+  # Name the SDK explicitly: bare xcrun/compiler defaults can pick a newer
+  # Command Line Tools SDK that the selected Xcode linker cannot read.
+  macos_sdk="$(xcrun --sdk macosx --show-sdk-path)"
+  cmake_platform_options+=("-DCMAKE_OSX_SYSROOT=$macos_sdk")
+
+  # CMake caches absolute framework paths. Changing only the sysroot leaves
+  # those paths pointing at the old SDK, so refresh its generated configuration.
+  cmake_cache="$SRC_DIR/build/CMakeCache.txt"
+  if [ -f "$cmake_cache" ]; then
+    cached_sdk="$(sed -n 's/^CMAKE_OSX_SYSROOT:[^=]*=//p' "$cmake_cache")"
+    if [ "$cached_sdk" != "$macos_sdk" ]; then
+      echo "build-whisper: refreshing CMake configuration for $macos_sdk"
+      rm -f "$cmake_cache"
+      rm -rf "$SRC_DIR/build/CMakeFiles"
+    fi
+  fi
+fi
+
 if [ ! -d "$SRC_DIR" ]; then
   echo "build-whisper: cloning whisper.cpp $WHISPER_VERSION…"
   git clone --depth 1 --branch "$WHISPER_VERSION" https://github.com/ggml-org/whisper.cpp "$SRC_DIR"
