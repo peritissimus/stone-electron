@@ -17,6 +17,7 @@ import {
   type NoteProps,
 } from '../../../domain';
 import { stripFirstHeading } from '../../../domain/services';
+import { createImportedNote } from './importedNote';
 
 export const NoteUseCasesLive = Layer.effect(
   NoteUseCasesPort,
@@ -79,7 +80,7 @@ export const NoteUseCasesLive = Layer.effect(
             const folderPath = request.folderPath ?? policy.defaultNoteFolder;
             let filename: string;
             if (folderPath === policy.journalFolder && request.title) {
-              filename = `${request.title}.md`;
+              filename = `${note.title}.md`;
             } else {
               const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
               const random = yield* Random.nextIntBetween(0, 1000);
@@ -299,14 +300,15 @@ export const NoteUseCasesLive = Layer.effect(
             const isJournal = request.filePath.startsWith(`${journalFolder}/`);
             const extractedTitle =
               !isJournal && fileContent ? yield* markdownProcessor.extractTitle(fileContent) : null;
-            const id = yield* idGenerator.generate();
-            const note = yield* domainOperation(() =>
-              NoteEntity.create({
-                id,
+            const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+            const note = createImportedNote(
+              {
+                id: yield* idGenerator.generate(),
                 title: isJournal ? filenameWithoutExt : extractedTitle || filenameWithoutExt,
                 filePath: request.filePath,
                 workspaceId: workspace.id,
-              }),
+              },
+              new Date(now),
             );
             yield* noteRepository.save(note);
             yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, note.id);

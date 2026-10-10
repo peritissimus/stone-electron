@@ -8,7 +8,7 @@
  * just opened from collapsed.
  */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { FileTree } from '@renderer/workbench/panels/file-tree';
 import { useSidebarFocusHandoff } from '@renderer/services/view-state/hooks/useSidebarFocusHandoff';
 import { useSidebarKeyboardNav } from '@renderer/services/workspace/hooks/useSidebarKeyboardNav';
@@ -17,6 +17,11 @@ import { SidebarStatusRail } from './SidebarStatusRail';
 
 export function Sidebar() {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [treeScrollContainer, setTreeScrollContainer] = useState<HTMLDivElement | null>(null);
+  const attachTree = useCallback((element: HTMLDivElement | null) => {
+    containerRef.current = element;
+    setTreeScrollContainer(element);
+  }, []);
   const { pendingFocus, acknowledgeFocus } = useSidebarFocusHandoff();
   const { handleKeyDown, handleFocus, activeDescendantId } = useSidebarKeyboardNav();
 
@@ -36,16 +41,17 @@ export function Sidebar() {
       <SidebarNavList />
       <div className="mx-3 h-px bg-border/55" />
       <div
-        ref={containerRef}
+        ref={attachTree}
+        data-file-tree-scroll
         role="tree"
         aria-label="Files"
         aria-activedescendant={activeDescendantId}
         tabIndex={0}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
-        className="flex-1 overflow-y-auto px-2 pb-2 pt-3 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
+        className="min-h-0 flex-1 overflow-y-auto px-2 pb-2 pt-3 outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
       >
-        <FileTree />
+        <FileTree scrollContainer={treeScrollContainer} />
       </div>
       <SidebarStatusRail />
     </nav>

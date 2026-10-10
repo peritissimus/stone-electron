@@ -61,6 +61,26 @@ const notes = [
 beforeEach(() => {
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    return this.hasAttribute('data-file-tree-scroll') ? 600 : 0;
+  });
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const scroll = container?.querySelector<HTMLElement>('[data-file-tree-scroll]');
+    const isList = this.parentElement?.hasAttribute('data-file-tree');
+    const top = isList ? 68 - (scroll?.scrollTop ?? 0) : 20;
+    return new DOMRect(0, top, 240, this.hasAttribute('aria-hidden') ? 32 : 600);
+  });
   useSidebarFocusStore.setState({ cursorPath: null, pendingFocus: false });
   useNoteStore.getState().setNotes(notes);
   useFileTreeStore.setState({
@@ -80,6 +100,8 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   container?.remove();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 function mount(element: React.ReactNode) {
   container = document.createElement('div');
@@ -107,11 +129,15 @@ describe('sidebar tree accessibility', () => {
     press(tree, 'ArrowRight');
     const folder = activeItem(tree)!;
     expect(folder.getAttribute('aria-expanded')).toBe('true');
-    expect(folder.querySelector('[role="group"] [role="treeitem"]')).not.toBeNull();
+    expect(tree.querySelectorAll('[role="treeitem"]')).toHaveLength(3);
+    expect(folder.getAttribute('aria-posinset')).toBe('1');
+    expect(folder.getAttribute('aria-setsize')).toBe('2');
     press(tree, 'ArrowDown');
     expect(document.activeElement).toBe(tree);
     expect(activeItem(tree)?.getAttribute('aria-selected')).toBe('true');
     expect(activeItem(tree)?.getAttribute('aria-level')).toBe('2');
+    expect(activeItem(tree)?.getAttribute('aria-posinset')).toBe('1');
+    expect(activeItem(tree)?.getAttribute('aria-setsize')).toBe('1');
     expect(commands.navigate).toHaveBeenLastCalledWith('a');
 
     press(tree, 'End');
@@ -121,7 +147,90 @@ describe('sidebar tree accessibility', () => {
     expect(activeItem(tree)).toBe(folder);
     press(tree, 'ArrowLeft');
     expect(folder.getAttribute('aria-expanded')).toBe('false');
-    expect(folder.querySelector('[role="group"]')).toBeNull();
+    expect(tree.querySelectorAll('[role="treeitem"]')).toHaveLength(2);
+  });
+
+  it('navigates the full collection and keeps an offscreen active descendant mounted', () => {
+    const collection = Array.from({ length: 1284 }, (_, index) => ({
+      id: String(index),
+      title: `Note ${index}`,
+      filePath: `${index}.md`,
+      notebookId: null,
+      workspaceId: null,
+      isFavorite: false,
+      isPinned: false,
+      isArchived: false,
+      isDeleted: false,
+      deletedAt: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    })) satisfies Note[];
+    useNoteStore.getState().setNotes(collection);
+    useFileTreeStore
+      .getState()
+      .setTree(collection.map((note) => ({ name: note.title, path: note.filePath, type: 'file' })));
+    mount(<Sidebar />);
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    expect(tree.querySelectorAll('[role="treeitem"]').length).toBeLessThan(40);
+    act(() => tree.focus());
+    const first = activeItem(tree)!;
+    press(tree, 'End');
+    const last = activeItem(tree)!;
+    expect(last).not.toBeNull();
+    expect(document.activeElement).toBe(tree);
+    expect(last.getAttribute('aria-posinset')).toBe('1284');
+    expect(last.getAttribute('aria-setsize')).toBe('1284');
+    expect(commands.navigate).toHaveBeenLastCalledWith('1283');
+    expect(first.isConnected).toBe(false);
+    expect(tree.scrollTop).toBeGreaterThan(40000);
+
+    act(() => {
+      tree.scrollTop = 0;
+      tree.dispatchEvent(new Event('scroll'));
+    });
+    expect(activeItem(tree)).toBe(last);
+    expect(tree.scrollTop).toBe(0);
+    expect(tree.querySelectorAll('[role="treeitem"]').length).toBeLessThan(40);
+    press(tree, 'Home');
+    expect(activeItem(tree)?.getAttribute('aria-posinset')).toBe('1');
+    expect(commands.navigate).toHaveBeenLastCalledWith('0');
+    expect(last.isConnected).toBe(false);
+  });
+
+  it('reveals the collapsed ancestor when the current child was in a distant virtual window', () => {
+    useFileTreeStore.setState({
+      tree: [
+        {
+          name: 'Archive',
+          path: 'Archive',
+          type: 'folder',
+          children: Array.from({ length: 1284 }, (_, index) => ({
+            name: `${index}.md`,
+            path: `Archive/${index}.md`,
+            type: 'file' as const,
+          })),
+        },
+      ],
+      expandedPaths: new Set(['Archive']),
+    });
+    useSidebarFocusStore.setState({ cursorPath: 'Archive/1283.md' });
+    mount(<Sidebar />);
+    const tree = container.querySelector<HTMLElement>('[role="tree"]')!;
+    const child = activeItem(tree)!;
+    expect(child.getAttribute('aria-level')).toBe('2');
+    expect(child.getAttribute('aria-posinset')).toBe('1284');
+    expect(child.getAttribute('aria-setsize')).toBe('1284');
+    expect(tree.scrollTop).toBeGreaterThan(40000);
+    act(() => useFileTreeStore.getState().toggleExpanded('Archive'));
+    const folder = activeItem(tree)!;
+    expect(folder).not.toBeNull();
+    expect(folder.getAttribute('aria-level')).toBe('1');
+    expect(folder.getAttribute('aria-expanded')).toBe('false');
+    expect(folder.getAttribute('aria-setsize')).toBe('1');
+    expect(child.isConnected).toBe(false);
+    expect(tree.scrollTop).toBeLessThan(100);
+    expect(useSidebarFocusStore.getState().cursorPath).toBe('Archive');
+    expect(commands.navigate).not.toHaveBeenCalled();
   });
 
   it('restores a visible active descendant after external collapse and leaves action-button keys alone', () => {

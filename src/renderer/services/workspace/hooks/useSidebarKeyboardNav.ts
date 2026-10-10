@@ -5,6 +5,7 @@ import { useFileTreeStore } from '@renderer/services/workspace/model/fileTreeSto
 import { useSidebarFocusStore } from '@renderer/services/view-state/model/sidebarFocusStore';
 import {
   useVisibleTreeItems,
+  getVisibleTreeCursorIndex,
   type VisibleTreeItem,
 } from '@renderer/services/workspace/hooks/useVisibleTreeItems';
 import { useNoteStore } from '@renderer/features/notes/model/noteStore';
@@ -40,14 +41,8 @@ export function useSidebarKeyboardNav() {
 
   // A collapsed folder or filesystem refresh can remove the cursor's row.
   // Keep the active descendant attached to a visible node without opening it.
-  let visibleCursorPath = cursorPath;
-  if (cursorPath !== null && !visibleItems.some((item) => item.path === cursorPath)) {
-    let fallback = visibleItems[0];
-    for (const item of visibleItems) {
-      if (item.type === 'folder' && cursorPath.startsWith(`${item.path}/`)) fallback = item;
-    }
-    visibleCursorPath = fallback?.path ?? null;
-  }
+  const visibleCursorIndex = getVisibleTreeCursorIndex(visibleItems, cursorPath);
+  const visibleCursorPath = visibleItems[visibleCursorIndex]?.path ?? null;
   useEffect(() => {
     if (visibleCursorPath !== cursorPath) setCursor(visibleCursorPath);
   }, [cursorPath, visibleCursorPath, setCursor]);

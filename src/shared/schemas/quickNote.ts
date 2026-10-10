@@ -7,6 +7,7 @@
  */
 
 import { z } from './schema';
+import { NoteTitleRequestSchema } from './notes';
 
 export const QuickNoteSlotSchema = z.literalEnum(['personal', 'work']);
 export type QuickNoteSlot = z.infer<typeof QuickNoteSlotSchema>;
@@ -14,7 +15,7 @@ export type QuickNoteSlot = z.infer<typeof QuickNoteSlotSchema>;
 export const CreateQuickNoteRequestSchema = z
   .object({
     slot: QuickNoteSlotSchema,
-    title: z.string().optional(),
+    title: NoteTitleRequestSchema.optional(),
     workspaceId: z.string().optional(),
   })
   .strict();

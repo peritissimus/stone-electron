@@ -11,6 +11,7 @@ import {
   NoteOperationError,
   NoteRepositoryPort,
   NoteUseCasesPort,
+  NoteValidationError,
   PathServicePort,
   WorkspaceRepositoryPort,
   type INoteUseCases,
@@ -326,5 +327,60 @@ describe('NoteUseCases', () => {
     await expect(useCases.getNote.execute({ id: 'missing' })).rejects.toBeInstanceOf(
       NoteNotFoundError,
     );
+  });
+
+  it.each([' \t ', 'a'.repeat(256)])(
+    'returns recoverable validation failures without writing invalid new titles: %j',
+    async (title) => {
+      vi.mocked(workspaceRepository.findActive).mockResolvedValue({
+        id: 'ws-1',
+        folderPath: '/workspace',
+      } as never);
+      const result = await runtime.runPromise(
+        NoteUseCasesPort.pipe(
+          Effect.flatMap((service) => service.createNote.execute({ title })),
+          Effect.catchAll((error) => Effect.succeed(error)),
+        ),
+      );
+      expect(result).toBeInstanceOf(NoteValidationError);
+      expect(fileStorage.write).not.toHaveBeenCalled();
+      expect(noteRepository.save).not.toHaveBeenCalled();
+      expect(eventPublisher.publish).not.toHaveBeenCalled();
+    },
+  );
+
+  it('creates journal filenames from the validated and trimmed title', async () => {
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue({
+      id: 'ws-1',
+      folderPath: '/workspace',
+    } as never);
+    const result = await useCases.createNote.execute({
+      title: '  2026-10-11  ',
+      folderPath: 'Journal',
+      content: 'Journal body',
+    });
+    expect(result.note).toMatchObject({
+      title: '2026-10-11',
+      filePath: 'Journal/2026-10-11.md',
+    });
+    expect(fileStorage.write).toHaveBeenCalledWith(
+      '/workspace/Journal/2026-10-11.md',
+      'Journal body',
+    );
+  });
+
+  it('opens imported markdown with an oversized title without shortening it', async () => {
+    const title = 'a'.repeat(500);
+    vi.mocked(workspaceRepository.findActive).mockResolvedValue({
+      id: 'ws-1',
+      folderPath: '/workspace',
+    } as never);
+    vi.mocked(noteRepository.findByFilePath).mockResolvedValue(null);
+    vi.mocked(fileStorage.exists).mockResolvedValue(true);
+    vi.mocked(fileStorage.read).mockResolvedValue(`# ${title}\n\nBody`);
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue(title);
+    const result = await useCases.getNoteByPath.execute({ filePath: 'Personal/imported.md' });
+    expect(result.note.title).toBe(title);
+    expect(fileStorage.write).not.toHaveBeenCalled();
   });
 });

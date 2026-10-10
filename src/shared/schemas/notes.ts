@@ -68,10 +68,22 @@ export type NoteWithMetaResponse = z.infer<typeof NoteWithMetaSchema>;
 // Request payloads
 // ============================================================================
 
+export const NOTE_TITLE_MAX_LENGTH = 255;
+
+// This constrains writes only: imported and legacy titles remain readable.
+export const NoteTitleRequestSchema = z
+  .string()
+  .transform((title) => title.trim())
+  .refine((title) => title.length > 0, 'Note title cannot be empty')
+  .refine(
+    (title) => title.length <= NOTE_TITLE_MAX_LENGTH,
+    `Note title cannot exceed ${NOTE_TITLE_MAX_LENGTH} characters`,
+  );
+
 export const CreateNoteRequestSchema = z
   .object({
     id: z.string().optional(),
-    title: z.string().optional(),
+    title: NoteTitleRequestSchema.optional(),
     content: z.string().optional(),
     folderPath: z.string().optional(),
     notebookId: z.string().optional(),
@@ -90,7 +102,7 @@ export const GetNoteContentRequestSchema = GetNoteRequestSchema;
 export const UpdateNoteRequestSchema = z
   .object({
     id: z.string(),
-    title: z.string().optional(),
+    title: NoteTitleRequestSchema.optional(),
     content: z.string().optional(),
     notebookId: z.string().optional(),
     // Renderer passes a `silent` flag on autosave; accepted but unused by

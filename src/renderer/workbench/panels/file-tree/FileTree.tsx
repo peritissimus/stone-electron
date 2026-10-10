@@ -5,9 +5,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Heading3 } from '@renderer/components/base/ui/text';
 import { InputModal } from '@renderer/components/composites';
-import { useFileTreeNodes } from '@renderer/services/workspace/hooks/useFileTree';
+import { useVirtualFileTree } from '@renderer/services/workspace/hooks/useVirtualFileTree';
+import { useNoteTitleValidation } from '@renderer/features/notes/hooks/useNoteTitleValidation';
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
 import { useFileTreeAPI } from '@renderer/services/workspace/commands/useFileTreeAPI';
 import { useNavigateToNote } from '@renderer/services/navigation';
@@ -15,15 +17,26 @@ import { logger } from '@renderer/services/telemetry/logger';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
-export const FileTree = React.memo(function FileTree() {
+export const FileTree = React.memo(function FileTree({
+  scrollContainer,
+}: {
+  scrollContainer: HTMLDivElement | null;
+}) {
   const navigateToNote = useNavigateToNote();
-  const tree = useFileTreeNodes();
+  const {
+    items,
+    listRef,
+    measureRef,
+    rowSize,
+    renderedIndices,
+    setDragPath,
+    setFocusPath,
+    onMenuOpenChange,
+  } = useVirtualFileTree(scrollContainer);
+  const validateNoteTitle = useNoteTitleValidation();
   const { createNote, updateNote, deleteNote, moveNote } = useNoteAPI();
   const { loadFileTree, moveFolder } = useFileTreeAPI();
   const [renameTarget, setRenameTarget] = useState<{ noteId: string; title: string } | null>(null);
-  const requestRename = useCallback((noteId: string, title: string) => {
-    setRenameTarget({ noteId, title });
-  }, []);
 
   const handleCreateNoteInFolder = useCallback(
     async (folderPath: string | null) => {
@@ -51,11 +64,15 @@ export const FileTree = React.memo(function FileTree() {
   const handleRenameNote = useCallback(
     async (noteId: string, newTitle: string) => {
       const trimmed = newTitle.trim();
-      if (!trimmed) return;
+      if (!trimmed) return false;
       try {
-        await updateNote(noteId, { title: trimmed });
+        const updated = await updateNote(noteId, { title: trimmed });
+        if (!updated) toast.error('Could not rename note. Please try again.');
+        return !!updated;
       } catch (error) {
         logger.error('Failed to rename note', error);
+        toast.error('Could not rename note. Please try again.');
+        return false;
       }
     },
     [updateNote],
@@ -105,46 +122,87 @@ export const FileTree = React.memo(function FileTree() {
     [moveFolder, loadFileTree],
   );
 
+  const handleShowRename = useCallback((noteId: string, title: string) => {
+    setRenameTarget({ noteId, title });
+  }, []);
+
+  const rowPath = (target: EventTarget | null): string | null =>
+    target instanceof Element
+      ? (target.closest<HTMLElement>('[data-file-tree-path]')?.dataset.fileTreePath ?? null)
+      : null;
+
   return (
-    <div className="space-y-0.5">
+    <div data-file-tree data-file-tree-row-count={items.length}>
       <div className="mb-1 flex h-8 items-center px-2">
         <span className="text-[11px] font-medium tracking-wide text-muted-foreground/80">
           Files
         </span>
       </div>
-      {tree.map((node) =>
-        node.type === 'folder' ? (
-          <FolderNode
-            key={`folder-${node.path || node.name}`}
-            node={node}
-            level={0}
-            onCreateNote={handleCreateNoteInFolder}
-            onRenameFile={requestRename}
-            onDeleteFile={handleDeleteNote}
-            onMoveFile={handleMoveNote}
-            onMoveFolder={handleMoveFolder}
-          />
-        ) : (
-          <FileLeaf
-            key={`file-${node.path}`}
-            node={node}
-            level={0}
-            onRename={requestRename}
-            onDelete={handleDeleteNote}
-            onMove={handleMoveNote}
-          />
-        ),
-      )}
+      <div
+        ref={listRef}
+        className="relative"
+        style={{ height: items.length * rowSize, overflowAnchor: 'none' }}
+        onDragStartCapture={(event) => setDragPath(rowPath(event.target))}
+        onDragEndCapture={() => setDragPath(null)}
+        onDropCapture={() => setDragPath(null)}
+        onFocusCapture={(event) => setFocusPath(rowPath(event.target))}
+        onBlurCapture={(event) => setFocusPath(rowPath(event.relatedTarget))}
+      >
+        <div
+          ref={measureRef}
+          aria-hidden
+          className="pointer-events-none invisible absolute h-8 w-px"
+        />
+        {renderedIndices.map((index) => {
+          const { node, level, path, positionInSet, setSize } = items[index];
+          return (
+            <div
+              key={`${node.type}-${path}`}
+              data-file-tree-row
+              data-file-tree-path={path}
+              data-file-tree-level={level}
+              className="absolute inset-x-0"
+              style={{ top: index * rowSize }}
+            >
+              {node.type === 'folder' ? (
+                <FolderNode
+                  node={node}
+                  level={level}
+                  positionInSet={positionInSet}
+                  setSize={setSize}
+                  onCreateNote={handleCreateNoteInFolder}
+                  onMoveFile={handleMoveNote}
+                  onMoveFolder={handleMoveFolder}
+                />
+              ) : (
+                <FileLeaf
+                  node={node}
+                  level={level}
+                  positionInSet={positionInSet}
+                  setSize={setSize}
+                  onRename={handleShowRename}
+                  onDelete={handleDeleteNote}
+                  onMove={handleMoveNote}
+                  onMenuOpenChange={onMenuOpenChange}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       <InputModal
         isOpen={!!renameTarget}
         onClose={() => setRenameTarget(null)}
         onSubmit={async (value) => {
           if (renameTarget) {
-            await handleRenameNote(renameTarget.noteId, value);
-            setRenameTarget(null);
+            const renamed = await handleRenameNote(renameTarget.noteId, value);
+            if (renamed) setRenameTarget(null);
+            return renamed;
           }
+          return false;
         }}
+        validate={validateNoteTitle}
         left={<Heading3>Rename Note</Heading3>}
         placeholder="Note title"
         submitLabel="Rename"

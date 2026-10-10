@@ -11,6 +11,8 @@ import { logger } from '@renderer/services/telemetry/logger';
 import { cn } from '@renderer/lib/utils';
 import { GitBranch, ArrowsClockwise, Check, Warning } from '@phosphor-icons/react';
 
+const countFormat = new Intl.NumberFormat();
+
 function formatLastSync(iso: string | null | undefined): string {
   if (!iso) return '';
   const ms = Date.now() - new Date(iso).getTime();
@@ -60,7 +62,10 @@ export function GitSyncButton() {
 
     if (result.success) {
       const moved =
-        [result.pushed ? `↑${result.pushed}` : null, result.pulled ? `↓${result.pulled}` : null]
+        [
+          result.pushed ? `↑${countFormat.format(result.pushed)}` : null,
+          result.pulled ? `↓${countFormat.format(result.pulled)}` : null,
+        ]
           .filter(Boolean)
           .join(' ') || null;
       toast.success(moved ? `Synced ${moved}` : 'Up to date');
@@ -70,7 +75,7 @@ export function GitSyncButton() {
           const files = result.conflicts ?? [];
           toast.error(
             files.length > 0
-              ? `Conflict in ${files.length} file${files.length === 1 ? '' : 's'}`
+              ? `Conflict in ${countFormat.format(files.length)} file${files.length === 1 ? '' : 's'}`
               : 'Sync conflict',
             {
               description: `Your notes are safe, committed locally. Resolve in a git tool.${
@@ -107,6 +112,22 @@ export function GitSyncButton() {
   const hasRemoteChanges = status.ahead > 0 || status.behind > 0;
   const hasLocalChanges = totalChanges > 0;
   const needsSync = hasLocalChanges || hasRemoteChanges;
+  const branch = status.branch || 'main';
+  const localChangesLabel = `${countFormat.format(totalChanges)} local ${totalChanges === 1 ? 'change' : 'changes'}`;
+  const aheadLabel = `${countFormat.format(status.ahead)} ${status.ahead === 1 ? 'commit' : 'commits'} to push`;
+  const behindLabel = `${countFormat.format(status.behind)} ${status.behind === 1 ? 'commit' : 'commits'} to pull`;
+  const syncLabel = !status.hasRemote
+    ? 'No remote configured - configure in Settings > Git Sync'
+    : syncing
+      ? 'Syncing...'
+      : `Sync workspace (commit, pull --rebase, push)${formatLastSync(status.lastSyncAt)}`;
+  const statusLabel = [
+    hasLocalChanges && localChangesLabel,
+    status.hasRemote && status.ahead > 0 && aheadLabel,
+    status.hasRemote && status.behind > 0 && behindLabel,
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   return (
     <div>
@@ -115,58 +136,59 @@ export function GitSyncButton() {
         onClick={handleSync}
         disabled={syncing || !status.hasRemote}
         className={cn(
-          'flex h-8 items-center justify-between w-full px-2 rounded-lg text-xs',
+          'flex min-h-10 min-w-0 w-full flex-col items-stretch justify-center gap-1 px-2 py-1.5 rounded-lg text-xs text-start',
           'text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-[background-color,color,scale] duration-150 ease-out active:scale-[0.96]',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           needsSync && status.hasRemote && 'bg-accent/30',
         )}
-        title={
-          !status.hasRemote
-            ? 'No remote configured - configure in Settings > Git Sync'
-            : syncing
-              ? 'Syncing...'
-              : `Sync workspace (commit, pull --rebase, push)${formatLastSync(status.lastSyncAt)}`
-        }
+        title={`Branch: ${branch}\n${syncLabel}${statusLabel ? `\n${statusLabel}` : ''}`}
+        aria-label={`${syncLabel}. Branch: ${branch}${statusLabel ? `. ${statusLabel}` : ''}`}
       >
-        <div className="flex min-w-0 items-center gap-2">
+        <span className="flex min-w-0 items-center gap-2">
           <span className="flex size-4 shrink-0 items-center justify-center">
-            <GitBranch size={14} className="text-muted-foreground" />
+            <GitBranch size={14} className="shrink-0 text-muted-foreground" aria-hidden="true" />
           </span>
-          <span className="text-muted-foreground truncate max-w-[80px]">
-            {status.branch || 'main'}
+          <span className="min-w-0 flex-1 truncate text-muted-foreground" title={branch}>
+            {branch}
           </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 tabular-nums">
-          {hasLocalChanges && (
-            <span
-              className="flex items-center gap-0.5 text-amber-500"
-              title={`${totalChanges} local changes`}
-            >
-              <Warning size={12} weight="fill" />
-              <span>{totalChanges}</span>
-            </span>
-          )}
-
-          {status.hasRemote && status.ahead > 0 && (
-            <span className="text-blue-500" title={`${status.ahead} commits to push`}>
-              ↑{status.ahead}
-            </span>
-          )}
-          {status.hasRemote && status.behind > 0 && (
-            <span className="text-orange-500" title={`${status.behind} commits to pull`}>
-              ↓{status.behind}
-            </span>
-          )}
 
           {syncing ? (
-            <ArrowsClockwise size={14} className="animate-spin text-primary" />
+            <ArrowsClockwise
+              size={14}
+              className="shrink-0 animate-spin text-primary"
+              aria-hidden="true"
+            />
           ) : needsSync && status.hasRemote ? (
-            <ArrowsClockwise size={14} className="text-primary" />
+            <ArrowsClockwise size={14} className="shrink-0 text-primary" aria-hidden="true" />
           ) : status.hasRemote ? (
-            <Check size={14} className="text-green-500" />
+            <Check size={14} className="shrink-0 text-green-500" aria-hidden="true" />
           ) : null}
-        </div>
+        </span>
+
+        {(hasLocalChanges || (status.hasRemote && hasRemoteChanges)) && (
+          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+            {hasLocalChanges && (
+              <span
+                className="flex shrink-0 items-center gap-0.5 whitespace-nowrap text-amber-500"
+                title={localChangesLabel}
+              >
+                <Warning size={12} weight="fill" className="shrink-0" aria-hidden="true" />
+                <span>{countFormat.format(totalChanges)}</span>
+              </span>
+            )}
+
+            {status.hasRemote && status.ahead > 0 && (
+              <span className="shrink-0 whitespace-nowrap text-blue-500" title={aheadLabel}>
+                ↑{countFormat.format(status.ahead)}
+              </span>
+            )}
+            {status.hasRemote && status.behind > 0 && (
+              <span className="shrink-0 whitespace-nowrap text-orange-500" title={behindLabel}>
+                ↓{countFormat.format(status.behind)}
+              </span>
+            )}
+          </span>
+        )}
       </button>
     </div>
   );

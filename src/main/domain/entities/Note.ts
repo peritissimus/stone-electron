@@ -51,7 +51,7 @@ export class NoteEntity {
     const now = new Date();
     return new NoteEntity({
       id: props.id,
-      title: props.title || 'Untitled',
+      title: props.title === undefined ? 'Untitled' : NoteEntity.validateTitle(props.title),
       filePath: props.filePath || null,
       notebookId: props.notebookId || null,
       workspaceId: props.workspaceId || null,
@@ -124,6 +124,11 @@ export class NoteEntity {
    * Update the note title
    */
   updateTitle(newTitle: string): void {
+    this.props.title = NoteEntity.validateTitle(newTitle);
+    this.markUpdated();
+  }
+
+  private static validateTitle(newTitle: string): string {
     if (!newTitle || newTitle.trim().length === 0) {
       throw new NoteValidationError('Note title cannot be empty');
     }
@@ -131,8 +136,7 @@ export class NoteEntity {
     if (trimmedTitle.length > 255) {
       throw new NoteValidationError('Note title cannot exceed 255 characters');
     }
-    this.props.title = trimmedTitle;
-    this.markUpdated();
+    return trimmedTitle;
   }
 
   /**

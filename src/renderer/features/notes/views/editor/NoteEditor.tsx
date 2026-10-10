@@ -16,7 +16,6 @@ import { useDocumentBuffer } from '@renderer/services/documents/hooks/useDocumen
 import { useImageUpload } from '@renderer/features/notes/hooks/useImageUpload';
 import { useEditorMode } from '@renderer/features/notes/hooks/useEditorMode';
 import { useNoteExport } from '@renderer/features/notes/hooks/useNoteExport';
-import { useAutosave } from '@renderer/features/notes/hooks/useAutosave';
 import { NoteEditorHeader } from './NoteEditorHeader';
 import { NoteEditorEmptyState } from './NoteEditorEmptyState';
 import { NoteEditorContent } from './NoteEditorContent';
@@ -141,12 +140,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
     document.addEventListener('focusout', handleFocusOut);
     return () => document.removeEventListener('focusout', handleFocusOut);
   }, []);
-
-  const { saveDebounced: saveTitleDebounced } = useAutosave<{ title: string; noteId: string }>({
-    saveFn: async ({ noteId, title: nextTitle }) => {
-      await updateNote(noteId, { title: nextTitle }, false);
-    },
-  });
 
   // Scroll container refs for preserving scroll position on mode switch
   const richEditorScrollRef = useRef<HTMLDivElement>(null);
@@ -302,12 +295,14 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
   );
 
   const handleTitleChange = useCallback(
-    (newTitle: string) => {
-      setTitle(newTitle);
-      if (!activeNoteId) return;
-      saveTitleDebounced({ noteId: activeNoteId, title: newTitle });
+    async (newTitle: string) => {
+      if (!activeNoteId) return false;
+      const updatedNote = await updateNote(activeNoteId, { title: newTitle }, false);
+      // The store subscription updates the active title; a completed save for
+      // a previous note must not overwrite the title after navigation.
+      return !!updatedNote;
     },
-    [activeNoteId, saveTitleDebounced],
+    [activeNoteId, updateNote],
   );
 
   // Handle note link clicks
@@ -366,6 +361,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function
   return (
     <div className="flex-1 flex flex-col bg-background min-h-0">
       <NoteEditorHeader
+        key={activeNote.id}
         title={title}
         onTitleChange={handleTitleChange}
         isFavorite={activeNote.isFavorite || false}

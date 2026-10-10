@@ -1,0 +1,53 @@
+/* Preview chrome only. The components under test keep their production styles. */
+.stress-toolbar {
+  position: fixed;
+  z-index: 40;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 16px);
+  color: #222;
+  font:
+    11px/1.4 system-ui,
+    sans-serif;
+  text-align: center;
+}
+.stress-caption {
+  display: table;
+  margin: 0 auto 3px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #eee;
+}
+.stress-segments {
+  display: flex;
+  gap: 2px;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  background: #ddd;
+  box-shadow: 0 2px 8px #0002;
+}
+.stress-segments button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 5px;
+  padding: 5px 9px;
+  color: #333;
+  background: transparent;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.stress-segments button[aria-pressed='true'] {
+  background: #fff;
+}
+.stress-segments button:focus-visible {
+  outline: 2px solid #333;
+  outline-offset: -2px;
+}
+.stress-segments button:disabled {
+  cursor: wait;
+}

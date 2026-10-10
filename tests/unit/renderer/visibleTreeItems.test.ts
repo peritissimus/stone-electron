@@ -72,4 +72,20 @@ describe('flattenVisibleTree', () => {
     expect(folderA?.isExpanded).toBe(true);
     expect(folderB?.isExpanded).toBe(false);
   });
+
+  it('retains each original node and its depth for the windowed renderer', () => {
+    const leaf = file('Work/Q2/plan.md');
+    const nested = folder('Work/Q2', [leaf]);
+    const parent = folder('Work', [nested]);
+    const rows = flattenVisibleTree([parent], new Set(['Work', 'Work/Q2']));
+
+    expect(rows.map((row) => row.level)).toEqual([0, 1, 2]);
+    expect(rows[0].node).toBe(parent);
+    expect(rows[1].node).toBe(nested);
+    expect(rows[2].node).toBe(leaf);
+    expect(flattenVisibleTree([parent], new Set(['Work'])).map((row) => row.path)).toEqual([
+      'Work',
+      'Work/Q2',
+    ]);
+  });
 });

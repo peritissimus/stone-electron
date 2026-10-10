@@ -1,4 +1,5 @@
 import { Effect, Layer } from 'effect';
+import { createImportedNote } from '../note/importedNote';
 import {
   AppConfigRepositoryPort,
   DOMAIN_EVENT_TYPES,
@@ -193,12 +194,16 @@ export const WorkspaceUseCasesLive = Layer.effect(
               const title =
                 extracted ??
                 (yield* pathService.basename(entry.relativePath, '.md'));
-              const note = NoteEntity.create({
-                id: yield* idGenerator.generate(),
-                title,
-                filePath: entry.relativePath,
-                workspaceId: workspace.id,
-              });
+              const now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
+              const note = createImportedNote(
+                {
+                  id: yield* idGenerator.generate(),
+                  title,
+                  filePath: entry.relativePath,
+                  workspaceId: workspace.id,
+                },
+                new Date(now),
+              );
               yield* noteRepository.save(note);
               yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, {
                 id: note.id,
@@ -250,12 +255,13 @@ export const WorkspaceUseCasesLive = Layer.effect(
                 workspace.folderPath,
                 entry.relativePath,
               );
-              const entity = NoteEntity.fromPersistence(existing);
               const content = yield* fileStorage.read(absolutePath);
-              if (content) {
-                const title = yield* markdownProcessor.extractTitle(content);
-                if (title && title !== existing.title) entity.updateTitle(title);
-              }
+              const title = content ? yield* markdownProcessor.extractTitle(content) : null;
+              // The file is already persisted source material, not a rename request.
+              const entity = NoteEntity.fromPersistence({
+                ...existing,
+                title: title ?? existing.title,
+              });
               if (existing.filePath) entity.updateFilePath(existing.filePath);
               yield* noteRepository.save(entity);
               yield* publish(DOMAIN_EVENT_TYPES.NOTE_UPDATED, {
