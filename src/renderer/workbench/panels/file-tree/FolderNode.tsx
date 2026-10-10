@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { FolderSimple, FolderOpen, Plus } from '@phosphor-icons/react';
-import { useFileTree, type FileTreeNode } from '@renderer/services/workspace/hooks/useFileTree';
-import { useSidebarCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import {
+  useFileTreeFolder,
+  type FileTreeNode,
+} from '@renderer/services/workspace/hooks/useFileTree';
+import { useSidebarItemCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import { getSidebarTreeItemId } from '@renderer/lib/sidebarTree';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/services/telemetry/logger';
 import { normalizePath } from '@renderer/lib/path';
@@ -15,6 +19,8 @@ import {
 interface FolderNodeProps {
   node: FileTreeNode;
   level: number;
+  positionInSet: number;
+  setSize: number;
   onCreateNote: (folderPath: string | null) => Promise<void>;
   onMoveFile: (noteId: string, destinationPath: string | null) => Promise<void>;
   onMoveFolder: (sourcePath: string, destinationPath: string | null) => Promise<void>;
@@ -25,15 +31,14 @@ const handleDragEnd = (e: React.DragEvent) => {
 };
 
 export const FolderNode = React.memo<FolderNodeProps>(
-  ({ node, level, onCreateNote, onMoveFile, onMoveFolder }) => {
+  ({ node, level, positionInSet, setSize, onCreateNote, onMoveFile, onMoveFolder }) => {
     const normalizedPath = normalizePath(node.path);
 
-    const { expandedPaths, activeFolder, toggleExpanded } = useFileTree();
-    const isExpanded = expandedPaths.has(normalizedPath);
-    const isActive = normalizePath(activeFolder || '') === normalizedPath;
+    const { isExpanded, isActive, toggleExpanded } = useFileTreeFolder(normalizedPath);
 
-    const { cursorPath, setCursor } = useSidebarCursor();
-    const isCursor = cursorPath === normalizedPath;
+    const { isCursor, requestFocus } = useSidebarItemCursor(normalizedPath);
+    const itemId = getSidebarTreeItemId(normalizedPath);
+    const hasChildren = (node.children?.length ?? 0) > 0;
 
     const [isDragOver, setIsDragOver] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
@@ -110,12 +115,19 @@ export const FolderNode = React.memo<FolderNodeProps>(
 
     const handleClick = (event: React.MouseEvent | React.KeyboardEvent) => {
       event.stopPropagation();
-      setCursor(normalizedPath);
+      requestFocus(normalizedPath);
       toggleExpanded(normalizedPath);
     };
 
     return (
       <div
+        id={itemId}
+        role="treeitem"
+        aria-labelledby={`${itemId}-label`}
+        aria-level={level + 1}
+        aria-posinset={positionInSet}
+        aria-setsize={setSize}
+        aria-expanded={hasChildren ? isExpanded : undefined}
         draggable={!isRootFolder}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -133,16 +145,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
           className={fileTreeRowClassName}
           data-sidebar-cursor={isCursor ? 'true' : undefined}
           title={normalizedPath || node.name}
-          aria-expanded={isExpanded}
-          role="button"
-          tabIndex={-1}
           onClick={handleClick}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleClick(e);
-            }
-          }}
           style={getFileTreeRowStyle(level)}
         >
           {isExpanded ? (
@@ -157,6 +160,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
             />
           )}
           <span
+            id={`${itemId}-label`}
             className={cn(
               fileTreeLabelClassName,
               isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
@@ -168,7 +172,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
           <div
             className={cn(
               'ms-auto shrink-0 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100',
-              isHovered && 'opacity-100',
+              (isHovered || isCursor) && 'opacity-100',
             )}
             onClick={(e) => e.stopPropagation()}
           >
@@ -178,6 +182,7 @@ export const FolderNode = React.memo<FolderNodeProps>(
               className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-[background-color,color,scale] duration-150 ease-out hover:bg-foreground/10 hover:text-foreground active:scale-[0.96]"
               title={`New note in ${node.name}`}
               aria-label={`Create note in ${node.name}`}
+              tabIndex={isCursor ? 0 : -1}
             >
               <Plus size={14} weight="bold" />
             </button>

@@ -45,19 +45,15 @@ export function EditorStats({ editor }: EditorStatsProps) {
     update();
     if (!editor) return;
 
-    // 'update' alone misses the note being hydrated: the content can be loaded
-    // into the editor before this effect subscribes, leaving the counts stuck at
-    // zero until the first keystroke. 'transaction' also covers programmatic
-    // content changes, so filter to the ones that actually changed the document
-    // and ignore pure selection moves.
+    // Transactions include silent document hydration as well as edits. A
+    // normal edit also emits 'update', so listening to both would scan the
+    // entire document twice. Ignore selection-only transactions.
     const onTransaction = ({ transaction }: { transaction: { docChanged: boolean } }) => {
       if (transaction.docChanged) update();
     };
 
-    editor.on('update', update);
     editor.on('transaction', onTransaction);
     return () => {
-      editor.off('update', update);
       editor.off('transaction', onTransaction);
     };
   }, [editor]);

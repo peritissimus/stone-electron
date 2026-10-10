@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useSidebarCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
-import { useVisibleTreeItems } from './useVisibleTreeItems';
+import { useSidebarFocusStore } from '@renderer/services/view-state/model/sidebarFocusStore';
+import { getVisibleTreeCursorIndex, useVisibleTreeItems } from './useVisibleTreeItems';
 
 const OVERSCAN = 6;
 const ROW_GAP = 2;
@@ -31,7 +31,7 @@ export function getTreeWindow(
 /** Window the same flattened rows that drive sidebar keyboard navigation. */
 export function useVirtualFileTree(scrollContainer: HTMLDivElement | null) {
   const items = useVisibleTreeItems();
-  const { cursorPath } = useSidebarCursor();
+  const cursorPath = useSidebarFocusStore((state) => state.cursorPath);
   const listRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [rowSize, setRowSize] = useState(34);
@@ -75,7 +75,7 @@ export function useVirtualFileTree(scrollContainer: HTMLDivElement | null) {
   }, [scrollContainer, readViewport]);
 
   const cursorIndex = useMemo(
-    () => items.findIndex((item) => item.path === cursorPath),
+    () => getVisibleTreeCursorIndex(items, cursorPath),
     [items, cursorPath],
   );
 

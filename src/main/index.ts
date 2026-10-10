@@ -9,6 +9,7 @@ import { app, BrowserWindow, globalShortcut, ipcMain, session } from 'electron';
 import { Effect } from 'effect';
 import path from 'node:path';
 import net from 'node:net';
+import { pathToFileURL } from 'node:url';
 import { lookup as dnsLookup } from 'node:dns';
 
 // Import from main architecture
@@ -29,7 +30,11 @@ import {
   updateTrayState,
   type TrayRecorderPhase,
 } from '@main/infrastructure/electron/tray';
-import { hardenWindowNavigation } from '@main/infrastructure/electron/windowSecurity';
+import {
+  hardenWindowNavigation,
+  isTrustedRenderer,
+} from '@main/infrastructure/electron/windowSecurity';
+import { installIpcSenderGuard } from '@main/infrastructure/electron/ipcSecurity';
 import { relocateUserData } from '@main/infrastructure/electron/appPaths';
 
 // Pin the app-data dir to ~/.config/stone (config, DB, keys, logs) on every
@@ -37,6 +42,7 @@ import { relocateUserData } from '@main/infrastructure/electron/appPaths';
 // database manager, repositories, or first file-log write read userData — so it
 // is the very first thing the main process does.
 relocateUserData();
+installIpcSenderGuard();
 
 // E2E-only: automated tests have no user gesture, so AudioContexts would start
 // suspended and the recording capture graph (including the renderer's mocked
@@ -237,6 +243,7 @@ async function createWindow() {
         preload: preloadPath,
         nodeIntegration: false,
         contextIsolation: true,
+        sandbox: true,
       },
       titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
       transparent: process.platform === 'darwin',
@@ -251,13 +258,13 @@ async function createWindow() {
     // Load the app
     if (isDev) {
       const devServerUrl = await resolveDevServerUrl();
-      hardenWindowNavigation(mainWindow, [devServerUrl, 'file://']);
+      hardenWindowNavigation(mainWindow, [devServerUrl]);
       logger.info(`Loading dev server at ${devServerUrl}`);
       await mainWindow.loadURL(devServerUrl);
       mainWindow.webContents.openDevTools();
     } else {
-      hardenWindowNavigation(mainWindow, ['file://']);
       const htmlPath = path.join(__dirname, '../renderer/index.html');
+      hardenWindowNavigation(mainWindow, [pathToFileURL(htmlPath).href]);
       logger.info(`Loading production build from: ${htmlPath}`);
       await mainWindow.loadFile(htmlPath);
     }
@@ -310,6 +317,7 @@ function createQuickCaptureWindow() {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
     },
   });
 
@@ -317,12 +325,12 @@ function createQuickCaptureWindow() {
   if (isDev) {
     void resolveDevServerUrl().then((devServerUrl) => {
       if (!quickCaptureWindow) return;
-      hardenWindowNavigation(quickCaptureWindow, [devServerUrl, 'file://']);
+      hardenWindowNavigation(quickCaptureWindow, [devServerUrl]);
       void quickCaptureWindow.loadURL(`${devServerUrl}/#/quick-capture`);
     });
   } else {
-    hardenWindowNavigation(quickCaptureWindow, ['file://']);
     const htmlPath = path.join(__dirname, '../renderer/index.html');
+    hardenWindowNavigation(quickCaptureWindow, [pathToFileURL(htmlPath).href]);
     quickCaptureWindow.loadFile(htmlPath, { hash: '/quick-capture' });
   }
 
@@ -415,8 +423,11 @@ app.on('ready', async () => {
     // source instead of enumerating a monitor. The renderer stops the video
     // track immediately; only loopback audio is recorded.
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
-      if (!request.frame) {
-        logger.warn('[DisplayMedia] request has no originating frame');
+      const sender = [mainWindow, quickCaptureWindow].find(
+        (win) => win && !win.isDestroyed() && win.webContents.mainFrame === request.frame,
+      )?.webContents;
+      if (!request.frame || !sender || !isTrustedRenderer({ sender, senderFrame: request.frame })) {
+        logger.warn('[DisplayMedia] request has an untrusted originating frame');
         callback({});
         return;
       }
@@ -470,9 +481,8 @@ app.on('ready', async () => {
 
     // Audio retention sweep — delete recording audio past the configured
     // window (transcript + summary are kept). Best-effort, off the hot path.
-    void runtime.runMeetingEffect((service) =>
-      service.pruneRecordingAudio.execute(),
-    )
+    void runtime
+      .runMeetingEffect((service) => service.pruneRecordingAudio.execute())
       .then(({ deletedCount }) => {
         if (deletedCount > 0) {
           logger.info(`[Retention] Pruned audio for ${deletedCount} recording(s)`);

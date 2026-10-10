@@ -2,9 +2,15 @@
   "compilerOptions": {
     "composite": true,
     "skipLibCheck": true,
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.ts", "vite.main.config.ts", "vite.renderer.config.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite.main.config.ts",
+    "vite.renderer.config.ts",
+    "scripts/rendererCsp.ts"
+  ]
 }

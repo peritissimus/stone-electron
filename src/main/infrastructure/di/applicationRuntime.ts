@@ -8,6 +8,8 @@
 // Shared Layer
 import type { Database } from '@main/shared';
 import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
+import { createMeetingEffectRunner } from './meetingEffectRunner';
+import { disableOnnxTelemetry } from '../telemetry/onnxTelemetry';
 import {
   createEmbeddingWorker,
   EmbeddingWorker,
@@ -69,7 +71,6 @@ import {
   GraphUseCasesPort,
   IndexUseCasesPort,
   JournalUseCasesPort,
-  MeetingUseCasesPort,
   NoteUseCasesPort,
   NotebookUseCasesPort,
   QuickCaptureUseCasesPort,
@@ -407,9 +408,8 @@ export function getActiveWorkspacePath(): string | null {
 // Application Runtime Factory
 // ============================================================================
 
-export function createApplicationRuntime(
-  deps: ApplicationRuntimeDeps,
-): ApplicationRuntime {
+export function createApplicationRuntime(deps: ApplicationRuntimeDeps): ApplicationRuntime {
+  disableOnnxTelemetry();
   const { db, dbManager, perfMonitor } = deps;
 
   // Helper function for workspace path
@@ -548,10 +548,8 @@ export function createApplicationRuntime(
   // ---------------------------------------------------------------------------
   // Layer 4: Use Cases (depend on repositories and services)
   // ---------------------------------------------------------------------------
-  let runIndexEffect: RunIndexEffect = () =>
-    Promise.reject(new Error('Effect runtime is not initialized'));
-  let runNoteEffect: RunNoteEffect = () =>
-    Promise.reject(new Error('Effect runtime is not initialized'));
+  let runIndexEffect: RunIndexEffect;
+  let runNoteEffect: RunNoteEffect;
 
   let runWorkspaceEffect: RunWorkspaceEffect = () =>
     Promise.reject(new Error('Effect runtime is not initialized'));
@@ -562,9 +560,7 @@ export function createApplicationRuntime(
     eventPublisher,
     runFork: Effect.runFork,
     syncWorkspace: async (workspaceId) => {
-      await runWorkspaceEffect((service) =>
-        service.syncWorkspace.execute({ workspaceId }),
-      );
+      await runWorkspaceEffect((service) => service.syncWorkspace.execute({ workspaceId }));
     },
   });
 
@@ -573,10 +569,7 @@ export function createApplicationRuntime(
   // Today-page external sources. Calendar uses the signed EventKit bridge;
   // Mail uses a bounded Apple Events summary; both self-guard off-platform.
   // Linear reads its key from config and returns [] when unset.
-  const calendarSource = new AppleCalendarSource(
-    calendarBridgePath(),
-    Effect.runPromise,
-  );
+  const calendarSource = new AppleCalendarSource(calendarBridgePath(), Effect.runPromise);
   const mailSource = new AppleMailSource(Effect.runPromise);
   const linearSource = new LinearSource({ appConfigRepository });
   const externalSourceRegistry = new ExternalSourceRegistry({
@@ -626,45 +619,23 @@ export function createApplicationRuntime(
     Layer.succeed(WorkspaceActivationPort, {
       afterActivated: (workspaceId: string) =>
         Effect.tryPromise({
-          try: () =>
-            templateRepository.seedDefaultsIfEmpty(
-              workspaceId,
-              TEMPLATE_STARTER_PACK,
-            ),
-          catch: (error) =>
-            error instanceof Error ? error : new Error(String(error)),
+          try: () => templateRepository.seedDefaultsIfEmpty(workspaceId, TEMPLATE_STARTER_PACK),
+          catch: (error) => (error instanceof Error ? error : new Error(String(error))),
         }),
     }),
   );
 
   const baseLayer = Layer.mergeAll(workerLayer, outAdaptersLayer);
-  const indexAndWorkspaceLayer = WorkspaceUseCasesLive.pipe(
-    Layer.provideMerge(IndexUseCasesLive),
-  );
-  const journalAndTaskLayer = Layer.mergeAll(
-    JournalUseCasesLive,
-    TaskUseCasesLive,
-  );
+  const indexAndWorkspaceLayer = WorkspaceUseCasesLive.pipe(Layer.provideMerge(IndexUseCasesLive));
+  const journalAndTaskLayer = Layer.mergeAll(JournalUseCasesLive, TaskUseCasesLive);
   const dailyReviewLayer = DailyReviewUseCasesLive.pipe(
-    Layer.provide(
-      Layer.mergeAll(journalAndTaskLayer, QuickCaptureUseCasesLive),
-    ),
+    Layer.provide(Layer.mergeAll(journalAndTaskLayer, QuickCaptureUseCasesLive)),
   );
-  const statusReportLayer = StatusReportUseCasesLive.pipe(
-    Layer.provide(journalAndTaskLayer),
-  );
-  const meetingLayer = MeetingUseCasesLive.pipe(
-    Layer.provide(QuickCaptureUseCasesLive),
-  );
-  const quickNoteLayer = QuickNoteUseCasesLive.pipe(
-    Layer.provide(NoteUseCasesLive),
-  );
-  const templateLayer = TemplateUseCasesLive.pipe(
-    Layer.provide(NoteUseCasesLive),
-  );
-  const aiLayer = AIUseCasesLive.pipe(
-    Layer.provide(SearchUseCasesLive),
-  );
+  const statusReportLayer = StatusReportUseCasesLive.pipe(Layer.provide(journalAndTaskLayer));
+  const meetingLayer = MeetingUseCasesLive.pipe(Layer.provide(QuickCaptureUseCasesLive));
+  const quickNoteLayer = QuickNoteUseCasesLive.pipe(Layer.provide(NoteUseCasesLive));
+  const templateLayer = TemplateUseCasesLive.pipe(Layer.provide(NoteUseCasesLive));
+  const aiLayer = AIUseCasesLive.pipe(Layer.provide(SearchUseCasesLive));
   // Topics organize themselves in the background — the organizer fiber lives
   // as long as the runtime, so nothing user-facing has to trigger a pass.
   const topicLayer = TopicOrganizerLive().pipe(
@@ -696,13 +667,7 @@ export function createApplicationRuntime(
     topicLayer,
   ).pipe(Layer.provideMerge(baseLayer));
   const managedRuntime = ManagedRuntime.make(nativeUseCasesLayer);
-  const runMeetingEffect: RunMeetingEffect = async (use) => {
-    const exit = await managedRuntime.runPromiseExit(
-      MeetingUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
-    );
-    if (Exit.isSuccess(exit)) return exit.value;
-    throw Cause.squash(exit.cause);
-  };
+  const runMeetingEffect: RunMeetingEffect = createMeetingEffectRunner(managedRuntime);
   const runDailyReviewEffect: RunDailyReviewEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
       DailyReviewUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
@@ -733,9 +698,7 @@ export function createApplicationRuntime(
   };
   runWorkspaceEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
-      WorkspaceUseCasesPort.pipe(
-        Effect.flatMap((service) => use(service)),
-      ),
+      WorkspaceUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
     );
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
@@ -805,27 +768,21 @@ export function createApplicationRuntime(
   };
   const runStatusReportEffect: RunStatusReportEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
-      StatusReportUseCasesPort.pipe(
-        Effect.flatMap((service) => use(service)),
-      ),
+      StatusReportUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
     );
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
   };
   const runQuickCaptureEffect: RunQuickCaptureEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
-      QuickCaptureUseCasesPort.pipe(
-        Effect.flatMap((service) => use(service)),
-      ),
+      QuickCaptureUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
     );
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
   };
   const runQuickNoteEffect: RunQuickNoteEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
-      QuickNoteUseCasesPort.pipe(
-        Effect.flatMap((service) => use(service)),
-      ),
+      QuickNoteUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
     );
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
@@ -839,9 +796,7 @@ export function createApplicationRuntime(
   };
   const runAttachmentEffect: RunAttachmentEffect = async (use) => {
     const exit = await managedRuntime.runPromiseExit(
-      AttachmentUseCasesPort.pipe(
-        Effect.flatMap((service) => use(service)),
-      ),
+      AttachmentUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
     );
     if (Exit.isSuccess(exit)) return exit.value;
     throw Cause.squash(exit.cause);
@@ -884,8 +839,9 @@ export function createApplicationRuntime(
   jobRunner.register(
     MEETING_FINALIZE_JOB,
     createMeetingFinalizeJobHandler(async (request, signal) => {
-      await runMeetingEffect((service) =>
-        service.finalizeRecording.execute(request, { signal }).pipe(Effect.asVoid),
+      await runMeetingEffect(
+        (service) => service.finalizeRecording.execute(request, { signal }).pipe(Effect.asVoid),
+        { signal },
       );
     }),
   );
@@ -988,7 +944,6 @@ export function createApplicationRuntime(
 // ============================================================================
 
 export function registerIPCHandlers(runtime: ApplicationRuntime): void {
-
   // Must run before any handler registration below so all channels are timed
   instrumentIpcHandlers((channel, durationMs, success) =>
     runtime.perfMonitor.recordIPCCall(channel, durationMs, success),

@@ -10,6 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync 
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { initializeTestProfile, prepareTestWorkspace, testEnvironment } from './testProfile';
 
 const FIXTURES = dirname(fileURLToPath(import.meta.url));
 export const MIC_WAV = join(FIXTURES, 'mic-sample.wav');
@@ -26,6 +27,7 @@ type Fixtures = { app: ElectronApplication; userDataDir: string };
 export const test = base.extend<Fixtures>({
   userDataDir: async ({}, use) => {
     const dir = mkdtempSync(join(tmpdir(), 'stone-rec-e2e-'));
+    initializeTestProfile(dir);
     // Pre-seed the model where WhisperCppTranscriber looks (userData/whisper-models).
     const modelDir = join(dir, 'whisper-models');
     mkdirSync(modelDir, { recursive: true });
@@ -42,15 +44,17 @@ export const test = base.extend<Fixtures>({
     const app = await electron.launch({
       args: ['.', `--user-data-dir=${userDataDir}`],
       env: {
-        ...process.env,
-        NODE_ENV: 'production',
-        E2E_TEST: 'true',
+        ...testEnvironment(userDataDir),
         STONE_WHISPER_MODEL: 'tiny.en',
       },
       timeout: 60_000,
     });
-    await use(app);
-    await app.close();
+    try {
+      await prepareTestWorkspace(app, userDataDir);
+      await use(app);
+    } finally {
+      await app.close();
+    }
   },
 });
 

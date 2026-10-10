@@ -21,7 +21,7 @@ function createRuntimeTree(): string {
     'node_modules',
     'onnxruntime-node',
     'bin',
-    'napi-v3',
+    'napi-v6',
   );
 
   for (const target of ['darwin/arm64', 'darwin/x64', 'linux/arm64', 'win32/x64']) {
@@ -44,7 +44,7 @@ function createWebRuntimeTree(): string {
     'dist',
   );
   mkdirSync(distributionPath, { recursive: true });
-  for (const filename of ['ort-web.node.js', 'ort-web.node.js.map', 'ort-wasm.wasm', 'ort.js']) {
+  for (const filename of ['ort.node.min.js', 'ort.node.min.js.map', 'ort-wasm.wasm', 'ort.js']) {
     writeFileSync(path.join(distributionPath, filename), filename);
   }
   return resourcesPath;
@@ -68,7 +68,7 @@ describe('afterPack ONNX pruning', () => {
       'node_modules',
       'onnxruntime-node',
       'bin',
-      'napi-v3',
+      'napi-v6',
     );
     expect(existsSync(path.join(binaryRoot, 'darwin/arm64/runtime.bin'))).toBe(true);
     expect(existsSync(path.join(binaryRoot, 'darwin/x64'))).toBe(false);
@@ -96,8 +96,8 @@ describe('afterPack ONNX pruning', () => {
       'onnxruntime-web',
       'dist',
     );
-    expect(existsSync(path.join(distributionPath, 'ort-web.node.js'))).toBe(true);
-    expect(existsSync(path.join(distributionPath, 'ort-web.node.js.map'))).toBe(false);
+    expect(existsSync(path.join(distributionPath, 'ort.node.min.js'))).toBe(true);
+    expect(existsSync(path.join(distributionPath, 'ort.node.min.js.map'))).toBe(false);
     expect(existsSync(path.join(distributionPath, 'ort-wasm.wasm'))).toBe(false);
     expect(existsSync(path.join(distributionPath, 'ort.js'))).toBe(false);
   });

@@ -106,7 +106,7 @@ Two caveats worth knowing before you rely on this:
   A LaunchDaemon runs regardless but as root, which is the wrong owner for your
   notes; staying logged in is the simpler answer.
 - The Mac must be awake. In System Settings → Battery / Energy Saver, enable
-  *Prevent automatic sleeping* — otherwise capture fails whenever the lid is
+  _Prevent automatic sleeping_ — otherwise capture fails whenever the lid is
   shut, and you find out only when a thought is already gone.
 
 ## 4. Tunnel
@@ -142,7 +142,7 @@ In the Cloudflare Zero Trust dashboard:
 1. **Access → Applications → Add an application → Self-hosted**
 2. Domain: `stone.example.com`, path empty so the policy covers **everything**,
    API included.
-3. Policy: *Allow*, with an **Emails** rule listing only your own address.
+3. Policy: _Allow_, with an **Emails** rule listing only your own address.
 4. Choose a login method. One-time PIN to email needs no setup; an identity
    provider is nicer if you already have one, and can enforce passkeys.
 5. Set a long session duration (a month) so the phone rarely re-authenticates.
@@ -154,7 +154,7 @@ should return Access's HTML challenge rather than your notes.
 ## 6. The phone
 
 Open `https://stone.example.com/capture`, sign in once, then Share →
-*Add to Home Screen*. It opens without browser chrome and the Access cookie
+_Add to Home Screen_. It opens without browser chrome and the Access cookie
 persists, so capture stays two taps.
 
 The full app is at `https://stone.example.com/` — usable on a phone, but it is
@@ -166,10 +166,10 @@ a desktop layout and was not designed for one.
 
 Cloudflare's edge imposes three constraints the server does not.
 
-| Cloudflare | Stone | Effect |
-| --- | --- | --- |
-| 100 MB request body (Free/Pro) | `bodyLimit` is 512 MB | Meeting audio is 16 kHz mono WAV at ~32 KB/s, so roughly 52 minutes per channel hits the cap. |
-| Access sessions expire | `EventSource` reconnects silently | On expiry the SSE reconnect receives a login redirect instead of a stream, and live updates stop without saying so. Reload to recover. |
+| Cloudflare                     | Stone                             | Effect                                                                                                                                 |
+| ------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 100 MB request body (Free/Pro) | `bodyLimit` is 512 MB             | Meeting audio is 16 kHz mono WAV at ~32 KB/s, so roughly 52 minutes per channel hits the cap.                                          |
+| Access sessions expire         | `EventSource` reconnects silently | On expiry the SSE reconnect receives a login redirect instead of a stream, and live updates stop without saying so. Reload to recover. |
 
 Capture, notes, search and journals are unaffected. Verify the numbers against
 your current plan — Cloudflare adjusts them.
@@ -210,3 +210,52 @@ Two things, and both are needed:
 `config.json` holds your settings and encrypted provider keys. If
 `STONE_SECRET_KEY` is set, back it up separately — without it the stored keys
 cannot be decrypted.
+
+## Signed macOS releases
+
+Desktop releases require macOS 14 or later because the updated ONNX native
+runtime requires it. The bundled transcription binaries also target macOS 14;
+their build cache is invalidated when the pinned source, architecture, or target changes.
+The macOS/Linux startup paths disable ONNX diagnostic telemetry before native
+initialization. Model downloads still contact the configured model host.
+
+Local packages use the ad-hoc signing configuration. For Developer ID distribution,
+run `pnpm build` followed by `pnpm package:signed`. This uses
+`electron-builder.signed.yml`, requires a real signing identity, enables hardened
+runtime, and notarizes the result. It fails instead of falling back to unsigned
+artifacts. Packaging never publishes automatically.
+
+Configure `CSC_NAME` (the Developer ID Application identity), `CSC_LINK` (the
+certificate), and `CSC_KEY_PASSWORD`, plus either:
+
+- `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID`; or
+- `APPLE_API_KEY`, `APPLE_API_KEY_ID`, and `APPLE_API_ISSUER`.
+
+Keep these values in local environment variables or CI secrets, never repository
+files. The preflight check prints only missing variable names. Signing and
+notarization require the project's Apple Developer credentials; the config alone
+does not make an ad-hoc release notarized. Verify a signed artifact with
+`codesign --verify --deep --strict` and `xcrun stapler validate` before distribution.
+
+For CI, set repository variable `STONE_SIGNED_RELEASES=true` and configure the
+same names as repository secrets. The release workflow then requires successful
+signed packaging and verification before publishing that exact artifact.
+For API-key notarization, the local `APPLE_API_KEY` value is the path to the `.p8`
+file; the CI secret of that name contains the file's PEM text. The workflow writes
+it to a temporary file readable only by the runner account and deletes that file
+when the signing step exits.
+
+## Local retrieval regression check
+
+Run `pnpm eval:retrieval` after changing the embedding runtime or model. This
+uses the production worker with a versioned synthetic English corpus and writes
+Recall@3, mean reciprocal rank, and warm embedding time to
+`test-results/retrieval-eval.json`. It checks finite, nonzero 384-dimensional
+vectors and fails below Recall@3 0.875 or MRR 0.75. These are smoke-test thresholds,
+not a claim about production search or generated answer quality.
+
+The check also verifies distinct finite cross-encoder scores and reranker MRR
+of at least 0.75. The first run downloads the existing BGE and MiniLM reranker
+models into `.cache/retrieval-eval/models`;
+no user notes or cloud text provider are used. `STONE_EVAL_CACHE` can select another
+cache and `STONE_EVAL_WORKER` can point to the unpacked worker in a packaged app.

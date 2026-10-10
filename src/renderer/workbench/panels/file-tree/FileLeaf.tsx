@@ -9,10 +9,11 @@ import {
 import { IconButton } from '@renderer/components/composites';
 import { Text } from '@renderer/components/base/ui/text';
 import { type FileTreeNode } from '@renderer/services/workspace/hooks/useFileTree';
-import { useNotes, getNotesByPathSnapshot } from '@renderer/features/notes/hooks/useNotes';
+import { useNoteByPath, getNotesByPathSnapshot } from '@renderer/features/notes/hooks/useNotes';
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
-import { useNavigateToNote } from '@renderer/services/navigation';
-import { useSidebarCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import { useNavigateToNote, useActiveNoteId } from '@renderer/services/navigation';
+import { useSidebarItemCursor } from '@renderer/services/view-state/hooks/useSidebarCursor';
+import { getSidebarTreeItemId } from '@renderer/lib/sidebarTree';
 import { cn } from '@renderer/lib/utils';
 import { logger } from '@renderer/services/telemetry/logger';
 import { normalizePath, getDisplayName } from '@renderer/lib/path';
@@ -27,6 +28,8 @@ import {
 interface FileLeafProps {
   node: FileTreeNode;
   level: number;
+  positionInSet: number;
+  setSize: number;
   onRename: (noteId: string, currentTitle: string) => void;
   onDelete: (noteId: string) => Promise<void>;
   onMove: (noteId: string, destinationPath: string | null) => Promise<void>;
@@ -38,25 +41,25 @@ const handleDragEnd = (e: React.DragEvent) => {
 };
 
 export const FileLeaf = React.memo<FileLeafProps>(
-  ({ node, level, onRename, onDelete, onMenuOpenChange }) => {
+  ({ node, level, positionInSet, setSize, onRename, onDelete, onMenuOpenChange }) => {
     const normalizedPath = normalizePath(node.path);
 
     const navigateToNote = useNavigateToNote();
-    const { activeNoteId, notesByPath } = useNotes();
-    const note = notesByPath.get(normalizedPath);
+    const activeNoteId = useActiveNoteId();
+    const note = useNoteByPath(normalizedPath);
 
     const { loadNoteByPath } = useNoteAPI();
 
     const isActive = note?.id === activeNoteId;
     const [isHovered, setIsHovered] = useState(false);
 
-    const { cursorPath, setCursor } = useSidebarCursor();
-    const isCursor = cursorPath === normalizedPath;
+    const { isCursor, requestFocus } = useSidebarItemCursor(normalizedPath);
+    const itemId = getSidebarTreeItemId(normalizedPath);
     const displayTitle = note?.title?.trim() ? note.title : getDisplayName(node.name);
 
     const handleOpen = async () => {
       logger.info('[FileTree] Opening file', { normalizedPath, fileName: node.name });
-      setCursor(normalizedPath);
+      requestFocus(normalizedPath);
 
       const currentNotesByPath = getNotesByPathSnapshot();
       const cachedNote = currentNotesByPath.get(normalizedPath);
@@ -90,6 +93,13 @@ export const FileLeaf = React.memo<FileLeafProps>(
 
     return (
       <div
+        id={itemId}
+        role="treeitem"
+        aria-labelledby={`${itemId}-label`}
+        aria-level={level + 1}
+        aria-posinset={positionInSet}
+        aria-setsize={setSize}
+        aria-selected={isActive}
         draggable={!!note}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
@@ -107,16 +117,8 @@ export const FileLeaf = React.memo<FileLeafProps>(
           )}
           data-sidebar-cursor={isCursor ? 'true' : undefined}
           title={`${displayTitle}\n${normalizedPath}`}
-          role="button"
-          tabIndex={-1}
           onFocus={() => prefetchWorkbenchView('/note')}
           onClick={handleOpen}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleOpen();
-            }
-          }}
           style={getFileTreeRowStyle(level)}
         >
           <FileText
@@ -128,6 +130,7 @@ export const FileLeaf = React.memo<FileLeafProps>(
             )}
           />
           <span
+            id={`${itemId}-label`}
             className={cn(
               fileTreeLabelClassName,
               isActive ? 'text-foreground font-medium' : 'text-muted-foreground',
@@ -139,7 +142,7 @@ export const FileLeaf = React.memo<FileLeafProps>(
           <div
             className={cn(
               'ms-auto shrink-0 opacity-0 transition-opacity duration-150 group-focus-within:opacity-100',
-              isHovered && 'opacity-100',
+              (isHovered || isCursor) && 'opacity-100',
             )}
             onClick={(e) => e.stopPropagation()}
           >
@@ -149,6 +152,7 @@ export const FileLeaf = React.memo<FileLeafProps>(
                   size="compact"
                   icon={<DotsThreeVertical size={14} />}
                   label="File options"
+                  tabIndex={isCursor ? 0 : -1}
                   className="size-6 hover:bg-foreground/10"
                 />
               </DropdownMenuTrigger>

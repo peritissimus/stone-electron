@@ -384,8 +384,11 @@ export function convertFlowDSLToMermaid(content: string): string {
     import('@renderer/services/telemetry/logger').then(({ logger }) => {
       logger.error('FlowDSL parse error:', error);
     });
-    throw new Error(
-      `Failed to parse FlowDSL: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    throw Object.assign(
+      new Error(
+        `Failed to parse FlowDSL: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      ),
+      { cause: error },
     );
   }
 }

@@ -97,7 +97,7 @@ export default defineConfig({
         'simple-git',
         'minipass',
         'glob',
-        // Note: @xenova/transformers is loaded in a worker thread, not in main process
+        // Note: @huggingface/transformers is loaded in a worker thread, not in main process
         // The worker has `self` defined, so no polyfill needed
         'sharp',
         // onnxruntime-node is a native (N-API) module — never bundle it.

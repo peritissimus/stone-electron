@@ -1,7 +1,8 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { visualizer } from 'rollup-plugin-visualizer'
-import path from 'path'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
+import path from 'path';
+import { rendererCsp } from './scripts/rendererCsp';
 
 const rendererChunks: Array<[string, string[]]> = [
   ['react-vendor', ['react', 'react-dom']],
@@ -20,23 +21,24 @@ const rendererChunks: Array<[string, string[]]> = [
     ],
   ],
   ['zustand', ['zustand']],
-]
+];
 
 function rendererManualChunks(id: string): string | undefined {
-  const normalizedId = id.replaceAll('\\', '/')
+  const normalizedId = id.replaceAll('\\', '/');
 
   for (const [chunkName, packages] of rendererChunks) {
     if (packages.some((packageName) => normalizedId.includes(`/node_modules/${packageName}/`))) {
-      return chunkName
+      return chunkName;
     }
   }
 
-  return undefined
+  return undefined;
 }
 
 export default defineConfig({
   plugins: [
     react(),
+    rendererCsp(),
     ...(process.env.ANALYZE === '1'
       ? [
           visualizer({
@@ -117,4 +119,4 @@ export default defineConfig({
       },
     },
   },
-})
+});

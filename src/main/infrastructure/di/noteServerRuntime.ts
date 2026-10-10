@@ -1,3 +1,5 @@
+import { createMeetingEffectRunner } from './meetingEffectRunner';
+import { disableOnnxTelemetry } from '../telemetry/onnxTelemetry';
 import path from 'node:path';
 import { Cause, Effect, Exit, Layer, ManagedRuntime } from 'effect';
 import {
@@ -13,7 +15,6 @@ import {
   WorkspaceUseCasesPort,
   QuickCaptureUseCasesPort,
   DailyReviewUseCasesPort,
-  MeetingUseCasesPort,
   GraphUseCasesPort,
   JournalUseCasesPort,
   NotebookUseCasesPort,
@@ -200,7 +201,9 @@ export type RunSettingsEffect = <A, E>(
   use: (service: ISettingsUseCases) => Effect.Effect<A, E>,
 ) => Promise<A>;
 
-export type RunGitEffect = <A, E>(use: (service: IGitUseCases) => Effect.Effect<A, E>) => Promise<A>;
+export type RunGitEffect = <A, E>(
+  use: (service: IGitUseCases) => Effect.Effect<A, E>,
+) => Promise<A>;
 
 export type RunDatabaseEffect = <A, E>(
   use: (service: IDatabaseUseCases) => Effect.Effect<A, E>,
@@ -246,6 +249,7 @@ export type RunDailyReviewEffect = <A, E>(
 
 export type RunMeetingEffect = <A, E>(
   use: (service: IMeetingUseCases) => Effect.Effect<A, E>,
+  options?: { signal?: AbortSignal },
 ) => Promise<A>;
 
 export interface NoteServerRuntime {
@@ -331,6 +335,7 @@ async function ensureActiveWorkspace(
 export async function createNoteServerRuntime(
   deps: NoteServerRuntimeDeps,
 ): Promise<NoteServerRuntime> {
+  disableOnnxTelemetry();
   const workspacePath = path.resolve(deps.workspacePath);
   const fileStorage = new FileSystemStorage();
   const markdownProcessor = new MarkdownProcessor();
@@ -427,10 +432,7 @@ export async function createNoteServerRuntime(
     workspacePath,
   );
 
-  const workers = Layer.mergeAll(
-    JobRunner.layer(jobRunner),
-    WhisperServer.layer(liveTranscriber),
-  );
+  const workers = Layer.mergeAll(JobRunner.layer(jobRunner), WhisperServer.layer(liveTranscriber));
   const adapters = Layer.mergeAll(
     AIProviderKeyStoreLive(aiProviderKeyStore),
     AppConfigRepositoryLive(appConfigRepository),
@@ -676,21 +678,17 @@ export async function createNoteServerRuntime(
     throw Cause.squash(exit.cause);
   };
 
-  const runMeetingEffect: RunMeetingEffect = async (use) => {
-    const exit = await runtime.runPromiseExit(
-      MeetingUseCasesPort.pipe(Effect.flatMap((service) => use(service))),
-    );
-    if (Exit.isSuccess(exit)) return exit.value;
-    throw Cause.squash(exit.cause);
-  };
+  const runMeetingEffect: RunMeetingEffect = createMeetingEffectRunner(runtime);
 
   // Finalize runs asynchronously off the job queue; progress reaches clients as
   // meeting:statusChanged events rather than in the enqueue response.
   jobRunner.register(
     MEETING_FINALIZE_JOB,
     createMeetingFinalizeJobHandler(async (finalizeRequest, signal) => {
-      await runMeetingEffect((service) =>
-        service.finalizeRecording.execute(finalizeRequest, { signal }).pipe(Effect.asVoid),
+      await runMeetingEffect(
+        (service) =>
+          service.finalizeRecording.execute(finalizeRequest, { signal }).pipe(Effect.asVoid),
+        { signal },
       );
     }),
   );

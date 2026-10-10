@@ -4,9 +4,26 @@ import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@phosphor-icons/react', () => Object.fromEntries(
-  ['Star', 'PushPin', 'Archive', 'DotsThreeVertical', 'Check', 'Trash', 'FloppyDisk', 'Export', 'FilePdf', 'FileHtml', 'FileText', 'Code', 'TextAa', 'CaretRight'].map((name) => [name, () => <span />]),
-));
+vi.mock('@phosphor-icons/react', () =>
+  Object.fromEntries(
+    [
+      'Star',
+      'PushPin',
+      'Archive',
+      'DotsThreeVertical',
+      'Check',
+      'Trash',
+      'FloppyDisk',
+      'Export',
+      'FilePdf',
+      'FileHtml',
+      'FileText',
+      'Code',
+      'TextAa',
+      'CaretRight',
+    ].map((name) => [name, () => <span />]),
+  ),
+);
 vi.mock('@renderer/services/view-state/hooks/useUI', () => ({
   useEditorUI: () => ({ editorMode: 'rich', toggleEditorMode: vi.fn() }),
 }));
@@ -56,11 +73,10 @@ describe('note title editing', () => {
 
   async function enterTitle(value: string) {
     const input = container.querySelector('input')!;
-    act(() =>
-      Simulate.change(input, {
-        target: { value },
-      } as unknown as React.ChangeEvent<HTMLInputElement>),
-    );
+    act(() => {
+      input.value = value;
+      Simulate.change(input, { target: input });
+    });
     await act(async () => Simulate.keyDown(input, { key: 'Enter' }));
   }
 

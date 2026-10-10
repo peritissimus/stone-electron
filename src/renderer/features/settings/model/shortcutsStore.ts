@@ -250,14 +250,8 @@ export const useShortcutsStore = create<ShortcutsState>((set, get) => ({
 
   hydrate: () => shortcutsHydrator.hydrate(set, get),
 
-  getShortcut: (id: ShortcutAction): ShortcutDefinition => {
-    const def = DEFAULT_BY_ID[id];
-    if (!def) {
-      throw new Error(`Unknown shortcut: ${id}`);
-    }
-    const override = get().customBindings[id];
-    return override ? { ...def, ...override } : def;
-  },
+  getShortcut: (id: ShortcutAction): ShortcutDefinition =>
+    resolveShortcutBinding(id, get().customBindings[id]),
 
   isCustomized: (id: ShortcutAction): boolean => {
     return get().customBindings[id] !== null;
@@ -302,11 +296,22 @@ export const useShortcutsStore = create<ShortcutsState>((set, get) => ({
   },
 }));
 
+/** Resolve a subscribed binding without reading mutable store state. */
+export function resolveShortcutBinding(
+  id: ShortcutAction,
+  binding: ShortcutBinding | null | undefined,
+): ShortcutDefinition {
+  const definition = DEFAULT_BY_ID[id];
+  if (!definition) throw new Error(`Unknown shortcut: ${id}`);
+  return binding ? { ...definition, ...binding } : definition;
+}
+
 /**
  * Get all shortcuts grouped by category.
  */
-export const getShortcutsByCategory = (): Record<string, ShortcutDefinition[]> => {
-  const store = useShortcutsStore.getState();
+export const getShortcutsByCategory = (
+  bindings = useShortcutsStore.getState().customBindings,
+): Record<string, ShortcutDefinition[]> => {
   const categories: Record<string, ShortcutDefinition[]> = {
     general: [],
     navigation: [],
@@ -314,7 +319,7 @@ export const getShortcutsByCategory = (): Record<string, ShortcutDefinition[]> =
   };
 
   for (const shortcut of DEFAULT_SHORTCUTS) {
-    const current = store.getShortcut(shortcut.id);
+    const current = resolveShortcutBinding(shortcut.id, bindings[shortcut.id]);
     categories[current.category].push(current);
   }
 

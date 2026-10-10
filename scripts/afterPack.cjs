@@ -31,7 +31,7 @@ function pruneOnnxRuntime(resourcesPath, platform, arch) {
     'node_modules',
     'onnxruntime-node',
     'bin',
-    'napi-v3',
+    'napi-v6',
   );
   const targetDirectory = path.join(binaryRoot, platform, arch);
 
@@ -64,22 +64,21 @@ function pruneOnnxWeb(resourcesPath) {
     'onnxruntime-web',
     'dist',
   );
-  const nodeEntry = path.join(distributionPath, 'ort-web.node.js');
+  const nodeEntry = path.join(distributionPath, 'ort.node.min.js');
 
   if (!fs.existsSync(nodeEntry)) {
     throw new Error(`Missing ONNX Runtime Web Node entry: ${nodeEntry}`);
   }
 
   for (const entry of fs.readdirSync(distributionPath, { withFileTypes: true })) {
-    if (entry.name !== 'ort-web.node.js') {
+    if (!['ort.node.min.js', 'ort.node.min.mjs'].includes(entry.name)) {
       fs.rmSync(path.join(distributionPath, entry.name), { recursive: true, force: true });
     }
   }
 }
 
 async function afterPack(context) {
-  const arch =
-    typeof context.arch === 'string' ? context.arch : ARCH_NAMES[context.arch];
+  const arch = typeof context.arch === 'string' ? context.arch : ARCH_NAMES[context.arch];
   if (!arch) throw new Error(`Unsupported packaging architecture: ${context.arch}`);
 
   const resourcesPath =
@@ -97,6 +96,10 @@ async function afterPack(context) {
   console.log(`  • pruned ONNX Runtime binaries  target=${context.electronPlatformName}-${arch}`);
 
   if (context.electronPlatformName !== 'darwin') return;
+
+  // The signed distribution config delegates signing to electron-builder
+  // after this hook. Never add an ad-hoc signature to that release path.
+  if (context.packager.config?.forceCodeSigning) return;
 
   const appName = context.packager.appInfo.productFilename;
   const appPath = path.join(context.appOutDir, `${appName}.app`);

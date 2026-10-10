@@ -36,26 +36,23 @@ export interface EntityCommandsResult<T, TParams> {
  * factory never invokes IPC directly, so response validation cannot be
  * bypassed by a store or command hook.
  */
-export function createEntityCommands<
-  T extends { id: string },
-  TParams = Record<string, unknown>,
->(
+export function createEntityCommands<T extends { id: string }, TParams = Record<string, unknown>>(
   config: EntityCommandsConfig<T, TParams>,
 ): () => EntityCommandsResult<T, TParams> {
   return function useEntityCommands(): EntityCommandsResult<T, TParams> {
-    const store = config.useStore();
+    const { setItems, addItem, updateItem, deleteItem, setLoading, setError } = config.useStore();
 
     const loadAll = useCallback(
       async (params?: TParams) =>
         runEntityOperation(
           config.entityName,
           'load',
-          store,
+          { setLoading, setError },
           () => config.api.list(params),
-          (items) => store.setItems(items),
+          (items) => setItems(items),
           true,
         ),
-      [store.setError, store.setItems, store.setLoading],
+      [setError, setItems, setLoading],
     );
 
     const create = useCallback(
@@ -64,13 +61,13 @@ export function createEntityCommands<
         return runEntityOperation(
           config.entityName,
           'create',
-          store,
+          { setLoading, setError },
           () => config.api.create!(data),
-          store.addItem,
+          addItem,
           true,
         );
       },
-      [store.addItem, store.setError, store.setLoading],
+      [addItem, setError, setLoading],
     );
 
     const update = useCallback(
@@ -79,32 +76,32 @@ export function createEntityCommands<
         return runEntityOperation(
           config.entityName,
           'update',
-          store,
+          { setLoading, setError },
           () => config.api.update!(id, data),
-          store.updateItem,
+          updateItem,
         );
       },
-      [store.setError, store.updateItem],
+      [setError, setLoading, updateItem],
     );
 
     const remove = useCallback(
       async (id: string) => {
         if (!config.api.remove) return false;
-        store.setError(null);
+        setError(null);
         try {
           const response = await config.api.remove(id);
           if (!response.success) {
-            store.setError(response.error?.message ?? `Failed to delete ${config.entityName}`);
+            setError(response.error?.message ?? `Failed to delete ${config.entityName}`);
             return false;
           }
-          store.deleteItem(id);
+          deleteItem(id);
           return true;
         } catch (error) {
-          store.setError(toMessage(error, `Failed to delete ${config.entityName}`));
+          setError(toMessage(error, `Failed to delete ${config.entityName}`));
           return false;
         }
       },
-      [store.deleteItem, store.setError],
+      [deleteItem, setError],
     );
 
     return { loadAll, create, update, remove };

@@ -8,6 +8,8 @@
  */
 
 export interface SummarizeRequest {
+  /** Cancels the underlying model call. */
+  signal?: AbortSignal;
   transcript: string;
   /** User-overridable prompt template; must include the `{{transcript}}`
    *  placeholder. Strategies replace that token with the transcript

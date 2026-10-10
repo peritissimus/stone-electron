@@ -10,6 +10,7 @@ import {
   DEFAULT_SHORTCUTS,
   formatShortcutDisplay,
   getShortcutsByCategory,
+  resolveShortcutBinding,
   type ShortcutAction,
   type ShortcutDefinition,
   type ShortcutBinding,
@@ -28,12 +29,14 @@ export function useShortcuts() {
 
   // Get all shortcuts with current bindings
   const allShortcuts = useMemo(() => {
-    return DEFAULT_SHORTCUTS.map((shortcut) => getShortcut(shortcut.id));
-  }, [customBindings, getShortcut]);
+    return DEFAULT_SHORTCUTS.map((shortcut) =>
+      resolveShortcutBinding(shortcut.id, customBindings[shortcut.id]),
+    );
+  }, [customBindings]);
 
   // Get shortcuts grouped by category
   const shortcutsByCategory = useMemo(() => {
-    return getShortcutsByCategory();
+    return getShortcutsByCategory(customBindings);
   }, [customBindings]);
 
   return {
@@ -58,11 +61,8 @@ export function useShortcuts() {
  * Get a single shortcut definition
  */
 export function useShortcut(id: ShortcutAction): ShortcutDefinition {
-  const getShortcut = useShortcutsStore((s) => s.getShortcut);
-  const customBindings = useShortcutsStore((s) => s.customBindings);
-
-  // Re-compute when customBindings change
-  return useMemo(() => getShortcut(id), [id, customBindings, getShortcut]);
+  const binding = useShortcutsStore((s) => s.customBindings[id]);
+  return useMemo(() => resolveShortcutBinding(id, binding), [id, binding]);
 }
 
 /**
@@ -107,14 +107,13 @@ export function useShortcutEditor(id: ShortcutAction) {
  */
 export function useShortcutsDisplay() {
   const customBindings = useShortcutsStore((s) => s.customBindings);
-  const getShortcut = useShortcutsStore((s) => s.getShortcut);
 
   const getDisplayString = useCallback(
     (id: ShortcutAction): string => {
-      const shortcut = getShortcut(id);
+      const shortcut = resolveShortcutBinding(id, customBindings[id]);
       return formatShortcutDisplay(shortcut);
     },
-    [customBindings, getShortcut],
+    [customBindings],
   );
 
   return {

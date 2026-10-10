@@ -33,45 +33,28 @@ export function FindReplaceModal({ editor }: FindReplaceModalProps) {
     setMatchInfo({ count, current: count > 0 ? storage.currentIndex + 1 : 0 });
   }, []);
 
-  // Re-apply search state to the editor when the panel opens or the editor
-  // instance changes. Per-keystroke updates happen in the change handlers, so
-  // this intentionally only re-runs on those two deps.
+  // React state owns the controls. Effects synchronize each value on edits,
+  // panel reopen and editor replacement without depending on stale closures.
   useEffect(() => {
     if (!editor || !findReplaceOpen) return;
     editor.commands.setSearchTerm(searchTerm);
-    editor.commands.setCaseSensitive(caseSensitive);
-    editor.commands.setReplaceTerm(replaceTerm);
     updateMatchInfo(editor);
-  }, [editor, findReplaceOpen, updateMatchInfo]);
+  }, [editor, findReplaceOpen, searchTerm, updateMatchInfo]);
 
-  const handleSearchTermChange = useCallback(
-    (term: string) => {
-      setSearchTerm(term);
-      if (!editor) return;
-      editor.commands.setSearchTerm(term);
-      updateMatchInfo(editor);
-    },
-    [editor, updateMatchInfo],
-  );
+  useEffect(() => {
+    if (!editor || !findReplaceOpen) return;
+    editor.commands.setCaseSensitive(caseSensitive);
+    updateMatchInfo(editor);
+  }, [editor, findReplaceOpen, caseSensitive, updateMatchInfo]);
 
-  const handleCaseSensitiveChange = useCallback(
-    (pressed: boolean) => {
-      setCaseSensitive(pressed);
-      if (!editor) return;
-      editor.commands.setCaseSensitive(pressed);
-      updateMatchInfo(editor);
-    },
-    [editor, updateMatchInfo],
-  );
+  useEffect(() => {
+    if (!editor || !findReplaceOpen) return;
+    editor.commands.setReplaceTerm(replaceTerm);
+  }, [editor, findReplaceOpen, replaceTerm]);
 
-  const handleReplaceTermChange = useCallback(
-    (term: string) => {
-      setReplaceTerm(term);
-      if (!editor) return;
-      editor.commands.setReplaceTerm(term);
-    },
-    [editor],
-  );
+  const handleSearchTermChange = setSearchTerm;
+  const handleCaseSensitiveChange = setCaseSensitive;
+  const handleReplaceTermChange = setReplaceTerm;
 
   const handleClose = useCallback(() => {
     if (editor) {

@@ -1,15 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
+import type { FocusEvent as ReactFocusEvent } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useFileTreeStore } from '@renderer/services/workspace/model/fileTreeStore';
 import { useSidebarFocusStore } from '@renderer/services/view-state/model/sidebarFocusStore';
 import {
   useVisibleTreeItems,
+  getVisibleTreeCursorIndex,
   type VisibleTreeItem,
 } from '@renderer/services/workspace/hooks/useVisibleTreeItems';
 import { useNoteStore } from '@renderer/features/notes/model/noteStore';
 import { useNoteAPI } from '@renderer/features/notes/commands/useNoteAPI';
 import { useNavigateToNote } from '@renderer/services/navigation';
 import { normalizePath } from '@renderer/lib/path';
+import { getSidebarTreeItemId } from '@renderer/lib/sidebarTree';
 
 /**
  * Vim-style keyboard navigation for the sidebar tree with "preview-on-move":
@@ -35,6 +38,25 @@ export function useSidebarKeyboardNav() {
   const toggleExpanded = useFileTreeStore((s) => s.toggleExpanded);
   const navigateToNote = useNavigateToNote();
   const { loadNoteByPath } = useNoteAPI();
+
+  // A collapsed folder or filesystem refresh can remove the cursor's row.
+  // Keep the active descendant attached to a visible node without opening it.
+  const visibleCursorIndex = getVisibleTreeCursorIndex(visibleItems, cursorPath);
+  const visibleCursorPath = visibleItems[visibleCursorIndex]?.path ?? null;
+  useEffect(() => {
+    if (visibleCursorPath !== cursorPath) setCursor(visibleCursorPath);
+  }, [cursorPath, visibleCursorPath, setCursor]);
+
+  const handleFocus = useCallback(
+    (event: ReactFocusEvent<HTMLDivElement>) => {
+      if (event.target !== event.currentTarget) return;
+      const currentPath = useSidebarFocusStore.getState().cursorPath;
+      if (!visibleItems.some((item) => item.path === currentPath)) {
+        setCursor(visibleItems[0]?.path ?? null);
+      }
+    },
+    [visibleItems, setCursor],
+  );
 
   const openFileAt = useCallback(
     async (path: string) => {
@@ -72,16 +94,29 @@ export function useSidebarKeyboardNav() {
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
-      // Any modifier means it's a global shortcut — let it bubble.
+      // Row action buttons and menus own their keys. Only the focused tree
+      // container runs tree navigation; modifiers belong to global shortcuts.
+      if (event.target !== event.currentTarget) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (visibleItems.length === 0) return;
 
-      const cursorIndex = cursorPath
-        ? visibleItems.findIndex((item) => item.path === cursorPath)
-        : -1;
+      const cursorIndex =
+        visibleCursorPath !== null
+          ? visibleItems.findIndex((item) => item.path === visibleCursorPath)
+          : -1;
       const current = cursorIndex >= 0 ? visibleItems[cursorIndex] : null;
 
       switch (event.key) {
+        case 'Home': {
+          event.preventDefault();
+          moveCursorTo(visibleItems[0]);
+          return;
+        }
+        case 'End': {
+          event.preventDefault();
+          moveCursorTo(visibleItems[visibleItems.length - 1]);
+          return;
+        }
         case 'j':
         case 'ArrowDown': {
           event.preventDefault();
@@ -110,7 +145,7 @@ export function useSidebarKeyboardNav() {
             toggleExpanded(current.path);
             return;
           }
-          if (current.parentPath) {
+          if (current.parentPath !== null) {
             // Moving UP to a parent folder never opens a file — folders
             // aren't notes. moveCursorTo handles the no-op correctly.
             const parent = visibleItems.find((i) => i.path === current.parentPath);
@@ -140,6 +175,7 @@ export function useSidebarKeyboardNav() {
           return;
         }
         case 'Enter':
+        case ' ':
         case 'o': {
           event.preventDefault();
           if (!current) return;
@@ -159,8 +195,13 @@ export function useSidebarKeyboardNav() {
           return;
       }
     },
-    [visibleItems, cursorPath, moveCursorTo, toggleExpanded, openFileAt],
+    [visibleItems, visibleCursorPath, moveCursorTo, toggleExpanded, openFileAt],
   );
 
-  return { handleKeyDown };
+  return {
+    handleKeyDown,
+    handleFocus,
+    activeDescendantId:
+      visibleCursorPath === null ? undefined : getSidebarTreeItemId(visibleCursorPath),
+  };
 }

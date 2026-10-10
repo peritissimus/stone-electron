@@ -11,7 +11,8 @@ export function serializeEditorDocument(document: EditorDocument): DocumentMarkd
 }
 
 export function setEditorMarkdown(editor: RichTextEditor, markdown: DocumentMarkdown): void {
-  editor.commands.setContent(parseEditorMarkdown(markdown));
+  // Tiptap 3 emits updates by default; hydration must not become a user edit.
+  editor.commands.setContent(parseEditorMarkdown(markdown), { emitUpdate: false });
 }
 
 export function getEditorMarkdown(editor: RichTextEditor): DocumentMarkdown {
@@ -19,7 +20,7 @@ export function getEditorMarkdown(editor: RichTextEditor): DocumentMarkdown {
 }
 
 export function setEditorDocument(editor: RichTextEditor, document: EditorDocument): void {
-  editor.commands.setContent(document);
+  editor.commands.setContent(document, { emitUpdate: false });
 }
 
 export function getEditorDocument(editor: RichTextEditor): EditorDocument {

@@ -112,6 +112,62 @@ function runAnalyser(
   frameRef.current = requestAnimationFrame(tick);
 }
 
+async function releaseHardware() {
+  const liveStop = stopLiveStreaming();
+  micPcmRecorderRef.current?.stop();
+  micPcmRecorderRef.current = null;
+  systemPcmRecorderRef.current?.stop();
+  systemPcmRecorderRef.current = null;
+  if (micStreamRef.current) {
+    for (const track of micStreamRef.current.getTracks()) track.stop();
+    micStreamRef.current = null;
+  }
+  if (systemStreamRef.current) {
+    for (const track of systemStreamRef.current.getTracks()) track.stop();
+    systemStreamRef.current = null;
+  }
+  stopLevelMeter();
+  await liveStop;
+}
+
+// Drive the green (mic) and teal (system) waveforms from the renderer
+// streams. Both sources are now MediaStreams in the renderer (system audio
+// via getDisplayMedia loopback), so each gets its own analyser.
+function startLevelMeter(micStream: MediaStream, systemStream: MediaStream | null) {
+  runAnalyser(
+    micStream,
+    (level) => useMeetingRecorderStore.getState().setAudioLevel(level),
+    analyserCtxRef,
+    analyserFrameRef,
+  );
+  if (systemStream) {
+    runAnalyser(
+      systemStream,
+      (level) => useMeetingRecorderStore.getState().setSystemAudioLevel(level),
+      systemAnalyserCtxRef,
+      systemAnalyserFrameRef,
+    );
+  }
+}
+
+function stopLevelMeter() {
+  for (const [ctxRef, frameRef] of [
+    [analyserCtxRef, analyserFrameRef],
+    [systemAnalyserCtxRef, systemAnalyserFrameRef],
+  ] as const) {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    if (ctxRef.current) {
+      void ctxRef.current.close();
+      ctxRef.current = null;
+    }
+  }
+  useMeetingRecorderStore.getState().setAudioLevel(0);
+  useMeetingRecorderStore.getState().setSystemAudioLevel(0);
+}
+
 export function useMeetingRecorder() {
   const phase = useMeetingRecorderStore((s) => s.phase);
   const dock = useMeetingRecorderStore((s) => s.dock);
@@ -145,62 +201,6 @@ export function useMeetingRecorder() {
   // NOTE: no unmount cleanup. Hardware is a shared singleton released on
   // stop()/cancel() — releasing it when a transient surface (the inline panel)
   // unmounts would kill an in-flight recording the user navigated away from.
-
-  async function releaseHardware() {
-    const liveStop = stopLiveStreaming();
-    micPcmRecorderRef.current?.stop();
-    micPcmRecorderRef.current = null;
-    systemPcmRecorderRef.current?.stop();
-    systemPcmRecorderRef.current = null;
-    if (micStreamRef.current) {
-      for (const track of micStreamRef.current.getTracks()) track.stop();
-      micStreamRef.current = null;
-    }
-    if (systemStreamRef.current) {
-      for (const track of systemStreamRef.current.getTracks()) track.stop();
-      systemStreamRef.current = null;
-    }
-    stopLevelMeter();
-    await liveStop;
-  }
-
-  // Drive the green (mic) and teal (system) waveforms from the renderer
-  // streams. Both sources are now MediaStreams in the renderer (system audio
-  // via getDisplayMedia loopback), so each gets its own analyser.
-  function startLevelMeter(micStream: MediaStream, systemStream: MediaStream | null) {
-    runAnalyser(
-      micStream,
-      (level) => useMeetingRecorderStore.getState().setAudioLevel(level),
-      analyserCtxRef,
-      analyserFrameRef,
-    );
-    if (systemStream) {
-      runAnalyser(
-        systemStream,
-        (level) => useMeetingRecorderStore.getState().setSystemAudioLevel(level),
-        systemAnalyserCtxRef,
-        systemAnalyserFrameRef,
-      );
-    }
-  }
-
-  function stopLevelMeter() {
-    for (const [ctxRef, frameRef] of [
-      [analyserCtxRef, analyserFrameRef],
-      [systemAnalyserCtxRef, systemAnalyserFrameRef],
-    ] as const) {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
-      }
-      if (ctxRef.current) {
-        void ctxRef.current.close();
-        ctxRef.current = null;
-      }
-    }
-    useMeetingRecorderStore.getState().setAudioLevel(0);
-    useMeetingRecorderStore.getState().setSystemAudioLevel(0);
-  }
 
   const start = useCallback(async () => {
     const store = useMeetingRecorderStore.getState();

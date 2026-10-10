@@ -1,7 +1,7 @@
 /**
  * EmbeddingWorker - Generates text embeddings using Transformers.js in a worker thread
  *
- * Uses a worker thread to run @xenova/transformers, which:
+ * Uses a worker thread to run @huggingface/transformers, which:
  * 1. Avoids the 'self is not defined' issue (workers have `self`)
  * 2. Keeps the main Electron process responsive during inference
  * 3. Isolates heavy ML operations from the UI thread
@@ -15,6 +15,7 @@ import { Worker } from 'worker_threads';
 import path from 'node:path';
 import { Context, Effect, Layer } from 'effect';
 import { logger } from '../../shared/utils';
+import { disableOnnxTelemetry } from '../telemetry/onnxTelemetry';
 import type { MLModelDownloadProgressPayload, MLServiceStatus } from '@shared/types/mlStatus';
 
 /**
@@ -173,6 +174,7 @@ export class EmbeddingWorker {
         throw new Error('EmbeddingWorker requires a cacheDir outside Electron.');
       }
 
+      disableOnnxTelemetry();
       this.worker = new Worker(workerPath, { workerData: { cacheDir } });
 
       // Wait for worker to be ready
@@ -293,8 +295,7 @@ export class EmbeddingWorker {
       ? request.pipe(
           Effect.timeoutFail({
             duration: timeoutMs,
-            onTimeout: () =>
-              new Error(`Worker request '${type}' timed out after ${timeoutMs}ms`),
+            onTimeout: () => new Error(`Worker request '${type}' timed out after ${timeoutMs}ms`),
           }),
         )
       : request;

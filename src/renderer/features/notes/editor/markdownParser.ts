@@ -10,9 +10,9 @@
  */
 
 import MarkdownIt from 'markdown-it';
-import type StateCore from 'markdown-it/lib/rules_core/state_core.mjs';
-import type Token from 'markdown-it/lib/token.mjs';
 import type { JSONContent } from '@tiptap/core';
+
+type Token = ReturnType<MarkdownIt['parse']>[number];
 
 const TASK_MARKERS = ['TODO', 'DOING', 'DONE', 'WAITING', 'HOLD', 'CANCELED', 'CANCELLED', 'IDEA'];
 const TASK_MARKER_PATTERN = new RegExp(`\\b(${TASK_MARKERS.join('|')})\\b`, 'g');
@@ -22,7 +22,7 @@ const TIMESTAMP_PATTERN = /\[([01]?[0-9]|2[0-3]):([0-5][0-9])\]/g;
 const NOTE_LINK_PATTERN = /\[\[([^\]]+)\]\]/g;
 
 function taskMarkerPlugin(md: MarkdownIt) {
-  md.core.ruler.after('inline', 'task_marker', (state: StateCore) => {
+  md.core.ruler.after('inline', 'task_marker', (state) => {
     for (const blockToken of state.tokens) {
       if (blockToken.type !== 'inline' || !blockToken.children) continue;
 
@@ -71,7 +71,7 @@ function taskMarkerPlugin(md: MarkdownIt) {
 }
 
 function timestampPlugin(md: MarkdownIt) {
-  md.core.ruler.after('inline', 'timestamp', (state: StateCore) => {
+  md.core.ruler.after('inline', 'timestamp', (state) => {
     for (const blockToken of state.tokens) {
       if (blockToken.type !== 'inline' || !blockToken.children) continue;
 
@@ -119,7 +119,7 @@ function timestampPlugin(md: MarkdownIt) {
 }
 
 function noteLinkPlugin(md: MarkdownIt) {
-  md.core.ruler.after('inline', 'note_link', (state: StateCore) => {
+  md.core.ruler.after('inline', 'note_link', (state) => {
     for (const blockToken of state.tokens) {
       if (blockToken.type !== 'inline' || !blockToken.children) continue;
 

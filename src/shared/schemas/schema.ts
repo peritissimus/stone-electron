@@ -37,20 +37,15 @@ export class CompatSchema<A = unknown> {
 
   parse(input: unknown): A {
     try {
-      return Schema.decodeUnknownSync(
-        this.effectSchema as Schema.Schema<any, any, never>,
-        {
-        onExcessProperty: 'ignore',
-        },
-      )(input) as A;
+      return Schema.decodeUnknownSync(this.effectSchema as Schema.Schema<any, any, never>)(
+        input,
+      ) as A;
     } catch (error) {
       throw parseFailure(error);
     }
   }
 
-  safeParse(input: unknown):
-    | { success: true; data: A }
-    | { success: false; error: Error } {
+  safeParse(input: unknown): { success: true; data: A } | { success: false; error: Error } {
     try {
       return { success: true, data: this.parse(input) };
     } catch (error) {
@@ -63,7 +58,11 @@ export class CompatSchema<A = unknown> {
   }
 
   nullable(): CompatSchema<A | null> {
-    return new CompatSchema(Schema.NullOr(this.effectSchema), this.optionalValue, this.defaultValue);
+    return new CompatSchema(
+      Schema.NullOr(this.effectSchema),
+      this.optionalValue,
+      this.defaultValue,
+    );
   }
 
   default(value: Exclude<A, undefined>): CompatSchema<Exclude<A, undefined>> {
@@ -130,14 +129,6 @@ export class CompatSchema<A = unknown> {
     return this.refine((value) => typeof value === 'number' && value >= 0);
   }
 
-  strict(): this {
-    return this;
-  }
-
-  passthrough(): this {
-    return this;
-  }
-
   or<B>(other: CompatSchema<B>): CompatSchema<A | B> {
     return new CompatSchema(Schema.Union(this.effectSchema, other.effectSchema));
   }
@@ -165,20 +156,35 @@ class CompatObjectSchema<
   Shape extends Record<string, CompatSchema<any>>,
   A = ObjectOutput<Shape>,
 > extends CompatSchema<A> {
-  constructor(readonly shape: Shape) {
+  constructor(
+    readonly shape: Shape,
+    readonly excessProperty: 'ignore' | 'error' | 'preserve' = 'ignore',
+  ) {
     super(
       Schema.Struct(
         Object.fromEntries(
           Object.entries(shape).map(([key, schema]) => [key, schema.toProperty()]),
         ) as any,
-      ),
+      ).annotations({ parseOptions: { onExcessProperty: excessProperty } }),
     );
+  }
+
+  strict(): CompatObjectSchema<Shape> {
+    return new CompatObjectSchema(this.shape, 'error');
+  }
+
+  passthrough(): CompatObjectSchema<Shape, ObjectOutput<Shape> & Record<string, unknown>> {
+    return new CompatObjectSchema(this.shape, 'preserve');
+  }
+
+  strip(): CompatObjectSchema<Shape, ObjectOutput<Shape>> {
+    return new CompatObjectSchema(this.shape, 'ignore');
   }
 
   extend<Extra extends Record<string, CompatSchema<any>>>(
     extra: Extra,
   ): CompatObjectSchema<Shape & Extra> {
-    return new CompatObjectSchema({ ...this.shape, ...extra });
+    return new CompatObjectSchema({ ...this.shape, ...extra }, this.excessProperty);
   }
 }
 
@@ -209,8 +215,7 @@ export namespace z {
 
   export const literalEnum: <const Values extends readonly [string, ...string[]]>(
     values: Values,
-  ) => CompatSchema<Values[number]> = (values) =>
-    new CompatSchema(Schema.Literal(...values));
+  ) => CompatSchema<Values[number]> = (values) => new CompatSchema(Schema.Literal(...values));
 
   export const union = <Members extends readonly CompatSchema<any>[]>(members: Members) =>
     new CompatSchema<OutputOf<Members[number]>>(

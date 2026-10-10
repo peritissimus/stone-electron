@@ -1,26 +1,26 @@
-import { defineConfig } from 'vitest/config'
-import path from 'path'
+import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     setupFiles: ['./tests/setup.ts'],
-    include: ['tests/unit/**/*.{test,spec}.{ts,tsx}', 'tests/integration/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'tests/unit/**/*.{test,spec}.{ts,tsx}',
+      'tests/integration/**/*.{test,spec}.{ts,tsx}',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
-      include: ['src/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.spec.ts',
-        // Renderer UI surfaces stay excluded (component/page rendering isn't
-        // unit-tested here), but renderer LOGIC — lib/, stores/, hooks/,
-        // navigation/ — is measurable and increasingly covered (markdown
-        // round-trip, tree selection, stores), so it must count.
+        // Shared UI primitives remain outside the unit coverage target.
+        // Feature views and TSX hooks count alongside renderer models and
+        // utilities, including editor and accessibility regression tests.
         'src/renderer/components/**/*',
-        'src/renderer/pages/**/*',
-        'src/renderer/editor/**/*',
         'src/renderer/specs/**/*',
         'src/renderer/types/**/*',
         'src/renderer/index.tsx',
@@ -52,4 +52,4 @@ export default defineConfig({
       '@renderer': path.resolve(__dirname, './src/renderer'),
     },
   },
-})
+});

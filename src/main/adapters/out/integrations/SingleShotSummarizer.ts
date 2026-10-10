@@ -25,11 +25,13 @@ export class SingleShotSummarizer implements ISummarizationStrategy {
   constructor(private readonly deps: SingleShotSummarizerDeps) {}
 
   async summarize(request: SummarizeRequest): Promise<SummarizeResult> {
+    request.signal?.throwIfAborted();
     request.onProgress?.({ step: 'finalizing', current: 0, total: 1 });
 
     const prompt = renderPrompt(request.promptTemplate, request.transcript);
     const response = await this.deps.textGenerator.generateMarkdown({
       prompt,
+      ...(request.signal ? { signal: request.signal } : {}),
       // Override the generic markdown system prompt — which suggests
       // "headings where useful" — so it doesn't fight the user prompt.
       system:
@@ -38,6 +40,7 @@ export class SingleShotSummarizer implements ISummarizationStrategy {
         'the result directly with no preamble or closing remarks.',
     });
 
+    request.signal?.throwIfAborted();
     request.onProgress?.({ step: 'finalizing', current: 1, total: 1 });
 
     return {

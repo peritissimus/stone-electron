@@ -44,7 +44,7 @@ export class GlobalShortcutRegistrar implements IGlobalShortcutRegistrar {
       return { ...this.current };
     }
 
-    let registered = false;
+    let registered: boolean;
     try {
       registered = globalShortcut.register(shortcut, () => {
         logger.info('[QuickCapture] Global shortcut triggered');

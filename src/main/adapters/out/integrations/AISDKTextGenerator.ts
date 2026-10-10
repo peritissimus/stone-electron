@@ -1,4 +1,5 @@
-import { generateText, type LanguageModel } from 'ai';
+import { generateText, Output, type LanguageModel } from 'ai';
+import { decodeQueryPlan, queryPlanOutputSchema } from './queryPlanSchema';
 import { createAzure } from '@ai-sdk/azure';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
@@ -111,6 +112,7 @@ export type GenerateTextFn = (request: {
   prompt: string;
   temperature?: number;
   maxRetries?: number;
+  abortSignal?: AbortSignal;
 }) => Promise<{
   text: string;
   usage?: {
@@ -118,6 +120,8 @@ export type GenerateTextFn = (request: {
     outputTokens?: number;
   };
 }>;
+
+export type GenerateQueryPlanFn = (request: Parameters<GenerateTextFn>[0]) => Promise<unknown>;
 
 /** Factory shape for the OpenAI provider — injectable so the base-URL
  *  behaviour can be tested without hitting the network. */
@@ -130,19 +134,21 @@ export interface AISDKTextGeneratorDeps {
   appConfigRepository: IAppConfigRepository;
   aiProviderKeyStore?: IAIProviderKeyStore;
   generateTextFn?: GenerateTextFn;
+  generateQueryPlanFn?: GenerateQueryPlanFn;
   modelFactory?: (model: string) => LanguageModel;
   /** Override the OpenAI provider factory (tests). Defaults to createOpenAI. */
   openaiFactory?: OpenAIFactory;
-  runPromise: <A, E>(effect: Effect.Effect<A, E>) => Promise<A>;
+  runPromise: <A, E>(effect: Effect.Effect<A, E>, options?: { signal?: AbortSignal }) => Promise<A>;
 }
 
 export class AISDKTextGenerator implements ITextGenerator {
   private readonly generateTextFn: GenerateTextFn;
+  private readonly generateQueryPlanFn: GenerateQueryPlanFn;
   private readonly openaiFactory: OpenAIFactory;
 
   constructor(private readonly deps: AISDKTextGeneratorDeps) {
     this.openaiFactory = deps.openaiFactory ?? (createOpenAI as unknown as OpenAIFactory);
-    // Wrap the actual model invocation in withRetry at the adapter boundary so
+    // Wrap the actual model invocation in an Effect retry schedule at the adapter boundary so
     // every use case (answer / plan / markdown) gets transient-failure retries
     // for free. generateText is non-streaming, so retrying the whole call is
     // safe — there is no partially-consumed stream to worry about. We disable
@@ -158,20 +164,43 @@ export class AISDKTextGenerator implements ITextGenerator {
           prompt: request.prompt,
           temperature: request.temperature,
           maxRetries: request.maxRetries ?? 0,
+          abortSignal: request.abortSignal,
         }));
 
-    this.generateTextFn = deps.generateTextFn
-      ? baseGenerate
-      : (request) =>
-          this.deps.runPromise(
-            Effect.tryPromise({
-              try: () => baseGenerate(request),
-              catch: (error) => error,
-            }).pipe(Effect.retry(llmRetrySchedule)),
-          );
+    this.generateTextFn =
+      deps.generateTextFn ?? ((request) => this.generateWithRetry(request, baseGenerate));
+    this.generateQueryPlanFn =
+      deps.generateQueryPlanFn ??
+      ((request) =>
+        this.generateWithRetry(request, async (input) => {
+          const result = await generateText({
+            ...input,
+            maxRetries: 0,
+            output: Output.object({
+              schema: queryPlanOutputSchema,
+              name: 'query_plan',
+              description: 'A search query and optional inclusive calendar-date range.',
+            }),
+          });
+          return result.output;
+        }));
+  }
+
+  private generateWithRetry<A>(
+    request: Parameters<GenerateTextFn>[0],
+    generate: (request: Parameters<GenerateTextFn>[0]) => Promise<A>,
+  ): Promise<A> {
+    return this.deps.runPromise(
+      Effect.tryPromise({
+        try: (signal) => generate({ ...request, abortSignal: signal }),
+        catch: (error) => error,
+      }).pipe(Effect.retry(llmRetrySchedule)),
+      { signal: request.abortSignal },
+    );
   }
 
   async generateAnswer(request: GenerateAnswerRequest): Promise<GenerateAnswerResponse> {
+    request.signal?.throwIfAborted();
     const config = await this.deps.appConfigRepository.get();
     assertCloudNoteContentAllowed(config.ai);
 
@@ -187,6 +216,7 @@ export class AISDKTextGenerator implements ITextGenerator {
       system: this.systemPrompt(request.today),
       prompt: this.userPrompt(request, config.ai.privacy.allowSendingMetadata),
       temperature: 0.2,
+      ...(request.signal ? { abortSignal: request.signal } : {}),
     });
 
     return {
@@ -204,9 +234,10 @@ export class AISDKTextGenerator implements ITextGenerator {
     // a literal, date-less plan so Ask still works locally.
     const fallback: QueryPlan = { searchQuery: request.query, dateStart: null, dateEnd: null };
     try {
+      request.signal?.throwIfAborted();
       const config = await this.deps.appConfigRepository.get();
       assertCloudInferenceAllowed(config.ai);
-      const result = await this.generateTextFn({
+      const result = await this.generateQueryPlanFn({
         model: await this.createLanguageModel(
           request.model ?? config.ai.models.textModel,
           config.ai,
@@ -214,26 +245,34 @@ export class AISDKTextGenerator implements ITextGenerator {
         system: this.planSystemPrompt(),
         prompt: `TODAY is ${request.today}.\nQuestion: ${request.query}\nJSON:`,
         temperature: 0,
+        ...(request.signal ? { abortSignal: request.signal } : {}),
       });
-      return this.parseQueryPlan(result.text, request.query);
+      request.signal?.throwIfAborted();
+      return decodeQueryPlan(result);
     } catch {
+      request.signal?.throwIfAborted();
       return fallback;
     }
   }
 
   async generateMarkdown(request: GenerateMarkdownRequest): Promise<GenerateMarkdownResponse> {
+    request.signal?.throwIfAborted();
     const config = await this.deps.appConfigRepository.get();
     assertCloudNoteContentAllowed(config.ai);
 
     const result = await this.generateTextFn({
       model: await this.createLanguageModel(request.model ?? config.ai.models.textModel, config.ai),
-      system: request.system ?? 'You produce concise markdown. Use bullet lists and headings where useful.',
+      system:
+        request.system ??
+        'You produce concise markdown. Use bullet lists and headings where useful.',
       prompt: request.prompt,
+      ...(request.signal ? { abortSignal: request.signal } : {}),
       // Only pass temperature when explicitly requested — reasoning
       // models (o-series, gpt-5+) reject it with a warning otherwise.
       ...(request.temperature !== undefined ? { temperature: request.temperature } : {}),
     });
 
+    request.signal?.throwIfAborted();
     return { text: result.text, usage: result.usage };
   }
 
@@ -267,7 +306,9 @@ export class AISDKTextGenerator implements ITextGenerator {
       return `[${index}]\n${source.excerpt}`;
     }
 
-    const heading = source.headingPath?.length ? `\nHeading: ${source.headingPath.join(' > ')}` : '';
+    const heading = source.headingPath?.length
+      ? `\nHeading: ${source.headingPath.join(' > ')}`
+      : '';
     return `[${index}]\nTitle: ${source.title}${dateLine}${heading}\nExcerpt:\n${source.excerpt}`;
   }
 
@@ -284,30 +325,6 @@ export class AISDKTextGenerator implements ITextGenerator {
       '  dateEnd: string|null — YYYY-MM-DD; equal to dateStart for a single day, null when not date-scoped.',
       'No prose, no code fences — JSON only.',
     ].join('\n');
-  }
-
-  private parseQueryPlan(text: string, originalQuery: string): QueryPlan {
-    try {
-      const start = text.indexOf('{');
-      const end = text.lastIndexOf('}');
-      if (start === -1 || end <= start) {
-        return { searchQuery: originalQuery, dateStart: null, dateEnd: null };
-      }
-      const obj = JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-
-      const searchQuery =
-        typeof obj.searchQuery === 'string' && obj.searchQuery.trim()
-          ? obj.searchQuery.trim()
-          : originalQuery;
-      const isIso = (v: unknown): v is string =>
-        typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
-      const dateStart = isIso(obj.dateStart) ? obj.dateStart : null;
-      const dateEnd = dateStart ? (isIso(obj.dateEnd) ? obj.dateEnd : dateStart) : null;
-
-      return { searchQuery, dateStart, dateEnd };
-    } catch {
-      return { searchQuery: originalQuery, dateStart: null, dateEnd: null };
-    }
   }
 
   /**
@@ -358,9 +375,7 @@ export class AISDKTextGenerator implements ITextGenerator {
     }
     if (parsed.provider === 'groq') {
       const apiKey = (await this.deps.aiProviderKeyStore?.getKey('groq')) ?? undefined;
-      return createGroq({ apiKey })(
-        parsed.modelId as Parameters<ReturnType<typeof createGroq>>[0],
-      );
+      return createGroq({ apiKey })(parsed.modelId as Parameters<ReturnType<typeof createGroq>>[0]);
     }
 
     throw new Error(`Unsupported text generation provider: ${parsed.provider}`);

@@ -36,22 +36,22 @@ files:
   - package.json
   - migrations/**/*
   # Exclude unnecessary files
-  - "!**/{CHANGELOG.md,README.md,README,readme.md,readme}"
-  - "!**/{test,__tests__,tests,powered-test,spec,specs}/**"
-  - "!**/*.{map,ts,tsx,md,markdown}"
-  - "!**/.{eslint,prettier,github,vscode}*"
-  - "!**/node_modules/**/{.bin,.cache,.github,.vscode}"
-  - "!**/node_modules/**/*.d.ts"
-  - "!**/node_modules/**/{tsconfig,jest,webpack,rollup,vite}*.json"
-  - "!**/node_modules/**/LICENSE*"
-  - "!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**"
+  - '!**/{CHANGELOG.md,README.md,README,readme.md,readme}'
+  - '!**/{test,__tests__,tests,powered-test,spec,specs}/**'
+  - '!**/*.{map,ts,tsx,md,markdown}'
+  - '!**/.{eslint,prettier,github,vscode}*'
+  - '!**/node_modules/**/{.bin,.cache,.github,.vscode}'
+  - '!**/node_modules/**/*.d.ts'
+  - '!**/node_modules/**/{tsconfig,jest,webpack,rollup,vite}*.json'
+  - '!**/node_modules/**/LICENSE*'
+  - '!**/node_modules/**/{example,examples,demo,demos,doc,docs}/**'
   # Transformers.js selects the native onnxruntime-node backend in Stone's
   # worker thread. Its browser-only ONNX WASM engines are never loaded, but
   # account for ~37 MB when every production dependency is unpacked.
-  - "!**/node_modules/@xenova/transformers/dist/*.wasm"
+  - '!**/node_modules/@huggingface/transformers/dist/*.wasm'
   # effect (and its fast-check/pure-rand deps) is fully inlined into the
   # dist/main bundles at build time; no shipped file requires it at runtime.
-  - "!**/node_modules/{effect,fast-check,pure-rand}/**"
+  - '!**/node_modules/{effect,fast-check,pure-rand}/**'
 
 # Enable asar for app code, but unpack all node_modules. Selective unpacking
 # breaks once a native module needs to require() a sibling dep — Node's
@@ -107,7 +107,7 @@ mac:
       Stone reads today's events to show your schedule in the Today view. Stone
       does not create or modify calendar events.
   # Minimize app size
-  minimumSystemVersion: "12.0"
+  minimumSystemVersion: '14.0'
   # whisper.cpp CLI for local transcription (built by scripts/build-whisper.sh).
   extraResources:
     - from: dist/native/StoneCalendarBridge

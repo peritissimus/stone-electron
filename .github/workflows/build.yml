@@ -2,62 +2,27 @@ name: Build and Test
 
 on:
   push:
-    branches: [ main, develop, feature/**, feat/** ]
+    branches: [main, develop, feature/**, feat/**]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  validate:
+    uses: ./.github/workflows/validate.yml
+  # Preserve the existing required status-check name for branch protection.
   build:
-    runs-on: macos-latest
-
+    needs: validate
+    if: always()
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22.x'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v5
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Test
-        run: pnpm test
-
-      - name: Build application
-        run: pnpm build
-
-      - name: Package application (directory only)
-        run: pnpm package:dir
+      - name: Require successful validation
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false # Skip code signing
-
-      - name: Verify packaged runtime imports
-        run: node scripts/verify-packaged-runtime.cjs
+          VALIDATION_RESULT: ${{ needs.validate.result }}
+        run: test "$VALIDATION_RESULT" = success

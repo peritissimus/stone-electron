@@ -28,6 +28,7 @@ export interface MeetingIPCDeps {
 
 export type RunMeetingEffect = <A, E>(
   use: (service: IMeetingUseCases) => Effect.Effect<A, E>,
+  options?: { signal?: AbortSignal },
 ) => Promise<A>;
 
 export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
@@ -92,9 +93,7 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     handleRequest(
       async () =>
         runMeetingEffect((meetingUseCases) =>
-          meetingUseCases.getMeetingRecording.execute(
-            RecordingIdRequestSchema.parse(rawRequest),
-          ),
+          meetingUseCases.getMeetingRecording.execute(RecordingIdRequestSchema.parse(rawRequest)),
         ),
       { channel: MEETING_CHANNELS.GET },
     ),
@@ -104,9 +103,7 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     handleRequest(
       async () =>
         runMeetingEffect((meetingUseCases) =>
-          meetingUseCases.getMeetingAudio.execute(
-            RecordingIdRequestSchema.parse(rawRequest),
-          ),
+          meetingUseCases.getMeetingAudio.execute(RecordingIdRequestSchema.parse(rawRequest)),
         ),
       { channel: MEETING_CHANNELS.GET_AUDIO },
     ),
@@ -140,20 +137,19 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
     handleRequest(
       async () =>
         runMeetingEffect((meetingUseCases) =>
-          meetingUseCases.retranscribeMeeting.execute(
-            RecordingIdRequestSchema.parse(rawRequest),
-          ),
+          meetingUseCases.retranscribeMeeting.execute(RecordingIdRequestSchema.parse(rawRequest)),
         ),
       { channel: MEETING_CHANNELS.RETRANSCRIBE },
     ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_START, async () =>
-    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
-      meetingUseCases.liveTranscription.start(),
-    ), {
-      channel: MEETING_CHANNELS.LIVE_START,
-    }),
+    handleRequest(
+      async () => runMeetingEffect((meetingUseCases) => meetingUseCases.liveTranscription.start()),
+      {
+        channel: MEETING_CHANNELS.LIVE_START,
+      },
+    ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_CHUNK, async (_event, rawRequest) =>
@@ -169,11 +165,12 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
   );
 
   ipcMain.handle(MEETING_CHANNELS.LIVE_STOP, async () =>
-    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
-      meetingUseCases.liveTranscription.stop(),
-    ), {
-      channel: MEETING_CHANNELS.LIVE_STOP,
-    }),
+    handleRequest(
+      async () => runMeetingEffect((meetingUseCases) => meetingUseCases.liveTranscription.stop()),
+      {
+        channel: MEETING_CHANNELS.LIVE_STOP,
+      },
+    ),
   );
 
   ipcMain.handle(MEETING_CHANNELS.SEND_TO_JOURNAL, async (_event, rawRequest) =>
@@ -189,11 +186,13 @@ export function registerMeetingHandlers(deps: MeetingIPCDeps): void {
   );
 
   ipcMain.handle(MEETING_CHANNELS.WARM_TRANSCRIBER, async () =>
-    handleRequest(async () => runMeetingEffect((meetingUseCases) =>
-      meetingUseCases.warmUpTranscriber.execute(),
-    ), {
-      channel: MEETING_CHANNELS.WARM_TRANSCRIBER,
-    }),
+    handleRequest(
+      async () =>
+        runMeetingEffect((meetingUseCases) => meetingUseCases.warmUpTranscriber.execute()),
+      {
+        channel: MEETING_CHANNELS.WARM_TRANSCRIBER,
+      },
+    ),
   );
 }
 

@@ -69,7 +69,10 @@ export class Exporter implements IExporter {
         // Generate PDF with no margins (content has its own padding)
         const pdfBuffer = await win.webContents.printToPDF({
           margins: {
-            marginType: 'none',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
           },
           printBackground: options?.printBackground ?? true,
           landscape: options?.landscape ?? false,

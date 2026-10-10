@@ -1,0 +1,31 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # Keep security fixes individually reviewable. Major upgrades are never grouped.
+      production-patches:
+        applies-to: version-updates
+        dependency-type: production
+        update-types: [patch]
+      test-tooling:
+        applies-to: version-updates
+        dependency-type: development
+        patterns: ['vitest', '@vitest/*', '@playwright/test']
+        update-types: [minor, patch]
+      editor-packages:
+        applies-to: version-updates
+        patterns: ['@tiptap/*']
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      action-patches-and-minors:
+        applies-to: version-updates
+        update-types: [minor, patch]

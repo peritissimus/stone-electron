@@ -17,7 +17,11 @@ import { logger } from '@renderer/services/telemetry/logger';
 import { FileLeaf } from './FileLeaf';
 import { FolderNode } from './FolderNode';
 
-export function FileTree({ scrollContainer }: { scrollContainer: HTMLDivElement | null }) {
+export const FileTree = React.memo(function FileTree({
+  scrollContainer,
+}: {
+  scrollContainer: HTMLDivElement | null;
+}) {
   const navigateToNote = useNavigateToNote();
   const {
     items,
@@ -150,7 +154,7 @@ export function FileTree({ scrollContainer }: { scrollContainer: HTMLDivElement 
           className="pointer-events-none invisible absolute h-8 w-px"
         />
         {renderedIndices.map((index) => {
-          const { node, level, path } = items[index];
+          const { node, level, path, positionInSet, setSize } = items[index];
           return (
             <div
               key={`${node.type}-${path}`}
@@ -164,6 +168,8 @@ export function FileTree({ scrollContainer }: { scrollContainer: HTMLDivElement 
                 <FolderNode
                   node={node}
                   level={level}
+                  positionInSet={positionInSet}
+                  setSize={setSize}
                   onCreateNote={handleCreateNoteInFolder}
                   onMoveFile={handleMoveNote}
                   onMoveFolder={handleMoveFolder}
@@ -172,6 +178,8 @@ export function FileTree({ scrollContainer }: { scrollContainer: HTMLDivElement 
                 <FileLeaf
                   node={node}
                   level={level}
+                  positionInSet={positionInSet}
+                  setSize={setSize}
                   onRename={handleShowRename}
                   onDelete={handleDeleteNote}
                   onMove={handleMoveNote}
@@ -202,4 +210,4 @@ export function FileTree({ scrollContainer }: { scrollContainer: HTMLDivElement 
       />
     </div>
   );
-}
+});

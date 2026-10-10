@@ -15,6 +15,8 @@ const fsMock = vi.hoisted(() => ({
 const transformersMock = vi.hoisted(() => ({
   env: {} as Record<string, unknown>,
   pipeline: vi.fn(),
+  tokenizer: vi.fn(),
+  model: vi.fn(),
 }));
 
 vi.mock('worker_threads', () => ({
@@ -28,7 +30,7 @@ vi.mock('node:fs', () => ({
   },
 }));
 
-vi.mock('@xenova/transformers', () => transformersMock);
+vi.mock('@huggingface/transformers', () => transformersMock);
 
 async function loadWorkerScript() {
   vi.resetModules();
@@ -63,26 +65,30 @@ describe('embedding.worker script', () => {
     vi.clearAllMocks();
     parentPortMock.handlers.clear();
     transformersMock.env = {};
-    transformersMock.pipeline.mockImplementation(async (task: string, _model: string, options?: any) => {
-      options?.progress_callback?.({
-        status: 'progress',
-        file: 'model.onnx',
-        loaded: 50,
-        total: 100,
-        progress: 50,
-      });
+    transformersMock.tokenizer.mockReturnValue({ input_ids: 'paired tokens' });
+    transformersMock.model.mockResolvedValue({ logits: { data: [0.42] } });
+    transformersMock.pipeline.mockImplementation(
+      async (task: string, _model: string, options?: any) => {
+        options?.progress_callback?.({
+          status: 'progress',
+          file: 'model.onnx',
+          loaded: 50,
+          total: 100,
+          progress: 50,
+        });
 
-      if (task === 'feature-extraction') {
-        return async (text: string) => ({ data: new Float32Array([text.length, 1]) });
-      }
-      if (task === 'text-classification') {
-        return async () => [{ label: 'LABEL_0', score: 0.42 }];
-      }
-      return async () => ({
-        text: 'transcribed text',
-        chunks: [{ text: 'transcribed', timestamp: [0, 0.5] }],
-      });
-    });
+        if (task === 'feature-extraction') {
+          return async (text: string) => ({ data: new Float32Array([text.length, 1]) });
+        }
+        if (task === 'text-classification') {
+          return { tokenizer: transformersMock.tokenizer, model: transformersMock.model };
+        }
+        return async () => ({
+          text: 'transcribed text',
+          chunks: [{ text: 'transcribed', timestamp: [0, 0.5] }],
+        });
+      },
+    );
     fsMock.readFile.mockResolvedValue(wavBuffer([0, 16_384, -16_384]));
   });
 
@@ -145,6 +151,12 @@ describe('embedding.worker script', () => {
     );
 
     await handler({ type: 'rerank', id: 'r2', query: 'query', texts: ['doc'] });
+    expect(transformersMock.tokenizer).toHaveBeenCalledWith('query', {
+      text_pair: 'doc',
+      padding: true,
+      truncation: true,
+    });
+    expect(transformersMock.model).toHaveBeenCalledWith({ input_ids: 'paired tokens' });
     expect(parentPortMock.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'r2', success: true, data: [0.42] }),
     );
@@ -170,6 +182,24 @@ describe('embedding.worker script', () => {
         },
       }),
     );
+  });
+
+  it('preserves distinct positive and negative reranker logits instead of single-label probabilities', async () => {
+    const handler = await loadWorkerScript();
+    transformersMock.model
+      .mockResolvedValueOnce({ logits: { data: [2.4] } })
+      .mockResolvedValueOnce({ logits: { data: [-8] } });
+    await handler({
+      type: 'rerank',
+      id: 'scores',
+      query: 'backup',
+      texts: ['restore a note', 'tomatoes'],
+    });
+    expect(parentPortMock.postMessage).toHaveBeenCalledWith({
+      id: 'scores',
+      success: true,
+      data: [2.4, -8],
+    });
   });
 
   it('responds with errors for unknown messages and invalid WAV files', async () => {
