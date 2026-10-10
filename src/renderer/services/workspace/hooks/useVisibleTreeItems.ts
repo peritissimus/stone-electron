@@ -6,6 +6,8 @@ import {
 import { normalizePath } from '@renderer/lib/path';
 
 export interface VisibleTreeItem {
+  node: FileTreeNode;
+  level: number;
   path: string;
   type: 'file' | 'folder';
   parentPath: string | null;
@@ -19,7 +21,7 @@ export interface VisibleTreeItem {
  * `useVisibleTreeItems` is the React binding.
  */
 export function flattenVisibleTree(tree: FileTreeNode[], expanded: Set<string>): VisibleTreeItem[] {
-  return flatten(tree, expanded, null);
+  return flatten(tree, expanded, null, 0);
 }
 
 /**
@@ -31,25 +33,26 @@ export function useVisibleTreeItems(): VisibleTreeItem[] {
   const tree = useFileTreeStore((s) => s.tree);
   const expandedPaths = useFileTreeStore((s) => s.expandedPaths);
 
-  return useMemo(() => flatten(tree, expandedPaths, null), [tree, expandedPaths]);
+  return useMemo(() => flatten(tree, expandedPaths, null, 0), [tree, expandedPaths]);
 }
 
 function flatten(
   nodes: FileTreeNode[],
   expanded: Set<string>,
   parentPath: string | null,
+  level: number,
 ): VisibleTreeItem[] {
   const out: VisibleTreeItem[] = [];
   for (const node of nodes) {
     const path = normalizePath(node.path);
     if (node.type === 'folder') {
       const isExpanded = expanded.has(path);
-      out.push({ path, type: 'folder', parentPath, isExpanded });
+      out.push({ node, level, path, type: 'folder', parentPath, isExpanded });
       if (isExpanded && node.children && node.children.length > 0) {
-        out.push(...flatten(node.children, expanded, path));
+        out.push(...flatten(node.children, expanded, path, level + 1));
       }
     } else {
-      out.push({ path, type: 'file', parentPath });
+      out.push({ node, level, path, type: 'file', parentPath });
     }
   }
   return out;
