@@ -10,7 +10,7 @@
  * Refresh is silent (auto on note events); no manual reload button.
  */
 
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { todayIso } from '@renderer/lib/dateFormat';
 import { useViewScrollRestoration } from '@renderer/services/view-state/hooks/useViewScrollRestoration';
@@ -33,6 +33,12 @@ import {
   Warning,
 } from '@phosphor-icons/react';
 import { cn } from '@renderer/lib/utils';
+import { formatCount, formatDuration, formatRelative } from '../lib/formatDailyReview';
+import {
+  DailyReviewDetailsDialog,
+  type DailyReviewDetail,
+  type ShowDailyReviewDetail,
+} from './components/DailyReviewDetailsDialog';
 import { renderMarkdown } from '@renderer/features/notes/editor/renderMarkdown';
 import { Button } from '@renderer/components/base/ui/button';
 import { ViewHeader } from '@renderer/components/composites';
@@ -107,7 +113,7 @@ export default function DailyReviewView() {
         actions={
           <>
             {refreshing && (
-              <span className="shrink-0 text-[11px] text-muted-foreground">Refreshing…</span>
+              <span className="shrink-0 text-[0.6875rem] text-muted-foreground">Refreshing…</span>
             )}
             <div className="flex shrink-0 items-center gap-0.5">
               <Button
@@ -212,6 +218,12 @@ function Sections({
 }) {
   const navigate = useNavigate();
   const goToNote = (id: string) => navigate(toNote(id));
+  const [detail, setDetail] = useState<DailyReviewDetail | null>(null);
+  const detailTrigger = useRef<HTMLElement | null>(null);
+  const showDetail: ShowDailyReviewDetail = (nextDetail, trigger) => {
+    detailTrigger.current = trigger;
+    setDetail(nextDetail);
+  };
 
   const calendarEvents = snapshot.calendarEvents ?? [];
   const mailUnreadCount = snapshot.mailUnreadCount ?? 0;
@@ -229,7 +241,11 @@ function Sections({
     mailMessages.length === 0 &&
     linearIssues.length === 0;
 
-  const showingIntegrationState = [integrations.calendar, integrations.mail].some(
+  const showingIntegrationState = [
+    integrations.calendar,
+    integrations.mail,
+    integrations.linear,
+  ].some(
     (integration) =>
       integration.status === 'loading' ||
       integration.status === 'denied' ||
@@ -254,9 +270,22 @@ function Sections({
           onManage={() => navigate(toSettings('integrations'))}
         />
       )}
-      {calendarEvents.length > 0 && <CalendarSection events={calendarEvents} />}
-      {snapshot.todayMeetings.length > 0 && <MeetingsSection meetings={snapshot.todayMeetings} />}
-      {linearIssues.length > 0 && <LinearSection issues={linearIssues} />}
+      {calendarEvents.length > 0 && (
+        <CalendarSection events={calendarEvents} onShowDetail={showDetail} />
+      )}
+      {snapshot.todayMeetings.length > 0 && (
+        <MeetingsSection meetings={snapshot.todayMeetings} onShowDetail={showDetail} />
+      )}
+      {linearIssues.length === 0 && isActionableIntegrationState(integrations.linear) && (
+        <IntegrationStatusSection
+          label="Linear"
+          icon={<Kanban size={12} />}
+          state={integrations.linear}
+          onRetry={() => void onRetryIntegration('linear')}
+          onManage={() => navigate(toSettings('integrations'))}
+        />
+      )}
+      {linearIssues.length > 0 && <LinearSection issues={linearIssues} onShowDetail={showDetail} />}
       {mailMessages.length === 0 && isActionableIntegrationState(integrations.mail) && (
         <IntegrationStatusSection
           label="Mail"
@@ -267,7 +296,11 @@ function Sections({
         />
       )}
       {(mailUnreadCount > 0 || mailMessages.length > 0) && (
-        <MailSection unreadCount={mailUnreadCount} messages={mailMessages} />
+        <MailSection
+          unreadCount={mailUnreadCount}
+          messages={mailMessages}
+          onShowDetail={showDetail}
+        />
       )}
       {snapshot.openTasks.length > 0 && (
         <TasksSection tasks={snapshot.openTasks} onOpenNote={goToNote} />
@@ -278,6 +311,11 @@ function Sections({
       {snapshot.onThisDay.length > 0 && (
         <OnThisDaySection entries={snapshot.onThisDay} onOpen={goToNote} />
       )}
+      <DailyReviewDetailsDialog
+        detail={detail}
+        onClose={() => setDetail(null)}
+        returnFocus={() => detailTrigger.current?.focus()}
+      />
     </div>
   );
 }
@@ -305,7 +343,7 @@ function IntegrationStatusSection({
   return (
     <section>
       <SectionLabel icon={icon}>{label}</SectionLabel>
-      <div className="flex min-h-14 items-center gap-3 rounded-xl bg-muted/35 px-3 py-2.5 shadow-[inset_0_0_0_1px_hsl(var(--border)/0.3)]">
+      <div className="flex min-h-14 flex-wrap items-center gap-3 rounded-xl bg-muted/35 px-3 py-2.5 shadow-[inset_0_0_0_1px_hsl(var(--border)/0.3)]">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-background text-muted-foreground shadow-sm">
           {loading ? (
             <CircleNotch size={14} className="animate-spin" />
@@ -313,7 +351,7 @@ function IntegrationStatusSection({
             <Warning size={14} weight="fill" className="text-amber-500" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-40 [overflow-wrap:anywhere]">
           <p className="text-xs font-medium">
             {loading
               ? `Checking ${label}…`
@@ -328,7 +366,7 @@ function IntegrationStatusSection({
           )}
         </div>
         {!loading && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex max-w-full flex-wrap items-center gap-1">
             <Button variant="ghost" size="sm" className="h-10" onClick={onRetry}>
               Try again
             </Button>
@@ -366,7 +404,7 @@ function JournalSection({
           )}
         >
           {journal.contentPreview ? (
-            <p className="line-clamp-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+            <p className="line-clamp-4 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-relaxed text-foreground/90">
               {journal.contentPreview}
             </p>
           ) : (
@@ -403,36 +441,74 @@ function JournalSection({
   );
 }
 
-function MeetingsSection({ meetings }: { meetings: DailyReviewMeetingSummary[] }) {
+const DETAIL_ROW =
+  'w-full min-h-10 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const PREVIEW_TITLE = 'line-clamp-2 [overflow-wrap:anywhere] text-foreground';
+
+function MeetingsSection({
+  meetings,
+  onShowDetail,
+}: {
+  meetings: DailyReviewMeetingSummary[];
+  onShowDetail: ShowDailyReviewDetail;
+}) {
   return (
     <section>
       <SectionLabel icon={<Microphone size={12} />}>
         Today's meetings{' '}
-        <span className="ml-1 text-muted-foreground/70 tabular-nums">({meetings.length})</span>
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">
+          ({formatCount(meetings.length)})
+        </span>
       </SectionLabel>
       <ul className="mt-2 space-y-1.5">
         {meetings.map((m) => (
-          <li
-            key={m.id}
-            className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5"
-          >
-            <MeetingStatusDot status={m.status} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium">{m.title}</div>
-              {m.summary && (
-                <div className="mt-0.5 line-clamp-1 text-[12px] text-muted-foreground">
-                  {firstBullet(m.summary)}
-                </div>
+          <li key={m.id}>
+            <button
+              type="button"
+              title={m.title}
+              className={cn(
+                DETAIL_ROW,
+                'flex items-start gap-3 rounded-lg border border-border bg-card px-3 py-2.5',
               )}
-            </div>
-            <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {formatDuration(m.durationMs)}
-            </span>
-            {m.inJournal && (
-              <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-px text-[10px] font-medium text-emerald-600">
-                journaled
+              onClick={(event) =>
+                onShowDetail(
+                  {
+                    kind: 'Meeting',
+                    title: m.title.trim() || 'Untitled meeting',
+                    fields: [
+                      { label: 'Duration', value: formatDuration(m.durationMs) },
+                      { label: 'Status', value: m.status },
+                      ...(m.inJournal ? [{ label: 'Journal', value: 'Added to journal' }] : []),
+                    ],
+                    body: m.summary,
+                  },
+                  event.currentTarget,
+                )
+              }
+            >
+              <span className="mt-1.5 flex">
+                <MeetingStatusDot status={m.status} />
               </span>
-            )}
+              <span className="min-w-0 flex-1">
+                <span className={cn(PREVIEW_TITLE, 'font-medium')}>
+                  {m.title.trim() || 'Untitled meeting'}
+                </span>
+                {m.summary && (
+                  <span className="mt-0.5 line-clamp-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                    {firstBullet(m.summary)}
+                  </span>
+                )}
+                <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] text-muted-foreground">
+                  <span className="tabular-nums">{formatDuration(m.durationMs)}</span>
+                  <span className="capitalize">{m.status}</span>
+                  {m.inJournal && (
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-px text-[0.625rem] font-medium text-emerald-600">
+                      journaled
+                    </span>
+                  )}
+                </span>
+              </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -452,7 +528,9 @@ function TasksSection({
     <section>
       <SectionLabel icon={<CheckSquare size={12} />}>
         Open tasks{' '}
-        <span className="ml-1 text-muted-foreground/70 tabular-nums">({tasks.length})</span>
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">
+          ({formatCount(tasks.length)})
+        </span>
       </SectionLabel>
       <ul className="mt-2 space-y-1">
         {top.map((task) => (
@@ -466,17 +544,17 @@ function TasksSection({
               )}
             >
               <span className="mt-0.5 inline-block size-3.5 shrink-0 rounded border border-border" />
-              <span className="min-w-0 flex-1 text-sm">
+              <span className="min-w-0 flex-1 text-sm [overflow-wrap:anywhere]">
                 <span className="text-foreground">{task.text}</span>
-                {task.noteTitle && (
-                  <span className="ml-2 text-[11px] text-muted-foreground/70">
+                {task.noteTitle?.trim() && (
+                  <span className="mt-0.5 block text-[0.6875rem] text-muted-foreground/70">
                     {task.noteTitle}
                   </span>
                 )}
               </span>
               <span
                 className={cn(
-                  'shrink-0 rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider',
+                  'shrink-0 rounded px-1.5 py-px text-[0.5625rem] font-semibold uppercase tracking-wider',
                   stateChip(task.state),
                 )}
               >
@@ -487,8 +565,8 @@ function TasksSection({
         ))}
       </ul>
       {tasks.length > top.length && (
-        <p className="mt-2 px-2 text-[11px] text-muted-foreground">
-          +{tasks.length - top.length} more on the Tasks page
+        <p className="mt-2 px-2 text-[0.6875rem] text-muted-foreground">
+          +{formatCount(tasks.length - top.length)} more on the Tasks page
         </p>
       )}
     </section>
@@ -504,13 +582,14 @@ function RecentSection({ notes, onOpen }: { notes: Note[]; onOpen: (id: string) 
           <li key={note.id}>
             <button
               type="button"
+              title={note.title?.trim() || 'Untitled'}
               onClick={() => onOpen(note.id)}
               className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-muted"
             >
               <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                {note.title || 'Untitled'}
+                {note.title?.trim() || 'Untitled'}
               </span>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+              <span className="shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground">
                 {formatRelative(note.updatedAt)}
               </span>
             </button>
@@ -536,14 +615,15 @@ function OnThisDaySection({
           <li key={entry.note.id}>
             <button
               type="button"
+              title={entry.note.title?.trim() || 'Untitled'}
               onClick={() => onOpen(entry.note.id)}
               className="group flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-muted"
             >
-              <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10px] font-medium text-muted-foreground tabular-nums">
+              <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[0.625rem] font-medium text-muted-foreground tabular-nums">
                 {entry.yearsAgo}y ago
               </span>
               <span className="min-w-0 flex-1 truncate text-sm text-foreground">
-                {entry.note.title || 'Untitled'}
+                {entry.note.title?.trim() || 'Untitled'}
               </span>
             </button>
           </li>
@@ -553,28 +633,59 @@ function OnThisDaySection({
   );
 }
 
-function CalendarSection({ events }: { events: CalendarEvent[] }) {
+function CalendarSection({
+  events,
+  onShowDetail,
+}: {
+  events: CalendarEvent[];
+  onShowDetail: ShowDailyReviewDetail;
+}) {
   return (
     <section>
       <SectionLabel icon={<Calendar size={12} />}>
         Calendar{' '}
-        <span className="ml-1 text-muted-foreground/70 tabular-nums">({events.length})</span>
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">
+          ({formatCount(events.length)})
+        </span>
       </SectionLabel>
       <ul className="mt-2 space-y-1">
         {events.map((e, i) => (
-          <li
-            key={`${e.start}-${i}`}
-            className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
-          >
-            <span className="w-24 shrink-0 text-[11px] tabular-nums text-muted-foreground">
-              {e.allDay ? 'all day' : formatClock(e.start)}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-foreground">{e.title}</span>
-            {e.location && (
-              <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
-                {e.location}
+          <li key={`${e.start}-${i}`}>
+            <button
+              type="button"
+              title={e.title}
+              className={cn(DETAIL_ROW, 'flex flex-wrap items-start gap-x-3 gap-y-1')}
+              onClick={(event) =>
+                onShowDetail(
+                  {
+                    kind: 'Calendar event',
+                    title: e.title.trim() || 'Untitled event',
+                    fields: [
+                      {
+                        label: 'Starts',
+                        value: e.allDay ? 'All day' : new Date(e.start).toLocaleString(),
+                      },
+                      { label: 'Ends', value: new Date(e.end).toLocaleString() },
+                      { label: 'Calendar', value: e.calendar },
+                      ...(e.location?.trim() ? [{ label: 'Location', value: e.location }] : []),
+                    ],
+                  },
+                  event.currentTarget,
+                )
+              }
+            >
+              <span className="w-24 shrink-0 text-[0.6875rem] tabular-nums text-muted-foreground">
+                {e.allDay ? 'all day' : formatClock(e.start)}
               </span>
-            )}
+              <span className="min-w-0 flex-1 basis-48">
+                <span className={PREVIEW_TITLE}>{e.title.trim() || 'Untitled event'}</span>
+                {e.location?.trim() && (
+                  <span className="mt-0.5 line-clamp-2 text-[0.6875rem] text-muted-foreground/70 [overflow-wrap:anywhere]">
+                    {e.location}
+                  </span>
+                )}
+              </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -582,30 +693,59 @@ function CalendarSection({ events }: { events: CalendarEvent[] }) {
   );
 }
 
-function LinearSection({ issues }: { issues: LinearIssue[] }) {
+function LinearSection({
+  issues,
+  onShowDetail,
+}: {
+  issues: LinearIssue[];
+  onShowDetail: ShowDailyReviewDetail;
+}) {
   return (
     <section>
       <SectionLabel icon={<Kanban size={12} />}>
-        Linear <span className="ml-1 text-muted-foreground/70 tabular-nums">({issues.length})</span>
+        Linear{' '}
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">
+          ({formatCount(issues.length)})
+        </span>
       </SectionLabel>
       <ul className="mt-2 space-y-1">
         {issues.map((issue) => (
-          <li
-            key={issue.identifier}
-            className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm"
-          >
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-              {issue.identifier}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-foreground">{issue.title}</span>
-            {issue.dueDate && (
-              <span className="shrink-0 text-[11px] tabular-nums text-amber-600">
-                due {issue.dueDate}
+          <li key={issue.identifier}>
+            <button
+              type="button"
+              title={issue.title}
+              className={DETAIL_ROW}
+              onClick={(event) =>
+                onShowDetail(
+                  {
+                    kind: 'Linear issue',
+                    title: issue.title.trim() || 'Untitled issue',
+                    fields: [
+                      { label: 'Identifier', value: issue.identifier },
+                      { label: 'State', value: issue.state },
+                      ...(issue.dueDate ? [{ label: 'Due', value: issue.dueDate }] : []),
+                      { label: 'URL', value: issue.url },
+                    ],
+                  },
+                  event.currentTarget,
+                )
+              }
+            >
+              <span className={PREVIEW_TITLE}>{issue.title.trim() || 'Untitled issue'}</span>
+              <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 [overflow-wrap:anywhere]">
+                <span className="min-w-0 font-mono text-[0.6875rem] text-muted-foreground">
+                  {issue.identifier}
+                </span>
+                {issue.dueDate && (
+                  <span className="text-[0.6875rem] tabular-nums text-amber-600">
+                    due {issue.dueDate}
+                  </span>
+                )}
+                <span className="min-w-0 rounded bg-muted px-1.5 py-px text-[0.625rem] text-muted-foreground">
+                  {issue.state}
+                </span>
               </span>
-            )}
-            <span className="shrink-0 rounded bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
-              {issue.state}
-            </span>
+            </button>
           </li>
         ))}
       </ul>
@@ -613,24 +753,49 @@ function LinearSection({ issues }: { issues: LinearIssue[] }) {
   );
 }
 
-function MailSection({ unreadCount, messages }: { unreadCount: number; messages: MailMessage[] }) {
+function MailSection({
+  unreadCount,
+  messages,
+  onShowDetail,
+}: {
+  unreadCount: number;
+  messages: MailMessage[];
+  onShowDetail: ShowDailyReviewDetail;
+}) {
   const count = Math.max(unreadCount, messages.length);
   return (
     <section>
       <SectionLabel icon={<Envelope size={12} />}>
-        Unread mail <span className="ml-1 text-muted-foreground/70 tabular-nums">({count})</span>
+        Unread mail{' '}
+        <span className="ml-1 text-muted-foreground/70 tabular-nums">({formatCount(count)})</span>
       </SectionLabel>
       {messages.length > 0 ? (
         <ul className="mt-2 space-y-1">
           {messages.map((m, i) => (
-            <li
-              key={`${m.receivedAt}-${i}`}
-              className="flex items-center gap-3 rounded-md px-2 py-1.5 text-sm"
-            >
-              <span className="min-w-0 flex-1 truncate text-foreground">{m.subject}</span>
-              <span className="shrink-0 truncate text-[11px] text-muted-foreground/70">
-                {m.sender}
-              </span>
+            <li key={`${m.receivedAt}-${i}`}>
+              <button
+                type="button"
+                title={m.subject.trim() || '(No subject)'}
+                className={DETAIL_ROW}
+                onClick={(event) =>
+                  onShowDetail(
+                    {
+                      kind: 'Mail message',
+                      title: m.subject.trim() || '(No subject)',
+                      fields: [
+                        { label: 'From', value: m.sender.trim() || 'Unknown sender' },
+                        { label: 'Received', value: new Date(m.receivedAt).toLocaleString() },
+                      ],
+                    },
+                    event.currentTarget,
+                  )
+                }
+              >
+                <span className={PREVIEW_TITLE}>{m.subject.trim() || '(No subject)'}</span>
+                <span className="mt-0.5 line-clamp-2 text-[0.6875rem] text-muted-foreground/70 [overflow-wrap:anywhere]">
+                  {m.sender.trim() || 'Unknown sender'}
+                </span>
+              </button>
             </li>
           ))}
         </ul>
@@ -658,7 +823,7 @@ function DaySummaryCard({
 }) {
   return (
     <div className="mb-7 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <SectionLabel icon={<MagicWand size={12} />}>Day summary</SectionLabel>
         <div className="flex items-center gap-1.5">
           {summary && (
@@ -666,7 +831,7 @@ function DaySummaryCard({
               type="button"
               onClick={onSave}
               disabled={saving}
-              className="inline-flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
             >
               <FloppyDisk size={12} />
               Save to journal
@@ -686,7 +851,7 @@ function DaySummaryCard({
         <p className="mt-2 text-sm text-destructive">{error}</p>
       ) : summary ? (
         <article
-          className="prose prose-sm mt-2 max-w-none text-[14px] leading-relaxed text-foreground"
+          className="prose prose-sm mt-2 max-w-none [overflow-wrap:anywhere] text-sm leading-relaxed text-foreground"
           // Our own AI output, rendered with html:false (escaped) — safe.
           dangerouslySetInnerHTML={{ __html: renderMarkdown(summary) }}
         />
@@ -788,23 +953,6 @@ function formatClock(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const mm = Math.floor(totalSeconds / 60);
-  const ss = totalSeconds % 60;
-  return mm > 0 ? `${mm}m ${ss}s` : `${ss}s`;
-}
-
-function formatRelative(value: Date | string): string {
-  const date = value instanceof Date ? value : new Date(value);
-  const diffMs = Date.now() - date.getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
 }
 
 function firstBullet(summary: string): string {
