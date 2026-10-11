@@ -104,6 +104,9 @@ describe('NoteUseCases', () => {
       findById: vi.fn(),
       findAll: vi.fn(async () => []),
       findByFilePath: vi.fn(),
+      findOrCreateByFilePath: vi.fn(async (candidate: Parameters<INoteRepository['findOrCreateByFilePath']>[0]) => ({
+        note: candidate.toPersistence(), created: true,
+      })),
       save: vi.fn(),
       delete: vi.fn(),
       searchByTitle: vi.fn(async () => []),
@@ -171,7 +174,7 @@ describe('NoteUseCases', () => {
     expect(result.note.title).toBe('New Note');
     expect(result.note.workspaceId).toBe('ws-1');
     expect(fileStorage.write).toHaveBeenCalledWith(expect.stringContaining('/workspace/'), 'Body');
-    expect(noteRepository.save).toHaveBeenCalled();
+    expect(noteRepository.findOrCreateByFilePath).toHaveBeenCalled();
     expect(eventPublisher.publish).toHaveBeenCalled();
   });
 

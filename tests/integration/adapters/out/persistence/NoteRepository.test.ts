@@ -10,6 +10,9 @@ import { createClient, type Client } from '@libsql/client';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/libsql';
 import { nanoid } from 'nanoid';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { NoteRepository } from '../../../../../src/main/adapters/out/persistence/NoteRepository';
 import { workspaces, notebooks, notes } from '../../../../../src/main/shared';
 import { NoteEntity } from '../../../../../src/main/domain/entities/Note';
@@ -36,8 +39,8 @@ async function insertWorkspace(db: ReturnType<typeof drizzle>, id: string, folde
   });
 }
 
-async function createTestDatabase() {
-  const client = createClient({ url: ':memory:' });
+async function createTestDatabase(url = ':memory:') {
+  const client = createClient({ url });
   const db = drizzle(client);
 
   // Create tables manually for in-memory database
@@ -195,6 +198,87 @@ describe('NoteRepository Integration', () => {
 
       const updated = await repository.findById(note.id);
       expect(updated!.title).toBe('Updated Title');
+    });
+  });
+
+  describe('findOrCreateByFilePath', () => {
+    it('preserves an existing identity and all its metadata', async () => {
+      const original = createNote({
+        title: 'Desktop title', workspaceId: testWorkspaceId,
+        filePath: 'Journal/today.md', notebookId: testNotebookId,
+      });
+      original.setFavorite(true);
+      original.setPinned(true);
+      await repository.save(original);
+      const before = await repository.findById(original.id);
+      const candidate = createNote({
+        title: 'Imported title', workspaceId: testWorkspaceId, filePath: 'Journal/today.md',
+      });
+
+      const result = await repository.findOrCreateByFilePath(candidate);
+
+      expect(result).toEqual({ note: before, created: false });
+      expect(await repository.findById(candidate.id)).toBeNull();
+      expect(await repository.count({ workspaceId: testWorkspaceId })).toBe(1);
+    });
+
+    it('prefers an existing tombstone without restoring it or changing older duplicates', async () => {
+      const active = createNote({ title: 'Active', workspaceId: testWorkspaceId, filePath: 'same.md' });
+      const deleted = createNote({ title: 'Trashed', workspaceId: testWorkspaceId, filePath: 'same.md' });
+      deleted.delete();
+      await repository.save(active);
+      await repository.save(deleted);
+      const before = await repository.findById(deleted.id);
+
+      const result = await repository.findOrCreateByFilePath(
+        createNote({ title: 'New', workspaceId: testWorkspaceId, filePath: 'same.md' }),
+      );
+
+      expect(result).toEqual({ note: before, created: false });
+      expect(await repository.findByFilePath('same.md', testWorkspaceId)).toEqual(before);
+      expect(await repository.count()).toBe(2);
+    });
+
+    it('keeps identical relative paths in different workspaces distinct', async () => {
+      await insertWorkspace(db, 'ws-second', '/second');
+      const first = await repository.findOrCreateByFilePath(
+        createNote({ title: 'First', workspaceId: testWorkspaceId, filePath: 'same.md' }),
+      );
+      const second = await repository.findOrCreateByFilePath(
+        createNote({ title: 'Second', workspaceId: 'ws-second', filePath: 'same.md' }),
+      );
+      expect(first.created).toBe(true);
+      expect(second.created).toBe(true);
+      expect(first.note.id).not.toBe(second.note.id);
+    });
+
+    it('returns one identity to competing clients importing the same file', async () => {
+      const folder = mkdtempSync(path.join(tmpdir(), 'stone-import-race-'));
+      const url = `file:${path.join(folder, 'notes.db')}`;
+      const first = await createTestDatabase(url);
+      const secondClient = createClient({ url });
+      try {
+        await first.client.execute('PRAGMA journal_mode = WAL');
+        await first.client.execute('PRAGMA busy_timeout = 5000');
+        await secondClient.execute('PRAGMA busy_timeout = 5000');
+        await insertWorkspace(first.db, testWorkspaceId, '/shared-workspace');
+        const repositories = [first.db, drizzle(secondClient)].map((database) => new NoteRepository({
+          db: database as any, fileStorage, getWorkspacePath: () => '/shared-workspace',
+        }));
+        const results = await Promise.all(Array.from({ length: 20 }, (_, index) =>
+          repositories[index % 2].findOrCreateByFilePath(createNote({
+            title: `Importer ${index}`, workspaceId: testWorkspaceId, filePath: 'Journal/shared.md',
+          })),
+        ));
+        expect(results.filter((result) => result.created)).toHaveLength(1);
+        expect(new Set(results.map((result) => result.note.id)).size).toBe(1);
+        expect(await repositories[0].count()).toBe(1);
+        expect(results.every((result) => result.note.title === results[0].note.title)).toBe(true);
+      } finally {
+        secondClient.close();
+        first.client.close();
+        rmSync(folder, { recursive: true, force: true });
+      }
     });
   });
 

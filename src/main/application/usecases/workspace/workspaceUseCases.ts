@@ -204,12 +204,17 @@ export const WorkspaceUseCasesLive = Layer.effect(
                 },
                 new Date(now),
               );
-              yield* noteRepository.save(note);
-              yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, {
-                id: note.id,
-              });
+              const persisted = yield* noteRepository.findOrCreateByFilePath(note);
+              // A concurrent importer may already own this path. Its metadata
+              // and deletion state remain authoritative, even after a stale scan.
+              if (persisted.note.isDeleted) return emptyPhase();
+              if (persisted.created) {
+                yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, {
+                  id: persisted.note.id,
+                });
+              }
               const indexed = yield* indexUseCases.indexNote
-                .execute({ noteId: note.id })
+                .execute({ noteId: persisted.note.id })
                 .pipe(Effect.either);
               if (
                 indexed._tag === 'Left' ||
@@ -221,13 +226,13 @@ export const WorkspaceUseCasesLive = Layer.effect(
                     : indexed.right.error ?? 'unknown error';
                 return {
                   ...emptyPhase(),
-                  created: 1,
+                  created: Number(persisted.created),
                   error: `Index failed for ${entry.relativePath}: ${message}`,
                 };
               }
               return {
                 ...emptyPhase(),
-                created: 1,
+                created: Number(persisted.created),
                 embedded:
                   indexed.right.status === 'indexed' &&
                   indexed.right.chunkCount > 0

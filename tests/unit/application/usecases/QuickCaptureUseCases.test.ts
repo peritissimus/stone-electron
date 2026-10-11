@@ -47,7 +47,10 @@ function createMockNoteRepository(): INoteRepository {
     findByNotebookId: vi.fn(),
     findByWorkspaceId: vi.fn(),
     findByFilePath: vi.fn(),
-    save: vi.fn(),
+    findOrCreateByFilePath: vi.fn(async (candidate: Parameters<INoteRepository['findOrCreateByFilePath']>[0]) => ({
+        note: candidate.toPersistence(), created: true,
+      })),
+      save: vi.fn(),
     delete: vi.fn(),
     searchByTitle: vi.fn(),
     count: vi.fn(),
@@ -224,7 +227,7 @@ describe('QuickCaptureUseCases', () => {
       expect(result.noteId).toBeDefined();
       expect(fileStorage.createDirectory).toHaveBeenCalled();
       expect(fileStorage.write).toHaveBeenCalled();
-      expect(noteRepo.save).toHaveBeenCalled();
+      expect(noteRepo.findOrCreateByFilePath).toHaveBeenCalled();
     });
 
     it('appends to existing journal note', async () => {

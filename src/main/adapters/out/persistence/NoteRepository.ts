@@ -148,11 +148,50 @@ export class NoteRepository implements INoteRepository {
           .select()
           .from(notes)
           .where(and(...conditions))
+          .orderBy(desc(notes.isDeleted), asc(notes.createdAt), asc(notes.id))
           .limit(1);
 
         return result[0] ? this.toNoteProps(result[0]) : null;
       },
       { filePath, workspaceId },
+    );
+  }
+
+  async findOrCreateByFilePath(note: NoteEntity): Promise<{ note: NoteProps; created: boolean }> {
+    const props = note.toPersistence();
+    return this.handle(
+      'findOrCreateByFilePath',
+      async () => {
+        if (!props.workspaceId || !props.filePath) {
+          throw new Error('Importing a file requires a workspace and relative file path');
+        }
+        // The first statement acquires SQLite's write lock before checking the
+        // path. The batch keeps insertion and identity lookup in one transaction,
+        // including when another app imported the file after our workspace scan.
+        const [inserted, found] = await this.deps.db.batch([
+          this.deps.db.run(sql`
+            INSERT INTO notes (
+              id, title, file_path, notebook_id, workspace_id,
+              is_favorite, is_pinned, is_archived, is_deleted, deleted_at,
+              created_at, updated_at
+            )
+            SELECT ${props.id}, ${props.title}, ${props.filePath}, ${props.notebookId}, ${props.workspaceId},
+              ${Number(props.isFavorite)}, ${Number(props.isPinned)}, ${Number(props.isArchived)},
+              ${Number(props.isDeleted)}, ${props.deletedAt ? Math.floor(props.deletedAt.getTime() / 1000) : null},
+              ${Math.floor(props.createdAt.getTime() / 1000)}, ${Math.floor(props.updatedAt.getTime() / 1000)}
+            WHERE NOT EXISTS (
+              SELECT 1 FROM notes WHERE workspace_id = ${props.workspaceId} AND file_path = ${props.filePath}
+            )
+          `),
+          this.deps.db.select().from(notes)
+            .where(and(eq(notes.workspaceId, props.workspaceId), eq(notes.filePath, props.filePath)))
+            .orderBy(desc(notes.isDeleted), asc(notes.createdAt), asc(notes.id))
+            .limit(1),
+        ]);
+        if (!found[0]) throw new Error('Imported file has no persisted note identity');
+        return { note: this.toNoteProps(found[0]), created: inserted.rowsAffected > 0 };
+      },
+      { workspaceId: props.workspaceId, filePath: props.filePath },
     );
   }
 

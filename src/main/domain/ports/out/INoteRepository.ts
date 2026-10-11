@@ -56,6 +56,12 @@ export interface INoteRepository {
   findByFilePath(filePath: string, workspaceId?: string): Promise<NoteProps | null>;
 
   /**
+   * Atomically claim an existing file's identity, preserving any existing row,
+   * including a tombstone. Competing importers must use the returned note ID.
+   */
+  findOrCreateByFilePath(note: NoteEntity): Promise<{ note: NoteProps; created: boolean }>;
+
+  /**
    * Save a note (create or update)
    */
   save(note: NoteEntity): Promise<void>;

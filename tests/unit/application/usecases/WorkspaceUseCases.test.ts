@@ -110,6 +110,9 @@ describe('WorkspaceUseCases', () => {
     } as unknown as IWorkspaceRepository;
     noteRepository = {
       findAll: vi.fn(async () => []),
+      findOrCreateByFilePath: vi.fn(async (candidate: Parameters<INoteRepository['findOrCreateByFilePath']>[0]) => ({
+        note: candidate.toPersistence(), created: true,
+      })),
       save: vi.fn(),
     } as unknown as INoteRepository;
     fileStorage = {
@@ -354,6 +357,30 @@ describe('WorkspaceUseCases', () => {
     expect(indexNote).toHaveBeenCalled();
   });
 
+  it.each([false, true])('adopts a concurrent importer identity from a stale scan (deleted: %s)', async (isDeleted) => {
+    vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
+    vi.mocked(fileStorage.glob).mockResolvedValue(['Inbox.md']);
+    vi.mocked(fileStorage.getFileInfo).mockResolvedValue({
+      path: '/workspace/Inbox.md', name: 'Inbox.md', isDirectory: false, size: 10,
+      createdAt: new Date(), modifiedAt: new Date(),
+    });
+    vi.mocked(fileStorage.read).mockResolvedValue('# Inbox');
+    vi.mocked(markdownProcessor.extractTitle).mockReturnValue('Inbox');
+    vi.mocked(noteRepository.findOrCreateByFilePath).mockImplementation(async (candidate) => ({
+      note: { ...candidate.toPersistence(), id: 'swift-existing', title: 'Desktop title', isDeleted },
+      created: false,
+    }));
+
+    const result = await useCases.syncWorkspace.execute({ workspaceId: 'ws-1' });
+
+    expect(result.notes.created).toBe(0);
+    expect(result.notes.errors).toEqual([]);
+    expect(noteRepository.save).not.toHaveBeenCalled();
+    expect(eventPublisher.publish).not.toHaveBeenCalled();
+    if (isDeleted) expect(indexNote).not.toHaveBeenCalled();
+    else expect(indexNote).toHaveBeenCalledWith({ noteId: 'swift-existing' });
+  });
+
   it('syncs imported headings beyond the rename limit without truncation', async () => {
     const title = 'a'.repeat(500);
     vi.mocked(workspaceRepository.findById).mockResolvedValue(workspace());
@@ -371,7 +398,7 @@ describe('WorkspaceUseCases', () => {
     const result = await useCases.syncWorkspace.execute({ workspaceId: 'ws-1' });
     expect(result.notes.created).toBe(1);
     expect(result.notes.errors).toEqual([]);
-    const saved = vi.mocked(noteRepository.save).mock.calls[0][0];
+    const saved = vi.mocked(noteRepository.findOrCreateByFilePath).mock.calls[0][0];
     expect(saved.title).toBe(title);
 
     const revisedTitle = `${title} revised`;

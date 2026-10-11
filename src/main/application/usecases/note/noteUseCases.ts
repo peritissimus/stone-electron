@@ -95,9 +95,11 @@ export const NoteUseCasesLive = Layer.effect(
             yield* domainOperation(() => note.updateFilePath(relativePath));
             const absolutePath = yield* pathService.join(workspace.folderPath, relativePath);
             yield* fileStorage.write(absolutePath, request.content ?? '');
-            yield* noteRepository.save(note);
-            yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, note.id);
-            return { note: note.toPersistence() };
+            const persisted = yield* noteRepository.findOrCreateByFilePath(note);
+            if (persisted.created) {
+              yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, persisted.note.id);
+            }
+            return { note: persisted.note };
           }),
       },
       updateNote: {
@@ -310,9 +312,11 @@ export const NoteUseCasesLive = Layer.effect(
               },
               new Date(now),
             );
-            yield* noteRepository.save(note);
-            yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, note.id);
-            return { note: note.toPersistence() };
+            const persisted = yield* noteRepository.findOrCreateByFilePath(note);
+            if (persisted.created) {
+              yield* publish(DOMAIN_EVENT_TYPES.NOTE_CREATED, persisted.note.id);
+            }
+            return { note: persisted.note };
           }),
       },
       toggleFavorite: {

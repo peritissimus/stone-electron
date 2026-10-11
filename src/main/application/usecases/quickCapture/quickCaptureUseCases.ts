@@ -130,16 +130,16 @@ export const QuickCaptureUseCasesLive = Layer.effect(
             yield* files.write(absolutePath, `# ${date}${entry}`);
           }
           note.updateFilePath(relativePath);
-          yield* notes.save(note);
+          const persisted = yield* notes.findOrCreateByFilePath(note);
           yield* publish(
-            fileExists
+            fileExists || !persisted.created
               ? DOMAIN_EVENT_TYPES.NOTE_UPDATED
               : DOMAIN_EVENT_TYPES.NOTE_CREATED,
             now,
-            note.id,
+            persisted.note.id,
             date,
           );
-          return { noteId: note.id, appended: Boolean(fileExists) };
+          return { noteId: persisted.note.id, appended: fileExists || !persisted.created };
         }),
       transcribeVoiceCapture: (request) =>
         Effect.gen(function* () {

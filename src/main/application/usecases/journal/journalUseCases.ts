@@ -82,16 +82,18 @@ export const JournalUseCasesLive = Layer.effect(
             workspaceId: workspace.id,
           });
           note.updateFilePath(relativePath);
-          yield* notes.save(note);
+          const persisted = yield* notes.findOrCreateByFilePath(note);
           const now = yield* Effect.clockWith(
             (clock) => clock.currentTimeMillis,
           );
-          yield* publisher.publish({
-            type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
-            timestamp: new Date(now),
-            payload: { id: note.id, journalDate: dateString },
-          } as Parameters<IEventPublisher['publish']>[0]);
-          return { noteId: note.id, created: !fileExists };
+          if (persisted.created) {
+            yield* publisher.publish({
+              type: DOMAIN_EVENT_TYPES.NOTE_CREATED,
+              timestamp: new Date(now),
+              payload: { id: persisted.note.id, journalDate: dateString },
+            } as Parameters<IEventPublisher['publish']>[0]);
+          }
+          return { noteId: persisted.note.id, created: persisted.created && !fileExists };
         }),
       listRange: (request) =>
         Effect.gen(function* () {
