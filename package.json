@@ -75,7 +75,7 @@
     "chokidar": "^4.0.3",
     "effect": "^3.22.2",
     "electron-log": "^5.4.4",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.7",
     "font-list": "^2.1.0",
     "glob": "^13.0.6",
     "nanoid": "^3.3.20",
