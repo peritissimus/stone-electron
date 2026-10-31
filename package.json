@@ -69,13 +69,13 @@
     "eval:retrieval": "pnpm run build:worker && tsx scripts/evaluate-retrieval.ts"
   },
   "dependencies": {
-    "@fastify/static": "^10.1.6",
-    "@huggingface/transformers": "^4.3.1",
+    "@fastify/static": "^10.1.8",
+    "@huggingface/transformers": "^4.3.2",
     "@libsql/client": "^0.15.15",
     "chokidar": "^4.0.3",
     "effect": "^3.22.2",
     "electron-log": "^5.4.4",
-    "fastify": "^5.12.5",
+    "fastify": "^5.12.7",
     "font-list": "^2.1.0",
     "glob": "^13.0.6",
     "nanoid": "^3.3.20",
